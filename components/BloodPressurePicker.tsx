@@ -19,7 +19,8 @@ const ScrollPicker: React.FC<{
   const [isDragging, setIsDragging] = useState(false);
   
   const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-  const currentIndex = values.indexOf(parseInt(value) || min);
+  const currentValue = parseInt(value) || min;
+  const currentIndex = values.indexOf(currentValue);
   
   useEffect(() => {
     if (scrollRef.current && !isDragging) {
@@ -77,7 +78,7 @@ const ScrollPicker: React.FC<{
         <div style={{ height: '96px' }}></div>
         
         {values.map((val) => {
-          const isSelected = val.toString() === value;
+          const isSelected = val === currentValue;
           return (
             <div
               key={val}
