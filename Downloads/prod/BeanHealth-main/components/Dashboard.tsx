@@ -36,35 +36,78 @@ const VitalCard: React.FC<{
   trend?: 'up' | 'down' | 'stable';
   onSave: (newValue: string) => void;
   lastUpdatedFromRecord?: string; // Date when this vital was last updated from a medical record
-}> = ({ icon, iconBgColor, label, value, unit, trend, onSave, lastUpdatedFromRecord }) => {
+  isBloodPressure?: boolean;
+}> = ({ icon, iconBgColor, label, value, unit, trend, onSave, lastUpdatedFromRecord, isBloodPressure = false }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
+  
+  // For blood pressure
+  const [systolic, setSystolic] = useState('');
+  const [diastolic, setDiastolic] = useState('');
+  
   const inputRef = useRef<HTMLInputElement>(null);
+  const systolicRef = useRef<HTMLInputElement>(null);
 
   const trendArrow = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
   const trendColor = trend === 'up' ? 'text-red-500' : trend === 'down' ? 'text-blue-500' : 'text-slate-500';
 
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
+    if (isEditing) {
+      if (isBloodPressure) {
+        // Parse blood pressure value (e.g., "120/80" or "120")
+        const parts = value.split('/');
+        setSystolic(parts[0] || '');
+        setDiastolic(parts[1] || '');
+        setTimeout(() => systolicRef.current?.focus(), 0);
+      } else {
+        // For non-BP vitals, extract only numbers from value
+        const numericValue = value.replace(/[^0-9.]/g, '');
+        setCurrentValue(numericValue);
+        setTimeout(() => inputRef.current?.focus(), 0);
+      }
     }
-  }, [isEditing]);
+  }, [isEditing, value, isBloodPressure]);
   
   const handleSave = () => {
-    if (currentValue.trim() !== '') {
-        onSave(currentValue);
+    if (isBloodPressure) {
+      if (systolic.trim() && diastolic.trim()) {
+        onSave(`${systolic}/${diastolic}`);
+      } else if (systolic.trim()) {
+        onSave(systolic);
+      } else {
+        setSystolic(value.split('/')[0] || '');
+        setDiastolic(value.split('/')[1] || '');
+      }
     } else {
-        setCurrentValue(value); // Reset if empty
+      if (currentValue.trim() !== '') {
+        onSave(currentValue);
+      } else {
+        setCurrentValue(value.replace(/[^0-9.]/g, ''));
+      }
     }
     setIsEditing(false);
   };
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-        handleSave();
+      handleSave();
     } else if (e.key === 'Escape') {
-        setCurrentValue(value);
-        setIsEditing(false);
+      if (isBloodPressure) {
+        const parts = value.split('/');
+        setSystolic(parts[0] || '');
+        setDiastolic(parts[1] || '');
+      } else {
+        setCurrentValue(value.replace(/[^0-9.]/g, ''));
+      }
+      setIsEditing(false);
+    }
+  };
+
+  const handleNumberInput = (e: React.ChangeEvent<HTMLInputElement>, setValue: (val: string) => void) => {
+    const value = e.target.value;
+    // Allow only numbers and one decimal point
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setValue(value);
     }
   };
 
@@ -78,20 +121,56 @@ const VitalCard: React.FC<{
         <div className="flex-1 min-w-0">
           <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 sm:mb-2.5 tracking-wide uppercase truncate">{label}</p>
           {isEditing ? (
-              <input 
-                  ref={inputRef}
-                  type="text"
-                  value={currentValue}
-                  onChange={(e) => setCurrentValue(e.target.value)}
-                  onBlur={handleSave}
-                  onKeyDown={handleKeyDown}
-                  className="w-full bg-gray-100 dark:bg-gray-700 text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 px-2 sm:px-3 py-1 sm:py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-900"
-              />
-          ) : (
-              <div className="flex items-baseline flex-wrap">
-                <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
-                <span className="ml-1.5 sm:ml-2.5 text-sm sm:text-base lg:text-lg font-medium text-gray-500 dark:text-gray-400">{unit}</span>
+            isBloodPressure ? (
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Systolic</label>
+                  <input 
+                    ref={systolicRef}
+                    type="text"
+                    inputMode="numeric"
+                    value={systolic}
+                    onChange={(e) => handleNumberInput(e, setSystolic)}
+                    onBlur={handleSave}
+                    onKeyDown={handleKeyDown}
+                    placeholder="120"
+                    maxLength={3}
+                    className="w-full bg-gray-100 dark:bg-gray-700 text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 px-2 sm:px-3 py-1 sm:py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-900 text-center"
+                  />
+                </div>
+                <span className="text-3xl font-bold text-gray-400 dark:text-gray-500 mt-6">/</span>
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Diastolic</label>
+                  <input 
+                    type="text"
+                    inputMode="numeric"
+                    value={diastolic}
+                    onChange={(e) => handleNumberInput(e, setDiastolic)}
+                    onBlur={handleSave}
+                    onKeyDown={handleKeyDown}
+                    placeholder="80"
+                    maxLength={3}
+                    className="w-full bg-gray-100 dark:bg-gray-700 text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 px-2 sm:px-3 py-1 sm:py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-900 text-center"
+                  />
+                </div>
               </div>
+            ) : (
+              <input 
+                ref={inputRef}
+                type="text"
+                inputMode="numeric"
+                value={currentValue}
+                onChange={(e) => handleNumberInput(e, setCurrentValue)}
+                onBlur={handleSave}
+                onKeyDown={handleKeyDown}
+                className="w-full bg-gray-100 dark:bg-gray-700 text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 px-2 sm:px-3 py-1 sm:py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-900"
+              />
+            )
+          ) : (
+            <div className="flex items-baseline flex-wrap">
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
+              <span className="ml-1.5 sm:ml-2.5 text-sm sm:text-base lg:text-lg font-medium text-gray-500 dark:text-gray-400">{unit}</span>
+            </div>
           )}
           {trend && (
             <div className="flex items-center mt-3">
@@ -114,7 +193,7 @@ const VitalCard: React.FC<{
             onClick={() => setIsEditing(true)} 
             className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-sky-100 dark:hover:bg-sky-900/30 hover:scale-110 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-500"
           >
-              <EditIcon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            <EditIcon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
           </button>
         )}
       </div>
@@ -156,6 +235,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             icon={<BloodPressureIcon className="h-7 w-7 text-red-600 dark:text-red-400" />}
             iconBgColor="bg-red-100 dark:bg-red-900/30"
             lastUpdatedFromRecord={vitalsLastUpdatedFromRecord?.bloodPressure}
+            isBloodPressure={true}
           />
           <VitalCard 
             label="Heart Rate" 
