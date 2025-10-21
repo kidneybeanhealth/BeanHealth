@@ -233,6 +233,16 @@ a:hover {
   background: var(--gray-500);
 }
 
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Utility Classes */
 /* stylelint-disable at-rule-no-unknown */
 @layer utilities {
