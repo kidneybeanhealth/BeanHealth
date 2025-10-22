@@ -107,86 +107,86 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
     <>
       {/* Main Modal - Prescription List */}
       <div className="fixed inset-0 z-50 overflow-y-auto">
-        <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div className="flex items-center justify-center min-h-screen px-2 sm:px-4 py-4 sm:py-8 text-center">
           <div
             className="fixed inset-0 transition-opacity bg-gray-900/60 backdrop-blur-sm"
             onClick={onClose}
           ></div>
 
-          <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-200 dark:border-gray-700">
+          <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all w-full max-w-4xl border border-gray-200 dark:border-gray-700">
             {/* Header */}
-            <div className="bg-gradient-to-r from-rose-500 to-rose-900 px-6 py-5">
+            <div className="bg-gradient-to-r from-rose-500 to-rose-900 px-3 sm:px-6 py-3 sm:py-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-white/20 p-2 rounded-lg">
-                    <DocumentIcon className="h-6 w-6 text-white" />
+                <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+                  <div className="bg-white/20 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
+                    <DocumentIcon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-white">E-Prescriptions</h3>
-                    <p className="text-sky-100 text-sm mt-1">
-                      {isDoctor ? 'Prescriptions sent to patient' : 'Prescriptions from doctor'}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white truncate">E-Prescriptions</h3>
+                    <p className="text-sky-100 text-xs sm:text-sm mt-0.5 truncate">
+                      {isDoctor ? 'Sent to patient' : 'From doctor'}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
                   <button
                     onClick={loadPrescriptions}
-                    className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors"
+                    className="p-1.5 sm:p-2 text-white hover:bg-white/20 rounded-lg transition-colors"
                     aria-label="Refresh prescriptions"
                   >
-                    <RefreshIcon className="h-5 w-5" />
+                    <RefreshIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                   <button
                     onClick={onClose}
-                    className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors"
+                    className="p-1.5 sm:p-2 text-white hover:bg-white/20 rounded-lg transition-colors"
                   >
-                    <XIcon className="h-6 w-6" />
+                    <XIcon className="h-4 w-4 sm:h-6 sm:w-6" />
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Body */}
-            <div className="px-6 py-6 max-h-[70vh] overflow-y-auto">
+            <div className="px-3 sm:px-6 py-4 sm:py-6 max-h-[70vh] overflow-y-auto">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-900"></div>
                 </div>
               ) : prescriptions.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
-                  <DocumentIcon className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
+                <div className="text-center py-8 sm:py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-gray-700">
+                  <DocumentIcon className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 dark:text-gray-600 mx-auto mb-3 sm:mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400 text-base sm:text-lg font-medium">
                     No prescriptions found
                   </p>
-                  <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
+                  <p className="text-gray-400 dark:text-gray-500 text-xs sm:text-sm mt-2 px-4">
                     {isDoctor ? 'Send a prescription from the chat' : 'Your doctor will send prescriptions here'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {prescriptions.map((prescription) => (
                     <div
                       key={prescription.id}
-                      className="bg-white dark:bg-gray-700/30 border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-lg hover:border-rose-300 dark:hover:border-rose-700 transition-all duration-200 cursor-pointer"
+                      className="bg-white dark:bg-gray-700/30 border border-gray-200 dark:border-gray-700 rounded-lg sm:rounded-xl p-3 sm:p-4 hover:shadow-lg hover:border-rose-300 dark:hover:border-rose-700 transition-all duration-200 cursor-pointer"
                       onClick={() => setSelectedPrescription(prescription)}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <div className="bg-rose-100 dark:bg-rose-900/30 p-2 rounded-lg">
-                              <DocumentIcon className="h-4 w-4 text-rose-900 dark:text-rose-400" />
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start gap-2 sm:gap-3 mb-2">
+                            <div className="bg-rose-100 dark:bg-rose-900/30 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
+                              <DocumentIcon className="h-3 w-3 sm:h-4 sm:w-4 text-rose-900 dark:text-rose-400" />
                             </div>
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-gray-800 dark:text-gray-100">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-sm sm:text-base text-gray-800 dark:text-gray-100 truncate">
                                 {isDoctor ? prescription.patientName : `Dr. ${prescription.doctorName}`}
                               </h4>
                               {prescription.doctorSpecialty && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                   {prescription.doctorSpecialty}
                                 </p>
                               )}
                             </div>
-                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${
+                            <span className={`text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-medium whitespace-nowrap flex-shrink-0 ${
                               prescription.status === 'active' 
                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                 : prescription.status === 'completed'
@@ -197,25 +197,25 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
                             </span>
                           </div>
                           
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-3 flex items-center">
-                            <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 flex items-center">
+                            <svg className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            {formatDate(prescription.createdAt)}
+                            <span className="truncate">{formatDate(prescription.createdAt)}</span>
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
-                            {prescription.medications.slice(0, 3).map((med, index) => (
+                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                            {prescription.medications.slice(0, 2).map((med, index) => (
                               <span
                                 key={index}
-                                className="text-xs bg-rose-50 dark:bg-rose-900/20 text-rose-900 dark:text-rose-400 px-3 py-1 rounded-full border border-rose-200 dark:border-rose-800"
+                                className="text-[10px] sm:text-xs bg-rose-50 dark:bg-rose-900/20 text-rose-900 dark:text-rose-400 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full border border-rose-200 dark:border-rose-800 truncate max-w-[120px] sm:max-w-none"
                               >
                                 {med.name}
                               </span>
                             ))}
-                            {prescription.medications.length > 3 && (
-                              <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-3 py-1 rounded-full">
-                                +{prescription.medications.length - 3} more
+                            {prescription.medications.length > 2 && (
+                              <span className="text-[10px] sm:text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full whitespace-nowrap">
+                                +{prescription.medications.length - 2}
                               </span>
                             )}
                           </div>
@@ -226,10 +226,10 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
                             e.stopPropagation();
                             handleDownloadPrescription(prescription);
                           }}
-                          className="ml-4 p-3 text-rose-900 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all hover:scale-110 active:scale-95"
+                          className="p-2 sm:p-2.5 text-rose-900 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg sm:rounded-xl transition-all active:scale-95 flex-shrink-0"
                           aria-label="Download prescription"
                         >
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                           </svg>
                         </button>
@@ -246,92 +246,92 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
       {/* Prescription Detail Modal */}
       {selectedPrescription && (
         <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div className="flex items-center justify-center min-h-screen px-2 sm:px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div
               className="fixed inset-0 transition-opacity bg-gray-900/75 backdrop-blur-sm"
               onClick={() => setSelectedPrescription(null)}
             ></div>
 
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
               {/* Header */}
-              <div className="bg-gradient-to-r from-rose-500 to-rose-900 px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold text-white">Prescription Details</h3>
-                    <p className="text-sky-100 text-sm mt-1">
+              <div className="bg-gradient-to-r from-rose-500 to-rose-900 px-3 sm:px-6 py-3 sm:py-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white truncate">Prescription Details</h3>
+                    <p className="text-sky-100 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">
                       {formatDate(selectedPrescription.createdAt)}
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedPrescription(null)}
-                    className="text-white hover:text-sky-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
+                    className="text-white hover:text-sky-100 transition-colors p-1.5 sm:p-2 hover:bg-white/20 rounded-lg flex-shrink-0"
                   >
-                    <XIcon className="h-6 w-6" />
+                    <XIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </button>
                 </div>
               </div>
 
               {/* Body */}
-              <div className="px-6 py-6 max-h-[70vh] overflow-y-auto">
+              <div className="px-3 sm:px-6 py-3 sm:py-6 max-h-[70vh] overflow-y-auto">
                 {/* Doctor and Patient Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                    <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Doctor</h4>
-                    <p className="font-semibold text-gray-800 dark:text-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-6">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 sm:p-4">
+                    <h4 className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 sm:mb-2">Doctor</h4>
+                    <p className="font-semibold text-sm sm:text-base text-gray-800 dark:text-gray-100 truncate">
                       Dr. {selectedPrescription.doctorName}
                     </p>
                     {selectedPrescription.doctorSpecialty && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                         {selectedPrescription.doctorSpecialty}
                       </p>
                     )}
                   </div>
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                    <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Patient</h4>
-                    <p className="font-semibold text-gray-800 dark:text-gray-100">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 sm:p-4">
+                    <h4 className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 sm:mb-2">Patient</h4>
+                    <p className="font-semibold text-sm sm:text-base text-gray-800 dark:text-gray-100 truncate">
                       {selectedPrescription.patientName}
                     </p>
                   </div>
                 </div>
 
                 {/* Medications */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">
+                <div className="mb-3 sm:mb-6">
+                  <h4 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-3">
                     Medications
                   </h4>
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {selectedPrescription.medications.map((med, index) => (
                       <div
                         key={index}
-                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/30"
+                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 bg-gray-50 dark:bg-gray-700/30"
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <h5 className="font-semibold text-gray-800 dark:text-gray-100 text-lg">
+                          <h5 className="font-semibold text-gray-800 dark:text-gray-100 text-sm sm:text-base">
                             {index + 1}. {med.name}
                           </h5>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
                           <div>
                             <span className="text-gray-600 dark:text-gray-400 block">Dosage:</span>
-                            <span className="text-gray-800 dark:text-gray-200 font-medium">{med.dosage}</span>
+                            <span className="text-gray-800 dark:text-gray-200 font-medium truncate block">{med.dosage}</span>
                           </div>
                           <div>
                             <span className="text-gray-600 dark:text-gray-400 block">Frequency:</span>
-                            <span className="text-gray-800 dark:text-gray-200 font-medium">{med.frequency}</span>
+                            <span className="text-gray-800 dark:text-gray-200 font-medium truncate block">{med.frequency}</span>
                           </div>
                           <div>
                             <span className="text-gray-600 dark:text-gray-400 block">Duration:</span>
-                            <span className="text-gray-800 dark:text-gray-200 font-medium">{med.duration}</span>
+                            <span className="text-gray-800 dark:text-gray-200 font-medium truncate block">{med.duration}</span>
                           </div>
                           {med.timing && (
                             <div>
                               <span className="text-gray-600 dark:text-gray-400 block">Timing:</span>
-                              <span className="text-gray-800 dark:text-gray-200 font-medium">{med.timing}</span>
+                              <span className="text-gray-800 dark:text-gray-200 font-medium truncate block">{med.timing}</span>
                             </div>
                           )}
                         </div>
                         {med.instructions && (
-                          <div className="mt-3 text-sm">
+                          <div className="mt-2 sm:mt-3 text-xs sm:text-sm">
                             <span className="text-gray-600 dark:text-gray-400">Instructions: </span>
                             <span className="text-gray-800 dark:text-gray-200">{med.instructions}</span>
                           </div>
@@ -343,11 +343,11 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
 
                 {/* Notes */}
                 {selectedPrescription.notes && (
-                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                    <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-400 mb-2">
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 sm:p-4">
+                    <h4 className="text-xs sm:text-sm font-semibold text-amber-800 dark:text-amber-400 mb-1 sm:mb-2">
                       Additional Notes
                     </h4>
-                    <p className="text-gray-700 dark:text-gray-300 text-sm">
+                    <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
                       {selectedPrescription.notes}
                     </p>
                   </div>
@@ -355,16 +355,16 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
               </div>
 
               {/* Footer */}
-              <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="bg-gray-50 dark:bg-gray-800/50 px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => handlePreviewPrescription(selectedPrescription)}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
                 >
                   Preview PDF
                 </button>
                 <button
                   onClick={() => handleDownloadPrescription(selectedPrescription)}
-                  className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg hover:from-sky-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg hover:from-sky-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
                 >
                   Download PDF
                 </button>
