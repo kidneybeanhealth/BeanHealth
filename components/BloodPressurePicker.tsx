@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React from 'react';
 
 interface BloodPressurePickerProps {
   systolic: string;
@@ -8,142 +8,6 @@ interface BloodPressurePickerProps {
   onSave: () => void;
 }
 
-const ScrollPicker: React.FC<{
-  value: string;
-  onChange: (value: string) => void;
-  min: number;
-  max: number;
-  label: string;
-}> = ({ value, onChange, min, max, label }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  
-  const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-  const currentValue = parseInt(value) || min;
-  const currentIndex = values.indexOf(currentValue);
-  
-  useEffect(() => {
-    if (scrollRef.current && !isDragging) {
-      const itemHeight = 48; // height of each item
-      const scrollPosition = currentIndex * itemHeight;
-      scrollRef.current.scrollTo({
-        top: scrollPosition,
-        behavior: 'smooth'
-      });
-    }
-  }, [currentIndex, isDragging]);
-  
-  const handleScroll = () => {
-    if (scrollRef.current && !isDragging) {
-      const itemHeight = 48;
-      const scrollTop = scrollRef.current.scrollTop;
-      const index = Math.round(scrollTop / itemHeight);
-      const newValue = values[index];
-      if (newValue !== undefined && newValue.toString() !== value) {
-        onChange(newValue.toString());
-      }
-    }
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const currentVal = parseInt(value) || min;
-    if (e.deltaY > 0 && currentVal < max) {
-      onChange((currentVal + 1).toString());
-    } else if (e.deltaY < 0 && currentVal > min) {
-      onChange((currentVal - 1).toString());
-    }
-  };
-
-  const increment = () => {
-    const currentVal = parseInt(value) || min;
-    if (currentVal < max) {
-      onChange((currentVal + 1).toString());
-    }
-  };
-
-  const decrement = () => {
-    const currentVal = parseInt(value) || min;
-    if (currentVal > min) {
-      onChange((currentVal - 1).toString());
-    }
-  };
-
-  return (
-    <div className="flex-1 flex flex-col items-center">
-      <label className="text-xs font-semibold text-red-700 dark:text-red-400 block mb-2 text-center uppercase tracking-wider">
-        {label}
-      </label>
-      
-      {/* Increment button */}
-      <button
-        onClick={increment}
-        className="w-12 h-10 flex items-center justify-center bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg mb-2 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-red-500 active:scale-95"
-      >
-        <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" />
-        </svg>
-      </button>
-      
-      <div 
-        ref={scrollRef}
-        onScroll={handleScroll}
-        onWheel={handleWheel}
-        onTouchStart={() => setIsDragging(true)}
-        onTouchEnd={() => setIsDragging(false)}
-        onMouseDown={() => setIsDragging(true)}
-        onMouseUp={() => setIsDragging(false)}
-        className="relative h-48 w-full overflow-y-scroll scrollbar-hide scroll-smooth"
-        style={{
-          scrollSnapType: 'y mandatory',
-          WebkitOverflowScrolling: 'touch'
-        }}
-      >
-        {/* Top padding */}
-        <div style={{ height: '96px' }}></div>
-        
-        {values.map((val) => {
-          const isSelected = val === currentValue;
-          return (
-            <div
-              key={val}
-              onClick={() => onChange(val.toString())}
-              className={`h-12 flex items-center justify-center cursor-pointer transition-all duration-200 ${
-                isSelected
-                  ? 'text-3xl font-bold text-red-600 dark:text-red-400 scale-110'
-                  : 'text-xl text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400'
-              }`}
-              style={{
-                scrollSnapAlign: 'center'
-              }}
-            >
-              {val}
-            </div>
-          );
-        })}
-        
-        {/* Bottom padding */}
-        <div style={{ height: '96px' }}></div>
-      </div>
-      
-      {/* Selection indicator line */}
-      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 pointer-events-none">
-        <div className="h-12 border-y-2 border-red-300 dark:border-red-700 bg-red-50/30 dark:bg-red-900/10"></div>
-      </div>
-      
-      {/* Decrement button */}
-      <button
-        onClick={decrement}
-        className="w-12 h-10 flex items-center justify-center bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg mt-2 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-red-500 active:scale-95"
-      >
-        <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-    </div>
-  );
-};
-
 const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
   systolic,
   diastolic,
@@ -151,6 +15,33 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
   onDiastolicChange,
   onSave
 }) => {
+  const handleIncrement = (type: 'systolic' | 'diastolic') => {
+    const value = type === 'systolic' ? parseInt(systolic) || 0 : parseInt(diastolic) || 0;
+    const max = type === 'systolic' ? 300 : 200;
+    if (value < max) {
+      type === 'systolic' ? onSystolicChange((value + 1).toString()) : onDiastolicChange((value + 1).toString());
+    }
+  };
+
+  const handleDecrement = (type: 'systolic' | 'diastolic') => {
+    const value = type === 'systolic' ? parseInt(systolic) || 0 : parseInt(diastolic) || 0;
+    if (value > 0) {
+      type === 'systolic' ? onSystolicChange((value - 1).toString()) : onDiastolicChange((value - 1).toString());
+    }
+  };
+
+  const handleInputChange = (type: 'systolic' | 'diastolic', inputValue: string) => {
+    // Allow only numbers
+    const numericValue = inputValue.replace(/[^\d]/g, '');
+    const value = numericValue === '' ? '0' : numericValue;
+    const max = type === 'systolic' ? 300 : 200;
+    const numValue = parseInt(value) || 0;
+    
+    if (numValue <= max) {
+      type === 'systolic' ? onSystolicChange(value) : onDiastolicChange(value);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       onSave();
@@ -160,51 +51,100 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
   };
 
   return (
-    <div className="relative" onKeyDown={handleKeyDown}>
-      <div className="bg-gradient-to-br from-red-50 to-pink-50 dark:from-gray-800 dark:to-gray-900 rounded-xl p-4 border-2 border-red-200 dark:border-red-900">
-        <div className="text-center mb-3">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Blood Pressure (mmHg)</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Scroll or click to adjust</p>
-        </div>
-        
-        <div className="flex items-stretch gap-4 py-4">
-          <ScrollPicker
-            value={systolic}
-            onChange={onSystolicChange}
-            min={40}
-            max={250}
-            label="Systolic"
-          />
-          
-          <div className="flex items-center">
-            <span className="text-4xl font-bold text-red-400 dark:text-red-600">/</span>
+    <div className="space-y-4" onKeyDown={handleKeyDown}>
+      <div className="text-center mb-4">
+        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Blood Pressure (mmHg)</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter or adjust values</p>
+      </div>
+
+      <div className="flex items-center justify-center gap-6">
+        {/* Systolic */}
+        <div className="flex-1 max-w-[140px]">
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-2 text-center">
+            Systolic
+          </label>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleDecrement('systolic')}
+              className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors active:scale-95"
+            >
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+              </svg>
+            </button>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={systolic}
+              onChange={(e) => handleInputChange('systolic', e.target.value)}
+              className="w-20 text-center text-2xl font-bold bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 dark:text-gray-100"
+            />
+            <button
+              type="button"
+              onClick={() => handleIncrement('systolic')}
+              className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors active:scale-95"
+            >
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
           </div>
-          
-          <ScrollPicker
-            value={diastolic}
-            onChange={onDiastolicChange}
-            min={30}
-            max={180}
-            label="Diastolic"
-          />
         </div>
-        
-        <div className="flex items-center justify-center gap-3 mt-4 pt-3 border-t border-red-200 dark:border-red-900">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {systolic}/{diastolic}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Current selection</p>
+
+        {/* Separator */}
+        <div className="text-3xl font-bold text-gray-400 dark:text-gray-500 mt-6">/</div>
+
+        {/* Diastolic */}
+        <div className="flex-1 max-w-[140px]">
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-2 text-center">
+            Diastolic
+          </label>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleDecrement('diastolic')}
+              className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors active:scale-95"
+            >
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+              </svg>
+            </button>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={diastolic}
+              onChange={(e) => handleInputChange('diastolic', e.target.value)}
+              className="w-20 text-center text-2xl font-bold bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 dark:text-gray-100"
+            />
+            <button
+              type="button"
+              onClick={() => handleIncrement('diastolic')}
+              className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors active:scale-95"
+            >
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
-      
-      <div className="flex justify-center mt-4 gap-3">
+
+      {/* Current Value Display */}
+      <div className="text-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current Reading</p>
+        <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+          {systolic || '0'}/{diastolic || '0'}
+        </p>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-center mt-4">
         <button
           onClick={onSave}
-          className="px-8 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-md hover:shadow-lg active:scale-95"
+          className="px-8 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-md hover:shadow-lg active:scale-95"
         >
-          Save Blood Pressure
+          Save
         </button>
       </div>
     </div>
