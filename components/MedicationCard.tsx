@@ -53,46 +53,107 @@ const MedicationCard: React.FC<MedicationCardProps> = ({ medications, onChange, 
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Current Medications</h3>
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700/60">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Current Medications</h3>
             <ul className="space-y-3">
                 {medications.map(med => (
-                    <li key={med.id} className="p-2 rounded-lg transition-colors bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <li key={med.id} className="p-3 sm:p-4 rounded-lg transition-colors bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700">
                         {editingMedId === med.id ? (
-                            <div className="flex items-center space-x-2">
-                                <input name="name" value={editedMed.name} onChange={(e) => handleInputChange(e, 'edit')} placeholder="Name" className="w-1/3 p-1 rounded bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500" />
-                                <input name="dosage" value={editedMed.dosage} onChange={(e) => handleInputChange(e, 'edit')} placeholder="Dosage" className="w-1/4 p-1 rounded bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500" />
-                                <input name="frequency" value={editedMed.frequency} onChange={(e) => handleInputChange(e, 'edit')} placeholder="Frequency" className="flex-1 p-1 rounded bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500" />
-                                <button onClick={handleSaveEdit} className="p-2 text-green-600 hover:text-green-800"><CheckIcon className="h-5 w-5"/></button>
-                                <button onClick={handleCancelEdit} className="p-2 text-red-500 hover:text-red-700"><XIcon className="h-5 w-5"/></button>
+                            <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:space-x-2">
+                                <div className="flex-1 space-y-2 sm:space-y-0 sm:flex sm:space-x-2">
+                                    <input 
+                                        name="name" 
+                                        value={editedMed.name} 
+                                        onChange={(e) => handleInputChange(e, 'edit')} 
+                                        placeholder="Medication Name" 
+                                        className="w-full sm:w-1/3 px-3 py-2 rounded-lg bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                    />
+                                    <input 
+                                        name="dosage" 
+                                        value={editedMed.dosage} 
+                                        onChange={(e) => handleInputChange(e, 'edit')} 
+                                        placeholder="Dosage (e.g. 500mg)" 
+                                        className="w-full sm:flex-1 px-3 py-2 rounded-lg bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                    />
+                                    <input 
+                                        name="frequency" 
+                                        value={editedMed.frequency} 
+                                        onChange={(e) => handleInputChange(e, 'edit')} 
+                                        placeholder="Frequency (e.g. 2x daily)" 
+                                        className="w-full sm:flex-1 px-3 py-2 rounded-lg bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                    />
+                                </div>
+                                <div className="flex justify-end space-x-2">
+                                    <button onClick={handleSaveEdit} className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors">
+                                        <CheckIcon className="h-5 w-5"/>
+                                    </button>
+                                    <button onClick={handleCancelEdit} className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                                        <XIcon className="h-5 w-5"/>
+                                    </button>
+                                </div>
                             </div>
                         ) : (
-                            <div className="flex items-center group">
-                                <div className="bg-rose-100 dark:bg-rose-900/50 p-2 rounded-lg mr-3">
+                            <div className="flex items-start sm:items-center group">
+                                <div className="bg-rose-100 dark:bg-rose-900/50 p-2 sm:p-2.5 rounded-lg mr-3 flex-shrink-0">
                                     <PillIcon className="h-5 w-5 text-rose-900 dark:text-rose-400"/>
                                 </div>
-                                <div className="flex-1">
-                                    <p className="font-bold text-gray-800 dark:text-gray-100">{med.name}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{med.dosage} - {med.frequency}</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-gray-800 dark:text-gray-100 truncate">{med.name}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{med.dosage} • {med.frequency}</p>
                                 </div>
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleStartEdit(med)} className="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"><EditIcon className="h-4 w-4"/></button>
-                                    <button onClick={() => onRemove(med.id)} className="p-2 text-red-500 hover:text-red-700"><TrashIcon className="h-4 w-4"/></button>
+                                <div className="flex-shrink-0 flex space-x-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-2">
+                                    <button onClick={() => handleStartEdit(med)} className="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                        <EditIcon className="h-4 w-4"/>
+                                    </button>
+                                    <button onClick={() => onRemove(med.id)} className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                                        <TrashIcon className="h-4 w-4"/>
+                                    </button>
                                 </div>
                             </div>
                         )}
                     </li>
                 ))}
             </ul>
-            <form onSubmit={handleAddMedication} className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-                <h4 className="font-semibold text-gray-700 dark:text-gray-200">Add New Medication</h4>
-                <div className="flex items-center space-x-2">
-                    <input name="name" value={newMed.name} onChange={(e) => handleInputChange(e, 'new')} placeholder="Name" required className="w-1/3 p-2 rounded bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm" />
-                    <input name="dosage" value={newMed.dosage} onChange={(e) => handleInputChange(e, 'new')} placeholder="Dosage" required className="w-1/4 p-2 rounded bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm" />
-                    <input name="frequency" value={newMed.frequency} onChange={(e) => handleInputChange(e, 'new')} placeholder="Frequency" required className="flex-1 p-2 rounded bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm" />
-                    <button type="submit" className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors">
-                        <PlusCircleIcon className="h-5 w-5" />
-                    </button>
+            
+            {/* Add New Medication Form */}
+            <form onSubmit={handleAddMedication} className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="font-semibold text-gray-700 dark:text-gray-200 mb-3 text-sm sm:text-base">Add New Medication</h4>
+                <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
+                        <input 
+                            name="name" 
+                            value={newMed.name} 
+                            onChange={(e) => handleInputChange(e, 'new')} 
+                            placeholder="Medication Name" 
+                            required 
+                            className="w-full px-3 py-2.5 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                        />
+                        <input 
+                            name="dosage" 
+                            value={newMed.dosage} 
+                            onChange={(e) => handleInputChange(e, 'new')} 
+                            placeholder="Dosage (e.g. 500mg)" 
+                            required 
+                            className="w-full px-3 py-2.5 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                        />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <input 
+                            name="frequency" 
+                            value={newMed.frequency} 
+                            onChange={(e) => handleInputChange(e, 'new')} 
+                            placeholder="Frequency (e.g. 2x daily)" 
+                            required 
+                            className="flex-1 px-3 py-2.5 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                        />
+                        <button 
+                            type="submit" 
+                            className="flex-shrink-0 p-2.5 sm:p-3 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors shadow-sm hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+                            aria-label="Add medication"
+                        >
+                            <PlusCircleIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
