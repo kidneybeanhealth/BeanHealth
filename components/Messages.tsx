@@ -19,6 +19,7 @@ import { uploadChatFile, uploadAudioRecording } from '../services/storageService
 import { ChatService } from '../services/chatService';
 import { showErrorToast, showSuccessToast, showWarningToast } from '../utils/toastUtils';
 import PrescriptionModal from './PrescriptionModal';
+import PrescriptionListModal from './PrescriptionListModal';
 import { DocumentIcon } from './icons/DocumentIcon';
 
 type Contact = Doctor | Patient;
@@ -53,6 +54,7 @@ const Messages: React.FC<MessagesProps> = ({
   const [showFilePicker, setShowFilePicker] = useState(false);
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showPrescriptionListModal, setShowPrescriptionListModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isPatient = currentUser.role === 'patient';
@@ -485,18 +487,35 @@ const Messages: React.FC<MessagesProps> = ({
                   )}
                 </div>
               </div>
-              {/* Prescription Button - Only for doctors */}
-              {isDoctor && selectedContact.role === 'patient' && (
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-2">
+                {/* E-Prescriptions List Button - For both doctors and patients */}
                 <button
-                  onClick={() => setShowPrescriptionModal(true)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg sm:rounded-xl hover:from-sky-600 hover:to-indigo-700 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
-                  aria-label="Create prescription"
+                  onClick={() => setShowPrescriptionListModal(true)}
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-rose-900 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg sm:rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
+                  aria-label="View prescriptions"
+                  title="View E-Prescriptions"
                 >
                   <DocumentIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                  <span className="hidden sm:inline">Send Prescription</span>
-                  <span className="sm:hidden">E-Rx</span>
+                  <span className="hidden lg:inline">E-Prescriptions</span>
+                  <span className="lg:hidden">Rx</span>
                 </button>
-              )}
+
+                {/* Create Prescription Button - Only for doctors */}
+                {isDoctor && selectedContact.role === 'patient' && (
+                  <button
+                    onClick={() => setShowPrescriptionModal(true)}
+                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg sm:rounded-xl hover:from-sky-600 hover:to-indigo-700 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
+                    aria-label="Create prescription"
+                  >
+                    <svg className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="hidden sm:inline">Create Rx</span>
+                    <span className="sm:hidden">New</span>
+                  </button>
+                )}
+              </div>
             </div>
             
             {/* Messages Area - Fixed Height Scrollable Window */}
@@ -782,6 +801,17 @@ const Messages: React.FC<MessagesProps> = ({
             // Just close the modal
             setShowPrescriptionModal(false);
           }}
+        />
+      )}
+
+      {/* Prescription List Modal - For both doctors and patients */}
+      {selectedContact && (
+        <PrescriptionListModal
+          isOpen={showPrescriptionListModal}
+          onClose={() => setShowPrescriptionListModal(false)}
+          currentUserId={currentUser.id}
+          contactId={selectedContact.id}
+          isDoctor={isDoctor}
         />
       )}
     </div>
