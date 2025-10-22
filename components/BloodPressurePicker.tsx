@@ -18,6 +18,7 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
   const incrementIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const decrementIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -43,7 +44,10 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
     }
   };
 
-  const startLongPress = (type: 'systolic' | 'diastolic', action: 'increment' | 'decrement') => {
+  const startLongPress = (e: React.MouseEvent | React.TouchEvent, type: 'systolic' | 'diastolic', action: 'increment' | 'decrement') => {
+    e.preventDefault();
+    isLongPressRef.current = false;
+    
     // Clear any existing intervals
     stopLongPress();
 
@@ -56,6 +60,7 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
 
     // Start interval after a short delay for continuous action
     longPressTimeoutRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
       const intervalRef = action === 'increment' ? incrementIntervalRef : decrementIntervalRef;
       intervalRef.current = setInterval(() => {
         if (action === 'increment') {
@@ -80,6 +85,9 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
       clearTimeout(longPressTimeoutRef.current);
       longPressTimeoutRef.current = null;
     }
+    setTimeout(() => {
+      isLongPressRef.current = false;
+    }, 50);
   };
 
   const handleInputChange = (type: 'systolic' | 'diastolic', inputValue: string) => {
@@ -108,29 +116,29 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
   };
 
   return (
-    <div className="space-y-3 p-3 sm:p-4" onKeyDown={handleKeyDown}>
+    <div className="w-full max-w-md mx-auto space-y-4 p-4" onKeyDown={handleKeyDown}>
       <div className="text-center">
         <p className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-300">Blood Pressure (mmHg)</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter or adjust values</p>
       </div>
 
-      <div className="flex items-center justify-center gap-3 sm:gap-6 px-1">
+      <div className="flex items-end justify-center gap-2 sm:gap-4">
         {/* Systolic */}
-        <div className="flex flex-col items-center">
-          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 text-center whitespace-nowrap">
+        <div className="flex flex-col items-center flex-shrink-0">
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 whitespace-nowrap">
             Systolic
           </label>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             <button
               type="button"
-              onMouseDown={() => startLongPress('systolic', 'decrement')}
+              onMouseDown={(e) => startLongPress(e, 'systolic', 'decrement')}
               onMouseUp={stopLongPress}
               onMouseLeave={stopLongPress}
-              onTouchStart={() => startLongPress('systolic', 'decrement')}
+              onTouchStart={(e) => startLongPress(e, 'systolic', 'decrement')}
               onTouchEnd={stopLongPress}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 rounded-lg transition-colors touch-manipulation"
+              className="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 rounded-lg transition-colors touch-manipulation"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
               </svg>
             </button>
@@ -139,19 +147,19 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
               inputMode="numeric"
               value={systolic}
               onChange={(e) => handleInputChange('systolic', e.target.value)}
-              className="w-16 sm:w-20 text-center text-xl sm:text-2xl font-bold bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-1 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 dark:text-gray-100"
+              className="w-14 sm:w-16 flex-shrink-0 text-center text-lg sm:text-xl font-bold bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 dark:text-gray-100"
               placeholder=""
             />
             <button
               type="button"
-              onMouseDown={() => startLongPress('systolic', 'increment')}
+              onMouseDown={(e) => startLongPress(e, 'systolic', 'increment')}
               onMouseUp={stopLongPress}
               onMouseLeave={stopLongPress}
-              onTouchStart={() => startLongPress('systolic', 'increment')}
+              onTouchStart={(e) => startLongPress(e, 'systolic', 'increment')}
               onTouchEnd={stopLongPress}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 rounded-lg transition-colors touch-manipulation"
+              className="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 rounded-lg transition-colors touch-manipulation"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
             </button>
@@ -159,24 +167,24 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
         </div>
 
         {/* Separator */}
-        <div className="text-2xl sm:text-3xl font-bold text-gray-400 dark:text-gray-500 self-end pb-2 mb-1">/</div>
+        <div className="text-2xl sm:text-3xl font-bold text-gray-400 dark:text-gray-500 pb-1 flex-shrink-0">/</div>
 
         {/* Diastolic */}
-        <div className="flex flex-col items-center">
-          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 text-center whitespace-nowrap">
+        <div className="flex flex-col items-center flex-shrink-0">
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 whitespace-nowrap">
             Diastolic
           </label>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             <button
               type="button"
-              onMouseDown={() => startLongPress('diastolic', 'decrement')}
+              onMouseDown={(e) => startLongPress(e, 'diastolic', 'decrement')}
               onMouseUp={stopLongPress}
               onMouseLeave={stopLongPress}
-              onTouchStart={() => startLongPress('diastolic', 'decrement')}
+              onTouchStart={(e) => startLongPress(e, 'diastolic', 'decrement')}
               onTouchEnd={stopLongPress}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 rounded-lg transition-colors touch-manipulation"
+              className="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 rounded-lg transition-colors touch-manipulation"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
               </svg>
             </button>
@@ -185,19 +193,19 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
               inputMode="numeric"
               value={diastolic}
               onChange={(e) => handleInputChange('diastolic', e.target.value)}
-              className="w-16 sm:w-20 text-center text-xl sm:text-2xl font-bold bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-1 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 dark:text-gray-100"
+              className="w-14 sm:w-16 flex-shrink-0 text-center text-lg sm:text-xl font-bold bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 dark:text-gray-100"
               placeholder=""
             />
             <button
               type="button"
-              onMouseDown={() => startLongPress('diastolic', 'increment')}
+              onMouseDown={(e) => startLongPress(e, 'diastolic', 'increment')}
               onMouseUp={stopLongPress}
               onMouseLeave={stopLongPress}
-              onTouchStart={() => startLongPress('diastolic', 'increment')}
+              onTouchStart={(e) => startLongPress(e, 'diastolic', 'increment')}
               onTouchEnd={stopLongPress}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 rounded-lg transition-colors touch-manipulation"
+              className="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 rounded-lg transition-colors touch-manipulation"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
             </button>
@@ -206,7 +214,7 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
       </div>
 
       {/* Current Value Display */}
-      <div className="text-center pt-2 border-t border-gray-200 dark:border-gray-700">
+      <div className="text-center pt-3 border-t border-gray-200 dark:border-gray-700 mx-auto">
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Current Reading</p>
         <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400">
           {systolic || '—'}/{diastolic || '—'}
@@ -214,12 +222,14 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
       </div>
 
       {/* Save Button */}
-      <button
-        onClick={onSave}
-        className="w-full px-6 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-sm sm:text-base font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-md hover:shadow-lg active:scale-95"
-      >
-        Save
-      </button>
+      <div className="flex justify-center">
+        <button
+          onClick={onSave}
+          className="w-full max-w-xs px-6 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-sm sm:text-base font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-md hover:shadow-lg active:scale-95"
+        >
+          Save
+        </button>
+      </div>
     </div>
   );
 };
