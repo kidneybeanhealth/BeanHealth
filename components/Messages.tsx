@@ -647,82 +647,130 @@ const Messages: React.FC<MessagesProps> = ({
                    </div>
                  </div>
                )}
-              <form onSubmit={handleSendMessage} className="flex items-center space-x-1.5 sm:space-x-2">
-                 <div className="relative group flex-shrink-0">
+              <form onSubmit={handleSendMessage} className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:items-center sm:space-x-2">
+                {/* Top Row - Action Buttons on Mobile */}
+                <div className="flex items-center space-x-1 sm:hidden">
+                  <div className="relative group flex-shrink-0">
                     <button
                         type="button"
                         onClick={handleToggleUrgent}
                         disabled={cannotTurnOnUrgent}
-                        className={`p-2 sm:p-2.5 rounded-lg transition-all duration-200 ${
+                        className={`p-2 rounded-lg transition-all duration-200 ${
+                          isUrgent 
+                            ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400' 
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        aria-label="Toggle urgent message"
+                    >
+                        <AlertIcon className="h-5 w-5" />
+                    </button>
+                    {isPatient && (
+                      <span className="absolute -top-1 -right-1 text-[10px] bg-gradient-to-r from-rose-500 to-rose-900 text-white font-bold rounded-full h-4 w-4 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-lg">
+                        {patientData?.urgentCredits}
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowFilePicker(true)}
+                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 flex-shrink-0"
+                    aria-label="Attach file"
+                  >
+                    <DocumentUploadIcon className="h-5 w-5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAudioRecorder(true)}
+                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 flex-shrink-0"
+                    aria-label="Record audio"
+                  >
+                    <MicrophoneIcon className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Desktop Action Buttons */}
+                <div className="hidden sm:flex items-center space-x-2">
+                  <div className="relative group flex-shrink-0">
+                    <button
+                        type="button"
+                        onClick={handleToggleUrgent}
+                        disabled={cannotTurnOnUrgent}
+                        className={`p-2.5 rounded-lg transition-all duration-200 ${
                           isUrgent 
                             ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 scale-110' 
                             : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95'
                         } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
                         aria-label="Toggle urgent message"
                     >
-                        <AlertIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <AlertIcon className="h-5 w-5" />
                     </button>
                     {isPatient && (
-                      <span className="absolute -top-1 -right-1 text-[10px] sm:text-xs bg-gradient-to-r from-rose-500 to-rose-900 text-white font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-lg">
+                      <span className="absolute -top-1 -right-1 text-xs bg-gradient-to-r from-rose-500 to-rose-900 text-white font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-lg">
                         {patientData?.urgentCredits}
                       </span>
                     )}
                     {cannotTurnOnUrgent && (
-                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-40 sm:w-56 p-2 sm:p-3 bg-gray-900 text-white text-[10px] sm:text-xs rounded-lg sm:rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-gray-900 text-white text-xs rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                           You have no urgent credits. Please purchase more from the Billing page.
                           <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></div>
                       </div>
                     )}
-                 </div>
+                  </div>
 
-                 {/* File Upload Button */}
-                 <button
+                  <button
                     type="button"
                     onClick={() => setShowFilePicker(true)}
-                    className="p-2 sm:p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
+                    className="p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
                     aria-label="Attach file"
-                 >
-                    <DocumentUploadIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                 </button>
+                  >
+                    <DocumentUploadIcon className="h-5 w-5" />
+                  </button>
 
-                 {/* Audio Recording Button */}
-                 <button
+                  <button
                     type="button"
                     onClick={() => setShowAudioRecorder(true)}
-                    className="p-2 sm:p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
+                    className="p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
                     aria-label="Record audio"
-                 >
-                    <MicrophoneIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                 </button>
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value);
-                    // Trigger typing indicator
-                    if (selectedContactId && realTimeChat.startTyping) {
-                      realTimeChat.startTyping(selectedContactId);
-                    }
-                  }}
-                  onBlur={() => {
-                    // Stop typing when losing focus
-                    if (selectedContactId && realTimeChat.stopTyping) {
-                      realTimeChat.stopTyping(selectedContactId);
-                    }
-                  }}
-                  placeholder="Type your message..."
-                  className="flex-1 px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm bg-gray-100 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-900 focus:border-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
-                />
-                <button
-                  type="submit"
-                  disabled={!input.trim()}
-                  className="group relative bg-gradient-to-r from-rose-500 to-rose-900 text-white p-2 sm:p-3 rounded-lg sm:rounded-xl font-semibold hover:shadow-xl hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200 flex-shrink-0 overflow-hidden"
-                >
-                  <span className="relative z-10">
-                    <PaperAirplaneIcon className="h-4 w-4 sm:h-5 sm:w-5"/>
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-rose-900 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </button>
+                  >
+                    <MicrophoneIcon className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Bottom Row - Input and Send Button */}
+                <div className="flex items-center space-x-2 flex-1">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                      // Trigger typing indicator
+                      if (selectedContactId && realTimeChat.startTyping) {
+                        realTimeChat.startTyping(selectedContactId);
+                      }
+                    }}
+                    onBlur={() => {
+                      // Stop typing when losing focus
+                      if (selectedContactId && realTimeChat.stopTyping) {
+                        realTimeChat.stopTyping(selectedContactId);
+                      }
+                    }}
+                    placeholder="Type your message..."
+                    className="flex-1 px-3 sm:px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="group relative bg-gradient-to-r from-rose-500 to-rose-900 text-white p-2.5 sm:p-3 rounded-xl font-semibold hover:shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200 flex-shrink-0 overflow-hidden"
+                    aria-label="Send message"
+                  >
+                    <span className="relative z-10">
+                      <PaperAirplaneIcon className="h-5 w-5"/>
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-rose-900 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </button>
+                </div>
               </form>
             </div>
           </>
