@@ -29,14 +29,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
       {/* Mobile backdrop overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
           onClick={onClose}
         ></div>
       )}
       
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/98 dark:bg-gray-800/98 backdrop-blur-xl shadow-xl flex-shrink-0 flex flex-col transform transition-all duration-300 ease-out md:relative md:translate-x-0 md:z-10 border-r border-gray-200/60 dark:border-gray-700/60 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-800 shadow-2xl flex-shrink-0 flex flex-col transform transition-all duration-300 ease-out md:relative md:translate-x-0 md:z-10 border-r border-gray-200 dark:border-gray-700 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Header */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200/60 dark:border-gray-700/60">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <button 
             onClick={() => setActiveView('dashboard')} 
             className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-rose-900 rounded-xl p-2 -ml-2 hover:scale-105 active:scale-95 transition-all duration-200"
