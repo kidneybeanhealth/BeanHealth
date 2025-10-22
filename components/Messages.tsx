@@ -393,9 +393,9 @@ const Messages: React.FC<MessagesProps> = ({
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
 
   return (
-    <div className="flex h-full bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col md:flex-row h-full bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
       {/* Contact List Panel */}
-      <div className={`w-full md:w-80 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-900 ${selectedContactId ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full md:w-80 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-900 ${selectedContactId ? 'hidden md:flex' : 'flex'} min-h-0`}>
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
           <h3 className="text-lg sm:text-xl font-display font-bold text-gray-900 dark:text-gray-100">Messages</h3>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">{sortedContacts.length} conversations</p>
@@ -457,11 +457,11 @@ const Messages: React.FC<MessagesProps> = ({
       </div>
       
       {/* Chat Panel */}
-      <div className={`w-full md:flex-1 flex flex-col ${selectedContactId ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`w-full md:flex-1 flex flex-col ${selectedContactId ? 'flex' : 'hidden md:flex'} min-h-0`}>
         {selectedContact ? (
           <>
             {/* Chat Header */}
-            <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-2 sm:space-x-4 flex-shrink-0 bg-white dark:bg-gray-800">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-2 sm:space-x-4 flex-shrink-0 bg-white dark:bg-gray-800 flex-wrap gap-2">
               <button 
                 onClick={() => setSelectedContactId(null)} 
                 className="md:hidden p-2 -ml-1 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105 active:scale-95 transition-all duration-200 flex-shrink-0"
@@ -488,11 +488,11 @@ const Messages: React.FC<MessagesProps> = ({
                 </div>
               </div>
               {/* Action Buttons */}
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
                 {/* E-Prescriptions List Button - For both doctors and patients */}
                 <button
                   onClick={() => setShowPrescriptionListModal(true)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-rose-900 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg sm:rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
+                  className="flex items-center space-x-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-rose-900 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg sm:rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
                   aria-label="View prescriptions"
                   title="View E-Prescriptions"
                 >
@@ -523,10 +523,9 @@ const Messages: React.FC<MessagesProps> = ({
               ref={messagesContainerRef}
               onScroll={handleScroll}
               className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 min-h-0 scrollbar-thin"
-              style={{ maxHeight: 'calc(100vh - 280px)' }}
             >
-              <div className="px-6 py-4 max-w-4xl mx-auto">
-                <div className="space-y-4">
+              <div className="px-3 sm:px-6 py-3 sm:py-4 max-w-4xl mx-auto">
+                <div className="space-y-3 sm:space-y-4">
                   {currentConversationMessages.length === 0 ? (
                     <div className="text-center py-12">
                       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 mb-4">

@@ -53,10 +53,10 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
       <div className="max-w-3xl mx-auto animate-fadeIn">
         <div className="card">
             <div className="text-center mb-8">
-            <div className="bg-gradient-to-br from-sky-400 to-rose-500 p-6 rounded-3xl shadow-xl inline-block mb-4">
-              <DocumentUploadIcon className="h-20 w-20 text-white" />
+            <div className="p-6 rounded-3xl inline-block mb-4">
+              <DocumentUploadIcon className="h-20 w-20 text-rose-600 dark:text-rose-400" />
             </div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-rose-500 to-rose-900 bg-clip-text text-transparent">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               Upload New Medical Record
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-2">

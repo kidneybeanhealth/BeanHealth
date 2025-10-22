@@ -197,10 +197,10 @@ const VitalCard: React.FC<{
               <span className="ml-1.5 sm:ml-2.5 text-sm sm:text-base lg:text-lg font-medium text-gray-500 dark:text-gray-400">{unit}</span>
             </div>
           )}
-          {trend && (
+          {trend && trend !== 'stable' && (
             <div className="flex items-center mt-3">
               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${trendColor === 'text-red-500' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20' : trendColor === 'text-blue-500' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 ring-1 ring-inset ring-blue-600/20' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-400'}`}>
-                {trendArrow} Stable
+                {trendArrow}
               </span>
             </div>
           )}
