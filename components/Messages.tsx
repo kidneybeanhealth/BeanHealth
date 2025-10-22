@@ -459,19 +459,19 @@ const Messages: React.FC<MessagesProps> = ({
         {selectedContact ? (
           <>
             {/* Chat Header */}
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-4 flex-shrink-0 bg-white dark:bg-gray-800">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-2 sm:space-x-4 flex-shrink-0 bg-white dark:bg-gray-800">
               <button 
                 onClick={() => setSelectedContactId(null)} 
-                className="md:hidden p-2 -ml-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105 active:scale-95 transition-all duration-200"
+                className="md:hidden p-2 -ml-1 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105 active:scale-95 transition-all duration-200 flex-shrink-0"
               >
                 <ArrowLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-300"/>
               </button>
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <InitialsAvatar contact={selectedContact} size="md" />
                 <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white dark:ring-gray-800"></span>
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100 truncate">{selectedContact.name}</h3>
+                <h3 className="text-sm sm:text-lg font-display font-bold text-gray-900 dark:text-gray-100 truncate">{selectedContact.name}</h3>
                 <div className="flex items-center space-x-2 mt-0.5">
                   {typingUsers.has(selectedContact.id) ? (
                     <TypingIndicator 
@@ -489,12 +489,12 @@ const Messages: React.FC<MessagesProps> = ({
               {isDoctor && selectedContact.role === 'patient' && (
                 <button
                   onClick={() => setShowPrescriptionModal(true)}
-                  className="flex items-center space-x-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-xl hover:from-sky-600 hover:to-indigo-700 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg sm:rounded-xl hover:from-sky-600 hover:to-indigo-700 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
                   aria-label="Create prescription"
                 >
-                  <DocumentIcon className="h-5 w-5" />
+                  <DocumentIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                   <span className="hidden sm:inline">Send Prescription</span>
-                  <span className="sm:hidden">Rx</span>
+                  <span className="sm:hidden">E-Rx</span>
                 </button>
               )}
             </div>
@@ -520,8 +520,8 @@ const Messages: React.FC<MessagesProps> = ({
                   ) : (
                     currentConversationMessages.map((msg, index) => (
                       <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'} animate-slide-up`} style={{ animationDelay: `${index * 20}ms` }}>
-                        <div className={`max-w-[75%] md:max-w-md ${msg.senderId === currentUser.id ? 'ml-12' : 'mr-12'}`}>
-                          <div className={`group relative px-4 py-3 rounded-2xl text-sm break-words shadow-sm ${
+                        <div className={`max-w-[85%] sm:max-w-[75%] md:max-w-md ${msg.senderId === currentUser.id ? 'ml-4 sm:ml-12' : 'mr-4 sm:mr-12'}`}>
+                          <div className={`group relative px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm break-words shadow-sm ${
                             msg.senderId === currentUser.id
                               ? 'bg-gradient-to-br from-rose-500 to-rose-900 text-white rounded-br-md'
                               : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-200 dark:border-gray-700'
@@ -581,10 +581,10 @@ const Messages: React.FC<MessagesProps> = ({
                     setShouldAutoScroll(true);
                     scrollToBottom(true);
                   }}
-                  className="fixed bottom-32 right-8 p-3 bg-gradient-to-r from-rose-500 to-rose-900 text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 z-10 animate-slideUp"
+                  className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-2.5 sm:p-3 bg-gradient-to-r from-rose-500 to-rose-900 text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 z-10 animate-slideUp"
                   aria-label="Scroll to bottom"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
                 </button>
@@ -592,16 +592,16 @@ const Messages: React.FC<MessagesProps> = ({
             </div>
             
             {/* Message Input Area */}
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
                {showCreditWarning && (
-                <div className="absolute bottom-full left-6 right-6 mb-3 p-4 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/50 dark:to-orange-900/50 text-yellow-900 dark:text-yellow-200 text-sm rounded-xl shadow-xl border border-yellow-200 dark:border-yellow-800 flex items-center justify-between animate-slide-up">
+                <div className="absolute bottom-full left-3 right-3 sm:left-6 sm:right-6 mb-3 p-3 sm:p-4 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/50 dark:to-orange-900/50 text-yellow-900 dark:text-yellow-200 text-xs sm:text-sm rounded-xl shadow-xl border border-yellow-200 dark:border-yellow-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 animate-slide-up">
                     <div className="flex items-center">
-                      <AlertIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+                      <AlertIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
                       <span className="font-semibold">You are about to use your last urgent credit.</span>
                     </div>
                     <button 
                         onClick={onNavigateToBilling}
-                        className="ml-4 px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-lg hover:from-yellow-600 hover:to-orange-600 text-xs flex-shrink-0 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200"
+                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-lg hover:from-yellow-600 hover:to-orange-600 text-xs flex-shrink-0 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 w-full sm:w-auto text-center"
                     >
                         Purchase More
                     </button>
@@ -629,13 +629,13 @@ const Messages: React.FC<MessagesProps> = ({
                    </div>
                  </div>
                )}
-              <form onSubmit={handleSendMessage} className="flex items-center space-x-2 sm:space-x-3">
+              <form onSubmit={handleSendMessage} className="flex items-center space-x-1.5 sm:space-x-2">
                  <div className="relative group flex-shrink-0">
                     <button
                         type="button"
                         onClick={handleToggleUrgent}
                         disabled={cannotTurnOnUrgent}
-                        className={`p-2 sm:p-3 rounded-lg sm:rounded-xl transition-all duration-200 ${
+                        className={`p-2 sm:p-2.5 rounded-lg transition-all duration-200 ${
                           isUrgent 
                             ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 scale-110' 
                             : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95'
@@ -645,12 +645,12 @@ const Messages: React.FC<MessagesProps> = ({
                         <AlertIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
                     {isPatient && (
-                      <span className="absolute -top-1 -right-1 text-xs bg-gradient-to-r from-rose-500 to-rose-900 text-white font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-lg">
+                      <span className="absolute -top-1 -right-1 text-[10px] sm:text-xs bg-gradient-to-r from-rose-500 to-rose-900 text-white font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-lg">
                         {patientData?.urgentCredits}
                       </span>
                     )}
                     {cannotTurnOnUrgent && (
-                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 sm:w-56 p-2 sm:p-3 bg-gray-900 text-white text-xs rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-40 sm:w-56 p-2 sm:p-3 bg-gray-900 text-white text-[10px] sm:text-xs rounded-lg sm:rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                           You have no urgent credits. Please purchase more from the Billing page.
                           <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></div>
                       </div>
@@ -661,7 +661,7 @@ const Messages: React.FC<MessagesProps> = ({
                  <button
                     type="button"
                     onClick={() => setShowFilePicker(true)}
-                    className="p-2 sm:p-3 rounded-lg sm:rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
+                    className="p-2 sm:p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
                     aria-label="Attach file"
                  >
                     <DocumentUploadIcon className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -671,7 +671,7 @@ const Messages: React.FC<MessagesProps> = ({
                  <button
                     type="button"
                     onClick={() => setShowAudioRecorder(true)}
-                    className="p-2 sm:p-3 rounded-lg sm:rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
+                    className="p-2 sm:p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
                     aria-label="Record audio"
                  >
                     <MicrophoneIcon className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -693,15 +693,15 @@ const Messages: React.FC<MessagesProps> = ({
                     }
                   }}
                   placeholder="Type your message..."
-                  className="flex-1 px-5 py-3 text-sm bg-gray-100 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-900 focus:border-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
+                  className="flex-1 px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm bg-gray-100 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-900 focus:border-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim()}
-                  className="group relative bg-gradient-to-r from-rose-500 to-rose-900 text-white p-3 rounded-xl font-semibold hover:shadow-xl hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200 flex-shrink-0 overflow-hidden"
+                  className="group relative bg-gradient-to-r from-rose-500 to-rose-900 text-white p-2 sm:p-3 rounded-lg sm:rounded-xl font-semibold hover:shadow-xl hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200 flex-shrink-0 overflow-hidden"
                 >
                   <span className="relative z-10">
-                    <PaperAirplaneIcon className="h-5 w-5"/>
+                    <PaperAirplaneIcon className="h-4 w-4 sm:h-5 sm:w-5"/>
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-rose-900 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </button>
