@@ -70,35 +70,35 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="bg-gradient-to-r from-rose-500 to-rose-900 rounded-3xl p-8 shadow-xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      <div className="bg-gradient-to-r from-rose-500 to-rose-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
             <button 
               onClick={onBack} 
-              className="p-3 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-110"
+              className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-110 flex-shrink-0"
             >
-              <ArrowLeftIcon className="h-6 w-6 text-white"/>
+              <ArrowLeftIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white"/>
             </button>
-            <div className={`h-16 w-16 ${getInitialsColor(patient.name, patient.email)} rounded-2xl flex items-center justify-center shadow-lg`}>
-              <span className="text-white text-xl font-bold">
+            <div className={`h-12 w-12 sm:h-16 sm:w-16 ${getInitialsColor(patient.name, patient.email)} rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0`}>
+              <span className="text-white text-base sm:text-xl font-bold">
                 {getInitials(patient.name, patient.email)}
               </span>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">{patient.name}</h1>
-              <p className="text-sky-100 text-sm mt-1">{patient.email}</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white truncate">{patient.name}</h1>
+              <p className="text-sky-100 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">{patient.email}</p>
             </div>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
-            <p className="text-xs text-sky-100">Patient ID</p>
-            <p className="text-white font-mono font-semibold">{patient.id.slice(0, 12)}...</p>
+          <div className="bg-white/20 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl w-full sm:w-auto">
+            <p className="text-[10px] sm:text-xs text-sky-100">Patient ID</p>
+            <p className="text-white font-mono font-semibold text-xs sm:text-sm truncate">{patient.id.slice(0, 12)}...</p>
           </div>
         </div>
       </div>
 
       {/* Patient Info and Health Vitals */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Patient Information and Health Vitals */}
+        {/* Left Column - Patient Information, Case Details, and Health Vitals */}
         <div className="space-y-6">
           {/* Patient Information Card */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
@@ -115,6 +115,25 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Medications</p>
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-1">{patient.medications.length} active</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Case Details Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Case Details</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Case</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-1">{patient.condition}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Complaint</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">No complaint recorded</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">History</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">No history recorded</p>
               </div>
             </div>
           </div>
@@ -188,11 +207,11 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Current Medications</h3>
           {patient.medications.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {patient.medications.slice(0, 4).map((med) => (
-                <div key={med.id} className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-xl p-3 border border-gray-200 dark:border-gray-600">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{med.name}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{med.dosage}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{med.frequency}</p>
+              {patient.medications.map((med) => (
+                <div key={med.id} className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                  <p className="font-semibold text-gray-900 dark:text-gray-100 text-base">{med.name}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{med.dosage}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{med.frequency}</p>
                 </div>
               ))}
             </div>
