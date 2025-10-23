@@ -177,22 +177,22 @@ const DoctorDashboardMain: React.FC = () => {
   const renderDashboard = () => (
     <>
       {/* Welcome Section */}
-      <div className="mb-8 animate-fadeIn">
+      <div className="mb-6 sm:mb-8 animate-fadeIn">
         <div>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">
                 Welcome, {profile?.name || user?.email}!
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
                 Your practice dashboard and patient overview
               </p>
             </div>
             <button
               onClick={handleAddPatientClick}
-              className="btn-primary flex items-center justify-center mt-4 md:mt-0"
+              className="btn-primary flex items-center justify-center text-sm sm:text-base"
             >
-              <UserPlusIcon className="h-5 w-5 mr-2" />
+              <UserPlusIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               Add New Patient
             </button>
           </div>
@@ -200,15 +200,15 @@ const DoctorDashboardMain: React.FC = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div className="card group hover-lift">
           <div className="flex items-center">
-            <div className="p-4 rounded-2xl transition-all duration-300 group-hover:scale-110">
-              <UserGroupIcon className="h-7 w-7 text-rose-700 dark:text-rose-400" />
+            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-all duration-300 group-hover:scale-110">
+              <UserGroupIcon className="h-6 w-6 sm:h-7 sm:w-7 text-rose-700 dark:text-rose-400" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Patients</p>
-              <p className="text-4xl font-bold text-rose-700 dark:text-rose-400">
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Patients</p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-rose-700 dark:text-rose-400">
                 {loading ? '...' : patients.length}
               </p>
             </div>
@@ -217,105 +217,105 @@ const DoctorDashboardMain: React.FC = () => {
 
         <div className="card group hover-lift">
           <div className="flex items-center">
-            <div className="p-4 rounded-2xl transition-all duration-300 group-hover:scale-110">
-              <MessagesIcon className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-all duration-300 group-hover:scale-110">
+              <MessagesIcon className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">New Messages</p>
-              <p className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">New Messages</p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-emerald-600 dark:text-emerald-400">
                 {unreadMessagesCount}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="card group hover-lift">
+        <div className="card group hover-lift sm:col-span-2 lg:col-span-1">
           <div className="flex items-center">
-            <div className="p-4 rounded-2xl transition-all duration-300 group-hover:scale-110">
-              <DocumentIcon className="h-7 w-7 text-amber-600 dark:text-amber-400" />
+            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-all duration-300 group-hover:scale-110">
+              <DocumentIcon className="h-6 w-6 sm:h-7 sm:w-7 text-amber-600 dark:text-amber-400" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Reviews</p>
-              <p className="text-4xl font-bold text-amber-600 dark:text-amber-400">0</p>
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Pending Reviews</p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-amber-600 dark:text-amber-400">0</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="space-y-6 sm:space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Recent Patients */}
           <div className="card lg:col-span-2">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Recent Patients</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Quick access to recently added patients</p>
+            <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Recent Patients</h2>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Quick access to recently added patients</p>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {loading ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-sky-200 border-t-sky-600 dark:border-gray-700 dark:border-t-sky-400 mx-auto"></div>
-                  <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 font-medium">Loading patients...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-4 border-sky-200 border-t-sky-600 dark:border-gray-700 dark:border-t-sky-400 mx-auto"></div>
+                  <p className="mt-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">Loading patients...</p>
                 </div>
               ) : error ? (
                 <div className="text-center py-8">
-                  <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-2xl inline-block mb-4">
-                    <AlertIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
+                  <div className="bg-red-100 dark:bg-red-900/30 p-3 sm:p-4 rounded-xl sm:rounded-2xl inline-block mb-4">
+                    <AlertIcon className="h-6 w-6 sm:h-8 sm:w-8 text-red-600 dark:text-red-400" />
                   </div>
-                  <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
+                  <p className="text-sm sm:text-base text-red-600 dark:text-red-400 font-medium">{error}</p>
                   <button 
                     onClick={fetchPatients}
-                    className="mt-4 px-4 py-2 bg-gradient-to-r from-rose-500 to-rose-900 text-white rounded-xl font-medium hover:shadow-lg hover:scale-105 transition-all duration-200"
+                    className="mt-4 px-4 py-2 bg-gradient-to-r from-rose-500 to-rose-900 text-white rounded-xl text-sm font-medium hover:shadow-lg hover:scale-105 transition-all duration-200"
                   >
                     Try again
                   </button>
                 </div>
               ) : patients.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="bg-gradient-to-br from-sky-100 to-indigo-100 dark:from-rose-900/30 dark:to-indigo-900/30 p-6 rounded-3xl inline-block mb-4">
-                    <UserGroupIcon className="h-16 w-16 text-rose-900 dark:text-rose-400" />
+                  <div className="bg-gradient-to-br from-sky-100 to-indigo-100 dark:from-rose-900/30 dark:to-indigo-900/30 p-4 sm:p-6 rounded-2xl sm:rounded-3xl inline-block mb-4">
+                    <UserGroupIcon className="h-12 w-12 sm:h-16 sm:w-16 text-rose-900 dark:text-rose-400" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">No patients yet</h3>
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 max-w-sm mx-auto">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100">No patients yet</h3>
+                  <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 max-w-sm mx-auto px-4">
                     Get started by adding existing patients to your roster.
                   </p>
                   <button
                     onClick={handleAddPatientClick}
-                    className="btn-primary mt-6 inline-flex items-center"
+                    className="btn-primary mt-6 inline-flex items-center text-sm sm:text-base"
                   >
                     <UserPlusIcon className="h-4 w-4 mr-2" />
                     Add First Patient
                   </button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {patients.slice(0, 5).map((patient, index) => (
-                    <div key={patient.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-2xl hover:shadow-md transition-all duration-200 animate-slideUp" style={{ animationDelay: `${index * 50}ms` }}>
-                      <div className="flex items-center space-x-4 flex-1 cursor-pointer" onClick={() => handleViewPatient(patient)}>
-                        <div className={`h-12 w-12 ${getInitialsColor(patient.name, patient.email)} rounded-2xl flex items-center justify-center shadow-md`}>
-                          <span className="text-sm font-bold text-white">
+                    <div key={patient.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-xl sm:rounded-2xl hover:shadow-md transition-all duration-200 animate-slideUp gap-3" style={{ animationDelay: `${index * 50}ms` }}>
+                      <div className="flex items-center space-x-3 sm:space-x-4 flex-1 cursor-pointer" onClick={() => handleViewPatient(patient)}>
+                        <div className={`h-10 w-10 sm:h-12 sm:w-12 ${getInitialsColor(patient.name, patient.email)} rounded-xl sm:rounded-2xl flex items-center justify-center shadow-md flex-shrink-0`}>
+                          <span className="text-xs sm:text-sm font-bold text-white">
                             {getInitials(patient.name, patient.email)}
                           </span>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                             {patient.name || patient.email}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                             {patient.email}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 sm:ml-4">
                         <button
                           onClick={() => handleViewPatient(patient)}
-                          className="px-4 py-2 bg-gradient-to-r from-rose-500 to-rose-900 text-white rounded-xl text-sm font-medium hover:shadow-lg hover:scale-105 transition-all duration-200"
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gradient-to-r from-rose-500 to-rose-900 text-white rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium hover:shadow-lg hover:scale-105 transition-all duration-200"
                         >
                           View Profile
                         </button>
                         <button
                           onClick={() => setActiveView('messages')}
-                          className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-sm font-medium hover:shadow-lg hover:scale-105 transition-all duration-200"
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium hover:shadow-lg hover:scale-105 transition-all duration-200"
                         >
                           Message
                         </button>
@@ -323,7 +323,7 @@ const DoctorDashboardMain: React.FC = () => {
                     </div>
                   ))}
                   {patients.length > 5 && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 text-center pt-2 font-medium">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center pt-2 font-medium">
                       And {patients.length - 5} more patients...
                     </p>
                   )}
@@ -334,22 +334,22 @@ const DoctorDashboardMain: React.FC = () => {
 
           {/* Getting Started */}
           <div className="card">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Getting Started</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Complete these steps to set up your practice</p>
+            <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Getting Started</h2>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Complete these steps to set up your practice</p>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-rose-50 to-rose-50 dark:from-rose-900/30 dark:to-indigo-900/30 rounded-2xl hover:shadow-md hover:scale-105 transition-all duration-200 group animate-slideUp" style={{ animationDelay: '0ms' }}>
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-gradient-to-br from-sky-400 to-rose-500 p-3 rounded-xl shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-200">
-                      <UserGroupIcon className="h-6 w-6 text-white" />
+                <div className="flex items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-rose-50 to-rose-50 dark:from-rose-900/30 dark:to-indigo-900/30 rounded-xl sm:rounded-2xl hover:shadow-md hover:scale-105 transition-all duration-200 group animate-slideUp" style={{ animationDelay: '0ms' }}>
+                  <div className="flex items-center space-x-3 sm:space-x-4">
+                    <div className="bg-gradient-to-br from-sky-400 to-rose-500 p-2 sm:p-3 rounded-lg sm:rounded-xl shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-200">
+                      <UserGroupIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                     </div>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Add patients</span>
+                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">Add patients</span>
                   </div>
                   <button 
                     onClick={handleAddPatientClick}
-                    className="px-4 py-2 bg-gradient-to-r from-rose-500 to-rose-900 text-white rounded-xl text-sm font-medium hover:shadow-lg hover:scale-105 transition-all duration-200"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-rose-500 to-rose-900 text-white rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium hover:shadow-lg hover:scale-105 transition-all duration-200"
                   >
                     Add
                   </button>
@@ -435,31 +435,31 @@ const DoctorDashboardMain: React.FC = () => {
       
       {/* Navigation */}
       <div className="glass-effect border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          <nav className="flex space-x-4 sm:space-x-8">
             <button
               onClick={() => setActiveView('dashboard')}
-              className={`py-4 px-1 border-b-2 font-semibold text-sm transition-all duration-200 ${
+              className={`py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${
                 activeView === 'dashboard'
                   ? 'border-rose-900 text-rose-900 dark:text-rose-400'
                   : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
               }`}
             >
-              <DashboardIcon className={`inline h-5 w-5 mr-2 ${activeView === 'dashboard' ? 'text-rose-900' : ''}`} />
-              Dashboard
+              <DashboardIcon className={`inline h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 ${activeView === 'dashboard' ? 'text-rose-900' : ''}`} />
+              <span className="hidden sm:inline">Dashboard</span>
             </button>
             <button
               onClick={() => setActiveView('messages')}
-              className={`relative py-4 px-1 border-b-2 font-semibold text-sm transition-all duration-200 ${
+              className={`relative py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${
                 activeView === 'messages'
-                  ? 'border-rose-900 bg-gradient-to-r from-rose-500 to-rose-900 bg-clip-text text-transparent'
+                  ? 'border-rose-900 text-rose-900 dark:text-rose-400'
                   : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
               }`}
             >
-              <MessagesIcon className={`inline h-5 w-5 mr-2 ${activeView === 'messages' ? 'text-rose-900' : ''}`} />
-              Messages
+              <MessagesIcon className={`inline h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 ${activeView === 'messages' ? 'text-rose-900 dark:text-rose-400' : ''}`} />
+              <span className="hidden sm:inline">Messages</span>
               {unreadMessagesCount > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-gradient-to-r from-rose-500 to-pink-600 rounded-full shadow-lg animate-pulse">
+                <span className="ml-1 sm:ml-2 inline-flex items-center justify-center px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold leading-none text-white bg-gradient-to-r from-rose-500 to-pink-600 rounded-full shadow-lg animate-pulse">
                   {unreadMessagesCount}
                 </span>
               )}
@@ -468,8 +468,8 @@ const DoctorDashboardMain: React.FC = () => {
         </div>
       </div>
 
-      <main className="py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="py-4 sm:py-6 lg:py-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           {activeView === 'dashboard' && renderDashboard()}
           {activeView === 'messages' && renderMessages()}
           {activeView === 'patient-detail' && selectedPatient && (

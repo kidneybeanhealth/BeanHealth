@@ -461,34 +461,36 @@ const Messages: React.FC<MessagesProps> = ({
         {selectedContact ? (
           <>
             {/* Chat Header */}
-            <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-2 sm:space-x-4 flex-shrink-0 bg-white dark:bg-gray-800 flex-wrap gap-2">
-              <button 
-                onClick={() => setSelectedContactId(null)} 
-                className="md:hidden p-2 -ml-1 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105 active:scale-95 transition-all duration-200 flex-shrink-0"
-              >
-                <ArrowLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-300"/>
-              </button>
-              <div className="relative flex-shrink-0">
-                <InitialsAvatar contact={selectedContact} size="md" />
-                <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white dark:ring-gray-800"></span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm sm:text-lg font-display font-bold text-gray-900 dark:text-gray-100 truncate">{selectedContact.name}</h3>
-                <div className="flex items-center space-x-2 mt-0.5">
-                  {typingUsers.has(selectedContact.id) ? (
-                    <TypingIndicator 
-                      isTyping={true} 
-                      userName={selectedContact.name}
-                    />
-                  ) : (
-                    <RealTimeStatus 
-                      isConnected={isConnected}
-                    />
-                  )}
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex items-center flex-shrink-0 bg-white dark:bg-gray-800">
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                <button 
+                  onClick={() => setSelectedContactId(null)} 
+                  className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105 active:scale-95 transition-all duration-200 flex-shrink-0"
+                >
+                  <ArrowLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-300"/>
+                </button>
+                <div className="relative flex-shrink-0">
+                  <InitialsAvatar contact={selectedContact} size="md" />
+                  <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white dark:ring-gray-800"></span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base sm:text-lg font-display font-bold text-gray-900 dark:text-gray-100 truncate">{selectedContact.name}</h3>
+                  <div className="flex items-center space-x-2 mt-0.5">
+                    {typingUsers.has(selectedContact.id) ? (
+                      <TypingIndicator 
+                        isTyping={true} 
+                        userName={selectedContact.name}
+                      />
+                    ) : (
+                      <RealTimeStatus 
+                        isConnected={isConnected}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
               {/* Action Buttons */}
-              <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+              <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
                 {/* E-Prescriptions List Button - For both doctors and patients */}
                 <button
                   onClick={() => setShowPrescriptionListModal(true)}
@@ -505,14 +507,13 @@ const Messages: React.FC<MessagesProps> = ({
                 {isDoctor && selectedContact.role === 'patient' && (
                   <button
                     onClick={() => setShowPrescriptionModal(true)}
-                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg sm:rounded-xl hover:from-sky-600 hover:to-indigo-700 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
+                    className="flex items-center space-x-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg sm:rounded-xl hover:from-sky-600 hover:to-indigo-700 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
                     aria-label="Create prescription"
                   >
                     <svg className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                     <span className="hidden sm:inline">Create Rx</span>
-                    <span className="sm:hidden">New</span>
                   </button>
                 )}
               </div>
@@ -524,8 +525,8 @@ const Messages: React.FC<MessagesProps> = ({
               onScroll={handleScroll}
               className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 min-h-0 scrollbar-thin"
             >
-              <div className="px-3 sm:px-6 py-3 sm:py-4 max-w-4xl mx-auto">
-                <div className="space-y-3 sm:space-y-4">
+              <div className="px-4 sm:px-6 py-4 max-w-4xl mx-auto">
+                <div className="space-y-4">
                   {currentConversationMessages.length === 0 ? (
                     <div className="text-center py-12">
                       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 mb-4">
@@ -533,13 +534,13 @@ const Messages: React.FC<MessagesProps> = ({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                       </div>
-                      <p className="text-gray-500 dark:text-gray-400">Start the conversation</p>
+                      <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">Start the conversation</p>
                     </div>
                   ) : (
                     currentConversationMessages.map((msg, index) => (
                       <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'} animate-slide-up`} style={{ animationDelay: `${index * 20}ms` }}>
                         <div className={`max-w-[85%] sm:max-w-[75%] md:max-w-md ${msg.senderId === currentUser.id ? 'ml-4 sm:ml-12' : 'mr-4 sm:mr-12'}`}>
-                          <div className={`group relative px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm break-words shadow-sm ${
+                          <div className={`group relative px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-sm break-words shadow-sm ${
                             msg.senderId === currentUser.id
                               ? 'bg-gradient-to-br from-rose-500 to-rose-900 text-white rounded-br-md'
                               : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-200 dark:border-gray-700'
@@ -610,9 +611,9 @@ const Messages: React.FC<MessagesProps> = ({
             </div>
             
             {/* Message Input Area */}
-            <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
                {showCreditWarning && (
-                <div className="absolute bottom-full left-3 right-3 sm:left-6 sm:right-6 mb-3 p-3 sm:p-4 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/50 dark:to-orange-900/50 text-yellow-900 dark:text-yellow-200 text-xs sm:text-sm rounded-xl shadow-xl border border-yellow-200 dark:border-yellow-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 animate-slide-up">
+                <div className="absolute bottom-full left-4 right-4 sm:left-6 sm:right-6 mb-3 p-3 sm:p-4 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/50 dark:to-orange-900/50 text-yellow-900 dark:text-yellow-200 text-xs sm:text-sm rounded-xl shadow-xl border border-yellow-200 dark:border-yellow-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 animate-slide-up">
                     <div className="flex items-center">
                       <AlertIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
                       <span className="font-semibold">You are about to use your last urgent credit.</span>
