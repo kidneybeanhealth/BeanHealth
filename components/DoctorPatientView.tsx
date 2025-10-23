@@ -96,9 +96,9 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
         </div>
       </div>
 
-      {/* Patient Info and Health Vitals */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Patient Information, Case Details, and Health Vitals */}
+      {/* Patient Info Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column */}
         <div className="space-y-6">
           {/* Patient Information Card */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
@@ -115,25 +115,6 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Medications</p>
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-1">{patient.medications.length} active</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Case Details Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Case Details</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Case</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-1">{patient.condition}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Complaint</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">No complaint recorded</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">History</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">No history recorded</p>
               </div>
             </div>
           </div>
@@ -202,22 +183,44 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
           </div>
         </div>
 
-        {/* Current Medications Card */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Current Medications</h3>
-          {patient.medications.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {patient.medications.map((med) => (
-                <div key={med.id} className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100 text-base">{med.name}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{med.dosage}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{med.frequency}</p>
-                </div>
-              ))}
+        {/* Right Column */}
+        <div className="space-y-6">
+          {/* Current Medications Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Current Medications</h3>
+            {patient.medications.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {patient.medications.slice(0, 4).map((med) => (
+                  <div key={med.id} className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-xl p-3 border border-gray-200 dark:border-gray-600">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{med.name}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{med.dosage}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{med.frequency}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400 text-sm">No medications recorded</p>
+            )}
+          </div>
+
+          {/* Case Details Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Case Details</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Case</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-1">{patient.condition}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Complaint</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">No complaint recorded</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">History</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">No history recorded</p>
+              </div>
             </div>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-sm">No medications recorded</p>
-          )}
+          </div>
         </div>
       </div>
 
