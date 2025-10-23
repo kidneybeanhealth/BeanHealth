@@ -96,8 +96,9 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
         </div>
       </div>
 
-      {/* Patient Info Card */}
+      {/* Patient Info and Health Vitals */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Patient Information Card */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Patient Information</h3>
           <div className="space-y-3">
@@ -116,6 +117,7 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
           </div>
         </div>
 
+        {/* Current Medications Card */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Current Medications</h3>
           {patient.medications.length > 0 ? (
@@ -132,64 +134,64 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
             <p className="text-gray-500 dark:text-gray-400 text-sm">No medications recorded</p>
           )}
         </div>
-      </div>
 
-      {/* Health Vitals */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Health Vitals</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-2xl p-6 border-2 border-red-200 dark:border-red-800">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/50 dark:to-red-800/50 rounded-xl shadow-md">
-                <BloodPressureIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+        {/* Health Vitals Card */}
+        <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Health Vitals</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
+              <div className="flex items-center justify-between mb-3">
+                <div className="p-2 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/50 dark:to-red-800/50 rounded-lg shadow-md">
+                  <BloodPressureIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </div>
+                {patient.vitals?.bloodPressure?.trend && patient.vitals.bloodPressure.trend !== 'stable' && (
+                  <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                    {patient.vitals.bloodPressure.trend === 'up' ? '↑' : '↓'}
+                  </span>
+                )}
               </div>
-              {patient.vitals?.bloodPressure?.trend && (
-                <span className="text-xs font-semibold text-red-600 dark:text-red-400">
-                  {patient.vitals.bloodPressure.trend === 'up' ? '↑' : patient.vitals.bloodPressure.trend === 'down' ? '↓' : '→'}
-                </span>
-              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Blood Pressure</p>
+              <p className="text-2xl font-bold text-red-900 dark:text-red-100">
+                {patient.vitals?.bloodPressure?.value || 'N/A'}
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1">{patient.vitals?.bloodPressure?.unit || 'mmHg'}</p>
             </div>
-            <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Blood Pressure</p>
-            <p className="text-3xl font-bold text-red-900 dark:text-red-100">
-              {patient.vitals?.bloodPressure?.value || 'N/A'}
-            </p>
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">{patient.vitals?.bloodPressure?.unit || 'mmHg'}</p>
-          </div>
 
-          <div className="bg-gradient-to-br from-rose-50 to-sky-100 dark:from-rose-900/20 dark:to-sky-800/20 rounded-2xl p-6 border-2 border-sky-200 dark:border-sky-800">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-rose-900/50 dark:to-sky-800/50 rounded-xl shadow-md">
-                <FeatureVitalsIcon className="h-6 w-6 text-rose-900 dark:text-rose-400" />
+            <div className="bg-gradient-to-br from-rose-50 to-sky-100 dark:from-rose-900/20 dark:to-sky-800/20 rounded-xl p-4 border border-sky-200 dark:border-sky-800">
+              <div className="flex items-center justify-between mb-3">
+                <div className="p-2 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-rose-900/50 dark:to-sky-800/50 rounded-lg shadow-md">
+                  <FeatureVitalsIcon className="h-5 w-5 text-rose-900 dark:text-rose-400" />
+                </div>
+                {patient.vitals?.heartRate?.trend && patient.vitals.heartRate.trend !== 'stable' && (
+                  <span className="text-xs font-semibold text-rose-900 dark:text-rose-400">
+                    {patient.vitals.heartRate.trend === 'up' ? '↑' : '↓'}
+                  </span>
+                )}
               </div>
-              {patient.vitals?.heartRate?.trend && (
-                <span className="text-xs font-semibold text-rose-900 dark:text-rose-400">
-                  {patient.vitals.heartRate.trend === 'up' ? '↑' : patient.vitals.heartRate.trend === 'down' ? '↓' : '→'}
-                </span>
-              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Heart Rate</p>
+              <p className="text-2xl font-bold text-sky-900 dark:text-sky-100">
+                {patient.vitals?.heartRate?.value || 'N/A'}
+              </p>
+              <p className="text-xs text-rose-900 dark:text-rose-400 mt-1">{patient.vitals?.heartRate?.unit || 'bpm'}</p>
             </div>
-            <p className="text-sm font-semibold text-rose-900 dark:text-sky-300 mb-1">Heart Rate</p>
-            <p className="text-3xl font-bold text-sky-900 dark:text-sky-100">
-              {patient.vitals?.heartRate?.value || 'N/A'}
-            </p>
-            <p className="text-xs text-rose-900 dark:text-rose-400 mt-1">{patient.vitals?.heartRate?.unit || 'bpm'}</p>
-          </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-2xl p-6 border-2 border-orange-200 dark:border-orange-800">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/50 dark:to-orange-800/50 rounded-xl shadow-md">
-                <TemperatureIcon className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800">
+              <div className="flex items-center justify-between mb-3">
+                <div className="p-2 bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/50 dark:to-orange-800/50 rounded-lg shadow-md">
+                  <TemperatureIcon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                {patient.vitals?.temperature?.trend && patient.vitals.temperature.trend !== 'stable' && (
+                  <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
+                    {patient.vitals.temperature.trend === 'up' ? '↑' : '↓'}
+                  </span>
+                )}
               </div>
-              {patient.vitals?.temperature?.trend && (
-                <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                  {patient.vitals.temperature.trend === 'up' ? '↑' : patient.vitals.temperature.trend === 'down' ? '↓' : '→'}
-                </span>
-              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Temperature</p>
+              <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
+                {patient.vitals?.temperature?.value || 'N/A'}
+              </p>
+              <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">{patient.vitals?.temperature?.unit || '°F'}</p>
             </div>
-            <p className="text-sm font-semibold text-orange-700 dark:text-orange-300 mb-1">Temperature</p>
-            <p className="text-3xl font-bold text-orange-900 dark:text-orange-100">
-              {patient.vitals?.temperature?.value || 'N/A'}
-            </p>
-            <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">{patient.vitals?.temperature?.unit || '°F'}</p>
           </div>
         </div>
       </div>
