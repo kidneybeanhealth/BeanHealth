@@ -782,7 +782,7 @@ const Messages: React.FC<MessagesProps> = ({
                   />
 
                   {/* Three Dot Menu Button - Inside Input on Right */}
-                  <div className="flex items-center pr-0.5 sm:pr-1">
+                  <div className="flex items-center pr-0 sm:pr-1 -mr-1 sm:mr-0">
                     <div className="relative attach-menu-container">
                       <button
                         type="button"
