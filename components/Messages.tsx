@@ -718,7 +718,7 @@ const Messages: React.FC<MessagesProps> = ({
                  </div>
                )}
                
-              <form onSubmit={handleSendMessage} className="relative pr-24 sm:pr-16 z-10">
+              <form onSubmit={handleSendMessage} className="relative pr-28 sm:pr-16 z-10">
                 {/* Single Input Container with All Buttons Inside */}
                 <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300">
                   {/* Left Side - Urgent Credit Button */}
@@ -794,7 +794,7 @@ const Messages: React.FC<MessagesProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAudioRecorder(true)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 ml-3 p-3 sm:p-3.5 bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-full shadow-xl shadow-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-500/50 hover:scale-110 active:scale-95 transition-all duration-300"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 p-3 sm:p-3.5 bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-full shadow-xl shadow-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-500/50 hover:scale-110 active:scale-95 transition-all duration-300 z-20"
                   aria-label="Record voice message"
                 >
                   <MicrophoneIcon className="h-5 w-5 sm:h-6 sm:w-6" />
