@@ -718,7 +718,7 @@ const Messages: React.FC<MessagesProps> = ({
                  </div>
                )}
                
-              <form onSubmit={handleSendMessage} className="relative pr-16 sm:pr-16 z-10">
+              <form onSubmit={handleSendMessage} className="relative pr-[4.5rem] sm:pr-16 z-10">
                 {/* Single Input Container with All Buttons Inside */}
                 <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300">
                   {/* Left Side - Urgent Credit Button */}

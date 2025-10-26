@@ -421,20 +421,24 @@ const DoctorDashboardMain: React.FC = () => {
         preselectedContactId={null}
         clearPreselectedContact={() => {}}
         onNavigateToBilling={() => {}}
+        onMenuClick={() => setActiveView('dashboard')}
       />
     );
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-rose-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <SimpleHeader 
-        userName={profile?.name || user?.email || 'Doctor'}
-        userRole={profile?.role || 'doctor'}
-        onSignOut={signOut}
-      />
+      {/* Hide header on mobile when in messages view */}
+      <div className={activeView === 'messages' ? 'hidden md:block' : ''}>
+        <SimpleHeader 
+          userName={profile?.name || user?.email || 'Doctor'}
+          userRole={profile?.role || 'doctor'}
+          onSignOut={signOut}
+        />
+      </div>
       
-      {/* Navigation */}
-      <div className="glass-effect border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+      {/* Navigation - Hide on mobile when in messages view */}
+      <div className={`glass-effect border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 ${activeView === 'messages' ? 'hidden md:flex' : ''}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <nav className="flex space-x-4 sm:space-x-8">
             <button
@@ -468,8 +472,8 @@ const DoctorDashboardMain: React.FC = () => {
         </div>
       </div>
 
-      <main className="py-4 sm:py-6 lg:py-8">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+      <main className={activeView === 'messages' ? 'p-0' : 'py-4 sm:py-6 lg:py-8'}>
+        <div className={activeView === 'messages' ? '' : 'max-w-7xl mx-auto px-3 sm:px-4 lg:px-8'}>
           {activeView === 'dashboard' && renderDashboard()}
           {activeView === 'messages' && renderMessages()}
           {activeView === 'patient-detail' && selectedPatient && (
