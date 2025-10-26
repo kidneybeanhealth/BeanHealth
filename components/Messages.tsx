@@ -478,8 +478,8 @@ const Messages: React.FC<MessagesProps> = ({
       <div className={`w-full md:flex-1 flex flex-col ${selectedContactId ? 'flex' : 'hidden md:flex'} min-h-0`}>
         {selectedContact ? (
           <>
-            {/* Chat Header - Modern Design */}
-            <div className="relative px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-b border-gray-200/80 dark:border-gray-700/80 flex items-center flex-shrink-0 bg-gradient-to-r from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900">
+            {/* Chat Header - Modern Design with Sticky Position */}
+            <div className="sticky top-0 z-10 px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-b border-gray-200/80 dark:border-gray-700/80 flex items-center flex-shrink-0 bg-gradient-to-r from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900 backdrop-blur-md shadow-sm">
               {/* Subtle Background Pattern */}
               <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-purple-500/5 dark:from-rose-900/10 dark:to-purple-900/10"></div>
               
