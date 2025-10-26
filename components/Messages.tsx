@@ -776,7 +776,7 @@ const Messages: React.FC<MessagesProps> = ({
                   />
 
                   {/* Right Side Buttons - Inside Input */}
-                  <div className="flex items-center pr-1.5 sm:pr-3 space-x-0.5 sm:space-x-1">
+                  <div className="flex items-center pr-1 sm:pr-3 space-x-0.5 sm:space-x-1">
                     {/* Attach File Button */}
                     <button
                       type="button"
