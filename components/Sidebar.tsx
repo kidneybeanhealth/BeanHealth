@@ -34,31 +34,31 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
         ></div>
       )}
       
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-800 shadow-2xl flex-shrink-0 flex flex-col transform transition-all duration-300 ease-out md:relative md:translate-x-0 md:z-10 border-r border-gray-200 dark:border-gray-700 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-white dark:bg-gray-800 shadow-2xl flex-shrink-0 flex flex-col transform transition-all duration-300 ease-out md:relative md:translate-x-0 md:z-10 border-r border-gray-200 dark:border-gray-700 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Header */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="h-14 sm:h-16 lg:h-20 flex items-center justify-between px-4 sm:px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <button 
             onClick={() => setActiveView('dashboard')} 
-            className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-rose-900 rounded-xl p-2 -ml-2 hover:scale-105 active:scale-95 transition-all duration-200"
+            className="flex items-center space-x-2 sm:space-x-3 focus:outline-none focus:ring-2 focus:ring-rose-900 rounded-lg sm:rounded-xl p-1.5 sm:p-2 -ml-1.5 sm:-ml-2 hover:scale-105 active:scale-95 transition-all duration-200"
           >
-            <div className="bg-gradient-to-br from-rose-500 to-rose-900 p-2.5 rounded-xl shadow-md ring-1 ring-white/20">
-              <LogoIcon className="h-6 w-6 text-white"/>
+            <div className="bg-gradient-to-br from-rose-500 to-rose-900 p-2 sm:p-2.5 rounded-lg sm:rounded-xl shadow-md ring-1 ring-white/20">
+              <LogoIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white"/>
             </div>
-            <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-xl sm:text-2xl font-display font-bold bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Beanhealth
             </h1>
           </button>
           <button 
             onClick={onClose} 
-            className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            className="md:hidden p-1.5 sm:p-2 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
           >
             <XIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
         
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 overflow-y-auto">
-          <ul className="space-y-2">
+        <nav className="flex-1 px-3 sm:px-4 py-4 sm:py-6 overflow-y-auto">
+          <ul className="space-y-1.5 sm:space-y-2">
             {navItems.map((item, index) => (
               <li key={item.view} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                 <button
@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
                     setActiveView(item.view);
                     onClose();
                   }}
-                  className={`group relative w-full flex items-center px-4 py-3.5 rounded-xl text-left transition-all duration-200 overflow-hidden ${
+                  className={`group relative w-full flex items-center px-3 sm:px-4 py-3 sm:py-3.5 rounded-lg sm:rounded-xl text-left transition-all duration-200 overflow-hidden ${
                     activeView === item.view
                       ? 'bg-gradient-to-r from-rose-500 to-rose-900 text-white shadow-md scale-[1.02]'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:scale-[1.02] active:scale-95'
@@ -75,13 +75,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
                   {activeView === item.view && (
                     <div className="absolute inset-0 bg-gradient-to-r from-rose-900 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   )}
-                  <span className={`relative mr-3.5 ${activeView === item.view ? 'text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-rose-900 dark:group-hover:text-rose-400'} transition-colors duration-200`}>
+                  <span className={`relative mr-2.5 sm:mr-3.5 ${activeView === item.view ? 'text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-rose-900 dark:group-hover:text-rose-400'} transition-colors duration-200`}>
                     {item.icon}
                   </span>
-                  <span className="relative font-semibold text-[15px]">{item.label}</span>
+                  <span className="relative font-semibold text-sm sm:text-[15px]">{item.label}</span>
                   {activeView === item.view && (
                     <span className="relative ml-auto">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </span>
@@ -93,11 +93,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
         </nav>
         
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200/60 dark:border-gray-700/60">
-          <div className="bg-gradient-to-br from-rose-50 to-rose-50 dark:from-rose-900/20 dark:to-indigo-900/20 rounded-xl p-4 mb-4 border border-rose-100 dark:border-sky-800/30">
-            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Need help?</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">Contact our support team for assistance</p>
-            <button className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 text-rose-900 dark:text-rose-400 text-xs font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:scale-[1.02] active:scale-95 transition-all duration-200 shadow-sm">
+        <div className="p-4 sm:p-6 border-t border-gray-200/60 dark:border-gray-700/60">
+          <div className="bg-gradient-to-br from-rose-50 to-rose-50 dark:from-rose-900/20 dark:to-indigo-900/20 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4 border border-rose-100 dark:border-sky-800/30">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 sm:mb-1.5">Need help?</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 sm:mb-3 leading-relaxed">Contact our support team for assistance</p>
+            <button className="w-full px-2.5 sm:px-3 py-2 sm:py-2.5 bg-white dark:bg-gray-800 text-rose-900 dark:text-rose-400 text-xs font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:scale-[1.02] active:scale-95 transition-all duration-200 shadow-sm">
               Get Support
             </button>
           </div>

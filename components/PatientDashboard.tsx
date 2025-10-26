@@ -656,7 +656,7 @@ const PatientDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col md:flex-row">
       {/* Sidebar */}
       <Sidebar
         activeView={activeView}
@@ -665,16 +665,8 @@ const PatientDashboard: React.FC = () => {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-gray-900 bg-opacity-50 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main content wrapper */}
+      <div className="flex-1 flex flex-col min-w-0 w-full md:w-auto">
         <Header
           user={appUser}
           onLogout={signOut}
@@ -682,7 +674,7 @@ const PatientDashboard: React.FC = () => {
           onUpdateAvatar={handleUpdateAvatar}
         />
 
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">{renderContent()}</main>
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">{renderContent()}</main>
       </div>
     </div>
   );
