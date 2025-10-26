@@ -8,6 +8,7 @@ import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 import { DocumentUploadIcon } from './icons/DocumentUploadIcon';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
+import { MenuIcon } from './icons/MenuIcon';
 import { getInitials, getInitialsColor, getInitialsAvatarClasses } from '../utils/avatarUtils';
 import { useRealTimeChat } from '../hooks/useRealTimeChatV2';
 import { RealTimeStatus, TypingIndicator, MessageStatus } from './RealTimeComponents';
@@ -33,6 +34,7 @@ interface MessagesProps {
   preselectedContactId: string | null;
   clearPreselectedContact: () => void;
   onNavigateToBilling: () => void;
+  onMenuClick?: () => void;
 }
 
 const Messages: React.FC<MessagesProps> = ({ 
@@ -43,7 +45,8 @@ const Messages: React.FC<MessagesProps> = ({
     onMarkMessagesAsRead: _onMarkMessagesAsRead,
     preselectedContactId, 
     clearPreselectedContact,
-    onNavigateToBilling
+    onNavigateToBilling,
+    onMenuClick
 }) => {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -393,11 +396,25 @@ const Messages: React.FC<MessagesProps> = ({
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
 
   return (
-    <div className="flex flex-col md:flex-row h-full bg-gradient-to-br from-gray-50 via-white to-rose-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl overflow-hidden border border-gray-200/50 dark:border-gray-700/50">
+    <div className="flex flex-col h-screen md:h-full md:flex-row bg-gradient-to-br from-gray-50 via-white to-rose-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 md:rounded-xl md:shadow-2xl overflow-hidden border-0 md:border border-gray-200/50 dark:border-gray-700/50">
+      {/* Mobile-only Header - Shows only when no contact selected */}
+      {!selectedContactId && onMenuClick && (
+        <div className="md:hidden sticky top-0 z-20 px-4 py-3 border-b border-gray-200/80 dark:border-gray-700/80 flex items-center bg-gradient-to-r from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900 backdrop-blur-md shadow-sm">
+          <button 
+            onClick={onMenuClick}
+            className="p-2 -ml-1 rounded-xl bg-white/80 dark:bg-gray-700/80 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-gray-200 dark:border-gray-600 hover:border-rose-300 dark:hover:border-rose-600 hover:scale-110 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-md"
+            aria-label="Open menu"
+          >
+            <MenuIcon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+          </button>
+          <h1 className="ml-3 text-lg font-display font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-rose-900 dark:from-gray-100 dark:via-gray-200 dark:to-rose-400 bg-clip-text text-transparent">Messages</h1>
+        </div>
+      )}
+      
       {/* Contact List Panel - Modern Sidebar */}
       <div className={`w-full md:w-80 lg:w-96 border-r border-gray-200/80 dark:border-gray-700/80 flex flex-col backdrop-blur-sm ${selectedContactId ? 'hidden md:flex' : 'flex'} min-h-0`}>
-        {/* Sidebar Header with Gradient */}
-        <div className="relative px-4 sm:px-5 lg:px-6 py-4 sm:py-5 border-b border-gray-200/80 dark:border-gray-700/80 flex-shrink-0 bg-gradient-to-br from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900">
+        {/* Sidebar Header with Gradient - Hidden on mobile, use mobile header instead */}
+        <div className="hidden md:block relative px-4 sm:px-5 lg:px-6 py-4 sm:py-5 border-b border-gray-200/80 dark:border-gray-700/80 flex-shrink-0 bg-gradient-to-br from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900">
           <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-purple-500/5 dark:from-rose-900/10 dark:to-purple-900/10"></div>
           <div className="relative">
             <div className="flex items-center space-x-2 mb-2">

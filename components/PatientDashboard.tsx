@@ -619,6 +619,7 @@ const PatientDashboard: React.FC = () => {
             preselectedContactId={null}
             clearPreselectedContact={() => {}}
             onNavigateToBilling={() => setActiveView("billing")}
+            onMenuClick={() => setSidebarOpen(true)}
           />
         );
       case "billing":
@@ -667,14 +668,17 @@ const PatientDashboard: React.FC = () => {
 
       {/* Main content wrapper */}
       <div className="flex-1 flex flex-col min-w-0 w-full md:w-auto">
-        <Header
-          user={appUser}
-          onLogout={signOut}
-          onMenuClick={() => setSidebarOpen(true)}
-          onUpdateAvatar={handleUpdateAvatar}
-        />
+        {/* Hide header on mobile when in messages view */}
+        <div className={activeView === 'messages' ? 'hidden md:block' : ''}>
+          <Header
+            user={appUser}
+            onLogout={signOut}
+            onMenuClick={() => setSidebarOpen(true)}
+            onUpdateAvatar={handleUpdateAvatar}
+          />
+        </div>
 
-        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">{renderContent()}</main>
+        <main className={`flex-1 overflow-y-auto ${activeView === 'messages' ? 'p-0' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>{renderContent()}</main>
       </div>
     </div>
   );
