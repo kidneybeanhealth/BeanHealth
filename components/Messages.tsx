@@ -734,7 +734,7 @@ const Messages: React.FC<MessagesProps> = ({
                  </div>
                )}
                
-              <form onSubmit={handleSendMessage} className="relative z-10 flex items-center gap-2">
+              <form onSubmit={handleSendMessage} className="relative z-10 flex items-center gap-1">
                 {/* Input Container with Urgent Credits and Three-Dot - 65% width on mobile */}
                 <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300 w-[65%] sm:flex-1">
                   {/* Left Side - Urgent Credits */}
@@ -778,11 +778,11 @@ const Messages: React.FC<MessagesProps> = ({
                       }
                     }}
                     placeholder="Message"
-                    className="flex-1 px-2 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium mr-2"
+                    className="flex-1 px-2 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium mr-1"
                   />
 
                   {/* Three Dot Menu Button - Inside Input on Right */}
-                  <div className="flex items-center pr-4 sm:pr-3">
+                  <div className="flex items-center pr-2 sm:pr-3">
                     <div className="relative attach-menu-container">
                       <button
                         type="button"
