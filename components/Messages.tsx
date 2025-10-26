@@ -778,11 +778,11 @@ const Messages: React.FC<MessagesProps> = ({
                       }
                     }}
                     placeholder="Message"
-                    className="flex-1 px-2 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
+                    className="flex-1 px-2 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium mr-2"
                   />
 
                   {/* Three Dot Menu Button - Inside Input on Right */}
-                  <div className="flex items-center pr-2 sm:pr-3">
+                  <div className="flex items-center pr-4 sm:pr-3">
                     <div className="relative attach-menu-container">
                       <button
                         type="button"
