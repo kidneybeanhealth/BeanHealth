@@ -718,137 +718,107 @@ const Messages: React.FC<MessagesProps> = ({
                  </div>
                )}
                
-              <form onSubmit={handleSendMessage} className="relative flex flex-col sm:flex-row gap-2 sm:gap-3">
-                {/* Action Buttons - Mobile */}
-                <div className="flex items-center space-x-2 sm:hidden">
-                  <div className="relative group flex-shrink-0">
+              <form onSubmit={handleSendMessage} className="relative">
+                {/* Single Input Container with All Buttons Inside */}
+                <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300">
+                  {/* Left Side Buttons - Inside Input */}
+                  <div className="flex items-center pl-2 sm:pl-3 space-x-1">
+                    {/* Emoji/Smile Button (Optional) */}
                     <button
+                      type="button"
+                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
+                      aria-label="Emoji"
+                    >
+                      <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Text Input */}
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                      if (selectedContactId && realTimeChat.startTyping) {
+                        realTimeChat.startTyping(selectedContactId);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (selectedContactId && realTimeChat.stopTyping) {
+                        realTimeChat.stopTyping(selectedContactId);
+                      }
+                    }}
+                    placeholder="Message"
+                    className="flex-1 px-2 sm:px-3 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
+                  />
+
+                  {/* Right Side Buttons - Inside Input */}
+                  <div className="flex items-center pr-2 sm:pr-3 space-x-1">
+                    {/* Attach File Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowFilePicker(true)}
+                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
+                      aria-label="Attach file"
+                    >
+                      <DocumentUploadIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </button>
+
+                    {/* Camera Button (Optional for future) */}
+                    <button
+                      type="button"
+                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
+                      aria-label="Camera"
+                    >
+                      <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+
+                    {/* Urgent Credit Button with Badge */}
+                    <div className="relative">
+                      <button
                         type="button"
                         onClick={handleToggleUrgent}
                         disabled={cannotTurnOnUrgent}
-                        className={`relative p-2.5 rounded-xl transition-all duration-300 shadow-md ${
+                        className={`p-2 rounded-full transition-all duration-200 ${
                           isUrgent 
-                            ? 'bg-gradient-to-br from-red-500 to-red-600 text-white scale-110 shadow-red-500/40' 
-                            : 'bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:scale-110'
-                        } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border-2 ${isUrgent ? 'border-red-600' : 'border-gray-200 dark:border-gray-600'}`}
+                            ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' 
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-red-600 dark:hover:text-red-400'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
                         aria-label="Toggle urgent message"
-                    >
-                        <AlertIcon className="h-5 w-5" />
-                    </button>
-                    {isPatient && (
-                      <span className="absolute -top-1.5 -right-1.5 text-xs bg-gradient-to-br from-rose-500 to-rose-600 text-white font-extrabold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-lg">
-                        {patientData?.urgentCredits}
-                      </span>
-                    )}
+                      >
+                        <AlertIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                      </button>
+                      {isPatient && patientData && (
+                        <span className="absolute -top-1 -right-1 text-[10px] sm:text-xs bg-gradient-to-br from-rose-500 to-rose-600 text-white font-extrabold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-700 shadow-lg">
+                          {patientData.urgentCredits}
+                        </span>
+                      )}
+                    </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowFilePicker(true)}
-                    className="p-2.5 rounded-xl bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110 active:scale-95 transition-all duration-300 shadow-md border-2 border-gray-200 dark:border-gray-600 flex-shrink-0"
-                    aria-label="Attach file"
-                  >
-                    <DocumentUploadIcon className="h-5 w-5" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowAudioRecorder(true)}
-                    className="p-2.5 rounded-xl bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110 active:scale-95 transition-all duration-300 shadow-md border-2 border-gray-200 dark:border-gray-600 flex-shrink-0"
-                    aria-label="Record audio"
-                  >
-                    <MicrophoneIcon className="h-5 w-5" />
-                  </button>
                 </div>
 
-                {/* Action Buttons - Desktop */}
-                <div className="hidden sm:flex items-center space-x-2">
-                  <div className="relative group flex-shrink-0">
-                    <button
-                        type="button"
-                        onClick={handleToggleUrgent}
-                        disabled={cannotTurnOnUrgent}
-                        className={`relative p-3 rounded-xl transition-all duration-300 shadow-lg ${
-                          isUrgent 
-                            ? 'bg-gradient-to-br from-red-500 to-red-600 text-white scale-110 shadow-red-500/50' 
-                            : 'bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:scale-110 active:scale-95'
-                        } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border-2 ${isUrgent ? 'border-red-600' : 'border-gray-200 dark:border-gray-600'}`}
-                        aria-label="Toggle urgent message"
-                    >
-                        <AlertIcon className="h-5 w-5" />
-                        {isUrgent && (
-                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-400/30 to-transparent animate-pulse"></div>
-                        )}
-                    </button>
-                    {isPatient && (
-                      <span className="absolute -top-2 -right-2 text-xs bg-gradient-to-br from-rose-500 to-rose-600 text-white font-extrabold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-xl">
-                        {patientData?.urgentCredits}
-                      </span>
-                    )}
-                    {cannotTurnOnUrgent && (
-                      <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-64 p-4 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold rounded-2xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 border-2 border-gray-700 dark:border-gray-300">
-                          ⚠️ You have no urgent credits. Please purchase more from the Billing page.
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-gray-900 dark:border-t-gray-100"></div>
-                      </div>
-                    )}
+                {/* Voice Message Button - Outside on Right (Green Circle) */}
+                <button
+                  type="button"
+                  onClick={() => setShowAudioRecorder(true)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[calc(100%+0.5rem)] sm:translate-x-[calc(100%+0.75rem)] p-3 sm:p-4 bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-full shadow-xl shadow-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-500/50 hover:scale-110 active:scale-95 transition-all duration-300"
+                  aria-label="Record voice message"
+                >
+                  <MicrophoneIcon className="h-6 w-6 sm:h-7 sm:w-7" />
+                </button>
+
+                {/* Tooltip for Urgent Credits */}
+                {cannotTurnOnUrgent && (
+                  <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-64 p-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold rounded-xl shadow-2xl opacity-0 hover:opacity-100 transition-opacity pointer-events-none z-10 border-2 border-gray-700 dark:border-gray-300">
+                    ⚠️ You have no urgent credits. Please purchase more from the Billing page.
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-6 border-x-transparent border-t-6 border-t-gray-900 dark:border-t-gray-100"></div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowFilePicker(true)}
-                    className="p-3 rounded-xl bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg border-2 border-gray-200 dark:border-gray-600 flex-shrink-0"
-                    aria-label="Attach file"
-                  >
-                    <DocumentUploadIcon className="h-5 w-5" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowAudioRecorder(true)}
-                    className="p-3 rounded-xl bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg border-2 border-gray-200 dark:border-gray-600 flex-shrink-0"
-                    aria-label="Record audio"
-                  >
-                    <MicrophoneIcon className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {/* Input and Send Button - Enhanced Design */}
-                <div className="flex items-center space-x-2 sm:space-x-3 flex-1">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => {
-                        setInput(e.target.value);
-                        if (selectedContactId && realTimeChat.startTyping) {
-                          realTimeChat.startTyping(selectedContactId);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (selectedContactId && realTimeChat.stopTyping) {
-                          realTimeChat.stopTyping(selectedContactId);
-                        }
-                      }}
-                      placeholder="Type your message..."
-                      className="w-full px-4 sm:px-5 py-3 sm:py-3.5 text-sm sm:text-base bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-4 focus:ring-rose-500/30 focus:border-rose-500 dark:focus:border-rose-400 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 shadow-md font-medium"
-                    />
-                  </div>
-                  
-                  <button
-                    type="submit"
-                    disabled={!input.trim()}
-                    className="group relative bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 text-white p-3 sm:p-4 rounded-2xl font-bold hover:from-rose-600 hover:via-rose-700 hover:to-rose-800 shadow-xl shadow-rose-500/30 hover:shadow-2xl hover:shadow-rose-500/40 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-300 flex-shrink-0 overflow-hidden border-2 border-rose-600"
-                    aria-label="Send message"
-                  >
-                    <span className="relative z-10">
-                      <PaperAirplaneIcon className="h-5 w-5 sm:h-6 sm:w-6"/>
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/40 to-pink-500/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    {!input.trim() && (
-                      <div className="absolute inset-0 bg-gray-400 opacity-20"></div>
-                    )}
-                  </button>
-                </div>
+                )}
               </form>
             </div>
           </>
