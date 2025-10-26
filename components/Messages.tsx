@@ -673,9 +673,9 @@ const Messages: React.FC<MessagesProps> = ({
             </div>
             
             {/* Message Input Area - Modern Design */}
-            <div className="relative px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-t border-gray-200/80 dark:border-gray-700/80 bg-gradient-to-r from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900 flex-shrink-0">
+            <div className="relative px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-t border-gray-200/80 dark:border-gray-700/80 bg-gradient-to-r from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900 flex-shrink-0 overflow-visible">
                {/* Subtle Background Pattern */}
-               <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-purple-500/5 dark:from-rose-900/10 dark:to-purple-900/10"></div>
+               <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-purple-500/5 dark:from-rose-900/10 dark:to-purple-900/10 pointer-events-none"></div>
                
                {showCreditWarning && (
                 <div className="relative bottom-full left-0 right-0 mb-3 p-3 sm:p-4 bg-gradient-to-r from-yellow-50 via-orange-50 to-yellow-50 dark:from-yellow-900/50 dark:via-orange-900/50 dark:to-yellow-900/50 text-yellow-900 dark:text-yellow-200 text-xs sm:text-sm rounded-2xl shadow-2xl border-2 border-yellow-300 dark:border-yellow-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-slide-up">
@@ -718,7 +718,7 @@ const Messages: React.FC<MessagesProps> = ({
                  </div>
                )}
                
-              <form onSubmit={handleSendMessage} className="relative pr-14 sm:pr-16">
+              <form onSubmit={handleSendMessage} className="relative pr-16 sm:pr-16 z-10">
                 {/* Single Input Container with All Buttons Inside */}
                 <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300">
                   {/* Left Side - Urgent Credit Button */}
