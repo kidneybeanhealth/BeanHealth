@@ -393,15 +393,24 @@ const Messages: React.FC<MessagesProps> = ({
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
 
   return (
-    <div className="flex flex-col md:flex-row h-full bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
-      {/* Contact List Panel */}
-      <div className={`w-full md:w-80 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-900 ${selectedContactId ? 'hidden md:flex' : 'flex'} min-h-0`}>
-        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
-          <h3 className="text-lg sm:text-xl font-display font-bold text-gray-900 dark:text-gray-100">Messages</h3>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">{sortedContacts.length} conversations</p>
+    <div className="flex flex-col md:flex-row h-full bg-gradient-to-br from-gray-50 via-white to-rose-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl overflow-hidden border border-gray-200/50 dark:border-gray-700/50">
+      {/* Contact List Panel - Modern Sidebar */}
+      <div className={`w-full md:w-80 lg:w-96 border-r border-gray-200/80 dark:border-gray-700/80 flex flex-col backdrop-blur-sm ${selectedContactId ? 'hidden md:flex' : 'flex'} min-h-0`}>
+        {/* Sidebar Header with Gradient */}
+        <div className="relative px-4 sm:px-5 lg:px-6 py-4 sm:py-5 border-b border-gray-200/80 dark:border-gray-700/80 flex-shrink-0 bg-gradient-to-br from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900">
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-purple-500/5 dark:from-rose-900/10 dark:to-purple-900/10"></div>
+          <div className="relative">
+            <div className="flex items-center space-x-2 mb-2">
+              <div className="h-2 w-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 animate-pulse"></div>
+              <h3 className="text-lg sm:text-xl font-display font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-rose-900 dark:from-gray-100 dark:via-gray-200 dark:to-rose-400 bg-clip-text text-transparent">Messages</h3>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">{sortedContacts.length} {sortedContacts.length === 1 ? 'conversation' : 'conversations'}</p>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="p-3 space-y-2">
+
+        {/* Contact List with Enhanced Design */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+          <div className="p-2 sm:p-3 space-y-1.5">
             {sortedContacts.map(contact => {
                const unreadMessages = messages.filter(m => m.senderId === contact.id && m.recipientId === currentUser.id && !m.isRead);
                const hasUnreadUrgent = unreadMessages.some(m => m.isUrgent);
@@ -409,42 +418,51 @@ const Messages: React.FC<MessagesProps> = ({
                   <button
                       key={contact.id}
                       onClick={() => handleSelectContact(contact.id)}
-                      className={`w-full text-left px-4 py-3 flex items-center space-x-3 rounded-xl transition-all duration-200 ${
+                      className={`group relative w-full text-left px-3 sm:px-4 py-3 sm:py-3.5 flex items-center space-x-3 rounded-xl sm:rounded-2xl transition-all duration-300 overflow-hidden ${
                         selectedContactId === contact.id 
-                          ? 'bg-gradient-to-r from-rose-500 to-rose-900 text-white shadow-lg scale-[1.02]' 
-                          : 'hover:bg-white dark:hover:bg-gray-800 hover:shadow-md border border-transparent hover:border-gray-200 dark:hover:border-gray-700'
+                          ? 'bg-gradient-to-r from-rose-500 to-rose-600 dark:from-rose-600 dark:to-rose-700 text-white shadow-xl shadow-rose-500/30 dark:shadow-rose-900/50 scale-[1.02] ring-2 ring-rose-400/50 dark:ring-rose-500/50' 
+                          : 'bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 hover:shadow-lg border border-gray-200/50 dark:border-gray-700/50 hover:border-rose-300 dark:hover:border-rose-700 hover:scale-[1.01]'
                       }`}
                   >
+                      {/* Animated Background Gradient */}
+                      {selectedContactId === contact.id && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-rose-600 via-purple-600 to-rose-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-gradient-x"></div>
+                      )}
+                      
                       <div className="relative flex-shrink-0">
                           <InitialsAvatar contact={contact} size="md" />
+                          {/* Online Status Indicator */}
+                          <span className="absolute -bottom-0.5 -right-0.5 block h-3.5 w-3.5 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 ring-2 ring-white dark:ring-gray-800 shadow-lg"></span>
                           {hasUnreadUrgent && (
-                            <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-5 w-5 bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-white dark:ring-gray-800 shadow-lg"></span>
                             </span>
                           )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-semibold truncate text-sm ${
+                      
+                      <div className="relative flex-1 min-w-0">
+                        <p className={`font-bold truncate text-sm sm:text-base mb-0.5 ${
                           selectedContactId === contact.id 
-                            ? 'text-white' 
-                            : 'text-gray-800 dark:text-gray-100'
+                            ? 'text-white drop-shadow-sm' 
+                            : 'text-gray-900 dark:text-gray-100 group-hover:text-rose-900 dark:group-hover:text-rose-400'
                         }`}>
                           {contact.name}
                         </p>
-                        <p className={`text-xs truncate ${
+                        <p className={`text-xs truncate font-medium ${
                           selectedContactId === contact.id 
-                            ? 'text-sky-100' 
-                            : 'text-gray-500 dark:text-gray-400'
+                            ? 'text-rose-100' 
+                            : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300'
                         }`}>
                           {(contact as Doctor).specialty || (contact as Patient).condition}
                         </p>
                       </div>
+                      
                       {unreadMessages.length > 0 && !hasUnreadUrgent && (
-                          <span className={`text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center flex-shrink-0 ${
+                          <span className={`relative text-xs font-extrabold rounded-full h-6 w-6 flex items-center justify-center flex-shrink-0 shadow-lg ${
                             selectedContactId === contact.id
-                              ? 'bg-white/20 text-white'
-                              : 'bg-gradient-to-r from-rose-500 to-rose-900 text-white'
+                              ? 'bg-white/30 backdrop-blur-sm text-white ring-2 ring-white/50'
+                              : 'bg-gradient-to-br from-rose-500 to-rose-600 text-white'
                           }`}>
                               {unreadMessages.length > 9 ? '9+' : unreadMessages.length}
                           </span>
@@ -460,21 +478,34 @@ const Messages: React.FC<MessagesProps> = ({
       <div className={`w-full md:flex-1 flex flex-col ${selectedContactId ? 'flex' : 'hidden md:flex'} min-h-0`}>
         {selectedContact ? (
           <>
-            {/* Chat Header */}
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex items-center flex-shrink-0 bg-white dark:bg-gray-800">
-              <div className="flex items-center space-x-3 flex-1 min-w-0">
+            {/* Chat Header - Modern Design */}
+            <div className="relative px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-b border-gray-200/80 dark:border-gray-700/80 flex items-center flex-shrink-0 bg-gradient-to-r from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900">
+              {/* Subtle Background Pattern */}
+              <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-purple-500/5 dark:from-rose-900/10 dark:to-purple-900/10"></div>
+              
+              <div className="relative flex items-center space-x-3 flex-1 min-w-0">
                 <button 
                   onClick={() => setSelectedContactId(null)} 
-                  className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105 active:scale-95 transition-all duration-200 flex-shrink-0"
+                  className="md:hidden p-2 -ml-1 rounded-xl bg-white/80 dark:bg-gray-700/80 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-gray-200 dark:border-gray-600 hover:border-rose-300 dark:hover:border-rose-600 hover:scale-110 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-md flex-shrink-0"
                 >
-                  <ArrowLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-300"/>
+                  <ArrowLeftIcon className="h-5 w-5 text-gray-700 dark:text-gray-300"/>
                 </button>
+                
                 <div className="relative flex-shrink-0">
-                  <InitialsAvatar contact={selectedContact} size="md" />
-                  <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white dark:ring-gray-800"></span>
+                  <div className="relative">
+                    <InitialsAvatar contact={selectedContact} size="md" />
+                    {/* Glow Effect on Avatar */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-rose-400 to-purple-400 opacity-0 group-hover:opacity-20 blur-md transition-opacity duration-300"></div>
+                  </div>
+                  {/* Enhanced Status Indicator */}
+                  <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-gradient-to-br from-emerald-400 to-green-500 ring-2 ring-white dark:ring-gray-800 shadow-lg"></span>
+                  </span>
                 </div>
+                
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-display font-bold text-gray-900 dark:text-gray-100 truncate">{selectedContact.name}</h3>
+                  <h3 className="text-base sm:text-lg font-display font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-rose-900 dark:from-gray-100 dark:via-gray-200 dark:to-rose-400 bg-clip-text text-transparent truncate">{selectedContact.name}</h3>
                   <div className="flex items-center space-x-2 mt-0.5">
                     {typingUsers.has(selectedContact.id) ? (
                       <TypingIndicator 
@@ -489,67 +520,77 @@ const Messages: React.FC<MessagesProps> = ({
                   </div>
                 </div>
               </div>
-              {/* Action Buttons */}
-              <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
-                {/* E-Prescriptions List Button - For both doctors and patients */}
+              
+              {/* Action Buttons with Enhanced Design */}
+              <div className="relative flex items-center space-x-2 flex-shrink-0 ml-2">
+                {/* E-Prescriptions List Button */}
                 <button
                   onClick={() => setShowPrescriptionListModal(true)}
-                  className="flex items-center space-x-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-rose-900 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg sm:rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
+                  className="group relative flex items-center space-x-1.5 px-2.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-400 bg-gradient-to-br from-rose-50 to-pink-50 dark:from-rose-900/30 dark:to-pink-900/30 border-2 border-rose-200 dark:border-rose-700/50 rounded-xl hover:from-rose-100 hover:to-pink-100 dark:hover:from-rose-900/50 dark:hover:to-pink-900/50 hover:shadow-lg hover:shadow-rose-500/20 hover:scale-105 active:scale-95 transition-all duration-300 whitespace-nowrap overflow-hidden"
                   aria-label="View prescriptions"
                   title="View E-Prescriptions"
                 >
-                  <DocumentIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                  <span className="hidden lg:inline">E-Prescriptions</span>
-                  <span className="lg:hidden">Rx</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-rose-400/10 to-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <DocumentIcon className="relative h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 drop-shadow-sm" />
+                  <span className="relative hidden lg:inline drop-shadow-sm">E-Prescriptions</span>
+                  <span className="relative lg:hidden drop-shadow-sm">Rx</span>
                 </button>
 
-                {/* Create Prescription Button - Only for doctors */}
+                {/* Create Prescription Button - Enhanced */}
                 {isDoctor && selectedContact.role === 'patient' && (
                   <button
                     onClick={() => setShowPrescriptionModal(true)}
-                    className="flex items-center space-x-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg sm:rounded-xl hover:from-sky-600 hover:to-indigo-700 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 whitespace-nowrap"
+                    className="group relative flex items-center space-x-1.5 px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-rose-500 via-rose-600 to-rose-700 rounded-xl hover:from-rose-600 hover:via-rose-700 hover:to-rose-800 shadow-lg shadow-rose-500/30 hover:shadow-xl hover:shadow-rose-500/40 hover:scale-105 active:scale-95 transition-all duration-300 whitespace-nowrap overflow-hidden"
                     aria-label="Create prescription"
                   >
-                    <svg className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 to-pink-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <svg className="relative h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                     </svg>
-                    <span className="hidden sm:inline">Create Rx</span>
+                    <span className="relative hidden sm:inline drop-shadow">Create Rx</span>
                   </button>
                 )}
               </div>
             </div>
             
-            {/* Messages Area - Fixed Height Scrollable Window */}
+            {/* Messages Area - Enhanced Design */}
             <div 
               ref={messagesContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 min-h-0 scrollbar-thin"
+              className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-rose-50/20 dark:from-gray-900 dark:via-gray-850 dark:to-gray-900 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
             >
-              <div className="px-4 sm:px-6 py-4 max-w-4xl mx-auto">
-                <div className="space-y-4">
+              <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6 max-w-5xl mx-auto">
+                <div className="space-y-3 sm:space-y-4">
                   {currentConversationMessages.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 mb-4">
-                        <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="text-center py-16 sm:py-20 animate-fade-in">
+                      <div className="relative inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-rose-100 to-purple-100 dark:from-rose-900/30 dark:to-purple-900/30 mb-6 shadow-lg">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-rose-400/20 to-purple-400/20 animate-pulse"></div>
+                        <svg className="relative w-10 h-10 sm:w-12 sm:h-12 text-rose-500 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                       </div>
-                      <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">Start the conversation</p>
+                      <h4 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Start a Conversation</h4>
+                      <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-sm mx-auto">Send a message to begin your healthcare conversation</p>
                     </div>
                   ) : (
                     currentConversationMessages.map((msg, index) => (
                       <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'} animate-slide-up`} style={{ animationDelay: `${index * 20}ms` }}>
-                        <div className={`max-w-[85%] sm:max-w-[75%] md:max-w-md ${msg.senderId === currentUser.id ? 'ml-4 sm:ml-12' : 'mr-4 sm:mr-12'}`}>
-                          <div className={`group relative px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-sm break-words shadow-sm ${
+                        <div className={`max-w-[85%] sm:max-w-[75%] lg:max-w-lg xl:max-w-xl ${msg.senderId === currentUser.id ? 'ml-4 sm:ml-12' : 'mr-4 sm:mr-12'}`}>
+                          <div className={`group relative px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-3.5 rounded-2xl sm:rounded-3xl text-sm sm:text-base break-words shadow-md transition-all duration-300 ${
                             msg.senderId === currentUser.id
-                              ? 'bg-gradient-to-br from-rose-500 to-rose-900 text-white rounded-br-md'
-                              : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-200 dark:border-gray-700'
-                          } ${msg.isUrgent ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-900' : ''} ${
+                              ? 'bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 text-white rounded-br-md hover:shadow-xl hover:shadow-rose-500/30'
+                              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md border-2 border-gray-200/80 dark:border-gray-700/80 hover:border-rose-300 dark:hover:border-rose-700 hover:shadow-xl'
+                          } ${msg.isUrgent ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900 shadow-xl shadow-red-500/20' : ''} ${
                             pendingMessages.has(msg.id) ? 'opacity-70' : ''
-                          } hover:shadow-lg transition-all duration-200`}>
+                          }`}>
+                            {/* Subtle Gradient Overlay */}
+                            {msg.senderId === currentUser.id && (
+                              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl sm:rounded-3xl transition-opacity duration-300"></div>
+                            )}
+                            
                             {msg.isUrgent && (
-                              <div className="inline-flex items-center px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full mb-2">
-                                <AlertIcon className="h-3 w-3 mr-1"/>
+                              <div className="relative inline-flex items-center px-2.5 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-extrabold rounded-full mb-2 shadow-lg">
+                                <AlertIcon className="h-3 w-3 mr-1 animate-pulse"/>
                                 URGENT
                               </div>
                             )}
@@ -559,10 +600,10 @@ const Messages: React.FC<MessagesProps> = ({
                                 isCurrentUser={msg.senderId === currentUser.id}
                               />
                             ) : msg.text && (
-                              <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                              <p className="relative whitespace-pre-wrap leading-relaxed font-medium">{msg.text}</p>
                             )}
                           </div>
-                          <div className={`text-xs text-gray-400 dark:text-gray-500 mt-1.5 px-2 flex items-center space-x-2 ${
+                          <div className={`text-xs text-gray-400 dark:text-gray-500 mt-2 px-2 flex items-center space-x-2 ${
                             msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'
                           }`}>
                             {msg.senderId === currentUser.id && (
@@ -573,7 +614,7 @@ const Messages: React.FC<MessagesProps> = ({
                                 />
                             )}
                             {msg.senderId !== currentUser.id && (
-                              <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="font-medium">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             )}
                             {pendingMessages.has(msg.id) && (
                               <span className="inline-flex items-center">
@@ -593,80 +634,92 @@ const Messages: React.FC<MessagesProps> = ({
                 </div>
               </div>
 
-              {/* Scroll to Bottom Button - appears when user scrolls up */}
+              {/* Scroll to Bottom Button - Enhanced */}
               {!shouldAutoScroll && currentConversationMessages.length > 0 && (
                 <button
                   onClick={() => {
                     setShouldAutoScroll(true);
                     scrollToBottom(true);
                   }}
-                  className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-2.5 sm:p-3 bg-gradient-to-r from-rose-500 to-rose-900 text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 z-10 animate-slideUp"
+                  className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-3 bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 text-white rounded-2xl shadow-2xl shadow-rose-500/40 hover:shadow-rose-500/60 hover:scale-110 active:scale-95 transition-all duration-300 z-10 animate-slideUp ring-2 ring-rose-400/50 backdrop-blur-sm"
                   aria-label="Scroll to bottom"
                 >
                   <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-400"></span>
+                  </span>
                 </button>
               )}
             </div>
             
-            {/* Message Input Area */}
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+            {/* Message Input Area - Modern Design */}
+            <div className="relative px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-t border-gray-200/80 dark:border-gray-700/80 bg-gradient-to-r from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900 flex-shrink-0">
+               {/* Subtle Background Pattern */}
+               <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-purple-500/5 dark:from-rose-900/10 dark:to-purple-900/10"></div>
+               
                {showCreditWarning && (
-                <div className="absolute bottom-full left-4 right-4 sm:left-6 sm:right-6 mb-3 p-3 sm:p-4 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/50 dark:to-orange-900/50 text-yellow-900 dark:text-yellow-200 text-xs sm:text-sm rounded-xl shadow-xl border border-yellow-200 dark:border-yellow-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 animate-slide-up">
+                <div className="relative bottom-full left-0 right-0 mb-3 p-3 sm:p-4 bg-gradient-to-r from-yellow-50 via-orange-50 to-yellow-50 dark:from-yellow-900/50 dark:via-orange-900/50 dark:to-yellow-900/50 text-yellow-900 dark:text-yellow-200 text-xs sm:text-sm rounded-2xl shadow-2xl border-2 border-yellow-300 dark:border-yellow-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-slide-up">
                     <div className="flex items-center">
-                      <AlertIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
-                      <span className="font-semibold">You are about to use your last urgent credit.</span>
+                      <div className="flex-shrink-0 p-2 bg-yellow-400 dark:bg-yellow-600 rounded-xl mr-3">
+                        <AlertIcon className="h-5 w-5 text-yellow-900 dark:text-yellow-100" />
+                      </div>
+                      <span className="font-bold">You are about to use your last urgent credit.</span>
                     </div>
                     <button 
                         onClick={onNavigateToBilling}
-                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-lg hover:from-yellow-600 hover:to-orange-600 text-xs flex-shrink-0 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 w-full sm:w-auto text-center"
+                        className="px-4 sm:px-5 py-2.5 bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 text-white font-extrabold rounded-xl hover:from-yellow-600 hover:via-orange-600 hover:to-yellow-600 text-xs shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 w-full sm:w-auto text-center"
                     >
-                        Purchase More
+                        Purchase More Credits
                     </button>
                 </div>
                )}
 
-               {/* Upload Progress */}
+               {/* Upload Progress - Enhanced */}
                {uploadProgress && (
-                 <div className="mb-4 p-4 bg-gradient-to-r from-rose-50 to-rose-50 dark:from-rose-900/20 dark:to-indigo-900/20 rounded-xl border border-sky-200 dark:border-sky-800">
-                   <div className="flex items-center justify-between text-sm text-sky-800 dark:text-sky-200 mb-2 font-semibold">
+                 <div className="relative mb-4 p-4 bg-gradient-to-br from-rose-50 via-pink-50 to-rose-50 dark:from-rose-900/30 dark:via-pink-900/30 dark:to-rose-900/30 rounded-2xl border-2 border-rose-300 dark:border-rose-700 shadow-lg">
+                   <div className="flex items-center justify-between text-sm text-rose-800 dark:text-rose-200 mb-3 font-bold">
                      <span className="flex items-center">
-                       <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                       <svg className="animate-spin h-5 w-5 mr-2 text-rose-600 dark:text-rose-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                        </svg>
                        Uploading {uploadProgress.fileName}
                      </span>
-                     <span>{Math.round(uploadProgress.progress)}%</span>
+                     <span className="text-lg font-extrabold">{Math.round(uploadProgress.progress)}%</span>
                    </div>
-                   <div className="w-full bg-sky-200 dark:bg-sky-700 rounded-full h-2 overflow-hidden">
+                   <div className="relative w-full bg-rose-200 dark:bg-rose-800 rounded-full h-3 overflow-hidden shadow-inner">
                      <div 
-                       className="bg-gradient-to-r from-rose-500 to-rose-900 h-2 rounded-full transition-all duration-300"
+                       className="absolute inset-0 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-500 h-3 rounded-full transition-all duration-300 shadow-lg"
                        style={{ width: `${uploadProgress.progress}%` }}
-                     ></div>
+                     >
+                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                     </div>
                    </div>
                  </div>
                )}
-              <form onSubmit={handleSendMessage} className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:items-center sm:space-x-2">
-                {/* Top Row - Action Buttons on Mobile */}
-                <div className="flex items-center space-x-1 sm:hidden">
+               
+              <form onSubmit={handleSendMessage} className="relative flex flex-col sm:flex-row gap-2 sm:gap-3">
+                {/* Action Buttons - Mobile */}
+                <div className="flex items-center space-x-2 sm:hidden">
                   <div className="relative group flex-shrink-0">
                     <button
                         type="button"
                         onClick={handleToggleUrgent}
                         disabled={cannotTurnOnUrgent}
-                        className={`p-2 rounded-lg transition-all duration-200 ${
+                        className={`relative p-2.5 rounded-xl transition-all duration-300 shadow-md ${
                           isUrgent 
-                            ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400' 
-                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            ? 'bg-gradient-to-br from-red-500 to-red-600 text-white scale-110 shadow-red-500/40' 
+                            : 'bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:scale-110'
+                        } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border-2 ${isUrgent ? 'border-red-600' : 'border-gray-200 dark:border-gray-600'}`}
                         aria-label="Toggle urgent message"
                     >
                         <AlertIcon className="h-5 w-5" />
                     </button>
                     {isPatient && (
-                      <span className="absolute -top-1 -right-1 text-[10px] bg-gradient-to-r from-rose-500 to-rose-900 text-white font-bold rounded-full h-4 w-4 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-lg">
+                      <span className="absolute -top-1.5 -right-1.5 text-xs bg-gradient-to-br from-rose-500 to-rose-600 text-white font-extrabold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-lg">
                         {patientData?.urgentCredits}
                       </span>
                     )}
@@ -675,7 +728,7 @@ const Messages: React.FC<MessagesProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowFilePicker(true)}
-                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 flex-shrink-0"
+                    className="p-2.5 rounded-xl bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110 active:scale-95 transition-all duration-300 shadow-md border-2 border-gray-200 dark:border-gray-600 flex-shrink-0"
                     aria-label="Attach file"
                   >
                     <DocumentUploadIcon className="h-5 w-5" />
@@ -684,38 +737,41 @@ const Messages: React.FC<MessagesProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAudioRecorder(true)}
-                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 flex-shrink-0"
+                    className="p-2.5 rounded-xl bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110 active:scale-95 transition-all duration-300 shadow-md border-2 border-gray-200 dark:border-gray-600 flex-shrink-0"
                     aria-label="Record audio"
                   >
                     <MicrophoneIcon className="h-5 w-5" />
                   </button>
                 </div>
 
-                {/* Desktop Action Buttons */}
+                {/* Action Buttons - Desktop */}
                 <div className="hidden sm:flex items-center space-x-2">
                   <div className="relative group flex-shrink-0">
                     <button
                         type="button"
                         onClick={handleToggleUrgent}
                         disabled={cannotTurnOnUrgent}
-                        className={`p-2.5 rounded-lg transition-all duration-200 ${
+                        className={`relative p-3 rounded-xl transition-all duration-300 shadow-lg ${
                           isUrgent 
-                            ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 scale-110' 
-                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95'
-                        } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                            ? 'bg-gradient-to-br from-red-500 to-red-600 text-white scale-110 shadow-red-500/50' 
+                            : 'bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:scale-110 active:scale-95'
+                        } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border-2 ${isUrgent ? 'border-red-600' : 'border-gray-200 dark:border-gray-600'}`}
                         aria-label="Toggle urgent message"
                     >
                         <AlertIcon className="h-5 w-5" />
+                        {isUrgent && (
+                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-400/30 to-transparent animate-pulse"></div>
+                        )}
                     </button>
                     {isPatient && (
-                      <span className="absolute -top-1 -right-1 text-xs bg-gradient-to-r from-rose-500 to-rose-900 text-white font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-lg">
+                      <span className="absolute -top-2 -right-2 text-xs bg-gradient-to-br from-rose-500 to-rose-600 text-white font-extrabold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-xl">
                         {patientData?.urgentCredits}
                       </span>
                     )}
                     {cannotTurnOnUrgent && (
-                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-gray-900 text-white text-xs rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                          You have no urgent credits. Please purchase more from the Billing page.
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></div>
+                      <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-64 p-4 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold rounded-2xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 border-2 border-gray-700 dark:border-gray-300">
+                          ⚠️ You have no urgent credits. Please purchase more from the Billing page.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-gray-900 dark:border-t-gray-100"></div>
                       </div>
                     )}
                   </div>
@@ -723,7 +779,7 @@ const Messages: React.FC<MessagesProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowFilePicker(true)}
-                    className="p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
+                    className="p-3 rounded-xl bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg border-2 border-gray-200 dark:border-gray-600 flex-shrink-0"
                     aria-label="Attach file"
                   >
                     <DocumentUploadIcon className="h-5 w-5" />
@@ -732,55 +788,76 @@ const Messages: React.FC<MessagesProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAudioRecorder(true)}
-                    className="p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
+                    className="p-3 rounded-xl bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg border-2 border-gray-200 dark:border-gray-600 flex-shrink-0"
                     aria-label="Record audio"
                   >
                     <MicrophoneIcon className="h-5 w-5" />
                   </button>
                 </div>
 
-                {/* Bottom Row - Input and Send Button */}
-                <div className="flex items-center space-x-2 flex-1">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => {
-                      setInput(e.target.value);
-                      // Trigger typing indicator
-                      if (selectedContactId && realTimeChat.startTyping) {
-                        realTimeChat.startTyping(selectedContactId);
-                      }
-                    }}
-                    onBlur={() => {
-                      // Stop typing when losing focus
-                      if (selectedContactId && realTimeChat.stopTyping) {
-                        realTimeChat.stopTyping(selectedContactId);
-                      }
-                    }}
-                    placeholder="Type your message..."
-                    className="flex-1 px-3 sm:px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
-                  />
+                {/* Input and Send Button - Enhanced Design */}
+                <div className="flex items-center space-x-2 sm:space-x-3 flex-1">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => {
+                        setInput(e.target.value);
+                        if (selectedContactId && realTimeChat.startTyping) {
+                          realTimeChat.startTyping(selectedContactId);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (selectedContactId && realTimeChat.stopTyping) {
+                          realTimeChat.stopTyping(selectedContactId);
+                        }
+                      }}
+                      placeholder="Type your message..."
+                      className="w-full px-4 sm:px-5 py-3 sm:py-3.5 text-sm sm:text-base bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-4 focus:ring-rose-500/30 focus:border-rose-500 dark:focus:border-rose-400 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 shadow-md font-medium"
+                    />
+                  </div>
+                  
                   <button
                     type="submit"
                     disabled={!input.trim()}
-                    className="group relative bg-gradient-to-r from-rose-500 to-rose-900 text-white p-2.5 sm:p-3 rounded-xl font-semibold hover:shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200 flex-shrink-0 overflow-hidden"
+                    className="group relative bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 text-white p-3 sm:p-4 rounded-2xl font-bold hover:from-rose-600 hover:via-rose-700 hover:to-rose-800 shadow-xl shadow-rose-500/30 hover:shadow-2xl hover:shadow-rose-500/40 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-300 flex-shrink-0 overflow-hidden border-2 border-rose-600"
                     aria-label="Send message"
                   >
                     <span className="relative z-10">
-                      <PaperAirplaneIcon className="h-5 w-5"/>
+                      <PaperAirplaneIcon className="h-5 w-5 sm:h-6 sm:w-6"/>
                     </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-rose-900 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/40 to-pink-500/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    {!input.trim() && (
+                      <div className="absolute inset-0 bg-gray-400 opacity-20"></div>
+                    )}
                   </button>
                 </div>
               </form>
             </div>
           </>
         ) : (
-          <div className="hidden md:flex flex-col items-center justify-center h-full text-center p-8 bg-gray-50 dark:bg-gray-900">
-            <div className="bg-white dark:bg-gray-800 rounded-3xl p-12 shadow-xl border border-gray-200 dark:border-gray-700">
-              <EmptyMessagesIcon className="h-24 w-24 text-gray-400 dark:text-gray-500 mb-6 mx-auto" />
-              <h3 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100 mb-3">Select a Conversation</h3>
-              <p className="text-gray-500 dark:text-gray-400 max-w-sm">Choose a contact from the list to start chatting and stay connected with your healthcare team.</p>
+          <div className="hidden md:flex flex-col items-center justify-center h-full text-center p-8 bg-gradient-to-br from-gray-50 via-white to-rose-50/30 dark:from-gray-900 dark:via-gray-850 dark:to-gray-900">
+            <div className="relative bg-gradient-to-br from-white to-rose-50/50 dark:from-gray-800 dark:to-gray-900 rounded-3xl p-12 sm:p-16 shadow-2xl border-2 border-gray-200/50 dark:border-gray-700/50 max-w-md animate-fade-in">
+              {/* Decorative Background Elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-rose-400/10 to-purple-400/10 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-rose-400/10 to-pink-400/10 rounded-full blur-3xl"></div>
+              
+              <div className="relative">
+                <div className="relative inline-flex items-center justify-center mb-8">
+                  <div className="absolute inset-0 bg-gradient-to-br from-rose-400/20 to-purple-400/20 rounded-full blur-2xl animate-pulse"></div>
+                  <div className="relative bg-gradient-to-br from-rose-100 to-purple-100 dark:from-rose-900/40 dark:to-purple-900/40 rounded-full p-8 shadow-xl">
+                    <EmptyMessagesIcon className="h-20 w-20 sm:h-24 sm:w-24 text-rose-500 dark:text-rose-400" />
+                  </div>
+                </div>
+                
+                <h3 className="text-2xl sm:text-3xl font-display font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-rose-900 dark:from-gray-100 dark:via-gray-200 dark:to-rose-400 bg-clip-text text-transparent mb-4">Select a Conversation</h3>
+                <p className="text-gray-600 dark:text-gray-400 max-w-sm font-medium leading-relaxed">Choose a contact from the list to start chatting and stay connected with your healthcare team.</p>
+                
+                <div className="mt-8 flex items-center justify-center space-x-2 text-xs text-gray-400 dark:text-gray-500">
+                  <div className="h-2 w-2 rounded-full bg-gradient-to-r from-rose-500 to-purple-500 animate-pulse"></div>
+                  <span className="font-semibold">Ready to connect</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
