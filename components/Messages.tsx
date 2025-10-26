@@ -735,30 +735,32 @@ const Messages: React.FC<MessagesProps> = ({
                )}
                
               <form onSubmit={handleSendMessage} className="relative z-10 flex items-center gap-2">
-                {/* Urgent Credits Button - Outside on Left */}
-                <div className="relative flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleToggleUrgent}
-                    disabled={cannotTurnOnUrgent}
-                    className={`p-2.5 sm:p-2.5 rounded-full transition-all duration-200 ${
-                      isUrgent 
-                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' 
-                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-red-600 dark:hover:text-red-400'
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    aria-label="Toggle urgent message"
-                  >
-                    <AlertIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                  </button>
-                  {isPatient && patientData && (
-                    <span className="absolute -top-1 -right-1 text-[9px] sm:text-xs bg-gradient-to-br from-rose-500 to-rose-600 text-white font-extrabold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-700 shadow-lg">
-                      {patientData.urgentCredits}
-                    </span>
-                  )}
-                </div>
+                {/* Input Container with Urgent Credits and Three-Dot - Mobile optimized */}
+                <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300 flex-1 max-w-[calc(100%-60px)] sm:max-w-none">
+                  {/* Left Side - Urgent Credits Inside */}
+                  <div className="flex items-center pl-2 sm:pl-3">
+                    <div className="relative flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleToggleUrgent}
+                        disabled={cannotTurnOnUrgent}
+                        className={`p-1.5 sm:p-2.5 rounded-full transition-all duration-200 ${
+                          isUrgent 
+                            ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' 
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-red-600 dark:hover:text-red-400'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        aria-label="Toggle urgent message"
+                      >
+                        <AlertIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                      </button>
+                      {isPatient && patientData && (
+                        <span className="absolute -top-1 -right-1 text-[9px] sm:text-xs bg-gradient-to-br from-rose-500 to-rose-600 text-white font-extrabold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-700 shadow-lg">
+                          {patientData.urgentCredits}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-                {/* Input Container with Three-Dot Menu */}
-                <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300 flex-1">
                   {/* Text Input */}
                   <input
                     type="text"
@@ -775,7 +777,7 @@ const Messages: React.FC<MessagesProps> = ({
                       }
                     }}
                     placeholder="Message"
-                    className="flex-1 pl-4 pr-2 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
+                    className="flex-1 px-2 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
                   />
 
                   {/* Three Dot Menu Button - Inside Input on Right */}
@@ -826,14 +828,14 @@ const Messages: React.FC<MessagesProps> = ({
                   </div>
                 </div>
 
-                {/* Voice/Send Button Toggle - Outside on Right */}
+                {/* Voice/Send Button Toggle - Outside on Right, Always Visible */}
                 {input.trim() ? (
                   <button
                     type="submit"
-                    className="p-3 sm:p-2.5 rounded-full bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg shadow-rose-500/40 hover:shadow-xl hover:shadow-rose-500/50 hover:scale-110 active:scale-95 transition-all duration-300 flex-shrink-0"
+                    className="flex-shrink-0 p-2.5 sm:p-2.5 rounded-full bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg shadow-rose-500/40 hover:shadow-xl hover:shadow-rose-500/50 hover:scale-110 active:scale-95 transition-all duration-300"
                     aria-label="Send message"
                   >
-                    <svg className="h-6 w-6 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                   </button>
@@ -841,10 +843,10 @@ const Messages: React.FC<MessagesProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAudioRecorder(true)}
-                    className="p-3 sm:p-2.5 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/50 hover:scale-110 active:scale-95 transition-all duration-300 flex-shrink-0"
+                    className="flex-shrink-0 p-2.5 sm:p-2.5 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/50 hover:scale-110 active:scale-95 transition-all duration-300"
                     aria-label="Record voice message"
                   >
-                    <MicrophoneIcon className="h-6 w-6 sm:h-6 sm:w-6" />
+                    <MicrophoneIcon className="h-6 w-6" />
                   </button>
                 )}
 
