@@ -734,9 +734,9 @@ const Messages: React.FC<MessagesProps> = ({
                  </div>
                )}
                
-              <form onSubmit={handleSendMessage} className="relative z-10">
-                {/* Single Input Container with All Buttons Inside */}
-                <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300">
+              <form onSubmit={handleSendMessage} className="relative z-10 flex items-center gap-2">
+                {/* Input Container with Urgent Credits and Three-Dot - 70% width on mobile */}
+                <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300 w-[70%] sm:flex-1">
                   {/* Left Side - Urgent Credits */}
                   <div className="flex items-center pl-2 sm:pl-3">
                     {/* Urgent Credit Button with Badge */}
@@ -745,7 +745,7 @@ const Messages: React.FC<MessagesProps> = ({
                         type="button"
                         onClick={handleToggleUrgent}
                         disabled={cannotTurnOnUrgent}
-                        className={`p-2 sm:p-2.5 rounded-full transition-all duration-200 ${
+                        className={`p-1.5 sm:p-2.5 rounded-full transition-all duration-200 ${
                           isUrgent 
                             ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' 
                             : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-red-600 dark:hover:text-red-400'
@@ -778,12 +778,11 @@ const Messages: React.FC<MessagesProps> = ({
                       }
                     }}
                     placeholder="Message"
-                    className="flex-1 px-3 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
+                    className="flex-1 px-2 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
                   />
 
-                  {/* Right Side Buttons - Inside Input */}
-                  <div className="flex items-center pr-2 sm:pr-3 space-x-1">
-                    {/* Three Dot Menu Button */}
+                  {/* Three Dot Menu Button - Inside Input on Right */}
+                  <div className="flex items-center pr-2 sm:pr-3">
                     <div className="relative attach-menu-container">
                       <button
                         type="button"
@@ -827,30 +826,30 @@ const Messages: React.FC<MessagesProps> = ({
                         </div>
                       )}
                     </div>
-
-                    {/* Voice/Send Button Toggle */}
-                    {input.trim() ? (
-                      <button
-                        type="submit"
-                        className="p-2 sm:p-2.5 rounded-full bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg shadow-rose-500/40 hover:shadow-xl hover:shadow-rose-500/50 hover:scale-110 active:scale-95 transition-all duration-300 flex-shrink-0"
-                        aria-label="Send message"
-                      >
-                        <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowAudioRecorder(true)}
-                        className="p-2 sm:p-2.5 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/50 hover:scale-110 active:scale-95 transition-all duration-300 flex-shrink-0"
-                        aria-label="Record voice message"
-                      >
-                        <MicrophoneIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                      </button>
-                    )}
                   </div>
                 </div>
+
+                {/* Voice/Send Button Toggle - Outside on Right */}
+                {input.trim() ? (
+                  <button
+                    type="submit"
+                    className="p-3 sm:p-2.5 rounded-full bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg shadow-rose-500/40 hover:shadow-xl hover:shadow-rose-500/50 hover:scale-110 active:scale-95 transition-all duration-300 flex-shrink-0"
+                    aria-label="Send message"
+                  >
+                    <svg className="h-6 w-6 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowAudioRecorder(true)}
+                    className="p-3 sm:p-2.5 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/50 hover:scale-110 active:scale-95 transition-all duration-300 flex-shrink-0"
+                    aria-label="Record voice message"
+                  >
+                    <MicrophoneIcon className="h-6 w-6 sm:h-6 sm:w-6" />
+                  </button>
+                )}
 
                 {/* Tooltip for Urgent Credits */}
                 {cannotTurnOnUrgent && (
