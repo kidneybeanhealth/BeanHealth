@@ -718,67 +718,11 @@ const Messages: React.FC<MessagesProps> = ({
                  </div>
                )}
                
-              <form onSubmit={handleSendMessage} className="relative">
+              <form onSubmit={handleSendMessage} className="relative pr-14 sm:pr-16">
                 {/* Single Input Container with All Buttons Inside */}
                 <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300">
-                  {/* Left Side Buttons - Inside Input */}
-                  <div className="flex items-center pl-2 sm:pl-3 space-x-1">
-                    {/* Emoji/Smile Button (Optional) */}
-                    <button
-                      type="button"
-                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
-                      aria-label="Emoji"
-                    >
-                      <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* Text Input */}
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => {
-                      setInput(e.target.value);
-                      if (selectedContactId && realTimeChat.startTyping) {
-                        realTimeChat.startTyping(selectedContactId);
-                      }
-                    }}
-                    onBlur={() => {
-                      if (selectedContactId && realTimeChat.stopTyping) {
-                        realTimeChat.stopTyping(selectedContactId);
-                      }
-                    }}
-                    placeholder="Message"
-                    className="flex-1 px-2 sm:px-3 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
-                  />
-
-                  {/* Right Side Buttons - Inside Input */}
-                  <div className="flex items-center pr-2 sm:pr-3 space-x-1">
-                    {/* Attach File Button */}
-                    <button
-                      type="button"
-                      onClick={() => setShowFilePicker(true)}
-                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
-                      aria-label="Attach file"
-                    >
-                      <DocumentUploadIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                    </button>
-
-                    {/* Camera Button (Optional for future) */}
-                    <button
-                      type="button"
-                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
-                      aria-label="Camera"
-                    >
-                      <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </button>
-
-                    {/* Urgent Credit Button with Badge */}
+                  {/* Left Side - Urgent Credit Button */}
+                  <div className="flex items-center pl-2 sm:pl-3">
                     <div className="relative">
                       <button
                         type="button"
@@ -800,16 +744,60 @@ const Messages: React.FC<MessagesProps> = ({
                       )}
                     </div>
                   </div>
+
+                  {/* Text Input */}
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                      if (selectedContactId && realTimeChat.startTyping) {
+                        realTimeChat.startTyping(selectedContactId);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (selectedContactId && realTimeChat.stopTyping) {
+                        realTimeChat.stopTyping(selectedContactId);
+                      }
+                    }}
+                    placeholder="Message"
+                    className="flex-1 px-3 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
+                  />
+
+                  {/* Right Side Buttons - Inside Input */}
+                  <div className="flex items-center pr-2 sm:pr-3 space-x-1">
+                    {/* Attach File Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowFilePicker(true)}
+                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
+                      aria-label="Attach file"
+                    >
+                      <DocumentUploadIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </button>
+
+                    {/* Camera Button */}
+                    <button
+                      type="button"
+                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
+                      aria-label="Camera"
+                    >
+                      <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Voice Message Button - Outside on Right (Green Circle) */}
+                {/* Voice Message Button - Outside on Right (Green Circle) - Fully Visible */}
                 <button
                   type="button"
                   onClick={() => setShowAudioRecorder(true)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[calc(100%+0.5rem)] sm:translate-x-[calc(100%+0.75rem)] p-3 sm:p-4 bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-full shadow-xl shadow-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-500/50 hover:scale-110 active:scale-95 transition-all duration-300"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 p-3 sm:p-3.5 bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-full shadow-xl shadow-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-500/50 hover:scale-110 active:scale-95 transition-all duration-300"
                   aria-label="Record voice message"
                 >
-                  <MicrophoneIcon className="h-6 w-6 sm:h-7 sm:w-7" />
+                  <MicrophoneIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                 </button>
 
                 {/* Tooltip for Urgent Credits */}
