@@ -749,16 +749,16 @@ const Messages: React.FC<MessagesProps> = ({
                       }
                     }}
                     placeholder="Message"
-                    className="flex-1 px-3 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
+                    className="flex-1 px-2 sm:px-4 py-3 sm:py-3.5 text-sm sm:text-base bg-transparent border-0 focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
                   />
 
                   {/* Right Side Buttons - Inside Input */}
-                  <div className="flex items-center pr-2 sm:pr-3 space-x-1">
+                  <div className="flex items-center pr-1.5 sm:pr-3 space-x-0.5 sm:space-x-1">
                     {/* Attach File Button */}
                     <button
                       type="button"
                       onClick={() => setShowFilePicker(true)}
-                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
+                      className="p-1.5 sm:p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200 flex-shrink-0"
                       aria-label="Attach file"
                     >
                       <DocumentUploadIcon className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -767,7 +767,7 @@ const Messages: React.FC<MessagesProps> = ({
                     {/* Camera Button */}
                     <button
                       type="button"
-                      className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200"
+                      className="p-1.5 sm:p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200 flex-shrink-0"
                       aria-label="Camera"
                     >
                       <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -777,12 +777,12 @@ const Messages: React.FC<MessagesProps> = ({
                     </button>
 
                     {/* Urgent Credit Button with Badge */}
-                    <div className="relative">
+                    <div className="relative flex-shrink-0">
                       <button
                         type="button"
                         onClick={handleToggleUrgent}
                         disabled={cannotTurnOnUrgent}
-                        className={`p-2 rounded-full transition-all duration-200 ${
+                        className={`p-1.5 sm:p-2 rounded-full transition-all duration-200 ${
                           isUrgent 
                             ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' 
                             : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-red-600 dark:hover:text-red-400'
@@ -792,7 +792,7 @@ const Messages: React.FC<MessagesProps> = ({
                         <AlertIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                       </button>
                       {isPatient && patientData && (
-                        <span className="absolute -top-1 -right-1 text-[10px] sm:text-xs bg-gradient-to-br from-rose-500 to-rose-600 text-white font-extrabold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-700 shadow-lg">
+                        <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 text-[9px] sm:text-xs bg-gradient-to-br from-rose-500 to-rose-600 text-white font-extrabold rounded-full h-3.5 w-3.5 sm:h-5 sm:w-5 flex items-center justify-center border border-white dark:border-gray-700 shadow-lg">
                           {patientData.urgentCredits}
                         </span>
                       )}
