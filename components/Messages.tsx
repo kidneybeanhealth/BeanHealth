@@ -735,8 +735,8 @@ const Messages: React.FC<MessagesProps> = ({
                )}
                
               <form onSubmit={handleSendMessage} className="relative z-10 flex items-center gap-2">
-                {/* Input Container with Urgent Credits and Three-Dot - 70% width on mobile */}
-                <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300 w-[70%] sm:flex-1">
+                {/* Input Container with Urgent Credits and Three-Dot - 65% width on mobile */}
+                <div className="relative flex items-center bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-3xl shadow-lg hover:border-rose-400 dark:hover:border-rose-500 focus-within:border-rose-500 dark:focus-within:border-rose-400 focus-within:ring-4 focus-within:ring-rose-500/20 transition-all duration-300 w-[65%] sm:flex-1">
                   {/* Left Side - Urgent Credits */}
                   <div className="flex items-center pl-2 sm:pl-3">
                     {/* Urgent Credit Button with Badge */}
