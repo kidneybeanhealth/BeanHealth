@@ -63,7 +63,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onUpdateAv
                 </div>
               ) : (
                 <div className={`h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 ${colorClass} ring-2 ring-gray-300 dark:ring-gray-700 group-hover:ring-rose-400 dark:group-hover:ring-rose-500 transition-all duration-200 shadow-md rounded-full flex items-center justify-center`}>
-                  <span className="text-white font-semibold text-xs sm:text-sm lg:text-base">{initials}</span>
+                  <span className="text-white font-bold text-xs sm:text-sm lg:text-base drop-shadow-sm">{initials}</span>
                 </div>
               )}
               <div className="absolute inset-0 bg-rose-500/15 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
