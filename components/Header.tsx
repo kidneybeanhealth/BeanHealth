@@ -53,9 +53,19 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onUpdateAv
               className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-rose-900 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:scale-105 active:scale-95 transition-all duration-200" 
               aria-label="Update profile photo"
             >
-              <div className={`h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 ${colorClass} ring-2 ring-white dark:ring-gray-800 group-hover:ring-rose-400 dark:group-hover:ring-rose-500 transition-all duration-200 shadow-sm rounded-full flex items-center justify-center`}>
-                <span className="text-white font-semibold text-xs sm:text-sm lg:text-base">{initials}</span>
-              </div>
+              {user.avatarUrl || user.avatar_url ? (
+                <div className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 ring-2 ring-gray-300 dark:ring-gray-700 group-hover:ring-rose-400 dark:group-hover:ring-rose-500 transition-all duration-200 shadow-md rounded-full overflow-hidden bg-white dark:bg-gray-800">
+                  <img 
+                    src={user.avatarUrl || user.avatar_url} 
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className={`h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 ${colorClass} ring-2 ring-gray-300 dark:ring-gray-700 group-hover:ring-rose-400 dark:group-hover:ring-rose-500 transition-all duration-200 shadow-md rounded-full flex items-center justify-center`}>
+                  <span className="text-white font-semibold text-xs sm:text-sm lg:text-base">{initials}</span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-rose-500/15 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
             </button>
             <button 
