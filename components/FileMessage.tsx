@@ -151,19 +151,19 @@ export const FileMessage: React.FC<FileMessageProps> = ({
       case 'pdf':
       default:
         return (
-          <div className="flex items-center space-x-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center space-x-3 p-3">
             {getFileIcon()}
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+              <div className="text-sm font-medium truncate">
                 {message.fileName}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs opacity-70">
                 {message.fileSize ? formatFileSize(message.fileSize) : 'Document'}
               </div>
             </div>
             <button
               onClick={handleDownload}
-              className="text-blue-500 hover:text-blue-600 text-xs font-medium"
+              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium"
             >
               Download
             </button>

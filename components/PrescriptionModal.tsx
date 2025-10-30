@@ -146,7 +146,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         'pdf',
         fileData.fileSize,
         fileData.mimeType,
-        `📋 Prescription sent - ${medications.length} medication${medications.length > 1 ? 's' : ''} prescribed`,
+        undefined, // No text message, just the prescription PDF
         false // not urgent
       );
 
