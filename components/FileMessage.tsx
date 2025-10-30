@@ -39,15 +39,28 @@ export const FileMessage: React.FC<FileMessageProps> = ({
     }
   };
 
-  const handleDownload = () => {
-    if (message.fileUrl) {
+  const handleDownload = async () => {
+    if (!message.fileUrl) return;
+    
+    try {
+      // For Supabase storage URLs, we need to fetch and create a blob
+      const response = await fetch(message.fileUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
       const link = document.createElement('a');
-      link.href = message.fileUrl;
-      link.download = message.fileName || 'file';
-      link.target = '_blank';
+      link.href = url;
+      link.download = message.fileName || 'download';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download error:', error);
+      // Fallback: try opening in new tab
+      window.open(message.fileUrl, '_blank');
     }
   };
 
@@ -163,9 +176,13 @@ export const FileMessage: React.FC<FileMessageProps> = ({
             </div>
             <button
               onClick={handleDownload}
-              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium"
+              className="flex items-center space-x-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition-colors"
+              title="Download prescription"
             >
-              Download
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>Download</span>
             </button>
           </div>
         );
