@@ -102,7 +102,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
             </button>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center font-medium">
-            © 2024 Beanhealth
+            © 2025 Beanhealth
           </p>
         </div>
       </aside>
