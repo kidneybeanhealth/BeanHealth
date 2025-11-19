@@ -9,10 +9,54 @@ import Auth from './components/auth/Auth';
 import ProfileSetup from './components/auth/ProfileSetup';
 import PatientDashboard from './components/PatientDashboard';
 import DoctorDashboardMain from './components/DoctorDashboardMain';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
+import { supabase } from './lib/supabase';
 
 const AppContent: React.FC = () => {
   const { user, profile, loading, needsProfileSetup } = useAuth();
   const [loadingTimeout, setLoadingTimeout] = React.useState(false);
+
+  // Handle deep link for OAuth callback on mobile
+  React.useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const handleAppUrlOpen = async (event: { url: string }) => {
+      console.log('Deep link received:', event.url);
+      
+      // Check if this is an OAuth callback
+      if (event.url.includes('oauth-callback')) {
+        // Close the browser
+        await Browser.close();
+        
+        // Extract the URL fragments (Supabase auth tokens)
+        const url = new URL(event.url);
+        const fragment = url.hash.substring(1); // Remove the # symbol
+        
+        // Parse fragment into params
+        const params = new URLSearchParams(fragment);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        
+        if (accessToken && refreshToken) {
+          console.log('Setting session from deep link');
+          // Set the session in Supabase
+          await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+        }
+      }
+    };
+
+    // Listen for app URL open events
+    CapacitorApp.addListener('appUrlOpen', handleAppUrlOpen);
+
+    return () => {
+      CapacitorApp.removeAllListeners();
+    };
+  }, []);
 
   // Add a longer timeout to prevent infinite loading, but be more forgiving
   React.useEffect(() => {

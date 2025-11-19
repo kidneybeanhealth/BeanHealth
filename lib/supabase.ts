@@ -1,10 +1,21 @@
 import { createClient } from '@supabase/supabase-js'
+import { Capacitor } from '@capacitor/core'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.')
+}
+
+// Determine redirect URL based on platform
+const getRedirectUrl = () => {
+  if (Capacitor.isNativePlatform()) {
+    // For mobile app, use deep link
+    return 'com.beanhealth.app://oauth-callback'
+  }
+  // For web, use current origin
+  return window.location.origin
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

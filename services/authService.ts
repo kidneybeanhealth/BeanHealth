@@ -1,17 +1,34 @@
 import { supabase } from '../lib/supabase'
 import { Patient, Doctor, User, UserRole } from '../types'
+import { Capacitor } from '@capacitor/core'
+import { Browser } from '@capacitor/browser'
 
 export class AuthService {
   // Google OAuth sign in
   static async signInWithGoogle() {
+    // Determine redirect URL based on platform
+    const redirectTo = Capacitor.isNativePlatform() 
+      ? 'com.beanhealth.app://oauth-callback'
+      : window.location.origin
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin  // Redirect back to main app
+        redirectTo,
+        skipBrowserRedirect: Capacitor.isNativePlatform() // Don't auto-redirect on mobile
       }
     })
 
     if (error) throw error
+
+    // On mobile, open browser manually
+    if (Capacitor.isNativePlatform() && data?.url) {
+      await Browser.open({ 
+        url: data.url,
+        presentationStyle: 'popover'
+      })
+    }
+
     return data
   }
 
