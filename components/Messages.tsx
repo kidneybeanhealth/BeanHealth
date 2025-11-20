@@ -412,7 +412,7 @@ const Messages: React.FC<MessagesProps> = ({
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
 
   return (
-    <div className="flex flex-col h-screen md:h-full md:flex-row bg-gradient-to-br from-gray-50 via-white to-rose-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 md:rounded-xl md:shadow-2xl overflow-hidden border-0 md:border border-gray-200/50 dark:border-gray-700/50">
+    <div className="flex flex-col h-screen md:h-[800px] md:flex-row bg-gradient-to-br from-gray-50 via-white to-rose-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 md:rounded-xl md:shadow-2xl overflow-hidden border-0 md:border border-gray-200/50 dark:border-gray-700/50">
       {/* Mobile-only Header - Shows only when no contact selected */}
       {!selectedContactId && onMenuClick && (
         <div className="md:hidden sticky top-0 z-20 px-4 py-3 border-b border-gray-200/80 dark:border-gray-700/80 flex items-center bg-gradient-to-r from-white via-white to-rose-50/50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900 backdrop-blur-md shadow-sm">
@@ -586,11 +586,11 @@ const Messages: React.FC<MessagesProps> = ({
               </div>
             </div>
             
-            {/* Messages Area - Enhanced Design */}
-            <div 
+            {/* Messages Area - Enhanced Design with Fixed Height */}
+            <div
               ref={messagesContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-rose-50/20 dark:from-gray-900 dark:via-gray-850 dark:to-gray-900 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+              className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-rose-50/20 dark:from-gray-900 dark:via-gray-850 dark:to-gray-900 min-h-0 max-h-[calc(100vh-280px)] md:max-h-[600px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
             >
               <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6 max-w-5xl mx-auto">
                 <div className="space-y-3 sm:space-y-4">
