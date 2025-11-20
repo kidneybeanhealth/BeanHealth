@@ -254,16 +254,87 @@ export class PrescriptionService {
    */
   private static transformPrescriptionWithDetails(data: any): Prescription {
     const prescription = this.transformPrescription(data);
-    
+
     if (data.doctor) {
       prescription.doctorName = data.doctor.name;
       prescription.doctorSpecialty = data.doctor.specialty;
     }
-    
+
     if (data.patient) {
       prescription.patientName = data.patient.name;
     }
-    
+
     return prescription;
+  }
+
+  /**
+   * Get latest active prescription for a patient from a specific doctor
+   */
+  static async getLatestActivePrescription(
+    doctorId: string,
+    patientId: string
+  ): Promise<{ data: Prescription | null; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('prescriptions')
+        .select(`
+          *,
+          doctor:doctor_id (
+            id,
+            name,
+            specialty
+          ),
+          patient:patient_id (
+            id,
+            name
+          )
+        `)
+        .eq('doctor_id', doctorId)
+        .eq('patient_id', patientId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      return { data: data ? this.transformPrescriptionWithDetails(data) : null, error: null };
+    } catch (error) {
+      console.error('Error fetching latest active prescription:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Get all active prescriptions for a patient
+   */
+  static async getActivePrescriptions(patientId: string): Promise<{ data: Prescription[]; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('prescriptions')
+        .select(`
+          *,
+          doctor:doctor_id (
+            id,
+            name,
+            specialty
+          ),
+          patient:patient_id (
+            id,
+            name
+          )
+        `)
+        .eq('patient_id', patientId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const prescriptions = data?.map(p => this.transformPrescriptionWithDetails(p)) || [];
+      return { data: prescriptions, error: null };
+    } catch (error) {
+      console.error('Error fetching active prescriptions:', error);
+      return { data: [], error };
+    }
   }
 }
