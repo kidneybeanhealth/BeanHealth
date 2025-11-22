@@ -1,24 +1,36 @@
-/* BeanHealth Design System - Modern UI/UX */
+/* BeanHealth Design System - Minimalist & Clean (Cred/Airbnb Inspired) */
 /* stylelint-disable at-rule-no-unknown */
 
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Primary Brand Colors - Burgundy/Rose for Healthcare */
-  --primary-50: #fff1f2;
-  --primary-100: #ffe4e6;
-  --primary-200: #fecdd3;
-  --primary-300: #fda4af;
-  --primary-400: #fb7185;
-  --primary-500: #f43f5e;
-  --primary-600: #e11d48;
-  --primary-700: #be123c;
-  --primary-800: #9f1239;
-  --primary-900: #881337;
+  /* Primary Brand Colors - Minimalist Dark/Accent Palette (Inspired by Cred/Airbnb) */
+  --primary-50: #f8fafc;
+  --primary-100: #f1f5f9;
+  --primary-200: #e2e8f0;
+  --primary-300: #cbd5e1;
+  --primary-400: #94a3b8;
+  --primary-500: #64748b;
+  --primary-600: #475569;
+  --primary-700: #334155;
+  --primary-800: #1e293b;
+  --primary-900: #0f172a;
+
+  /* Accent Color - Subtle Teal for Actions */
+  --accent-50: #ecfeff;
+  --accent-100: #cffafe;
+  --accent-200: #a5f3fc;
+  --accent-300: #67e8f9;
+  --accent-400: #22d3ee;
+  --accent-500: #06b6d4;
+  --accent-600: #0891b2;
+  --accent-700: #0e7490;
+  --accent-800: #155e75;
+  --accent-900: #164e63;
   
   /* Secondary Brand Colors - Soft Gray for depth */
   --secondary-50: #f9fafb;
@@ -68,16 +80,16 @@
   --info-light: #dbeafe;
   --info-dark: #1e40af;
   
-  /* Shadows - Refined for depth and hierarchy */
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
-  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 24px rgba(14, 165, 233, 0.25);
-  --shadow-glow-lg: 0 0 40px rgba(14, 165, 233, 0.35);
-  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+  /* Shadows - Subtle & Minimal (Airbnb/Cred style) */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 8px 24px 0 rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 16px 48px 0 rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.03);
   
   /* Spacing Scale - 8pt grid system */
   --spacing-0: 0;
@@ -153,20 +165,27 @@ html {
 }
 
 body {
-  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
+  background-color: #fafafa;
+  color: #1e293b;
 }
 
-/* Typography - Enhanced readability */
+.dark body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+/* Typography - Clean & Minimal */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
-  color: var(--gray-900);
+  font-family: 'Manrope', 'Inter', sans-serif;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: #0f172a;
 }
 
 .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
@@ -346,83 +365,83 @@ a:hover {
   }
 }
 
-/* Component Styles */
+/* Component Styles - Minimalist Design */
 /* stylelint-disable at-rule-no-unknown */
 @layer components {
-  /* Button Variants - Healthcare theme */
+  /* Button Variants - Clean & Minimal */
   .btn-primary {
-    @apply px-6 py-3.5 bg-rose-900 hover:bg-rose-800 text-white font-semibold rounded-xl shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-rose-900 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed;
   }
-  
+
   .btn-secondary {
-    @apply px-6 py-3.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-rose-900 hover:text-rose-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-rose-900 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-6 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:border-slate-900 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed;
   }
-  
+
   .btn-ghost {
-    @apply px-4 py-2.5 text-gray-600 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400;
+    @apply px-4 py-2 text-slate-600 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-slate-300;
   }
-  
-  .btn-danger {
-    @apply px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2;
+
+  .btn-accent {
+    @apply px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2;
   }
-  
-  .btn-success {
-    @apply px-6 py-3.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2;
-  }
-  
-  /* Card Variants - Clean healthcare aesthetic */
+
+  /* Card Variants - Minimal & Clean */
   .card {
-    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200;
+    @apply bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 transition-all duration-200;
   }
-  
+
   .card-hover {
-    @apply card hover:shadow-md hover:border-rose-900/30 dark:hover:border-rose-900/50 hover:-translate-y-0.5 cursor-pointer;
+    @apply card hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer;
+  }
+
+  .card-flat {
+    @apply bg-white dark:bg-slate-800 rounded-2xl p-6 transition-all duration-200;
+  }
+
+  .card-minimal {
+    @apply bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-100 dark:border-slate-700/50;
   }
   
-  .card-glass {
-    @apply glass-effect rounded-2xl shadow-xl p-6;
-  }
-  
-  .card-highlight {
-    @apply card border-l-4 border-l-rose-900;
-  }
-  
-  /* Input Styles - Modern forms */
+  /* Input Styles - Clean & Minimal */
   .input-modern {
-    @apply w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all duration-200 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500;
+    @apply w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-slate-900 dark:focus:border-slate-500 focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-500 transition-all duration-200 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500;
   }
-  
+
+  .input-minimal {
+    @apply w-full px-4 py-3 bg-transparent border-b-2 border-slate-200 dark:border-slate-700 rounded-none focus:outline-none focus:border-slate-900 dark:focus:border-slate-400 transition-all duration-200 text-slate-900 dark:text-slate-100 placeholder:text-slate-400;
+  }
+
   .input-error {
-    @apply input-modern border-red-300 dark:border-red-700 focus:ring-red-500;
+    @apply input-modern border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-red-500;
   }
-  
+
   .input-success {
-    @apply input-modern border-green-300 dark:border-green-700 focus:ring-green-500;
+    @apply input-modern border-emerald-300 dark:border-emerald-700 focus:border-emerald-500 focus:ring-emerald-500;
   }
-  
-  /* Badge Styles - Refined indicators */
+
+  /* Badge Styles - Minimal indicators */
   .badge {
-    @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase;
+    @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium;
   }
-  
+
   .badge-success {
-    @apply badge bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-400/20;
+    @apply badge bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400;
   }
-  
+
   .badge-warning {
-    @apply badge bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-400/20;
+    @apply badge bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400;
   }
-  
+
   .badge-error {
-    @apply badge bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20 dark:ring-red-400/20;
+    @apply badge bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400;
   }
-  
+
   .badge-info {
-    @apply badge bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 ring-1 ring-inset ring-blue-600/20 dark:ring-blue-400/20;
+    @apply badge bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400;
   }
-  
-  .badge-primary {
-    @apply badge bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 ring-1 ring-inset ring-sky-600/20 dark:ring-sky-400/20;
+
+  .badge-neutral {
+    @apply badge bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300;
   }
   
   /* Divider */
