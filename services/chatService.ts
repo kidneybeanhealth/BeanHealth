@@ -262,9 +262,9 @@ export class ChatService {
 
   // Subscribe to typing indicators
   static subscribeToTyping(userId: string, callback: (data: { userId: string, isTyping: boolean, conversationId: string }) => void) {
-    const channelName = `typing_${userId}_${Date.now()}`;
+    const channelName = `typing_${userId}`;
     console.log(`[ChatService] Creating typing channel: ${channelName}`);
-    
+
     const channel = supabase
       .channel(channelName, {
         config: {
@@ -281,7 +281,7 @@ export class ChatService {
       })
       .subscribe((status, err) => {
         console.log(`[ChatService] Typing subscription status:`, status);
-        
+
         if (status === 'SUBSCRIBED') {
           console.log('[ChatService] ✅ Successfully subscribed to typing indicators');
         } else if (status === 'TIMED_OUT') {
@@ -290,17 +290,21 @@ export class ChatService {
           console.error('[ChatService] ❌ Typing channel error:', err);
         }
       });
-    
+
     return channel;
   }
 
   // Broadcast typing status
   static async broadcastTyping(recipientId: string, isTyping: boolean, senderId: string) {
     const conversationId = [senderId, recipientId].sort().join('_');
-    
-    await supabase
-      .channel(`typing_${recipientId}`)
-      .send({
+    const channelName = `typing_${recipientId}`;
+
+    console.log(`[ChatService] Broadcasting typing to channel: ${channelName}`, { senderId, isTyping });
+
+    try {
+      const channel = supabase.channel(channelName);
+
+      await channel.send({
         type: 'broadcast',
         event: 'typing',
         payload: {
@@ -309,6 +313,11 @@ export class ChatService {
           conversationId
         }
       });
+
+      console.log(`[ChatService] ✅ Typing broadcast sent successfully`);
+    } catch (error) {
+      console.error('[ChatService] ❌ Error broadcasting typing:', error);
+    }
   }
 
   static async getUnreadMessageCount(userId: string): Promise<number> {

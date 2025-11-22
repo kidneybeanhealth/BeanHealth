@@ -11,7 +11,7 @@ import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { MenuIcon } from './icons/MenuIcon';
 import { getInitials, getInitialsColor, getInitialsAvatarClasses } from '../utils/avatarUtils';
 import { useRealTimeChat } from '../hooks/useRealTimeChatV2';
-import { RealTimeStatus, TypingIndicator, MessageStatus } from './RealTimeComponents';
+import { TypingIndicator, MessageStatus } from './RealTimeComponents';
 import { ChatFilePicker } from './ChatFilePicker';
 import { AudioRecorder } from './AudioRecorder';
 import { FileMessage } from './FileMessage';
@@ -516,23 +516,21 @@ const Messages: React.FC<MessagesProps> = ({
                 <div className="relative flex-shrink-0">
                   <InitialsAvatar contact={selectedContact} size="md" />
                   {/* Status Indicator */}
-                  <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 ring-2 ring-white dark:ring-slate-900"></span>
-                  </span>
+                  {isConnected && (
+                    <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 ring-2 ring-white dark:ring-slate-900"></span>
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white truncate">{selectedContact.name}</h3>
                   <div className="flex items-center space-x-2 mt-0.5">
-                    {typingUsers.has(selectedContact.id) ? (
+                    {typingUsers.has(selectedContact.id) && (
                       <TypingIndicator
                         isTyping={true}
                         userName={selectedContact.name}
-                      />
-                    ) : (
-                      <RealTimeStatus
-                        isConnected={isConnected}
                       />
                     )}
                   </div>
