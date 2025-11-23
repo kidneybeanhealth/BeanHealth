@@ -21,7 +21,7 @@ export class PDFGenerator {
     
     // Colors
     const primaryColor: [number, number, number] = [14, 165, 233]; // Sky blue
-    const secondaryColor: [number, number, number] = [99, 102, 241]; // Indigo
+    const secondaryColor: [number, number, number] = [190, 18, 60]; // Burgundy Red
     const textColor: [number, number, number] = [51, 65, 85]; // Slate gray
     const lightGray: [number, number, number] = [241, 245, 249];
     

@@ -32,17 +32,17 @@
   --accent-800: #155e75;
   --accent-900: #164e63;
   
-  /* Secondary Brand Colors - Soft Gray for depth */
-  --secondary-50: #f9fafb;
-  --secondary-100: #f3f4f6;
-  --secondary-200: #e5e7eb;
-  --secondary-300: #d1d5db;
-  --secondary-400: #9ca3af;
-  --secondary-500: #6b7280;
-  --secondary-600: #4b5563;
-  --secondary-700: #374151;
-  --secondary-800: #1f2937;
-  --secondary-900: #111827;
+  /* Secondary Brand Colors - Burgundy Red for healthcare branding */
+  --secondary-50: #fff1f2;
+  --secondary-100: #ffe4e6;
+  --secondary-200: #fecdd3;
+  --secondary-300: #fda4af;
+  --secondary-400: #fb7185;
+  --secondary-500: #f43f5e;
+  --secondary-600: #e11d48;
+  --secondary-700: #be123c;
+  --secondary-800: #9f1239;
+  --secondary-900: #881337;
   
   /* Accent Colors - Healthcare-friendly palette */
   --accent-success: #10b981;
@@ -374,7 +374,7 @@ a:hover {
   }
 
   .btn-secondary {
-    @apply px-6 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:border-slate-900 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply px-6 py-3 bg-white dark:bg-slate-800 text-secondary-700 dark:text-slate-200 font-medium rounded-xl border border-secondary-200 dark:border-slate-700 hover:border-secondary-700 dark:hover:border-slate-600 hover:bg-secondary-50 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
@@ -382,7 +382,7 @@ a:hover {
   }
 
   .btn-accent {
-    @apply px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2;
+    @apply px-6 py-3 bg-secondary-600 hover:bg-secondary-700 text-white font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-600 focus:ring-offset-2;
   }
 
   /* Card Variants - Minimal & Clean */
@@ -437,7 +437,7 @@ a:hover {
   }
 
   .badge-info {
-    @apply badge bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400;
+    @apply badge bg-secondary-50 dark:bg-secondary-900/20 text-secondary-700 dark:text-secondary-400;
   }
 
   .badge-neutral {
