@@ -62,7 +62,7 @@ const Records: React.FC<RecordsProps> = ({ records, onRemoveRecord }) => {
           const isExpanded = expandedRecords.has(record.id);
           return (
             <div key={record.id} className="bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl border border-gray-200/60 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300 group" style={{ animationDelay: `${index * 50}ms` }}>
-              <div className="flex items-start gap-3 sm:gap-5 p-4 sm:p-6 lg:p-8"> sm:p-6 lg:p-8">
+              <div className="flex items-start gap-3 sm:gap-5 p-4 sm:p-6 lg:p-8">
                 <div className="bg-gray-100 dark:bg-gray-700 p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-transform duration-300 group-hover:scale-110 flex-shrink-0">
                   <DocumentIcon className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-gray-600 dark:text-gray-300" />
                 </div>
