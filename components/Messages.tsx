@@ -450,7 +450,7 @@ const Messages: React.FC<MessagesProps> = ({
                       onClick={() => handleSelectContact(contact.id)}
                       className={`group relative w-full text-left px-3 sm:px-4 py-3 sm:py-3.5 flex items-center space-x-3 rounded-2xl transition-all duration-300 overflow-hidden ${
                         selectedContactId === contact.id
-                          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                          ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white'
                           : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200/60 dark:border-gray-700/60'
                       }`}
                   >
@@ -486,8 +486,8 @@ const Messages: React.FC<MessagesProps> = ({
                       {unreadMessages.length > 0 && !hasUnreadUrgent && (
                           <span className={`relative text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center flex-shrink-0 ${
                             selectedContactId === contact.id
-                              ? 'bg-white/20 text-white dark:bg-gray-900/20 dark:text-gray-900'
-                              : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                              ? 'bg-white/20 text-white dark:bg-white/20 dark:text-white'
+                              : 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white'
                           }`}>
                               {unreadMessages.length > 9 ? '9+' : unreadMessages.length}
                           </span>
@@ -555,7 +555,7 @@ const Messages: React.FC<MessagesProps> = ({
                 {isDoctor && selectedContact.role === 'patient' && (
                   <button
                     onClick={() => setShowPrescriptionModal(true)}
-                    className="flex items-center space-x-1.5 px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-300 whitespace-nowrap"
+                    className="flex items-center space-x-1.5 px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-xl hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-all duration-300 whitespace-nowrap"
                     aria-label="Create prescription"
                   >
                     <svg className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -591,7 +591,7 @@ const Messages: React.FC<MessagesProps> = ({
                         <div className={`max-w-[85%] sm:max-w-[75%] lg:max-w-lg xl:max-w-xl ${msg.senderId === currentUser.id ? 'ml-4 sm:ml-12' : 'mr-4 sm:mr-12'}`}>
                           <div className={`group relative px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-3.5 rounded-2xl text-sm sm:text-base break-words transition-all duration-300 ${
                             msg.senderId === currentUser.id
-                              ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-br-md'
+                              ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white rounded-br-md'
                               : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md border border-gray-200/60 dark:border-gray-700/60'
                           } ${msg.isUrgent ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900' : ''} ${
                             pendingMessages.has(msg.id) ? 'opacity-70' : ''
@@ -649,7 +649,7 @@ const Messages: React.FC<MessagesProps> = ({
                     setShouldAutoScroll(true);
                     scrollToBottom(true);
                   }}
-                  className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl hover:scale-110 active:scale-95 transition-all duration-300 z-10 animate-slideUp backdrop-blur-sm"
+                  className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-3 bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white rounded-2xl hover:scale-110 active:scale-95 transition-all duration-300 z-10 animate-slideUp backdrop-blur-sm"
                   aria-label="Scroll to bottom"
                 >
                   <svg className="w-5 h-5 sm:w-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -720,7 +720,7 @@ const Messages: React.FC<MessagesProps> = ({
                         <AlertIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                       </button>
                       {isPatient && patientData && (
-                        <span className="absolute -top-1 -right-1 text-[9px] sm:text-xs bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-800">
+                        <span className="absolute -top-1 -right-1 text-[9px] sm:text-xs bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-800">
                           {patientData.urgentCredits}
                         </span>
                       )}
@@ -798,7 +798,7 @@ const Messages: React.FC<MessagesProps> = ({
                 {input.trim() ? (
                   <button
                     type="submit"
-                    className="flex-shrink-0 p-2.5 sm:p-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:scale-110 active:scale-95 transition-all duration-300"
+                    className="flex-shrink-0 p-2.5 sm:p-2.5 rounded-full bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white hover:scale-110 active:scale-95 transition-all duration-300"
                     aria-label="Send message"
                   >
                     <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -930,4 +930,5 @@ const Messages: React.FC<MessagesProps> = ({
 };
 
 export default Messages;
+
 

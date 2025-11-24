@@ -269,14 +269,14 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="bg-gray-900 dark:bg-white rounded-3xl p-4 sm:p-6 lg:p-8 border border-gray-200/60 dark:border-gray-700/60">
+      <div className="bg-secondary-700 dark:bg-secondary-600 rounded-3xl p-4 sm:p-6 lg:p-8 border border-gray-200/60 dark:border-gray-700/60">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
             <button
               onClick={onBack}
               className="p-2 sm:p-3 rounded-xl bg-gray-800 dark:bg-gray-100 hover:bg-gray-700 dark:hover:bg-gray-200 transition-all duration-200 flex-shrink-0"
             >
-              <ArrowLeftIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white dark:text-gray-900"/>
+              <ArrowLeftIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white dark:text-white"/>
             </button>
             <div className={`h-12 w-12 sm:h-16 sm:w-16 ${getInitialsColor(patient.name, patient.email)} rounded-2xl flex items-center justify-center flex-shrink-0`}>
               <span className="text-white text-base sm:text-xl font-bold">
@@ -284,13 +284,13 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white dark:text-gray-900 truncate">{patient.name}</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white dark:text-white truncate">{patient.name}</h1>
               <p className="text-gray-300 dark:text-gray-600 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">{patient.email}</p>
             </div>
           </div>
           <div className="bg-gray-800 dark:bg-gray-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl w-full sm:w-auto">
             <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-600">Patient ID</p>
-            <p className="text-white dark:text-gray-900 font-mono font-semibold text-xs sm:text-sm truncate">{patient.id.slice(0, 12)}...</p>
+            <p className="text-white dark:text-white font-mono font-semibold text-xs sm:text-sm truncate">{patient.id.slice(0, 12)}...</p>
           </div>
         </div>
       </div>
@@ -541,7 +541,7 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
                   selectedCategory === category
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                    ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
@@ -594,7 +594,7 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                                 href={record.fileUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-200"
+                                className="p-3 rounded-xl bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-all duration-200"
                                 aria-label="Preview record"
                               >
                                 <EyeIcon className="h-5 w-5" />
@@ -659,4 +659,5 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
 };
 
 export default DoctorPatientView;
+
 

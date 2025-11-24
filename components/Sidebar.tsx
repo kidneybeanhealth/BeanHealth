@@ -41,8 +41,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
             onClick={() => setActiveView('dashboard')}
             className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-secondary-700 rounded-2xl p-2 -ml-2 hover:scale-105 active:scale-95 transition-all duration-200"
           >
-            <div className="bg-gray-900 dark:bg-white p-2.5 rounded-xl">
-              <LogoIcon className="h-6 w-6 text-white dark:text-gray-900"/>
+            <div className="bg-secondary-700 dark:bg-secondary-600 p-2.5 rounded-xl">
+              <LogoIcon className="h-6 w-6 text-white dark:text-white"/>
             </div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">
               BeanHealth
@@ -68,11 +68,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
                   }}
                   className={`group w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all duration-200 ${
                     activeView === item.view
-                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                      ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
-                  <span className={`${activeView === item.view ? 'text-white dark:text-gray-900' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'} transition-colors duration-200`}>
+                  <span className={`${activeView === item.view ? 'text-white dark:text-white' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'} transition-colors duration-200`}>
                     {item.icon}
                   </span>
                   <span className="font-medium text-[15px]">{item.label}</span>
@@ -101,5 +101,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
 };
 
 export default Sidebar;
+
 
 

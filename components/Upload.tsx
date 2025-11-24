@@ -107,8 +107,8 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
                   onClick={() => setIsCameraOpen(true)}
                   className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 sm:w-auto w-full p-4 sm:p-5 border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 rounded-2xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-all duration-300 group"
                 >
-                  <div className="bg-gray-900 dark:bg-white p-2.5 rounded-xl transition-all duration-200">
-                    <CameraIcon className="h-6 w-6 text-white dark:text-gray-900" />
+                  <div className="bg-secondary-700 dark:bg-secondary-600 p-2.5 rounded-xl transition-all duration-200">
+                    <CameraIcon className="h-6 w-6 text-white dark:text-white" />
                   </div>
                   <span className="font-semibold text-sm sm:text-base">Use Camera</span>
                 </button>
@@ -167,4 +167,5 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
 };
 
 export default Upload;
+
 
