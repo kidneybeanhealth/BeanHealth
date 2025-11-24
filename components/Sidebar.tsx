@@ -39,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
         <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200/60 dark:border-gray-800">
           <button
             onClick={() => setActiveView('dashboard')}
-            className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-slate-400 rounded-2xl p-2 -ml-2 hover:scale-105 active:scale-95 transition-all duration-200"
+            className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-secondary-700 rounded-2xl p-2 -ml-2 hover:scale-105 active:scale-95 transition-all duration-200"
           >
             <div className="bg-gray-900 dark:bg-white p-2.5 rounded-xl">
               <LogoIcon className="h-6 w-6 text-white dark:text-gray-900"/>
@@ -50,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
           </button>
           <button
             onClick={onClose}
-            className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700"
           >
             <XIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </button>
@@ -101,4 +101,5 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
 };
 
 export default Sidebar;
+
 

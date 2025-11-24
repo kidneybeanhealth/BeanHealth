@@ -58,3 +58,4 @@ const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ activeView, setActiveView
 };
 
 export default DoctorSidebar;
+
