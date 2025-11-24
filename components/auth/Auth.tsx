@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Login from './Login';
 import { LogoIcon } from '../icons/LogoIcon';
 import AuthChooser from './AuthChooser';
 
 const Auth: React.FC = () => {
-  const [view, setView] = useState<'chooser' | 'login'>('chooser');
+  // Persist view state to avoid flashing back to chooser after OAuth
+  const [view, setView] = useState<'chooser' | 'login'>(() => {
+    const savedView = sessionStorage.getItem('authView');
+    return (savedView as 'chooser' | 'login') || 'chooser';
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('authView', view);
+  }, [view]);
 
   const renderView = () => {
     switch(view) {

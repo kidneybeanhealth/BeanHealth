@@ -54,7 +54,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onUpdateAv
               aria-label="Update profile photo"
             >
               {user.avatarUrl || user.avatar_url ? (
-                <div className="h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 ring-2 ring-gray-300 dark:ring-gray-700 group-hover:ring-secondary-300 dark:group-hover:ring-gray-600 transition-all duration-200 rounded-full overflow-hidden bg-white dark:bg-gray-800">
+                <div className="h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 ring-2 ring-gray-300 dark:ring-gray-700 group-hover:ring-secondary-300 dark:group-hover:ring-gray-600 transition-all duration-200 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800">
                   <img
                     src={user.avatarUrl || user.avatar_url}
                     alt={user.name}
