@@ -66,7 +66,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors"
+            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-secondary-500 dark:hover:border-secondary-400 transition-colors"
           >
             <input
               type="file"
@@ -98,7 +98,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
           <button
             onClick={handleSave}
             disabled={!imageSrc}
-            className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-semibold text-white bg-secondary-600 rounded-lg hover:bg-secondary-700 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed"
           >
             Save Photo
           </button>
@@ -109,3 +109,4 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
 };
 
 export default ProfilePhotoUploader;
+

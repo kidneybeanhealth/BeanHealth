@@ -208,13 +208,13 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-2xl font-bold text-white">Prescription Details</h3>
-                    <p className="text-sky-100 text-sm mt-1">
+                    <p className="text-secondary-100 text-sm mt-1">
                       {formatDate(selectedPrescription.createdAt)}
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedPrescription(null)}
-                    className="text-white hover:text-sky-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
+                    className="text-white hover:text-secondary-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
                   >
                     <XIcon className="h-6 w-6" />
                   </button>
@@ -293,8 +293,8 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
 
                 {/* Notes */}
                 {selectedPrescription.notes && (
-                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                    <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-400 mb-2">
+                  <div className="bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 dark:border-secondary-800 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-secondary-800 dark:text-secondary-400 mb-2">
                       Additional Notes
                     </h4>
                     <p className="text-gray-700 dark:text-gray-300 text-sm">
@@ -314,7 +314,7 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
                 </button>
                 <button
                   onClick={() => handleDownloadPrescription(selectedPrescription)}
-                  className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg hover:from-sky-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-secondary-500 to-secondary-900 rounded-lg hover:from-secondary-600 hover:to-secondary-800 transition-all shadow-lg hover:shadow-xl"
                 >
                   Download PDF
                 </button>
@@ -328,3 +328,4 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
 };
 
 export default PrescriptionList;
+

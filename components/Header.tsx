@@ -28,20 +28,20 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onUpdateAv
   const avatarClasses = getInitialsAvatarClasses('lg');
 
   return (
-    <header className="sticky top-0 z-40 h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex-shrink-0 border-b border-slate-200/60 dark:border-slate-800 flex items-center justify-between px-6 lg:px-8">
+    <header className="sticky top-0 z-40 h-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl flex-shrink-0 border-b border-gray-200/60 dark:border-gray-800 flex items-center justify-between px-6 lg:px-8">
         <div className="flex items-center gap-4 flex-1 min-w-0">
              <button
               onClick={onMenuClick}
-              className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="md:hidden p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700"
               aria-label="Toggle menu"
             >
                 <MenuIcon className="h-6 w-6" />
             </button>
             <div className="animate-fade-in min-w-0 flex-1">
-                <h2 className="text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight truncate">
+                <h2 className="text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white tracking-tight truncate">
                   Welcome back, {user.name}
                 </h2>
-                <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                <p className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                   {user.role === 'patient' ? "Your health at a glance" : "Manage your patients"}
                 </p>
             </div>
@@ -50,11 +50,11 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onUpdateAv
             <ThemeToggle />
             <button
               onClick={() => setIsUploaderOpen(true)}
-              className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-slate-400 transition-all duration-200"
+              className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-secondary-700 transition-all duration-200"
               aria-label="Update profile photo"
             >
               {user.avatarUrl || user.avatar_url ? (
-                <div className="h-11 w-11 lg:h-12 lg:w-12 ring-2 ring-slate-200 dark:ring-slate-700 group-hover:ring-slate-300 dark:group-hover:ring-slate-600 transition-all duration-200 rounded-full overflow-hidden bg-white dark:bg-slate-800">
+                <div className="h-11 w-11 lg:h-12 lg:w-12 ring-2 ring-gray-300 dark:ring-gray-700 group-hover:ring-secondary-300 dark:group-hover:ring-gray-600 transition-all duration-200 rounded-full overflow-hidden bg-white dark:bg-gray-800">
                   <img
                     src={user.avatarUrl || user.avatar_url}
                     alt={user.name}
@@ -62,14 +62,14 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onUpdateAv
                   />
                 </div>
               ) : (
-                <div className={`h-11 w-11 lg:h-12 lg:w-12 ${colorClass} ring-2 ring-slate-200 dark:ring-slate-700 group-hover:ring-slate-300 dark:group-hover:ring-slate-600 transition-all duration-200 rounded-full flex items-center justify-center`}>
+                <div className={`h-11 w-11 lg:h-12 lg:w-12 ${colorClass} ring-2 ring-gray-300 dark:ring-gray-700 group-hover:ring-secondary-300 dark:group-hover:ring-gray-600 transition-all duration-200 rounded-full flex items-center justify-center`}>
                   <span className="text-white font-semibold text-sm lg:text-base">{initials}</span>
                 </div>
               )}
             </button>
             <button
               onClick={onLogout}
-              className="flex items-center justify-center p-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="flex items-center justify-center p-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
               aria-label="Log out"
             >
               <LogoutIcon className="h-5 w-5" />
@@ -83,3 +83,5 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onUpdateAv
 };
 
 export default Header;
+
+

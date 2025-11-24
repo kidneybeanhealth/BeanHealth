@@ -54,8 +54,8 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
     "Medical History": {
       icon: "📋",
       title: "Medical History",
-      color: "text-blue-700 dark:text-blue-400",
-      bgColor: "bg-blue-50 dark:bg-blue-900/20"
+      color: "text-secondary-700 dark:text-secondary-400",
+      bgColor: "bg-secondary-50 dark:bg-secondary-900/20"
     },
     "Findings/Results": {
       icon: "🔬",
@@ -66,8 +66,8 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
     "Diagnosis": {
       icon: "⚕️",
       title: "Diagnosis",
-      color: "text-indigo-700 dark:text-indigo-400",
-      bgColor: "bg-rose-50 dark:bg-indigo-900/20"
+      color: "text-secondary-700 dark:text-secondary-400",
+      bgColor: "bg-rose-50 dark:bg-secondary-900/20"
     },
     "Medications/Treatment": {
       icon: "💊",
@@ -78,8 +78,8 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
     "Recommendations/Follow-up": {
       icon: "📌",
       title: "Recommendations & Follow-up",
-      color: "text-amber-700 dark:text-amber-400",
-      bgColor: "bg-amber-50 dark:bg-amber-900/20"
+      color: "text-secondary-700 dark:text-secondary-400",
+      bgColor: "bg-secondary-50 dark:bg-secondary-900/20"
     }
   };
 
@@ -123,3 +123,4 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
 };
 
 export default RichSummaryDisplay;
+

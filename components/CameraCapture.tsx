@@ -103,7 +103,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onPhotoTaken, onClose }) 
                             <RefreshIcon className="h-5 w-5"/>
                             Retake
                         </button>
-                        <button onClick={handleUsePhoto} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-full font-semibold transition-colors">
+                        <button onClick={handleUsePhoto} className="flex items-center gap-2 px-4 py-2 bg-secondary-600 hover:bg-secondary-500 rounded-full font-semibold transition-colors">
                             <CheckIcon className="h-5 w-5"/>
                             Use Photo
                         </button>
@@ -121,3 +121,4 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onPhotoTaken, onClose }) 
 };
 
 export default CameraCapture;
+

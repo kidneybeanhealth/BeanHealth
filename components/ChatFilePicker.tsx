@@ -117,7 +117,7 @@ export const ChatFilePicker: React.FC<ChatFilePickerProps> = ({
                   className="w-full flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-600 
                     rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <IconComponent className="w-6 h-6 text-blue-500" />
+                  <IconComponent className="w-6 h-6 text-secondary-500" />
                   <div className="text-left">
                     <div className="font-medium text-gray-900 dark:text-white">
                       {fileType.label}
@@ -135,7 +135,7 @@ export const ChatFilePicker: React.FC<ChatFilePickerProps> = ({
             <div className="mb-4">
               <button
                 onClick={() => setSelectedType(null)}
-                className="flex items-center text-blue-500 hover:text-blue-600 text-sm"
+                className="flex items-center text-secondary-500 hover:text-secondary-600 text-sm"
               >
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />

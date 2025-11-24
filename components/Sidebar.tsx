@@ -29,30 +29,30 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
       {/* Mobile backdrop overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
           onClick={onClose}
         ></div>
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-white dark:bg-slate-900 flex-shrink-0 flex flex-col transform transition-all duration-300 ease-out md:relative md:translate-x-0 md:z-10 border-r border-slate-200/60 dark:border-slate-800 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-white dark:bg-gray-900 flex-shrink-0 flex flex-col transform transition-all duration-300 ease-out md:relative md:translate-x-0 md:z-10 border-r border-gray-200/60 dark:border-gray-800 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Header - Minimal & Clean */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-200/60 dark:border-slate-800">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200/60 dark:border-gray-800">
           <button
             onClick={() => setActiveView('dashboard')}
             className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-slate-400 rounded-2xl p-2 -ml-2 hover:scale-105 active:scale-95 transition-all duration-200"
           >
-            <div className="bg-slate-900 dark:bg-white p-2.5 rounded-xl">
-              <LogoIcon className="h-6 w-6 text-white dark:text-slate-900"/>
+            <div className="bg-gray-900 dark:bg-white p-2.5 rounded-xl">
+              <LogoIcon className="h-6 w-6 text-white dark:text-gray-900"/>
             </div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">
               BeanHealth
             </h1>
           </button>
           <button
             onClick={onClose}
-            className="md:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
           >
-            <XIcon className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+            <XIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
@@ -68,11 +68,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
                   }}
                   className={`group w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all duration-200 ${
                     activeView === item.view
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
-                  <span className={`${activeView === item.view ? 'text-white dark:text-slate-900' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'} transition-colors duration-200`}>
+                  <span className={`${activeView === item.view ? 'text-white dark:text-gray-900' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'} transition-colors duration-200`}>
                     {item.icon}
                   </span>
                   <span className="font-medium text-[15px]">{item.label}</span>
@@ -83,15 +83,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
         </nav>
 
         {/* Footer - Minimal */}
-        <div className="p-6 border-t border-slate-200/60 dark:border-slate-800">
-          <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-4 border border-slate-200/60 dark:border-slate-700/60">
-            <p className="text-sm font-medium text-slate-900 dark:text-white mb-1">Need help?</p>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">Reach out to our support team</p>
-            <button className="w-full px-4 py-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm font-medium rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 transition-all duration-200 border border-slate-200 dark:border-slate-600">
+        <div className="p-6 border-t border-gray-200/60 dark:border-gray-800">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 mb-4 border border-gray-200/60 dark:border-gray-700/60">
+            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Need help?</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">Reach out to our support team</p>
+            <button className="w-full px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200 border border-gray-200 dark:border-gray-600">
               Contact Support
             </button>
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 text-center font-medium">
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center font-medium">
             © 2025 BeanHealth
           </p>
         </div>
@@ -101,3 +101,4 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
 };
 
 export default Sidebar;
+

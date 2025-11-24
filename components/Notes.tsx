@@ -20,7 +20,7 @@ const Notes: React.FC<NotesProps> = ({ notes, onNotesChange }) => {
         value={notes}
         onChange={(e) => onNotesChange(e.target.value)}
         placeholder="Start typing your notes here..."
-        className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-colors resize-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
+        className="w-full flex-1 p-4 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-700 focus:border-secondary-700 transition-colors resize-none bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
         aria-label="Personal Health Notes"
       />
     </div>

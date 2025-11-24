@@ -115,7 +115,7 @@ const ProfileSetup: React.FC = () => {
               </label>
               <label className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                 role === 'doctor' 
-                  ? 'border-indigo-500 bg-rose-50 dark:bg-indigo-900/20' 
+                  ? 'border-secondary-700 bg-secondary-50 dark:bg-secondary-900/20' 
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}>
                 <input
@@ -137,7 +137,7 @@ const ProfileSetup: React.FC = () => {
                 </div>
                 <span className={`text-sm font-semibold ${
                   role === 'doctor'
-                    ? 'text-indigo-700 dark:text-indigo-400'
+                    ? 'text-secondary-700 dark:text-secondary-400'
                     : 'text-gray-700 dark:text-gray-300'
                 }`}>Doctor</span>
               </label>
