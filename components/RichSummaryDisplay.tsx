@@ -35,7 +35,7 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
   // If not JSON or empty, display as plain text
   if (!isJSON || !parsedData) {
     return (
-      <div className={`prose prose-slate dark:prose-invert max-w-none ${className}`}>
+      <div className={`prose prose-gray dark:prose-invert max-w-none ${className}`}>
         <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
           {summary}
         </div>

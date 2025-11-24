@@ -438,7 +438,7 @@ const DoctorDashboardMain: React.FC = () => {
       </div>
 
       {/* Navigation - Hide on mobile when in messages view */}
-      <div className={`glass-effect border-b border-slate-200/60 dark:border-slate-800 sticky top-0 z-10 ${activeView === 'messages' ? 'hidden md:flex' : ''}`}>
+      <div className={`glass-effect border-b border-gray-300/60 dark:border-gray-800 sticky top-0 z-10 ${activeView === 'messages' ? 'hidden md:flex' : ''}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <nav className="flex space-x-4 sm:space-x-8">
             <button
@@ -446,7 +446,7 @@ const DoctorDashboardMain: React.FC = () => {
               className={`py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${
                 activeView === 'dashboard'
                   ? 'border-secondary-700 dark:border-white text-gray-900 dark:text-white'
-                  : 'border-transparent text-slate-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
               }`}
             >
               <DashboardIcon className={`inline h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2`} />
@@ -457,7 +457,7 @@ const DoctorDashboardMain: React.FC = () => {
               className={`relative py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${
                 activeView === 'messages'
                   ? 'border-secondary-700 dark:border-white text-gray-900 dark:text-white'
-                  : 'border-transparent text-slate-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
               }`}
             >
               <MessagesIcon className={`inline h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2`} />

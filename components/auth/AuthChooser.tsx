@@ -34,7 +34,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                 {/* Patient Card - Minimalist */}
                 <button
                     onClick={() => handleRoleSelect('patient')}
-                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-slate-400 ${
+                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${
                         selectedRole === 'patient'
                             ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white'
                             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
@@ -93,7 +93,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                 {/* Doctor Card - Minimalist */}
                 <button
                     onClick={() => handleRoleSelect('doctor')}
-                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-slate-400 ${
+                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${
                         selectedRole === 'doctor'
                             ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white'
                             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
@@ -153,7 +153,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
             <button
                 onClick={handleContinue}
                 disabled={!selectedRole}
-                className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-medium text-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400 ${
+                className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-medium text-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700 ${
                     selectedRole
                         ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
@@ -169,4 +169,5 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
 };
 
 export default AuthChooser;
+
 

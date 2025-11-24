@@ -137,7 +137,7 @@ const Billing: React.FC<BillingProps> = ({ patient, onPurchaseCredits, onUpgrade
             <div>
                 <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Purchase Urgent Credits</h3>
                  {patient.subscriptionTier === 'FreeTrial' ? (
-                     <div className="text-center p-8 bg-slate-100 dark:bg-gray-800 rounded-3xl border border-gray-300/60 dark:border-gray-700/60">
+                     <div className="text-center p-8 bg-gray-100 dark:bg-gray-800 rounded-3xl border border-gray-300/60 dark:border-gray-700/60">
                         <p className="text-gray-700 dark:text-gray-300">Upgrade to the <span className="font-semibold text-gray-900 dark:text-white">Paid Plan</span> to purchase and use urgent credits.</p>
                      </div>
                  ) : (
