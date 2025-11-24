@@ -60,7 +60,7 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
           </p>
         </div>
 
-        <div className="card p-8 lg:p-10">
+        <div className="card p-6 sm:p-8 lg:p-10">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div>
               <label className="block text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-6">

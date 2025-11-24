@@ -96,7 +96,7 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-12">
+      <div className="flex items-center justify-center p-8 sm:p-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-900"></div>
       </div>
     );

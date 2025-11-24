@@ -22,7 +22,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
     return (
         <div className="space-y-10 animate-fade-in">
             <div className="text-center space-y-3">
-                <h2 className="text-4xl font-semibold text-gray-900 dark:text-white tracking-tight">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-900 dark:text-white tracking-tight">
                     Welcome to BeanHealth
                 </h2>
                 <p className="text-lg text-gray-600 dark:text-gray-400">
@@ -34,7 +34,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                 {/* Patient Card - Minimalist */}
                 <button
                     onClick={() => handleRoleSelect('patient')}
-                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${
+                    className={`group relative p-6 sm:p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${
                         selectedRole === 'patient'
                             ? 'border-secondary-700 dark:border-secondary-600 bg-secondary-700 dark:bg-secondary-600'
                             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
@@ -58,7 +58,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                             <UserIcon className={`h-8 w-8 ${selectedRole === 'patient' ? 'text-white dark:text-white' : 'text-gray-600 dark:text-gray-300'}`} />
                         </div>
                         <div className="space-y-2">
-                            <h3 className={`text-2xl font-semibold ${selectedRole === 'patient' ? 'text-white dark:text-white' : 'text-gray-900 dark:text-white'}`}>
+                            <h3 className={`text-xl sm:text-2xl font-semibold ${selectedRole === 'patient' ? 'text-white dark:text-white' : 'text-gray-900 dark:text-white'}`}>
                                 Patient
                             </h3>
                             <p className={`text-sm leading-relaxed ${selectedRole === 'patient' ? 'text-white/90 dark:text-white/90' : 'text-gray-600 dark:text-gray-400'}`}>
@@ -93,7 +93,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                 {/* Doctor Card - Minimalist */}
                 <button
                     onClick={() => handleRoleSelect('doctor')}
-                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${
+                    className={`group relative p-6 sm:p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${
                         selectedRole === 'doctor'
                             ? 'border-secondary-700 dark:border-secondary-600 bg-secondary-700 dark:bg-secondary-600'
                             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
@@ -117,7 +117,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                             <DoctorIcon className={`h-8 w-8 ${selectedRole === 'doctor' ? 'text-white dark:text-white' : 'text-gray-600 dark:text-gray-300'}`} />
                         </div>
                         <div className="space-y-2">
-                            <h3 className={`text-2xl font-semibold ${selectedRole === 'doctor' ? 'text-white dark:text-white' : 'text-gray-900 dark:text-white'}`}>
+                            <h3 className={`text-xl sm:text-2xl font-semibold ${selectedRole === 'doctor' ? 'text-white dark:text-white' : 'text-gray-900 dark:text-white'}`}>
                                 Doctor
                             </h3>
                             <p className={`text-sm leading-relaxed ${selectedRole === 'doctor' ? 'text-white/90 dark:text-white/90' : 'text-gray-600 dark:text-gray-400'}`}>

@@ -56,7 +56,7 @@ const ProfileSetup: React.FC = () => {
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
         <div className="text-center mb-8">
-          <h2 className="text-4xl font-display font-bold text-gray-900 dark:text-gray-100 mb-3">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-gray-900 dark:text-gray-100 mb-3">
             Complete Your Profile
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400">
@@ -84,7 +84,7 @@ const ProfileSetup: React.FC = () => {
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
               I am a...
             </label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                 role === 'patient' 
                   ? 'border-rose-900 bg-rose-50 dark:bg-rose-900/20' 

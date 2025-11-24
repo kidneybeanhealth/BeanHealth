@@ -652,7 +652,7 @@ const Messages: React.FC<MessagesProps> = ({
                   className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-3 bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white rounded-2xl hover:scale-110 active:scale-95 transition-all duration-300 z-10 animate-slideUp backdrop-blur-sm"
                   aria-label="Scroll to bottom"
                 >
-                  <svg className="w-5 h-5 sm:w-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
                 </button>

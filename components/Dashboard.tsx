@@ -198,13 +198,13 @@ const VitalCard: React.FC<{
                 onKeyDown={handleKeyDown}
                 placeholder="Enter value"
                 autoComplete="off"
-                className="w-full bg-gray-50 dark:bg-gray-700 text-3xl font-semibold text-gray-900 dark:text-gray-100 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-secondary-700"
+                className="w-full bg-gray-50 dark:bg-gray-700 text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-gray-100 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-secondary-700"
               />
             )
           ) : (
             <div className="flex items-baseline gap-2">
-              <p className="text-4xl font-semibold text-gray-900 dark:text-gray-100">{value || '—'}</p>
-              <span className="text-lg font-medium text-gray-500 dark:text-gray-600">{unit}</span>
+              <p className="text-3xl sm:text-4xl font-semibold text-gray-900 dark:text-gray-100">{value || '—'}</p>
+              <span className="text-base sm:text-lg font-medium text-gray-500 dark:text-gray-600">{unit}</span>
             </div>
           )}
 
@@ -243,11 +243,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     vitalsLastUpdatedFromRecord
 }) => {
   return (
-    <div className="space-y-12 animate-fade-in max-w-[1400px] mx-auto">
+    <div className="space-y-8 sm:space-y-12 animate-fade-in max-w-[1400px] mx-auto px-4 sm:px-6">
       {/* Welcome Banner - Minimalist */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-12 border border-gray-300/50 dark:border-gray-700/50">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-6 sm:p-8 lg:p-12 border border-gray-300/50 dark:border-gray-700/50">
         <div className="relative z-10">
-          <h2 className="text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">Health Dashboard</h2>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">Health Dashboard</h2>
           <p className="text-gray-700 dark:text-gray-500 text-lg max-w-2xl leading-relaxed">Track your vitals, medications, and wellness journey</p>
         </div>
         {/* Subtle decorative element */}
@@ -257,7 +257,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Vitals Section - Ultra Clean Grid */}
       <div>
         <div className="flex items-center justify-between mb-8">
-          <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Your Vitals</h3>
+          <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Your Vitals</h3>
           <span className="text-sm text-gray-600 dark:text-gray-500 font-medium">Updated today</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -297,7 +297,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Medication Section - Clean Layout */}
       <div>
-        <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-8 tracking-tight">Medications</h3>
+        <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6 sm:mb-8 tracking-tight">Medications</h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MedicationCard
               medications={patient.medications}

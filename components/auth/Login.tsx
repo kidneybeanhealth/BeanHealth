@@ -20,7 +20,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToChooser }) => {
   return (
     <div className="animate-fade-in space-y-10">
       <div className="text-center space-y-3">
-        <h2 className="text-4xl font-semibold text-gray-900 dark:text-white tracking-tight">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-900 dark:text-white tracking-tight">
           Welcome Back
         </h2>
         <p className="text-lg text-gray-700 dark:text-gray-400 max-w-md mx-auto">

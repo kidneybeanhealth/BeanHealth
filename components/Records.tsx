@@ -56,7 +56,7 @@ const Records: React.FC<RecordsProps> = ({ records, onRemoveRecord }) => {
 
   return (
     <div className="animate-fadeIn space-y-8 max-w-[1400px] mx-auto">
-      <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Medical Records</h2>
+      <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Medical Records</h2>
       <div className="space-y-4">
         {records.map((record, index) => {
           const isExpanded = expandedRecords.has(record.id);

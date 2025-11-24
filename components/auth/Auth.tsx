@@ -17,7 +17,7 @@ const Auth: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col justify-center items-center p-6 lg:p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 relative overflow-hidden">
       {/* Subtle decorative element */}
       <div className="absolute top-20 right-20 w-96 h-96 bg-gray-200/30 dark:bg-gray-800/30 rounded-full blur-3xl"></div>
 
@@ -27,13 +27,13 @@ const Auth: React.FC = () => {
           <div className="bg-secondary-700 dark:bg-secondary-600 p-3.5 rounded-2xl">
             <LogoIcon className="h-10 w-10 text-white dark:text-white"/>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-semibold text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-semibold text-gray-900 dark:text-white tracking-tight">
             BeanHealth
           </h1>
         </div>
 
         {/* Auth Card - Minimal */}
-        <div className="bg-white dark:bg-gray-900 backdrop-blur-xl p-10 lg:p-12 rounded-3xl border border-gray-200/60 dark:border-gray-800 transition-all duration-300 animate-scale-in">
+        <div className="bg-white dark:bg-gray-900 backdrop-blur-xl p-6 sm:p-8 lg:p-10 xl:p-12 rounded-3xl border border-gray-200/60 dark:border-gray-800 transition-all duration-300 animate-scale-in">
           {renderView()}
         </div>
 
