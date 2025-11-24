@@ -6,30 +6,38 @@ import { Browser } from '@capacitor/browser'
 export class AuthService {
   // Google OAuth sign in
   static async signInWithGoogle() {
-    // Determine redirect URL based on platform
-    const redirectTo = Capacitor.isNativePlatform() 
-      ? 'com.beanhealth.app://oauth-callback'
-      : window.location.origin
+    try {
+      // Determine redirect URL based on platform
+      const redirectTo = Capacitor.isNativePlatform() 
+        ? 'com.beanhealth.app://oauth-callback'
+        : window.location.origin
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        skipBrowserRedirect: Capacitor.isNativePlatform() // Don't auto-redirect on mobile
-      }
-    })
-
-    if (error) throw error
-
-    // On mobile, open browser manually
-    if (Capacitor.isNativePlatform() && data?.url) {
-      await Browser.open({ 
-        url: data.url,
-        presentationStyle: 'popover'
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: Capacitor.isNativePlatform() // Don't auto-redirect on mobile
+        }
       })
-    }
 
-    return data
+      if (error) {
+        console.error('Supabase OAuth error:', error);
+        throw error;
+      }
+
+      // On mobile, open browser manually
+      if (Capacitor.isNativePlatform() && data?.url) {
+        await Browser.open({ 
+          url: data.url,
+          presentationStyle: 'popover'
+        })
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Google sign in failed:', error);
+      throw error;
+    }
   }
 
   // Create or update user profile after Google OAuth
@@ -135,18 +143,34 @@ export class AuthService {
   }
 
   static async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) throw error
-    return data
+      if (error) {
+        console.error('Supabase signIn error:', error);
+        throw error;
+      }
+      return data;
+    } catch (error) {
+      console.error('SignIn failed:', error);
+      throw error;
+    }
   }
 
   static async signOut() {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase signOut error:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('SignOut failed:', error);
+      throw error;
+    }
   }
 
   static async getCurrentUser() {

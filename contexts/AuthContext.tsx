@@ -169,6 +169,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
+      // For sign out events, clear state immediately and stop loading
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
+        setNeedsProfileSetup(false);
+        if (initializationComplete) {
+          setLoading(false);
+        }
+        return;
+      }
+      
       setUser(session?.user ?? null)
       
       if (session?.user) {
@@ -199,6 +210,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             } catch (updateError) {
               console.error('Error updating Google profile picture:', updateError);
+              // Fall back to using the profile we already have
+              if (mounted) {
+                setProfile(userProfile);
+              }
             }
           } else {
             setProfile(userProfile);
@@ -230,29 +245,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const signInWithGoogle = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      await AuthService.signInWithGoogle()
+      await AuthService.signInWithGoogle();
       // Success toast will show after redirect
     } catch (error) {
-      setLoading(false)
-      showErrorToast('Failed to sign in with Google. Please try again.')
-      throw error
+      console.error('Google sign in error:', error);
+      showErrorToast('Failed to sign in with Google. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      await AuthService.signIn(email, password)
-      showSuccessToast('Welcome back!')
+      await AuthService.signIn(email, password);
+      showSuccessToast('Welcome back!');
     } catch (error) {
-      setLoading(false)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to sign in'
-      showErrorToast(errorMessage)
-      throw error
+      console.error('Sign in error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to sign in';
+      showErrorToast(errorMessage);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const signUp = async (email: string, password: string, userData: {
     name: string
@@ -261,29 +278,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dateOfBirth?: string
     condition?: string
   }) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      await AuthService.signUp(email, password, userData)
-      showSuccessToast('Account created successfully! Welcome to BeanHealth.')
+      await AuthService.signUp(email, password, userData);
+      showSuccessToast('Account created successfully! Welcome to BeanHealth.');
     } catch (error) {
-      setLoading(false)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create account'
-      showErrorToast(errorMessage)
-      throw error
+      console.error('Sign up error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create account';
+      showErrorToast(errorMessage);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const signOut = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      await AuthService.signOut()
-      showSuccessToast('Signed out successfully')
+      await AuthService.signOut();
+      showSuccessToast('Signed out successfully');
     } catch (error) {
-      setLoading(false)
-      showErrorToast('Failed to sign out')
-      throw error
+      console.error('Sign out error:', error);
+      showErrorToast('Failed to sign out');
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const refreshProfile = async () => {
     if (!user) return;
