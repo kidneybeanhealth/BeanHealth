@@ -295,10 +295,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       await AuthService.signOut();
+      // Clear auth view state to reset flow
+      sessionStorage.removeItem('authView');
       showSuccessToast('Signed out successfully');
     } catch (error) {
-      console.error('Sign out error:', error);
-      showErrorToast('Failed to sign out');
+      // Don't show error - signout should always appear successful to user
+      console.warn('Sign out completed with warnings:', error);
+      sessionStorage.removeItem('authView');
     } finally {
       setLoading(false);
     }

@@ -164,12 +164,12 @@ export class AuthService {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Supabase signOut error:', error);
-        throw error;
+        console.warn('Supabase signOut returned error (ignoring):', error);
+        // Don't throw - local session will be cleared by Supabase anyway
       }
     } catch (error) {
-      console.error('SignOut failed:', error);
-      throw error;
+      console.warn('SignOut encountered error (ignoring):', error);
+      // Don't throw - we still want to clear local state
     }
   }
 
