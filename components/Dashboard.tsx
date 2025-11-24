@@ -157,24 +157,24 @@ const VitalCard: React.FC<{
   };
 
   return (
-    <div className="group relative bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-300/40 dark:border-gray-700/40 hover:border-secondary-300 dark:hover:border-gray-600 hover:shadow-lg transition-all duration-300 animate-fade-in">
+    <div className="group relative bg-white dark:bg-gray-800 p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-gray-300/40 dark:border-gray-700/40 hover:border-secondary-300 dark:hover:border-gray-600 hover:shadow-lg transition-all duration-300 animate-fade-in">
       <div className="relative flex flex-col">
-        <div className="flex items-start justify-between mb-6">
-          <div className={`p-4 rounded-2xl ${iconBgColor} transition-transform duration-300 group-hover:scale-110`}>
+        <div className="flex items-start justify-between mb-4 sm:mb-6">
+          <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${iconBgColor} transition-transform duration-300 group-hover:scale-110`}>
             {icon}
           </div>
           {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="opacity-0 group-hover:opacity-100 p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700"
+              className="opacity-0 group-hover:opacity-100 p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700"
             >
               <EditIcon className="h-4 w-4 text-gray-700 dark:text-gray-300" />
             </button>
           )}
         </div>
 
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-500 tracking-wide">{label}</p>
+        <div className="space-y-2 sm:space-y-3">
+          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-500 tracking-wide">{label}</p>
           {isEditing ? (
             isBloodPressure ? (
               <BloodPressurePicker
