@@ -55,9 +55,9 @@ const Records: React.FC<RecordsProps> = ({ records, onRemoveRecord }) => {
   }
 
   return (
-    <div className="animate-fadeIn space-y-8 max-w-7xl mx-auto px-4 sm:px-6">
-      <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Medical Records</h2>
-      <div className="space-y-4">
+    <div className="animate-fadeIn space-y-4 sm:space-y-6 lg:space-y-8 max-w-7xl mx-auto px-4 sm:px-6">
+      <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Medical Records</h2>
+      <div className="space-y-3 sm:space-y-4">
         {records.map((record, index) => {
           const isExpanded = expandedRecords.has(record.id);
           return (
@@ -74,7 +74,7 @@ const Records: React.FC<RecordsProps> = ({ records, onRemoveRecord }) => {
                           {record.category}
                         </div>
                         <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 dark:text-white mb-1 truncate">{record.type}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(record.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{new Date(record.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                     </div>
                     <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0">
                       {record.fileUrl && (
@@ -97,26 +97,28 @@ const Records: React.FC<RecordsProps> = ({ records, onRemoveRecord }) => {
                       </button>
                     </div>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
                         <span className="font-medium text-gray-700 dark:text-gray-200">Doctor:</span> {record.doctor}
                       </p>
                       <button
                         onClick={() => toggleRecord(record.id)}
-                        className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-2"
+                        className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1 sm:gap-2"
                       >
                         {isExpanded ? (
                           <>
-                            <span>Show Less</span>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span className="hidden sm:inline">Show Less</span>
+                            <span className="sm:hidden">Less</span>
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                             </svg>
                           </>
                         ) : (
                           <>
-                            <span>Show Details</span>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span className="hidden sm:inline">Show Details</span>
+                            <span className="sm:hidden">Details</span>
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                           </>
