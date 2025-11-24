@@ -412,7 +412,7 @@ const Messages: React.FC<MessagesProps> = ({
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
 
   return (
-    <div className="flex flex-col h-screen md:h-[800px] md:flex-row bg-white dark:bg-gray-900 md:rounded-3xl overflow-hidden border-0 md:border border-gray-200/60 dark:border-gray-700/60">
+    <div className="flex flex-col h-screen lg:h-auto lg:min-h-[600px] lg:max-h-[800px] lg:flex-row bg-white dark:bg-gray-900 lg:rounded-3xl overflow-hidden border-0 lg:border border-gray-200/60 dark:border-gray-700/60">
       {/* Mobile-only Header - Shows only when no contact selected */}
       {!selectedContactId && onMenuClick && (
         <div className="md:hidden sticky top-0 z-20 px-4 py-3 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
@@ -571,7 +571,7 @@ const Messages: React.FC<MessagesProps> = ({
             <div
               ref={messagesContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 min-h-0 max-h-[calc(100vh-280px)] md:max-h-[600px] scrollbar-thin scrollbar-thumb-gray-400 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+              className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 min-h-0 h-full scrollbar-thin scrollbar-thumb-gray-400 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
             >
               <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6 max-w-5xl mx-auto">
                 <div className="space-y-3 sm:space-y-4">

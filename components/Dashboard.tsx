@@ -243,7 +243,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     vitalsLastUpdatedFromRecord
 }) => {
   return (
-    <div className="space-y-8 sm:space-y-12 animate-fade-in max-w-[1400px] mx-auto px-4 sm:px-6">
+    <div className="space-y-8 sm:space-y-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-6">
       {/* Welcome Banner - Minimalist */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-6 sm:p-8 lg:p-12 border border-gray-300/50 dark:border-gray-700/50">
         <div className="relative z-10">

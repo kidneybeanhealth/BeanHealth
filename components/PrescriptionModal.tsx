@@ -394,7 +394,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveMedication(index)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
                       >
                         <TrashIcon className="h-5 w-5" />
                       </button>

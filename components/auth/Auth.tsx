@@ -18,8 +18,8 @@ const Auth: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 relative overflow-hidden">
-      {/* Subtle decorative element */}
-      <div className="absolute top-20 right-20 w-96 h-96 bg-gray-200/30 dark:bg-gray-800/30 rounded-full blur-3xl"></div>
+      {/* Subtle decorative element - hidden on mobile */}
+      <div className="hidden sm:block absolute top-10 sm:top-20 right-10 sm:right-20 w-48 h-48 sm:w-96 sm:h-96 bg-gray-200/30 dark:bg-gray-800/30 rounded-full blur-3xl"></div>
 
       <div className="relative z-10 w-full max-w-4xl">
         {/* Logo Header - Minimal */}

@@ -56,7 +56,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
         <div className="p-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Update Profile Photo</h2>
-          <button onClick={onClose} className="p-1 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+          <button onClick={onClose} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 min-w-[44px] min-h-[44px] flex items-center justify-center">
             <XIcon className="h-6 w-6" />
           </button>
         </div>

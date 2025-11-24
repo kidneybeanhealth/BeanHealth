@@ -151,11 +151,11 @@ export const FileMessage: React.FC<FileMessageProps> = ({
         }
 
         return (
-          <div className="space-y-2">
+          <div className="space-y-2 max-w-full">
             <img
               src={message.fileUrl}
               alt={message.fileName || 'Shared image'}
-              className="max-w-xs max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+              className="max-w-full sm:max-w-xs max-h-64 w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity object-cover"
               onError={() => setImageError(true)}
               onClick={() => window.open(message.fileUrl, '_blank')}
             />
