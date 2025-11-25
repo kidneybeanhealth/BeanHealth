@@ -29,61 +29,93 @@ export class ChatService {
   }
 
   static async getAllConversations(userId: string): Promise<ChatMessage[]> {
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-      .order('timestamp', { ascending: false })
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+        .order('timestamp', { ascending: false });
 
-    if (error) throw error
+      if (error) {
+        console.error('[ChatService] Database error fetching conversations:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.warn('[ChatService] No data returned from database');
+        return [];
+      }
 
-    return data.map(msg => ({
-      id: msg.id,
-      senderId: msg.sender_id,
-      recipientId: msg.recipient_id,
-      text: msg.text,
-      audioUrl: msg.audio_url,
-      timestamp: msg.timestamp,
-      isRead: msg.is_read,
-      isUrgent: msg.is_urgent,
-      fileUrl: msg.file_url,
-      fileName: msg.file_name,
-      fileType: msg.file_type,
-      fileSize: msg.file_size,
-      mimeType: msg.mime_type
-    }))
+      console.log(`[ChatService] ✅ Fetched ${data.length} messages from database`);
+      
+      return data.map(msg => ({
+        id: msg.id,
+        senderId: msg.sender_id,
+        recipientId: msg.recipient_id,
+        text: msg.text,
+        audioUrl: msg.audio_url,
+        timestamp: msg.timestamp,
+        isRead: msg.is_read,
+        isUrgent: msg.is_urgent,
+        fileUrl: msg.file_url,
+        fileName: msg.file_name,
+        fileType: msg.file_type,
+        fileSize: msg.file_size,
+        mimeType: msg.mime_type
+      }));
+    } catch (error) {
+      console.error('[ChatService] ❌ Failed to fetch conversations:', error);
+      throw error;
+    }
   }
 
   static async sendMessage(senderId: string, recipientId: string, text: string, isUrgent: boolean = false) {
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .insert({
-        sender_id: senderId,
-        recipient_id: recipientId,
-        text,
-        is_urgent: isUrgent,
-        is_read: false
-      })
-      .select()
-      .single()
+    try {
+      console.log('[ChatService] Sending message:', { senderId, recipientId, textLength: text.length, isUrgent });
+      
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          sender_id: senderId,
+          recipient_id: recipientId,
+          text,
+          is_urgent: isUrgent,
+          is_read: false
+        })
+        .select()
+        .single();
 
-    if (error) throw error
+      if (error) {
+        console.error('[ChatService] Database error sending message:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error('[ChatService] No data returned after insert');
+        throw new Error('Failed to send message - no data returned');
+      }
 
-    return {
-      id: data.id,
-      senderId: data.sender_id,
-      recipientId: data.recipient_id,
-      text: data.text,
-      audioUrl: data.audio_url,
-      timestamp: data.timestamp,
-      isRead: data.is_read,
-      isUrgent: data.is_urgent,
-      fileUrl: data.file_url,
-      fileName: data.file_name,
-      fileType: data.file_type,
-      fileSize: data.file_size,
-      mimeType: data.mime_type
-    } as ChatMessage
+      console.log('[ChatService] ✅ Message sent successfully:', data.id);
+
+      return {
+        id: data.id,
+        senderId: data.sender_id,
+        recipientId: data.recipient_id,
+        text: data.text,
+        audioUrl: data.audio_url,
+        timestamp: data.timestamp,
+        isRead: data.is_read,
+        isUrgent: data.is_urgent,
+        fileUrl: data.file_url,
+        fileName: data.file_name,
+        fileType: data.file_type,
+        fileSize: data.file_size,
+        mimeType: data.mime_type
+      } as ChatMessage;
+    } catch (error) {
+      console.error('[ChatService] ❌ Failed to send message:', error);
+      throw error;
+    }
   }
 
   static async sendFileMessage(

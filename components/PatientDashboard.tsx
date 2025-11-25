@@ -68,6 +68,12 @@ const PatientDashboard: React.FC = () => {
           const records = await MedicalRecordsService.getMedicalRecordsByPatientId(user.id);
           setMedicalRecords(records);
           
+          // Load AI summary from database if it exists
+          if (profile?.notes) {
+            setAiSummary(profile.notes);
+            console.log('✅ Loaded AI summary from database');
+          }
+          
           // Generate initial AI summary if records exist
           if (records.length > 0) {
             setIsSummaryLoading(true);
@@ -247,7 +253,7 @@ const PatientDashboard: React.FC = () => {
   };
 
   const handleRefreshSummary = async () => {
-    if (isSummaryLoading) {
+    if (isSummaryLoading || !user?.id) {
       return;
     }
     
@@ -255,6 +261,14 @@ const PatientDashboard: React.FC = () => {
     try {
       const summary = await summarizeAllRecords(medicalRecords);
       setAiSummary(summary);
+      
+      // Save the AI summary to the database
+      try {
+        await UserService.updateUser(user.id, { notes: summary });
+        console.log('✅ AI summary refreshed and saved to database');
+      } catch (saveError) {
+        console.error('Failed to save AI summary to database:', saveError);
+      }
     } catch (error) {
       console.error('Error generating AI summary:', error);
       setAiSummary('Unable to generate summary at this time. Please try again later.');
@@ -570,8 +584,23 @@ const PatientDashboard: React.FC = () => {
                   // Use the remaining records directly to avoid state delay
                   const summary = await summarizeAllRecords(remainingRecords);
                   setAiSummary(summary);
+                  
+                  // Save updated summary to database
+                  try {
+                    await UserService.updateUser(user!.id, { notes: summary });
+                    console.log('✅ AI summary updated after record deletion');
+                  } catch (saveError) {
+                    console.error('Failed to save updated AI summary:', saveError);
+                  }
                 } else {
-                  setAiSummary("Upload your first medical record to get an AI-powered health summary.");
+                  const placeholderText = "Upload your first medical record to get an AI-powered health summary.";
+                  setAiSummary(placeholderText);
+                  // Clear summary from database
+                  try {
+                    await UserService.updateUser(user!.id, { notes: placeholderText });
+                  } catch (saveError) {
+                    console.error('Failed to clear AI summary:', saveError);
+                  }
                 }
                 
               } catch (error) {

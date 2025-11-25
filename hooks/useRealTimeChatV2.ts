@@ -31,15 +31,15 @@ export function useRealTimeChat({
     try {
       console.log('[Chat] Loading messages for user:', currentUserId);
       
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging - increased to 30s
       const loadPromise = ChatService.getAllConversations(currentUserId);
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Message load timeout after 10s')), 10000);
+        setTimeout(() => reject(new Error('Message load timeout after 30s')), 30000);
       });
       
       const allMessages = await Promise.race([loadPromise, timeoutPromise]);
       
-      console.log('[Chat] Loaded messages:', allMessages.length);
+      console.log('[Chat] ✅ Loaded messages successfully:', allMessages.length);
       setMessages(allMessages);
       
       // Update unread count (don't let this block)
@@ -54,10 +54,12 @@ export function useRealTimeChat({
         });
         
     } catch (error) {
-      console.error('[Chat] Error loading messages:', error);
+      console.error('[Chat] ❌ Error loading messages:', error);
       // Set empty array so UI doesn't hang
       setMessages([]);
       setUnreadCount(0);
+      // Show error toast
+      console.error('[Chat] Please check your connection and try refreshing the page');
     }
   }, [currentUserId]);
 
@@ -94,17 +96,17 @@ export function useRealTimeChat({
       
       // Set a timeout to clear pending status even if something goes wrong
       const pendingTimeout = setTimeout(() => {
-        console.warn('[useRealTimeChat] Message send timeout, clearing pending status');
+        console.warn('[useRealTimeChat] ⏱️ Message send timeout, clearing pending status');
         setPendingMessages(prev => {
           const newSet = new Set(prev);
           newSet.delete(tempId);
           return newSet;
         });
-      }, 10000); // 10 second timeout
+      }, 20000); // 20 second timeout
       
       // Send message to database
       const newMessage = await ChatService.sendMessage(currentUserId, recipientId, text, isUrgent);
-      console.log('[useRealTimeChat] Message saved to database:', newMessage.id);
+      console.log('[useRealTimeChat] ✅ Message saved to database:', newMessage.id);
       
       // Clear the timeout since we succeeded
       clearTimeout(pendingTimeout);
@@ -243,10 +245,11 @@ export function useRealTimeChat({
       try {
         console.log('[Chat] Creating message subscription');
         messageChannelRef.current = ChatService.subscribeToMessages(currentUserId, (newMessage) => {
-          console.log('[Chat] Real-time message received:', {
+          console.log('[Chat] 📨 Real-time message received:', {
             id: newMessage.id,
             from: newMessage.senderId,
             to: newMessage.recipientId,
+            text: newMessage.text?.substring(0, 50),
             isOwnMessage: newMessage.senderId === currentUserId
           });
           
