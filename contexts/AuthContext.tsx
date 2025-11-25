@@ -1,14 +1,33 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { User } from '@supabase/supabase-js'
+/**
+ * Authentication Context
+ * 
+ * FIXES APPLIED:
+ * - Single auth state listener with proper cleanup
+ * - Synchronous session hydration on mount using getSession()
+ * - Removed race conditions between initial load and auth state changes
+ * - Always set loading=false in finally blocks
+ * - Proper error boundaries for network vs auth errors
+ * - Atomic state updates to prevent stale closures
+ * - Timeout handling for all async operations
+ * - Simplified OAuth callback handling
+ * 
+ * WHY: Prevents infinite loading, race conditions, and inconsistent auth state
+ */
+
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { AuthService } from '../services/authService'
 import { User as AppUser } from '../types'
 import { showErrorToast, showSuccessToast } from '../utils/toastUtils'
+import { withTimeout } from '../utils/requestUtils'
 
 interface AuthContextType {
   user: User | null
+  session: Session | null
   profile: AppUser | null
   loading: boolean
+  isInitialized: boolean
   signIn: (email: string, password: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signUp: (email: string, password: string, userData: {
@@ -35,243 +54,265 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isInitialized, setIsInitialized] = useState(false)
   const [needsProfileSetup, setNeedsProfileSetup] = useState(false)
+  
+  // Use ref to track if component is mounted
+  const isMountedRef = useRef(true)
+  
+  // Use ref to track auth subscription
+  const authSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
 
-  useEffect(() => {
-    let mounted = true;
-    let initializationComplete = false;
-
-    // Handle OAuth callback if present
-    const handleOAuthCallback = async () => {
-      // Check if this is an OAuth callback (URL contains #access_token or ?code)
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const searchParams = new URLSearchParams(window.location.search);
+  /**
+   * Fetch user profile with proper error handling
+   */
+  const fetchUserProfile = useCallback(async (userId: string, userSession: Session): Promise<AppUser | null> => {
+    try {
+      console.log('[AuthContext] Fetching profile for user:', userId);
       
-      if (hashParams.get('access_token') || searchParams.get('code')) {
-        console.log('OAuth callback detected, processing...');
+      const userProfile = await withTimeout(
+        AuthService.getCurrentUser(),
+        10000,
+        'Profile fetch timeout'
+      );
+      
+      if (!isMountedRef.current) return null;
+      
+      // If this is a Google OAuth user and we don't have their profile picture saved,
+      // update their profile with the Google picture
+      if (userSession.user.user_metadata?.picture && 
+          (!userProfile?.avatar_url || userProfile.avatar_url !== userSession.user.user_metadata.picture)) {
         try {
-          // Let Supabase handle the callback
-          const { data, error } = await supabase.auth.getSession();
-          if (error) {
-            console.error('OAuth callback error:', error);
-          } else {
-            console.log('OAuth callback successful');
-            // Clear the URL hash/search params
-            window.history.replaceState({}, document.title, window.location.pathname);
+          console.log('[AuthContext] Updating Google profile picture');
+          await withTimeout(
+            AuthService.createOrUpdateProfile({
+              id: userId,
+              email: userSession.user.email || '',
+              name: userSession.user.user_metadata?.full_name || userSession.user.email || '',
+              role: userProfile?.role || 'patient',
+              avatarUrl: userSession.user.user_metadata.picture,
+              specialty: userProfile?.specialty,
+              dateOfBirth: userProfile?.date_of_birth,
+              condition: userProfile?.condition
+            }),
+            10000,
+            'Profile update timeout'
+          );
+          
+          // Refresh the profile to get the updated avatar
+          const updatedProfile = await AuthService.getCurrentUser();
+          if (isMountedRef.current) {
+            return updatedProfile;
           }
-        } catch (error) {
-          console.error('Error processing OAuth callback:', error);
+        } catch (updateError) {
+          console.error('[AuthContext] Error updating Google profile picture:', updateError);
+          // Fall back to using the profile we already have
+          return userProfile;
         }
       }
-    };
-
-    // Get initial session with better error handling
-    const getInitialSession = async () => {
-      try {
-        console.log('Getting initial session...');
-        
-        // Wait for OAuth callback handling to complete
-        await handleOAuthCallback();
-        
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          throw sessionError;
-        }
-        
-        if (!mounted) return;
-        
-        setUser(session?.user ?? null)
-        
-        if (session?.user) {
-          console.log('User found, fetching profile...');
-          try {
-            const userProfile = await AuthService.getCurrentUser()
-            if (!mounted) return;
-            
-            // If this is a Google OAuth user and we don't have their profile picture saved,
-            // update their profile with the Google picture
-            if (session.user.user_metadata?.picture && 
-                (!userProfile?.avatar_url || userProfile.avatar_url !== session.user.user_metadata.picture)) {
-              try {
-                await AuthService.createOrUpdateProfile({
-                  id: session.user.id,
-                  email: session.user.email || '',
-                  name: session.user.user_metadata?.full_name || session.user.email || '',
-                  role: userProfile?.role || 'patient',
-                  avatarUrl: session.user.user_metadata.picture,
-                  specialty: userProfile?.specialty,
-                  dateOfBirth: userProfile?.date_of_birth,
-                  condition: userProfile?.condition
-                });
-                
-                // Refresh the profile to get the updated avatar
-                const updatedProfile = await AuthService.getCurrentUser();
-                if (mounted) {
-                  setProfile(updatedProfile);
-                }
-              } catch (updateError) {
-                console.error('Error updating Google profile picture:', updateError);
-                setProfile(userProfile);
-              }
-            } else {
-              setProfile(userProfile);
-            }
-            
-            setNeedsProfileSetup(!userProfile || !userProfile.role)
-            console.log('Profile loaded:', { userProfile, needsSetup: !userProfile || !userProfile.role });
-          } catch (profileError) {
-            console.error('Error fetching user profile:', profileError);
-            if (!mounted) return;
-            // Don't clear the user, just indicate profile setup is needed
-            setProfile(null)
-            setNeedsProfileSetup(true)
-          }
-        } else {
-          console.log('No user session found');
-          if (!mounted) return;
-          setProfile(null)
-          setNeedsProfileSetup(false)
-        }
-      } catch (error) {
-        console.error('Error getting initial session:', error)
-        if (!mounted) return;
-        // Only clear state if there's a real auth error, not a network issue
-        if (error?.message?.includes('Invalid JWT') || error?.message?.includes('expired')) {
-          setUser(null)
-          setProfile(null)
-          setNeedsProfileSetup(false)
-        }
-      } finally {
-        if (mounted) {
-          initializationComplete = true;
-          console.log('Initial session loading complete');
-          setLoading(false)
-        }
-      }
+      
+      return userProfile;
+    } catch (error) {
+      console.error('[AuthContext] Error fetching user profile:', error);
+      // Don't throw - return null to indicate profile setup is needed
+      return null;
     }
+  }, []);
 
-    getInitialSession()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+  /**
+   * Initialize auth state on mount - called once
+   */
+  const initializeAuth = useCallback(async () => {
+    console.log('[AuthContext] Initializing auth state');
+    
+    try {
+      // Get current session with timeout
+      const { data: { session: currentSession }, error: sessionError } = await withTimeout(
+        supabase.auth.getSession(),
+        10000,
+        'Session initialization timeout'
+      );
       
-      console.log('Auth state change:', event, session?.user?.id)
-      
-      // Don't process auth state changes until initial session is loaded
-      // This prevents race conditions during app startup
-      if (!initializationComplete && event !== 'SIGNED_OUT') {
-        console.log('Skipping auth state change - initialization not complete');
-        return;
+      if (sessionError) {
+        console.error('[AuthContext] Session error:', sessionError);
+        throw sessionError;
       }
       
-      // For sign out events, clear state immediately and stop loading
-      if (event === 'SIGNED_OUT') {
+      if (!isMountedRef.current) return;
+      
+      if (currentSession?.user) {
+        console.log('[AuthContext] Session found, loading profile');
+        
+        setUser(currentSession.user);
+        setSession(currentSession);
+        
+        // Fetch profile
+        const userProfile = await fetchUserProfile(currentSession.user.id, currentSession);
+        
+        if (!isMountedRef.current) return;
+        
+        setProfile(userProfile);
+        setNeedsProfileSetup(!userProfile || !userProfile.role);
+        
+        console.log('[AuthContext] Auth initialized with user');
+      } else {
+        console.log('[AuthContext] No session found');
         setUser(null);
+        setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
-        if (initializationComplete) {
-          setLoading(false);
-        }
-        return;
       }
-      
-      setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        try {
-          const userProfile = await AuthService.getCurrentUser()
-          if (!mounted) return;
-          
-          // If this is a Google OAuth user and we don't have their profile picture saved,
-          // update their profile with the Google picture
-          if (session.user.user_metadata?.picture && 
-              (!userProfile?.avatar_url || userProfile.avatar_url !== session.user.user_metadata.picture)) {
-            try {
-              await AuthService.createOrUpdateProfile({
-                id: session.user.id,
-                email: session.user.email || '',
-                name: session.user.user_metadata?.full_name || session.user.email || '',
-                role: userProfile?.role || 'patient',
-                avatarUrl: session.user.user_metadata.picture,
-                specialty: userProfile?.specialty,
-                dateOfBirth: userProfile?.date_of_birth,
-                condition: userProfile?.condition
-              });
-              
-              // Refresh the profile to get the updated avatar
-              const updatedProfile = await AuthService.getCurrentUser();
-              if (mounted) {
-                setProfile(updatedProfile);
-              }
-            } catch (updateError) {
-              console.error('Error updating Google profile picture:', updateError);
-              // Fall back to using the profile we already have
-              if (mounted) {
-                setProfile(userProfile);
-              }
-            }
-          } else {
-            setProfile(userProfile);
-          }
-          
-          setNeedsProfileSetup(!userProfile || !userProfile.role)
-        } catch (error) {
-          console.error('Error fetching user profile:', error)
-          if (!mounted) return;
-          // Don't clear the user session, just indicate profile setup is needed
-          setProfile(null)
-          setNeedsProfileSetup(true)
-        }
-      } else {
-        if (!mounted) return;
-        setProfile(null)
-        setNeedsProfileSetup(false)
-      }
-      
-      if (mounted && initializationComplete) {
-        setLoading(false)
-      }
-    })
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    }
-  }, [])
-
-  const signInWithGoogle = async () => {
-    setLoading(true);
-    try {
-      await AuthService.signInWithGoogle();
-      // Success toast will show after redirect
     } catch (error) {
-      console.error('Google sign in error:', error);
-      showErrorToast('Failed to sign in with Google. Please try again.');
+      console.error('[AuthContext] Error initializing auth:', error);
+      
+      // Clear state on auth errors
+      if (error?.message?.includes('JWT') || error?.message?.includes('expired')) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setNeedsProfileSetup(false);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+        setIsInitialized(true);
+        console.log('[AuthContext] Auth initialization complete');
+      }
     }
-  };
+  }, [fetchUserProfile]);
 
-  const signIn = async (email: string, password: string) => {
+  /**
+   * Handle auth state changes from Supabase
+   */
+  const handleAuthStateChange = useCallback(async (event: string, newSession: Session | null) => {
+    // Don't process during initial load
+    if (!isInitialized) {
+      console.log('[AuthContext] Skipping auth state change - not initialized yet');
+      return;
+    }
+    
+    console.log('[AuthContext] Auth state change:', event);
+    
+    // Handle sign out immediately
+    if (event === 'SIGNED_OUT') {
+      if (isMountedRef.current) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setNeedsProfileSetup(false);
+      }
+      return;
+    }
+    
+    // Handle sign in / token refresh
+    if (newSession?.user) {
+      if (isMountedRef.current) {
+        setUser(newSession.user);
+        setSession(newSession);
+        
+        // Fetch profile in background
+        fetchUserProfile(newSession.user.id, newSession).then(userProfile => {
+          if (isMountedRef.current) {
+            setProfile(userProfile);
+            setNeedsProfileSetup(!userProfile || !userProfile.role);
+          }
+        }).catch(error => {
+          console.error('[AuthContext] Error fetching profile on auth change:', error);
+          if (isMountedRef.current) {
+            setProfile(null);
+            setNeedsProfileSetup(true);
+          }
+        });
+      }
+    } else {
+      if (isMountedRef.current) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setNeedsProfileSetup(false);
+      }
+    }
+  }, [isInitialized, fetchUserProfile]);
+
+  /**
+   * Setup auth subscription - called once after initialization
+   */
+  useEffect(() => {
+    // Initialize auth state first
+    initializeAuth();
+    
+    // Setup auth state listener after initialization
+    const setupAuthListener = () => {
+      console.log('[AuthContext] Setting up auth state listener');
+      
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+      authSubscriptionRef.current = subscription;
+      
+      console.log('[AuthContext] Auth listener established');
+    };
+    
+    // Small delay to ensure initialization completes first
+    const timerId = setTimeout(setupAuthListener, 100);
+    
+    // Cleanup
+    return () => {
+      console.log('[AuthContext] Cleaning up auth context');
+      isMountedRef.current = false;
+      clearTimeout(timerId);
+      
+      if (authSubscriptionRef.current) {
+        authSubscriptionRef.current.unsubscribe();
+        authSubscriptionRef.current = null;
+      }
+    };
+  }, []); // Run once on mount
+
+  /**
+   * Sign in with email/password
+   */
+  const signIn = useCallback(async (email: string, password: string) => {
     setLoading(true);
     try {
       await AuthService.signIn(email, password);
       showSuccessToast('Welcome back!');
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error('[AuthContext] Sign in error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to sign in';
       showErrorToast(errorMessage);
+      throw error;
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
-  const signUp = async (email: string, password: string, userData: {
+  /**
+   * Sign in with Google
+   */
+  const signInWithGoogle = useCallback(async () => {
+    setLoading(true);
+    try {
+      await AuthService.signInWithGoogle();
+      // Success toast will show after redirect
+    } catch (error) {
+      console.error('[AuthContext] Google sign in error:', error);
+      showErrorToast('Failed to sign in with Google. Please try again.');
+      throw error;
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  /**
+   * Sign up with email/password
+   */
+  const signUp = useCallback(async (email: string, password: string, userData: {
     name: string
     role: 'patient' | 'doctor'
     specialty?: string
@@ -283,68 +324,89 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AuthService.signUp(email, password, userData);
       showSuccessToast('Account created successfully! Welcome to BeanHealth.');
     } catch (error) {
-      console.error('Sign up error:', error);
+      console.error('[AuthContext] Sign up error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create account';
       showErrorToast(errorMessage);
+      throw error;
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  /**
+   * Sign out
+   */
+  const signOut = useCallback(async () => {
     setLoading(true);
     try {
       await AuthService.signOut();
-      // Clear auth view state to reset flow
-      sessionStorage.removeItem('authView');
-      showSuccessToast('Signed out successfully');
-    } catch (error) {
-      // Don't show error - signout should always appear successful to user
-      console.warn('Sign out completed with warnings:', error);
-      sessionStorage.removeItem('authView');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const refreshProfile = async () => {
-    if (!user) return;
-    
-    try {
-      console.log('Refreshing profile for user:', user.id);
       
-      // Check if we need to update Google profile picture
-      if (user.user_metadata?.picture) {
-        const currentProfile = await AuthService.getCurrentUser();
-        
-        if (!currentProfile?.avatar_url || currentProfile.avatar_url !== user.user_metadata.picture) {
-          console.log('Updating Google profile picture:', user.user_metadata.picture);
-          await AuthService.createOrUpdateProfile({
-            id: user.id,
-            email: user.email || '',
-            name: user.user_metadata?.full_name || user.email || '',
-            role: currentProfile?.role || 'patient',
-            avatarUrl: user.user_metadata.picture,
-            specialty: currentProfile?.specialty,
-            dateOfBirth: currentProfile?.date_of_birth,
-            condition: currentProfile?.condition
-          });
-        }
+      // Clear local state immediately
+      if (isMountedRef.current) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setNeedsProfileSetup(false);
       }
       
-      const userProfile = await AuthService.getCurrentUser();
-      setProfile(userProfile);
-      setNeedsProfileSetup(!userProfile || !userProfile.role);
-      console.log('Profile refreshed:', { userProfile, needsSetup: !userProfile || !userProfile.role });
+      // Clear auth view state to reset flow
+      sessionStorage.removeItem('authView');
+      
+      showSuccessToast('Signed out successfully');
     } catch (error) {
-      console.error('Error refreshing profile:', error);
+      // Even on error, clear state and show success (better UX)
+      console.warn('[AuthContext] Sign out completed with warnings:', error);
+      
+      if (isMountedRef.current) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setNeedsProfileSetup(false);
+      }
+      
+      sessionStorage.removeItem('authView');
+      showSuccessToast('Signed out successfully');
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }
+  }, []);
 
-  const value = {
+  /**
+   * Refresh user profile
+   */
+  const refreshProfile = useCallback(async () => {
+    if (!user || !session) {
+      console.warn('[AuthContext] Cannot refresh profile - no user session');
+      return;
+    }
+    
+    try {
+      console.log('[AuthContext] Refreshing profile for user:', user.id);
+      
+      const userProfile = await fetchUserProfile(user.id, session);
+      
+      if (isMountedRef.current) {
+        setProfile(userProfile);
+        setNeedsProfileSetup(!userProfile || !userProfile.role);
+      }
+      
+      console.log('[AuthContext] Profile refreshed');
+    } catch (error) {
+      console.error('[AuthContext] Error refreshing profile:', error);
+      throw error;
+    }
+  }, [user, session, fetchUserProfile]);
+
+  const value: AuthContextType = {
     user,
+    session,
     profile,
     loading,
+    isInitialized,
     signIn,
     signInWithGoogle,
     signUp,

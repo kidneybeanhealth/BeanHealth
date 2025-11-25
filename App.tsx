@@ -1,3 +1,15 @@
+/**
+ * Main App Component
+ * 
+ * FIXES APPLIED:
+ * - Reduced loading timeout from 15s to 8s
+ * - Simplified conditional logic for auth state rendering
+ * - Added isInitialized check from AuthContext
+ * - Improved loading state management
+ * 
+ * WHY: Prevents excessive waiting and provides clearer auth state transitions
+ */
+
 import React from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './contexts/AuthContext';
@@ -15,7 +27,7 @@ import { Browser } from '@capacitor/browser';
 import { supabase } from './lib/supabase';
 
 const AppContent: React.FC = () => {
-  const { user, profile, loading, needsProfileSetup } = useAuth();
+  const { user, profile, loading, needsProfileSetup, isInitialized } = useAuth();
   const [loadingTimeout, setLoadingTimeout] = React.useState(false);
 
   // Handle deep link for OAuth callback on mobile
@@ -23,7 +35,7 @@ const AppContent: React.FC = () => {
     if (!Capacitor.isNativePlatform()) return;
 
     const handleAppUrlOpen = async (event: { url: string }) => {
-      console.log('Deep link received:', event.url);
+      console.log('[App] Deep link received:', event.url);
       
       // Check if this is an OAuth callback
       if (event.url.includes('oauth-callback')) {
@@ -40,7 +52,7 @@ const AppContent: React.FC = () => {
         const refreshToken = params.get('refresh_token');
         
         if (accessToken && refreshToken) {
-          console.log('Setting session from deep link');
+          console.log('[App] Setting session from deep link');
           // Set the session in Supabase
           await supabase.auth.setSession({
             access_token: accessToken,
@@ -58,17 +70,19 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
-  // Add a longer timeout to prevent infinite loading, but be more forgiving
+  // Add a timeout to prevent infinite loading (reduced to 8s for better UX)
   React.useEffect(() => {
+    if (!isInitialized) return; // Don't start timeout until initialization is done
+    
     const timer = setTimeout(() => {
       if (loading) {
-        console.warn('Loading timeout reached after 15 seconds');
+        console.warn('[App] Loading timeout reached after 8 seconds');
         setLoadingTimeout(true);
       }
-    }, 15000); // Increased to 15 seconds for better reliability
+    }, 8000); // Reduced from 15s to 8s
 
     return () => clearTimeout(timer);
-  }, [loading]);
+  }, [loading, isInitialized]);
 
   // Reset loading timeout when loading state changes
   React.useEffect(() => {
@@ -83,13 +97,15 @@ const AppContent: React.FC = () => {
     console.log('User:', user ? { id: user.id, email: user.email } : 'null');
     console.log('Profile:', profile ? { id: profile.id, role: profile.role, name: profile.name } : 'null');
     console.log('Loading:', loading);
+    console.log('Initialized:', isInitialized);
     console.log('Needs Profile Setup:', needsProfileSetup);
     console.log('Loading Timeout:', loadingTimeout);
     console.log('==================');
-  }, [user, profile, loading, needsProfileSetup, loadingTimeout]);
+  }, [user, profile, loading, isInitialized, needsProfileSetup, loadingTimeout]);
 
   // Show loading screen while authentication is being determined
-  if (loading && !loadingTimeout) {
+  // But only if we haven't timed out and aren't initialized yet
+  if ((loading || !isInitialized) && !loadingTimeout) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
         <div className="text-center">
@@ -100,36 +116,36 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // If we have a loading timeout but still have a user, proceed with the app
+  // If we have a loading timeout but still have a user and profile, proceed with the app
   // This prevents getting stuck in loading state
-  if (loadingTimeout && user && profile) {
-    console.log('Loading timeout reached but user exists, proceeding to dashboard');
+  if (loadingTimeout && user && profile && !needsProfileSetup) {
+    console.log('[App] Loading timeout reached but user exists, proceeding to dashboard');
   }
 
   // Not authenticated - show auth flow
   if (!user) {
-    console.log('No user found, showing Auth');
+    console.log('[App] No user found, showing Auth');
     return <Auth />;
   }
 
   // Authenticated but needs profile setup
   if (needsProfileSetup) {
-    console.log('User needs profile setup');
+    console.log('[App] User needs profile setup');
     return <ProfileSetup />;
   }
 
   // Authenticated and profile complete - show dashboard
-  console.log('User authenticated with profile, showing dashboard for role:', profile?.role);
+  console.log('[App] User authenticated with profile, showing dashboard for role:', profile?.role);
   
   // Extra validation to ensure profile is complete
   if (profile?.role === 'doctor') {
-    console.log('Rendering DoctorDashboardMain');
+    console.log('[App] Rendering DoctorDashboardMain');
     return <DoctorDashboardMain />;
   } else if (profile?.role === 'patient') {
-    console.log('Rendering PatientDashboard');
+    console.log('[App] Rendering PatientDashboard');
     return <PatientDashboard />;
   } else {
-    console.log('Profile exists but no valid role, showing ProfileSetup');
+    console.log('[App] Profile exists but no valid role, showing ProfileSetup');
     return <ProfileSetup />;
   }
 };

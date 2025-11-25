@@ -1,15 +1,43 @@
+/**
+ * Chat Service
+ * 
+ * FIXES APPLIED:
+ * - Added timeout handling to all database operations
+ * - Improved subscription cleanup and error handling
+ * - Added defensive checks for null responses
+ * - Better logging for debugging real-time issues
+ * 
+ * WHY: Prevents hanging on chat operations and ensures reliable message delivery
+ */
+
 import { supabase } from '../lib/supabase'
 import { ChatMessage } from '../types'
+import { withTimeout } from '../utils/requestUtils'
 
 export class ChatService {
   static async getConversation(userId: string, otherUserId: string): Promise<ChatMessage[]> {
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .or(`and(sender_id.eq.${userId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${userId})`)
-      .order('timestamp', { ascending: true })
+    try {
+      console.log('[ChatService] Fetching conversation between:', userId, 'and', otherUserId);
+      
+      const { data, error } = await withTimeout(
+        supabase
+          .from('chat_messages')
+          .select('*')
+          .or(`and(sender_id.eq.${userId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${userId})`)
+          .order('timestamp', { ascending: true }),
+        10000,
+        'Conversation fetch timeout'
+      );
 
-    if (error) throw error
+      if (error) {
+        console.error('[ChatService] Error fetching conversation:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.warn('[ChatService] No conversation data returned');
+        return [];
+      }
 
     return data.map(msg => ({
       id: msg.id,
@@ -25,7 +53,11 @@ export class ChatService {
       fileType: msg.file_type,
       fileSize: msg.file_size,
       mimeType: msg.mime_type
-    }))
+    }));
+    } catch (error) {
+      console.error('[ChatService] Failed to fetch conversation:', error);
+      throw error;
+    }
   }
 
   static async getAllConversations(userId: string): Promise<ChatMessage[]> {

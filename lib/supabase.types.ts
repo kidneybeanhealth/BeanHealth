@@ -1,105 +1,9 @@
 /**
- * Supabase Client Singleton
+ * Supabase Database Types
  * 
- * FIXES APPLIED:
- * - Ensures single client instance across app (singleton pattern)
- * - Adds proper timeout configuration for DB queries
- * - Implements robust reconnection logic for realtime
- * - Validates environment variables on initialization
- * 
- * WHY: Prevents multiple client instances causing auth/state conflicts
+ * Auto-generated type definitions for type-safe database operations
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { Capacitor } from '@capacitor/core'
-import type { Database } from './supabase.types'
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
-}
-
-// Validate URL format
-try {
-  new URL(supabaseUrl);
-} catch (e) {
-  throw new Error('Invalid VITE_SUPABASE_URL format. Must be a valid URL.');
-}
-
-// Determine redirect URL based on platform
-const getRedirectUrl = () => {
-  if (Capacitor.isNativePlatform()) {
-    // For mobile app, use deep link
-    return 'com.beanhealth.app://oauth-callback'
-  }
-  // For web, use current origin
-  return window.location.origin
-}
-
-// Track initialization to ensure singleton
-let supabaseInstance: SupabaseClient<Database> | null = null;
-
-/**
- * Get or create the Supabase client singleton
- */
-export function getSupabaseClient(): SupabaseClient<Database> {
-  if (!supabaseInstance) {
-    console.log('[Supabase] Initializing client singleton');
-    
-    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-        storage: window.localStorage,
-        storageKey: 'supabase.auth.token',
-        flowType: 'pkce',
-      },
-      realtime: {
-        params: {
-          eventsPerSecond: 10
-        },
-        heartbeatIntervalMs: 30000,
-        reconnectAfterMs: (tries) => {
-          const delay = Math.min(1000 * Math.pow(2, tries), 10000);
-          console.log(`[Supabase] Realtime reconnecting in ${delay}ms (attempt ${tries})`);
-          return delay;
-        }
-      },
-      global: {
-        headers: {
-          'x-client-info': 'beanhealth-app'
-        },
-        // Add fetch wrapper to handle timeouts globally
-        fetch: (url, options = {}) => {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-          
-          return fetch(url, {
-            ...options,
-            signal: controller.signal,
-          }).finally(() => clearTimeout(timeoutId));
-        }
-      },
-      db: {
-        schema: 'public'
-      }
-    });
-    
-    console.log('[Supabase] Client initialized successfully');
-  }
-  
-  return supabaseInstance;
-}
-
-// Export singleton instance for backward compatibility
-export const supabase = getSupabaseClient();
-
-
-
-// Database types (auto-generated from Supabase)
 export interface Database {
   public: {
     Tables: {
@@ -297,6 +201,11 @@ export interface Database {
           recipient_id: string
           text?: string
           audio_url?: string
+          file_url?: string
+          file_name?: string
+          file_type?: string
+          file_size?: number
+          mime_type?: string
           is_read: boolean
           is_urgent: boolean
           timestamp: string
@@ -307,6 +216,11 @@ export interface Database {
           recipient_id: string
           text?: string
           audio_url?: string
+          file_url?: string
+          file_name?: string
+          file_type?: string
+          file_size?: number
+          mime_type?: string
           is_read?: boolean
           is_urgent?: boolean
           timestamp?: string
@@ -317,6 +231,11 @@ export interface Database {
           recipient_id?: string
           text?: string
           audio_url?: string
+          file_url?: string
+          file_name?: string
+          file_type?: string
+          file_size?: number
+          mime_type?: string
           is_read?: boolean
           is_urgent?: boolean
           timestamp?: string

@@ -1,7 +1,21 @@
+/**
+ * Authentication Service
+ * 
+ * FIXES APPLIED:
+ * - Added proper try/catch/finally blocks to all async methods
+ * - SignOut now properly clears all state regardless of API response
+ * - Added timeout handling for auth operations
+ * - Improved error messages and logging
+ * - Added defensive checks for null/undefined
+ * 
+ * WHY: Prevents hanging on signOut and ensures auth state is always consistent
+ */
+
 import { supabase } from '../lib/supabase'
 import { Patient, Doctor, User, UserRole } from '../types'
 import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
+import { withTimeout, safeAsync } from '../utils/requestUtils'
 
 export class AuthService {
   // Google OAuth sign in
@@ -115,107 +129,194 @@ export class AuthService {
     dateOfBirth?: string
     condition?: string
   }) {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    })
-
-    if (authError) throw authError
-
-    if (authData.user) {
-      // Create user profile
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email,
-          name: userData.name,
-          role: userData.role,
-          specialty: userData.specialty,
-          date_of_birth: userData.dateOfBirth,
-          condition: userData.condition,
-        })
-
-      if (profileError) throw profileError
+    if (!email || !password || !userData.name || !userData.role) {
+      throw new Error('Email, password, name, and role are required');
     }
-
-    return authData
-  }
-
-  static async signIn(email: string, password: string) {
+    
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      console.log('[AuthService] Attempting signUp for:', email);
+      
+      const { data: authData, error: authError } = await withTimeout(
+        supabase.auth.signUp({
+          email: email.trim(),
+          password,
+        }),
+        15000,
+        'SignUp timeout - please check your connection'
+      );
 
-      if (error) {
-        console.error('Supabase signIn error:', error);
-        throw error;
+      if (authError) {
+        console.error('[AuthService] SignUp error:', authError);
+        throw authError;
       }
-      return data;
+
+      if (!authData.user) {
+        throw new Error('SignUp failed - no user returned');
+      }
+
+      console.log('[AuthService] Creating user profile for:', authData.user.id);
+
+      // Create user profile
+      const { error: profileError } = await withTimeout(
+        supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            email: email.trim(),
+            name: userData.name.trim(),
+            role: userData.role,
+            specialty: userData.specialty?.trim() || null,
+            date_of_birth: userData.dateOfBirth || null,
+            condition: userData.condition?.trim() || null,
+          }),
+        10000,
+        'Profile creation timeout'
+      );
+
+      if (profileError) {
+        console.error('[AuthService] Profile creation error:', profileError);
+        throw profileError;
+      }
+      
+      console.log('[AuthService] SignUp successful for user:', authData.user.id);
+      return authData;
     } catch (error) {
-      console.error('SignIn failed:', error);
+      console.error('[AuthService] SignUp failed:', error);
       throw error;
     }
   }
 
-  static async signOut() {
+  static async signIn(email: string, password: string) {
+    if (!email || !password) {
+      throw new Error('Email and password are required');
+    }
+    
     try {
-      const { error } = await supabase.auth.signOut();
+      console.log('[AuthService] Attempting signIn for:', email);
+      
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        }),
+        15000,
+        'SignIn timeout - please check your connection'
+      );
+
       if (error) {
-        console.warn('Supabase signOut returned error (ignoring):', error);
-        // Don't throw - local session will be cleared by Supabase anyway
+        console.error('[AuthService] SignIn error:', error);
+        // Provide user-friendly error messages
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password');
+        }
+        throw error;
       }
+      
+      if (!data.user) {
+        throw new Error('SignIn failed - no user returned');
+      }
+      
+      console.log('[AuthService] SignIn successful for user:', data.user.id);
+      return data;
     } catch (error) {
-      console.warn('SignOut encountered error (ignoring):', error);
-      // Don't throw - we still want to clear local state
+      console.error('[AuthService] SignIn failed:', error);
+      throw error;
     }
   }
 
-  static async getCurrentUser() {
+  static async signOut(): Promise<void> {
+    console.log('[AuthService] Starting signOut process');
+    
     try {
-      // First check if we have an active session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      // Try to sign out with timeout (10s max)
+      await withTimeout(
+        supabase.auth.signOut(),
+        10000,
+        'SignOut timeout after 10s'
+      );
+      
+      console.log('[AuthService] SignOut successful');
+    } catch (error) {
+      // Log but don't throw - we want to clear local state regardless
+      console.warn('[AuthService] SignOut API call failed (clearing local state anyway):', error);
+    } finally {
+      // CRITICAL: Always clear local storage to ensure clean state
+      try {
+        localStorage.removeItem('supabase.auth.token');
+        sessionStorage.clear();
+        console.log('[AuthService] Local auth state cleared');
+      } catch (storageError) {
+        console.error('[AuthService] Failed to clear storage:', storageError);
+      }
+    }
+  }
+
+  static async getCurrentUser(): Promise<User | null> {
+    try {
+      console.log('[AuthService] Getting current user');
+      
+      // First check if we have an active session with timeout
+      const { data: { session }, error: sessionError } = await withTimeout(
+        supabase.auth.getSession(),
+        10000,
+        'Session check timeout'
+      );
       
       if (sessionError) {
-        console.error('Session error in getCurrentUser:', sessionError);
+        console.error('[AuthService] Session error:', sessionError);
+        // For auth errors, clear local storage
+        if (sessionError.message?.includes('JWT') || sessionError.message?.includes('expired')) {
+          localStorage.removeItem('supabase.auth.token');
+        }
         throw sessionError;
       }
       
       if (!session?.user) {
+        console.log('[AuthService] No active session');
         return null;
       }
 
-      // Then try to get the user profile
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
+      console.log('[AuthService] Active session found, fetching profile');
+
+      // Then try to get the user profile with timeout
+      const { data: profile, error } = await withTimeout(
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single(),
+        10000,
+        'Profile fetch timeout'
+      );
 
       // If user doesn't exist in database, return null (they need to set up profile)
       if (error && error.code === 'PGRST116') {
+        console.log('[AuthService] User profile not found - needs setup');
         return null;
       }
       
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('[AuthService] Error fetching user profile:', error);
         throw error;
       }
       
-      return profile;
+      console.log('[AuthService] Profile fetched successfully');
+      return profile as User;
     } catch (error) {
-      console.error('Error in getCurrentUser:', error);
+      console.error('[AuthService] Error in getCurrentUser:', error);
       
       // Don't throw network errors, return null instead
-      if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
-        console.warn('Network error in getCurrentUser, returning null');
+      if (error?.message?.includes('fetch') || 
+          error?.message?.includes('network') || 
+          error?.message?.includes('timeout')) {
+        console.warn('[AuthService] Network error, returning null');
         return null;
       }
       
       // Only throw auth-related errors
-      if (error?.message?.includes('JWT') || error?.message?.includes('expired') || error?.message?.includes('invalid')) {
+      if (error?.message?.includes('JWT') || 
+          error?.message?.includes('expired') || 
+          error?.message?.includes('invalid')) {
         throw error;
       }
       
