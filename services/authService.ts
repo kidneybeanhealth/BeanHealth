@@ -66,58 +66,80 @@ export class AuthService {
     avatarUrl?: string
   }) {
     try {
+      console.log('[AuthService] Creating or updating profile for:', userData.id);
+      
       // Check if user already exists
-      const { data: existingUser, error: selectError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userData.id)
-        .single()
+      const { data: existingUser, error: selectError } = await withTimeout(
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', userData.id)
+          .single(),
+        10000,
+        'Profile check timeout'
+      );
 
       // If user doesn't exist (selectError means no user found), create new user
       if (selectError && selectError.code === 'PGRST116') {
-        // Create new user
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert({
-            id: userData.id,
-            email: userData.email,
-            name: userData.name,
-            role: userData.role,
-            specialty: userData.role === 'doctor' ? userData.specialty : null,
-            date_of_birth: userData.role === 'patient' ? userData.dateOfBirth : null,
-            condition: userData.role === 'patient' ? userData.condition : null,
-            avatar_url: userData.avatarUrl,
-          })
+        console.log('[AuthService] Creating new user profile');
+        
+        // Create new user - triggers will auto-generate referral_code for doctors
+        const { error: insertError } = await withTimeout(
+          supabase
+            .from('users')
+            .insert({
+              id: userData.id,
+              email: userData.email,
+              name: userData.name,
+              role: userData.role,
+              specialty: userData.role === 'doctor' ? userData.specialty : null,
+              date_of_birth: userData.role === 'patient' ? userData.dateOfBirth : null,
+              condition: userData.role === 'patient' ? userData.condition : null,
+              avatar_url: userData.avatarUrl,
+            }),
+          10000,
+          'Profile creation timeout'
+        );
 
         if (insertError) {
-          console.error('Insert error:', insertError);
+          console.error('[AuthService] Insert error:', insertError);
           throw insertError;
         }
+        
+        console.log('[AuthService] User profile created successfully');
       } else if (existingUser) {
+        console.log('[AuthService] Updating existing user profile');
+        
         // Update existing user
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            name: userData.name,
-            role: userData.role,
-            specialty: userData.role === 'doctor' ? userData.specialty : null,
-            date_of_birth: userData.role === 'patient' ? userData.dateOfBirth : null,
-            condition: userData.role === 'patient' ? userData.condition : null,
-            avatar_url: userData.avatarUrl,
-          })
-          .eq('id', userData.id)
+        const { error: updateError } = await withTimeout(
+          supabase
+            .from('users')
+            .update({
+              name: userData.name,
+              role: userData.role,
+              specialty: userData.role === 'doctor' ? userData.specialty : null,
+              date_of_birth: userData.role === 'patient' ? userData.dateOfBirth : null,
+              condition: userData.role === 'patient' ? userData.condition : null,
+              avatar_url: userData.avatarUrl,
+            })
+            .eq('id', userData.id),
+          10000,
+          'Profile update timeout'
+        );
 
         if (updateError) {
-          console.error('Update error:', updateError);
+          console.error('[AuthService] Update error:', updateError);
           throw updateError;
         }
+        
+        console.log('[AuthService] User profile updated successfully');
       } else if (selectError) {
         // Some other error occurred during select
-        console.error('Select error:', selectError);
+        console.error('[AuthService] Select error:', selectError);
         throw selectError;
       }
     } catch (error) {
-      console.error('Error in createOrUpdateProfile:', error);
+      console.error('[AuthService] Error in createOrUpdateProfile:', error);
       throw error;
     }
   }

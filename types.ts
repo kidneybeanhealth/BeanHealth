@@ -8,6 +8,10 @@ export type DoctorPortalView = 'dashboard' | 'messages';
 
 export type SubscriptionTier = 'FreeTrial' | 'Paid';
 
+export type CKDStage = 'Stage 1' | 'Stage 2' | 'Stage 3' | 'Stage 4' | 'Stage 5';
+
+export type Comorbidity = 'Diabetes Mellitus (DM)' | 'Hypertension (HTN)' | 'Other';
+
 export interface User {
   id: string;
   name: string;
@@ -28,6 +32,23 @@ export interface User {
   notes?: string;
   created_at?: string;
   updated_at?: string;
+  
+  // Referral system fields
+  referral_code?: string; // Doctor's unique referral code (DOC-XXXXXX)
+  referralCode?: string; // Camel case version
+  patient_uid?: string; // Patient's sequential ID (BH-PAT-0001)
+  patientUid?: string; // Camel case version
+  consent_accepted?: boolean; // Patient consent for data sharing
+  consentAccepted?: boolean; // Camel case version
+  referring_doctor_id?: string; // Doctor who referred the patient
+  referringDoctorId?: string; // Camel case version
+  
+  // CKD specific fields
+  diagnosis_year?: number; // Year of CKD diagnosis
+  diagnosisYear?: number; // Camel case version
+  ckd_stage?: CKDStage; // Current CKD stage
+  ckdStage?: CKDStage; // Camel case version
+  comorbidities?: string[]; // Array of comorbidities
 }
 
 export interface Vital {
@@ -69,6 +90,8 @@ export interface MedicalRecord {
 export interface Doctor extends User {
     role: 'doctor';
     specialty: string;
+    referral_code: string; // Required for doctors
+    referralCode: string;
 }
 
 export interface ChatMessage {
@@ -102,6 +125,21 @@ export interface Patient extends User {
   urgentCredits: number;
   trialEndsAt?: string; // ISO Date string
   notes?: string;
+  
+  // Referral system - required for patients
+  patient_uid: string; // Sequential ID (BH-PAT-0001)
+  patientUid: string;
+  consent_accepted: boolean; // Must accept consent to register
+  consentAccepted: boolean;
+  referring_doctor_id: string; // Required - doctor who referred them
+  referringDoctorId: string;
+  
+  // Medical information (optional)
+  diagnosis_year?: number;
+  diagnosisYear?: number;
+  ckd_stage?: CKDStage;
+  ckdStage?: CKDStage;
+  comorbidities?: string[];
 }
 
 // Prescription related types
