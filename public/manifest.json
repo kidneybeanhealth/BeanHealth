@@ -1,0 +1,19 @@
+{
+  "name": "BeanHealth - Healthcare Management Platform",
+  "short_name": "BeanHealth",
+  "description": "Comprehensive healthcare management platform for patients and doctors",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "medical", "productivity"],
+  "orientation": "portrait-primary"
+}
