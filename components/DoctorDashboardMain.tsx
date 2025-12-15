@@ -17,6 +17,7 @@ import { SparklesIcon } from './icons/SparklesIcon';
 import { UserPlusIcon } from './icons/UserPlusIcon';
 import { DashboardIcon } from './icons/DashboardIcon';
 import { AlertIcon } from './icons/AlertIcon';
+import DoctorReferralCodeCard from './DoctorReferralCodeCard';
 
 const DoctorDashboardMain: React.FC = () => {
   const { user, profile, signOut } = useAuth();
@@ -197,6 +198,11 @@ const DoctorDashboardMain: React.FC = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Referral Code Card */}
+      <div className="mb-6 sm:mb-8">
+        <DoctorReferralCodeCard />
       </div>
 
       {/* Quick Stats */}
