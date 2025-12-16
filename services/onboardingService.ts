@@ -19,9 +19,10 @@ export class OnboardingService {
                 .single();
 
             if (error) throw error;
+            if (!data) return false;
 
             // Check if both flag is true AND they have a name
-            return data?.onboarding_completed === true && !!data?.full_name;
+            return (data as any).onboarding_completed === true && !!(data as any).full_name;
         } catch (error) {
             console.error('Error checking onboarding status:', error);
             return false;
@@ -36,42 +37,61 @@ export class OnboardingService {
         onboardingData: OnboardingData
     ): Promise<CompleteOnboardingResponse> {
         try {
+            console.log('[OnboardingService] Starting onboarding for user:', userId);
+            console.log('[OnboardingService] Onboarding data:', onboardingData);
+
             // 1. Generate patient ID (will be replaced with actual function later)
             const patientId = await this.generatePatientId();
+            console.log('[OnboardingService] Generated patient ID:', patientId);
 
-            // 2. Update user profile
-            const { error: updateError } = await supabase
-                .from('users')
-                .update({
-                    full_name: onboardingData.fullName,
-                    age: onboardingData.age,
-                    gender: onboardingData.gender,
-                    patient_id: patientId,
-                    onboarding_completed: true,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', userId);
-
-            if (updateError) throw updateError;
-
-            // 3. Link to doctor if referral code provided
+            // 2. Link to doctor FIRST if referral code provided
             let doctorName: string | undefined;
-            if (onboardingData.referralCode) {
+            if (onboardingData.referralCode && onboardingData.referralCode.trim()) {
                 try {
+                    console.log('[OnboardingService] Validating referral code:', onboardingData.referralCode);
                     doctorName = await this.linkToDoctor(userId, onboardingData.referralCode);
-                } catch (error) {
-                    console.error('Referral code linking failed:', error);
-                    // Don't fail the whole onboarding if doctor linking fails
+                    console.log('[OnboardingService] Successfully linked to doctor:', doctorName);
+                } catch (error: any) {
+                    console.error('[OnboardingService] Referral code linking failed:', error);
+                    // Throw error so user knows referral code is invalid
+                    throw new Error(error?.message || 'Invalid referral code. Please check and try again.');
                 }
             }
+
+            // 3. Update user profile
+            const updateData = {
+                full_name: onboardingData.fullName,
+                age: onboardingData.age,
+                gender: onboardingData.gender,
+                patient_id: patientId,
+                onboarding_completed: true,
+                updated_at: new Date().toISOString()
+            };
+            // Using new columns not yet in generated types
+            const { error: updateError } = await (supabase as any)
+                .from('users')
+                .update(updateData)
+                .eq('id', userId);
+
+            if (updateError) {
+                console.error('[OnboardingService] Profile update error:', updateError);
+                // Check if columns don't exist
+                if (updateError.message.includes('column') && updateError.message.includes('does not exist')) {
+                    throw new Error('Database schema not set up. Please run patient_onboarding_schema.sql in Supabase SQL Editor.');
+                }
+                throw updateError;
+            }
+
+            console.log('[OnboardingService] Onboarding completed successfully');
 
             return {
                 patientId,
                 doctorName
             };
-        } catch (error) {
-            console.error('Error completing onboarding:', error);
-            throw new Error('Failed to complete onboarding. Please try again.');
+        } catch (error: any) {
+            console.error('[OnboardingService] Error completing onboarding:', error);
+            // Re-throw with more specific message if available
+            throw new Error(error?.message || 'Failed to complete onboarding. Please try again.');
         }
     }
 
@@ -112,12 +132,13 @@ export class OnboardingService {
             // 1. Find doctor by referral code
             const { data: doctor, error: doctorError } = await supabase
                 .from('users')
-                .select('id, name, specialty, referral_code')
+                .select('id, full_name, name, specialty, referral_code')
                 .eq('referral_code', referralCode.toUpperCase())
                 .eq('role', 'doctor')
-                .single();
+                .single() as any;
 
             if (doctorError || !doctor) {
+                console.error('Doctor lookup error:', doctorError);
                 throw new Error('Invalid referral code');
             }
 
@@ -129,13 +150,14 @@ export class OnboardingService {
                     doctor_id: doctor.id,
                     status: 'active',
                     notes: `Linked via referral code ${referralCode}`
-                });
+                } as any);
 
             if (relationshipError) throw relationshipError;
 
             // 3. Return doctor name
+            const doctorName = doctor.full_name || doctor.name || 'Unknown Doctor';
             const specialty = doctor.specialty ? ` (${doctor.specialty})` : '';
-            return `Dr. ${doctor.name}${specialty}`;
+            return `Dr. ${doctorName}${specialty}`;
         } catch (error) {
             console.error('Error linking to doctor:', error);
             throw error;

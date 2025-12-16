@@ -233,6 +233,9 @@ const PatientDashboard: React.FC = () => {
       setTimeout(() => {
         setShowOnboarding(false);
       }, 100);
+
+      // Return the result to the modal
+      return result;
     } catch (error) {
       console.error('Onboarding error:', error);
       throw error; // Modal will handle error display

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 interface OnboardingModalProps {
     isOpen: boolean;
-    onComplete: (data: OnboardingData) => Promise<void>;
+    onComplete: (data: OnboardingData) => Promise<{ patientId: string; doctorName?: string } | void>;
 }
 
 export interface OnboardingData {
@@ -40,17 +40,19 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
         } else if (step === 'referral') {
             setIsLoading(true);
             try {
-                await onComplete(formData);
-                // Simulate getting patient ID and doctor name from server response
-                // In real implementation, onComplete should return this data
-                setGeneratedPatientId('P-20251215-0042'); // This will come from backend
-                if (formData.referralCode) {
-                    setLinkedDoctorName('Dr. Smith (Nephrology)'); // This will come from backend
+                const result = await onComplete(formData);
+                // Get patient ID and doctor name from server response
+                if (result) {
+                    setGeneratedPatientId(result.patientId || 'P-20251215-0042');
+                    if (result.doctorName) {
+                        setLinkedDoctorName(result.doctorName);
+                    }
                 }
                 setStep('success');
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Error completing onboarding:', error);
-                alert('Failed to complete setup. Please try again.');
+                const errorMessage = error?.message || 'Failed to complete setup. Please try again.';
+                alert(errorMessage);
             } finally {
                 setIsLoading(false);
             }
