@@ -368,9 +368,9 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
 
                     {/* Fluid Target Info */}
                     {ckdStage && (
-                        <div className="p-3 bg-secondary-50 dark:bg-secondary-900/20 rounded-xl border border-secondary-200 dark:border-secondary-800">
-                            <p className="text-sm text-secondary-700 dark:text-secondary-400">
-                                💧 Recommended daily fluid: <strong>{recommendedFluidTarget} ml</strong>
+                        <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                                💧 Recommended daily fluid: <strong className="text-secondary-700 dark:text-secondary-400">{recommendedFluidTarget} ml</strong>
                             </p>
                         </div>
                     )}

@@ -118,9 +118,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
 
     const getProgressColor = () => {
         if (isOverTarget) return 'bg-red-500';
-        if (progressPercent >= 80) return 'bg-secondary-700';
-        if (progressPercent >= 50) return 'bg-secondary-500';
-        return 'bg-secondary-600';
+        return 'bg-secondary-700';
     };
 
     return (
@@ -208,21 +206,21 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                 <button
                     onClick={() => handleQuickAdd(250)}
                     disabled={isLoading}
-                    className="px-4 py-3 bg-secondary-100 dark:bg-secondary-900/20 text-secondary-700 dark:text-secondary-400 font-semibold rounded-xl hover:bg-secondary-200 dark:hover:bg-secondary-900/40 transition-colors disabled:opacity-50"
+                    className="px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-secondary-700 hover:text-white dark:hover:bg-secondary-700 dark:hover:text-white transition-colors disabled:opacity-50"
                 >
                     + 250 ml
                 </button>
                 <button
                     onClick={() => handleQuickAdd(500)}
                     disabled={isLoading}
-                    className="px-4 py-3 bg-secondary-200 dark:bg-secondary-900/20 text-secondary-700 dark:text-secondary-400 font-semibold rounded-xl hover:bg-secondary-300 dark:hover:bg-secondary-900/40 transition-colors disabled:opacity-50"
+                    className="px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-secondary-700 hover:text-white dark:hover:bg-secondary-700 dark:hover:text-white transition-colors disabled:opacity-50"
                 >
                     + 500 ml
                 </button>
                 <button
                     onClick={() => handleQuickAdd(1000)}
                     disabled={isLoading}
-                    className="px-4 py-3 bg-secondary-300 dark:bg-secondary-900/20 text-secondary-800 dark:text-secondary-400 font-semibold rounded-xl hover:bg-secondary-400 dark:hover:bg-secondary-900/40 transition-colors disabled:opacity-50"
+                    className="px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-secondary-700 hover:text-white dark:hover:bg-secondary-700 dark:hover:text-white transition-colors disabled:opacity-50"
                 >
                     + 1 L
                 </button>
