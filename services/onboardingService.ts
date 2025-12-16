@@ -14,15 +14,15 @@ export class OnboardingService {
         try {
             const { data, error } = await supabase
                 .from('users')
-                .select('onboarding_completed, full_name')
+                .select('name')
                 .eq('id', userId)
                 .single();
 
             if (error) throw error;
             if (!data) return false;
 
-            // Check if both flag is true AND they have a name
-            return (data as any).onboarding_completed === true && !!(data as any).full_name;
+            // Check if they have a name (onboarding is complete)
+            return !!(data as any).name;
         } catch (error) {
             console.error('Error checking onboarding status:', error);
             return false;
@@ -58,16 +58,12 @@ export class OnboardingService {
                 }
             }
 
-            // 3. Update user profile
+            // 3. Update user profile with existing columns
+            // Note: Using 'name' column instead of 'full_name' to match existing schema
             const updateData = {
-                full_name: onboardingData.fullName,
-                age: onboardingData.age,
-                gender: onboardingData.gender,
-                patient_id: patientId,
-                onboarding_completed: true,
+                name: onboardingData.fullName,
                 updated_at: new Date().toISOString()
             };
-            // Using new columns not yet in generated types
             const { error: updateError } = await (supabase as any)
                 .from('users')
                 .update(updateData)
@@ -75,11 +71,7 @@ export class OnboardingService {
 
             if (updateError) {
                 console.error('[OnboardingService] Profile update error:', updateError);
-                // Check if columns don't exist
-                if (updateError.message.includes('column') && updateError.message.includes('does not exist')) {
-                    throw new Error('Database schema not set up. Please run patient_onboarding_schema.sql in Supabase SQL Editor.');
-                }
-                throw updateError;
+                throw new Error('Failed to update profile: ' + (updateError.message || 'Unknown error'));
             }
 
             console.log('[OnboardingService] Onboarding completed successfully');
@@ -100,25 +92,12 @@ export class OnboardingService {
      * TODO: Replace with actual database function call
      */
     private static async generatePatientId(): Promise<string> {
-        // Temporary implementation - will be replaced with actual SQL function
+        // Generate a simple patient ID using timestamp and random string
         const today = new Date();
         const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+        const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
 
-        // Get count of patients created today (temporary - real version uses sequence table)
-        const { count, error } = await supabase
-            .from('users')
-            .select('id', { count: 'exact', head: true })
-            .gte('created_at', today.toISOString().slice(0, 10) + 'T00:00:00')
-            .not('patient_id', 'is', null);
-
-        if (error) {
-            console.error('Error counting patients:', error);
-        }
-
-        const sequence = (count || 0) + 1;
-        const sequenceStr = sequence.toString().padStart(4, '0');
-
-        return `P-${dateStr}-${sequenceStr}`;
+        return `P-${dateStr}-${randomStr}`;
     }
 
     /**
@@ -147,13 +126,17 @@ export class OnboardingService {
                 .from('patient_doctor_relationships')
                 .insert({
                     patient_id: patientId,
-                    doctor_id: doctor.id,
-                    status: 'active'
+                    doctor_id: doctor.id
                 } as any);
 
             if (relationshipError) {
                 console.error('Relationship insert error:', relationshipError);
-                throw relationshipError;
+                // Check if relationship already exists
+                if (relationshipError.code === '23505') {
+                    console.log('Patient-doctor relationship already exists, continuing...');
+                } else {
+                    throw relationshipError;
+                }
             }
 
             // 3. Return doctor name
