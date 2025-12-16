@@ -148,11 +148,13 @@ export class OnboardingService {
                 .insert({
                     patient_id: patientId,
                     doctor_id: doctor.id,
-                    status: 'active',
-                    notes: `Linked via referral code ${referralCode}`
+                    status: 'active'
                 } as any);
 
-            if (relationshipError) throw relationshipError;
+            if (relationshipError) {
+                console.error('Relationship insert error:', relationshipError);
+                throw relationshipError;
+            }
 
             // 3. Return doctor name
             const doctorName = doctor.full_name || doctor.name || 'Unknown Doctor';
