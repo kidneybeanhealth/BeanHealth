@@ -1,0 +1,87 @@
+import React, { useState } from 'react';
+import { User } from '../types';
+import { LogoutIcon } from './icons/LogoutIcon';
+import ThemeToggle from './ThemeToggle';
+import { MenuIcon } from './icons/MenuIcon';
+import ProfilePhotoUploader from './ProfilePhotoUploader';
+import { getInitials, getInitialsColor, getInitialsAvatarClasses } from '../utils/avatarUtils';
+
+interface HeaderProps {
+    user: User;
+    onLogout: () => void;
+    onMenuClick: () => void;
+    onUpdateAvatar: (dataUrl: string) => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onUpdateAvatar }) => {
+  const [isUploaderOpen, setIsUploaderOpen] = useState(false);
+
+  const handleSaveAvatar = (dataUrl: string) => {
+    if(user.role === 'patient') {
+      onUpdateAvatar(dataUrl);
+    }
+    setIsUploaderOpen(false);
+  };
+
+  const initials = getInitials(user.name, user.email);
+  const colorClass = getInitialsColor(user.name, user.email);
+  const avatarClasses = getInitialsAvatarClasses('lg');
+
+  return (
+    <header className="sticky top-0 z-40 h-16 sm:h-18 lg:h-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl flex-shrink-0 border-b border-gray-200/60 dark:border-gray-800 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+             <button
+              onClick={onMenuClick}
+              className="md:hidden p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700"
+              aria-label="Toggle menu"
+            >
+                <MenuIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+            </button>
+            <div className="animate-fade-in min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg lg:text-2xl font-semibold text-gray-900 dark:text-white tracking-tight truncate">
+                  Welcome back, {user.name}
+                </h2>
+                <p className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                  {user.role === 'patient' ? "Your health at a glance" : "Manage your patients"}
+                </p>
+            </div>
+        </div>
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 flex-shrink-0">
+            <ThemeToggle />
+            <button
+              onClick={() => setIsUploaderOpen(true)}
+              className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-secondary-700 transition-all duration-200"
+              aria-label="Update profile photo"
+            >
+              {user.avatarUrl || user.avatar_url ? (
+                <div className="h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 ring-2 ring-gray-300 dark:ring-gray-700 group-hover:ring-secondary-300 dark:group-hover:ring-gray-600 transition-all duration-200 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+                  <img
+                    src={user.avatarUrl || user.avatar_url}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className={`h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 ${colorClass} ring-2 ring-gray-300 dark:ring-gray-700 group-hover:ring-secondary-300 dark:group-hover:ring-gray-600 transition-all duration-200 rounded-full flex items-center justify-center`}>
+                  <span className="text-white font-semibold text-xs sm:text-sm lg:text-base">{initials}</span>
+                </div>
+              )}
+            </button>
+            <button
+              onClick={onLogout}
+              className="flex items-center justify-center p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+              aria-label="Log out"
+            >
+              <LogoutIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+        </div>
+        {isUploaderOpen && (
+            <ProfilePhotoUploader onClose={() => setIsUploaderOpen(false)} onSave={handleSaveAvatar} />
+        )}
+    </header>
+  );
+};
+
+export default Header;
+
+
