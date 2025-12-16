@@ -50,7 +50,7 @@ const VitalCard: React.FC<{
   const systolicRef = useRef<HTMLInputElement>(null);
 
   const trendArrow = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
-  const trendColor = trend === 'up' ? 'text-red-500' : trend === 'down' ? 'text-secondary-700' : 'text-gray-600';
+  const trendColor = trend === 'up' ? 'text-red-500' : trend === 'down' ? 'text-blue-500' : 'text-slate-500';
 
   useEffect(() => {
     if (isEditing) {
@@ -157,24 +157,24 @@ const VitalCard: React.FC<{
   };
 
   return (
-    <div className="group relative bg-white dark:bg-gray-800 p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-gray-300/40 dark:border-gray-700/40 hover:border-secondary-300 dark:hover:border-gray-600 hover:shadow-lg transition-all duration-300 animate-fade-in">
+    <div className="group relative bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200/40 dark:border-slate-700/40 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg transition-all duration-300 animate-fade-in">
       <div className="relative flex flex-col">
-        <div className="flex items-start justify-between mb-4 sm:mb-6">
-          <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${iconBgColor} transition-transform duration-300 group-hover:scale-110`}>
+        <div className="flex items-start justify-between mb-6">
+          <div className={`p-4 rounded-2xl ${iconBgColor} transition-transform duration-300 group-hover:scale-110`}>
             {icon}
           </div>
           {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="opacity-0 group-hover:opacity-100 p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700"
+              className="opacity-0 group-hover:opacity-100 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
             >
-              <EditIcon className="h-4 w-4 text-gray-700 dark:text-gray-300" />
+              <EditIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
             </button>
           )}
         </div>
 
-        <div className="space-y-2 sm:space-y-3">
-          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-500 tracking-wide">{label}</p>
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 tracking-wide">{label}</p>
           {isEditing ? (
             isBloodPressure ? (
               <BloodPressurePicker
@@ -198,13 +198,13 @@ const VitalCard: React.FC<{
                 onKeyDown={handleKeyDown}
                 placeholder="Enter value"
                 autoComplete="off"
-                className="w-full bg-gray-50 dark:bg-gray-700 text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-gray-100 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-secondary-700"
+                className="w-full bg-slate-50 dark:bg-slate-700 text-3xl font-semibold text-slate-900 dark:text-slate-100 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-slate-400"
               />
             )
           ) : (
             <div className="flex items-baseline gap-2">
-              <p className="text-3xl sm:text-4xl font-semibold text-gray-900 dark:text-gray-100">{value || '—'}</p>
-              <span className="text-base sm:text-lg font-medium text-gray-500 dark:text-gray-600">{unit}</span>
+              <p className="text-4xl font-semibold text-slate-900 dark:text-slate-100">{value || '—'}</p>
+              <span className="text-lg font-medium text-slate-400 dark:text-slate-500">{unit}</span>
             </div>
           )}
 
@@ -213,14 +213,14 @@ const VitalCard: React.FC<{
               <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
                 trendColor === 'text-red-500'
                   ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                  : 'bg-secondary-50 dark:bg-secondary-900/20 text-secondary-700 dark:text-secondary-400'
+                  : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
               }`}>
                 <span className="text-sm">{trendArrow}</span>
                 <span>{trend === 'up' ? 'Increasing' : 'Decreasing'}</span>
               </span>
             )}
             {lastUpdatedFromRecord && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary-100 dark:bg-secondary-900/20 rounded-full text-xs font-medium text-secondary-700 dark:text-secondary-400">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-50 dark:bg-cyan-900/20 rounded-full text-xs font-medium text-cyan-600 dark:text-cyan-400">
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                 </svg>
@@ -243,12 +243,12 @@ const Dashboard: React.FC<DashboardProps> = ({
     vitalsLastUpdatedFromRecord
 }) => {
   return (
-    <div className="space-y-8 sm:space-y-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-6">
+    <div className="space-y-12 animate-fade-in max-w-[1400px] mx-auto">
       {/* Welcome Banner - Minimalist */}
-      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-4 sm:p-6 lg:p-12 border border-gray-300/50 dark:border-gray-700/50">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-12 border border-slate-200/50 dark:border-slate-700/50">
         <div className="relative z-10">
-          <h2 className="text-xl sm:text-2xl lg:text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-2 sm:mb-3 tracking-tight">Health Dashboard</h2>
-          <p className="text-gray-700 dark:text-gray-500 text-sm sm:text-base lg:text-lg max-w-2xl leading-relaxed">Track your vitals, medications, and wellness journey</p>
+          <h2 className="text-4xl font-semibold text-slate-900 dark:text-slate-100 mb-3 tracking-tight">Health Dashboard</h2>
+          <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl leading-relaxed">Track your vitals, medications, and wellness journey</p>
         </div>
         {/* Subtle decorative element */}
         <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-gradient-to-br from-cyan-100/30 to-blue-100/30 dark:from-cyan-900/10 dark:to-blue-900/10 rounded-full blur-3xl"></div>
@@ -256,11 +256,11 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Vitals Section - Ultra Clean Grid */}
       <div>
-        <div className="flex items-center justify-between mb-4 sm:mb-6 lg:mb-8">
-          <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Your Vitals</h3>
-          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-500 font-medium">Updated today</span>
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">Your Vitals</h3>
+          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">Updated today</span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <VitalCard
             label="Blood Pressure"
             value={patient.vitals.bloodPressure.value}
@@ -278,8 +278,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             unit={patient.vitals.heartRate.unit}
             trend={patient.vitals.heartRate.trend}
             onSave={(newValue) => onVitalsChange('heartRate', newValue)}
-            icon={<FeatureVitalsIcon className="h-7 w-7 text-secondary-700 dark:text-secondary-400" />}
-            iconBgColor="bg-secondary-100 dark:bg-secondary-900/20"
+            icon={<FeatureVitalsIcon className="h-7 w-7 text-cyan-600 dark:text-cyan-400" />}
+            iconBgColor="bg-cyan-50 dark:bg-cyan-900/20"
             lastUpdatedFromRecord={vitalsLastUpdatedFromRecord?.heartRate}
           />
           <VitalCard
@@ -297,8 +297,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Medication Section - Clean Layout */}
       <div>
-        <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6 lg:mb-8 tracking-tight">Medications</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <h3 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-8 tracking-tight">Medications</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MedicationCard
               medications={patient.medications}
               onAdd={onMedicationAdd}
@@ -314,6 +314,3 @@ const Dashboard: React.FC<DashboardProps> = ({
 };
 
 export default Dashboard;
-
-
-

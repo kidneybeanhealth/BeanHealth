@@ -222,13 +222,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-white">✅ Prescription Created!</h3>
-                  <p className="text-secondary-100 text-sm mt-1">
+                  <p className="text-emerald-100 text-sm mt-1">
                     Review and send to {patient.name}
                   </p>
                 </div>
                 <button
                   onClick={handleClose}
-                  className="text-white hover:text-secondary-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
+                  className="text-white hover:text-emerald-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
                 >
                   <XIcon className="h-6 w-6" />
                 </button>
@@ -237,9 +237,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
             {/* Body */}
             <div className="px-6 py-6">
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-2 border-secondary-200 dark:border-secondary-800 rounded-xl p-6 mb-6">
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl p-6 mb-6">
                 <div className="flex items-center space-x-3 mb-4">
-                  <svg className="h-12 w-12 text-secondary-600 dark:text-secondary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-12 w-12 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
@@ -269,17 +269,17 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               <div className="text-center mb-6">
                 <button
                   onClick={handlePreviewPDF}
-                  className="text-rose-900 dark:text-rose-400 hover:text-rose-900 dark:hover:text-secondary-300 font-medium underline"
+                  className="text-rose-900 dark:text-rose-400 hover:text-rose-900 dark:hover:text-sky-300 font-medium underline"
                 >
                   👁️ Preview PDF in new tab
                 </button>
               </div>
 
-              <div className="bg-rose-50 dark:bg-rose-900/20 border border-secondary-200 dark:border-secondary-800 rounded-xl p-4 mb-6">
-                <h4 className="font-semibold text-secondary-900 dark:text-secondary-100 mb-2">
+              <div className="bg-rose-50 dark:bg-rose-900/20 border border-sky-200 dark:border-sky-800 rounded-xl p-4 mb-6">
+                <h4 className="font-semibold text-sky-900 dark:text-sky-100 mb-2">
                   What would you like to do?
                 </h4>
-                <ul className="text-sm text-secondary-800 dark:text-secondary-200 space-y-1">
+                <ul className="text-sm text-sky-800 dark:text-sky-200 space-y-1">
                   <li>• <strong>Send to Patient:</strong> Upload PDF and send directly in chat</li>
                   <li>• <strong>Download Only:</strong> Save PDF to your device</li>
                 </ul>
@@ -307,7 +307,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                 <button
                   onClick={handleSendToPatient}
                   disabled={isSubmitting}
-                  className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-secondary-500 to-secondary-700 rounded-lg hover:from-secondary-600 hover:to-secondary-800 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
                   {isSubmitting ? (
                     <>
@@ -350,13 +350,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-2xl font-bold text-white">Create Prescription</h3>
-                <p className="text-secondary-100 text-sm mt-1">
+                <p className="text-sky-100 text-sm mt-1">
                   Patient: <span className="font-semibold">{patient.name}</span>
                 </p>
               </div>
               <button
                 onClick={handleClose}
-                className="text-white hover:text-secondary-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
+                className="text-white hover:text-sky-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
               >
                 <XIcon className="h-6 w-6" />
               </button>
@@ -394,7 +394,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveMedication(index)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                       >
                         <TrashIcon className="h-5 w-5" />
                       </button>
@@ -519,7 +519,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               type="submit"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-secondary-500 to-secondary-900 rounded-lg hover:from-secondary-600 hover:to-secondary-800 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg hover:from-secondary-600 hover:to-secondary-800 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               {isSubmitting ? (
                 <>
@@ -541,4 +541,3 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 };
 
 export default PrescriptionModal;
-

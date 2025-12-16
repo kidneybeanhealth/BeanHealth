@@ -105,10 +105,10 @@ const AppContent: React.FC = () => {
   // But only if we haven't timed out and aren't initialized yet
   if ((loading || !isInitialized) && !loadingTimeout) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading your account...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 dark:border-white mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400 font-medium">Loading your account...</p>
         </div>
       </div>
     );
@@ -165,7 +165,7 @@ const App: React.FC = () => {
                 },
               }}
             />
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
               <AppContent />
             </div>
           </DataProvider>

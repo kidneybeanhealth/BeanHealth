@@ -1,7 +1,7 @@
 /**
  * Authentication Context
  * 
- * FIXES APPLIED:
+ * FIXES APPLIED (from main branch):
  * - Single auth state listener with proper cleanup
  * - Synchronous session hydration on mount using getSession()
  * - Removed race conditions between initial load and auth state changes
@@ -20,7 +20,6 @@ import { supabase } from '../lib/supabase'
 import { AuthService } from '../services/authService'
 import { User as AppUser } from '../types'
 import { showErrorToast, showSuccessToast } from '../utils/toastUtils'
-import { withTimeout } from '../utils/requestUtils'
 
 interface AuthContextType {
   user: User | null
@@ -76,11 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('[AuthContext] Fetching profile for user:', userId);
 
-      const userProfile = await withTimeout(
-        AuthService.getCurrentUser(),
-        10000,
-        'Profile fetch timeout'
-      );
+      const userProfile = await AuthService.getCurrentUser();
 
       if (!isMountedRef.current) return null;
 
@@ -90,20 +85,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         (!userProfile?.avatar_url || userProfile.avatar_url !== userSession.user.user_metadata.picture)) {
         try {
           console.log('[AuthContext] Updating Google profile picture');
-          await withTimeout(
-            AuthService.createOrUpdateProfile({
-              id: userId,
-              email: userSession.user.email || '',
-              name: userSession.user.user_metadata?.full_name || userSession.user.email || '',
-              role: userProfile?.role || 'patient',
-              avatarUrl: userSession.user.user_metadata.picture,
-              specialty: userProfile?.specialty,
-              dateOfBirth: userProfile?.date_of_birth,
-              condition: userProfile?.condition
-            }),
-            10000,
-            'Profile update timeout'
-          );
+          await AuthService.createOrUpdateProfile({
+            id: userId,
+            email: userSession.user.email || '',
+            name: userSession.user.user_metadata?.full_name || userSession.user.email || '',
+            role: userProfile?.role || 'patient',
+            avatarUrl: userSession.user.user_metadata.picture,
+            specialty: userProfile?.specialty,
+            dateOfBirth: userProfile?.date_of_birth,
+            condition: userProfile?.condition
+          });
 
           // Refresh the profile to get the updated avatar
           const updatedProfile = await AuthService.getCurrentUser();
@@ -136,11 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[AuthContext] Calling supabase.auth.getSession()...');
       const startTime = Date.now();
 
-      const { data: { session: currentSession }, error: sessionError } = await withTimeout(
-        supabase.auth.getSession(),
-        10000,
-        'Session initialization timeout - check your Supabase credentials'
-      );
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
 
       console.log('[AuthContext] getSession completed in', Date.now() - startTime, 'ms');
 

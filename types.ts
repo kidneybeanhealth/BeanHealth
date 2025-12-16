@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'records' | 'upload' | 'messages' | 'billing';
+export type View = 'dashboard' | 'records' | 'upload' | 'messages' | 'billing' | 'doctors';
 
 export type UserRole = 'patient' | 'doctor';
 
@@ -7,10 +7,6 @@ export type AuthView = 'chooser' | 'patient-login' | 'doctor-login';
 export type DoctorPortalView = 'dashboard' | 'messages';
 
 export type SubscriptionTier = 'FreeTrial' | 'Paid';
-
-export type CKDStage = 'Stage 1' | 'Stage 2' | 'Stage 3' | 'Stage 4' | 'Stage 5';
-
-export type Comorbidity = 'Diabetes Mellitus (DM)' | 'Hypertension (HTN)' | 'Other';
 
 export interface User {
   id: string;
@@ -32,29 +28,13 @@ export interface User {
   notes?: string;
   created_at?: string;
   updated_at?: string;
-  
-  // Referral system fields
-  referral_code?: string; // Doctor's unique referral code (DOC-XXXXXX)
-  referralCode?: string; // Camel case version
-  patient_uid?: string; // Patient's sequential ID (BH-PAT-0001)
-  patientUid?: string; // Camel case version
-  consent_accepted?: boolean; // Patient consent for data sharing
-  consentAccepted?: boolean; // Camel case version
-  referring_doctor_id?: string; // Doctor who referred the patient
-  referringDoctorId?: string; // Camel case version
-  
-  // CKD specific fields
-  diagnosis_year?: number; // Year of CKD diagnosis
-  diagnosisYear?: number; // Camel case version
-  ckd_stage?: CKDStage; // Current CKD stage
-  ckdStage?: CKDStage; // Camel case version
-  comorbidities?: string[]; // Array of comorbidities
 }
 
 export interface Vital {
   value: string;
   unit: string;
   trend?: 'up' | 'down' | 'stable';
+  status?: 'normal' | 'borderline' | 'abnormal' | 'critical'; // CKD status indicator
 }
 
 export interface Vitals {
@@ -62,7 +42,10 @@ export interface Vitals {
   heartRate: Vital;
   temperature: Vital;
   glucose?: Vital;
+  spo2?: Vital; // NEW: SpO2 (oxygen saturation)
+  weight?: Vital; // NEW: Weight tracking for fluid status
 }
+
 
 export interface VitalsRecord {
   date: string;
@@ -88,10 +71,8 @@ export interface MedicalRecord {
 }
 
 export interface Doctor extends User {
-    role: 'doctor';
-    specialty: string;
-    referral_code: string; // Required for doctors
-    referralCode: string;
+  role: 'doctor';
+  specialty: string;
 }
 
 export interface ChatMessage {
@@ -125,21 +106,6 @@ export interface Patient extends User {
   urgentCredits: number;
   trialEndsAt?: string; // ISO Date string
   notes?: string;
-  
-  // Referral system - required for patients
-  patient_uid: string; // Sequential ID (BH-PAT-0001)
-  patientUid: string;
-  consent_accepted: boolean; // Must accept consent to register
-  consentAccepted: boolean;
-  referring_doctor_id: string; // Required - doctor who referred them
-  referringDoctorId: string;
-  
-  // Medical information (optional)
-  diagnosis_year?: number;
-  diagnosisYear?: number;
-  ckd_stage?: CKDStage;
-  ckdStage?: CKDStage;
-  comorbidities?: string[];
 }
 
 // Prescription related types
@@ -172,3 +138,113 @@ export interface Prescription {
   patientName?: string;
   doctorSpecialty?: string;
 }
+
+// ============================================
+// CKD-SPECIFIC TYPES
+// ============================================
+
+export type CKDStage = '1' | '2' | '3a' | '3b' | '4' | '5';
+
+export type VitalStatus = 'normal' | 'borderline' | 'abnormal' | 'critical';
+
+export type LabTestType = 'creatinine' | 'egfr' | 'bun' | 'potassium' | 'hemoglobin' | 'bicarbonate' | 'acr';
+
+export interface FluidIntake {
+  id: string;
+  patientId: string;
+  patient_id?: string; // Database field
+  amountMl: number;
+  amount_ml?: number; // Database field
+  fluidType: string;
+  fluid_type?: string; // Database field
+  recordedAt: string;
+  recorded_at?: string; // Database field
+  notes?: string;
+}
+
+export interface LabResult {
+  id: string;
+  patientId: string;
+  patient_id?: string; // Database field
+  testType: LabTestType;
+  test_type?: LabTestType; // Database field
+  value: number;
+  unit: string;
+  referenceRangeMin?: number;
+  reference_range_min?: number; // Database field
+  referenceRangeMax?: number;
+  reference_range_max?: number; // Database field
+  status: VitalStatus;
+  testDate: string;
+  test_date?: string; // Database field
+  labName?: string;
+  lab_name?: string; // Database field
+  notes?: string;
+  createdAt?: string;
+  created_at?: string; // Database field
+}
+
+export interface UpcomingTest {
+  id: string;
+  patientId: string;
+  patient_id?: string; // Database field
+  testName: string;
+  test_name?: string; // Database field
+  scheduledDate: string;
+  scheduled_date?: string; // Database field
+  location?: string;
+  doctorName?: string;
+  doctor_name?: string; // Database field
+  notes?: string;
+  completed: boolean;
+  completedAt?: string;
+  completed_at?: string; // Database field
+  createdAt?: string;
+  created_at?: string; // Database field
+  updatedAt?: string;
+  updated_at?: string; // Database field
+}
+
+// Extended User interface with CKD fields
+export interface CKDPatientProfile {
+  age?: number;
+  ckdStage?: CKDStage;
+  ckd_stage?: CKDStage; // Database field
+  comorbidities?: string[];
+  baselineWeight?: number;
+  baseline_weight?: number; // Database field
+  dailyFluidTarget?: number; // in ml
+  daily_fluid_target?: number; // Database field
+}
+
+// Comorbidity options (pre-populated)
+export const HIGH_PRIORITY_COMORBIDITIES = [
+  'Hypertension',
+  'Type 2 Diabetes Mellitus',
+  'Cardiovascular disease',
+  'Heart Failure',
+  'Coronary Artery Disease',
+  'Dyslipidemia',
+  'Anemia of CKD',
+  'Metabolic acidosis',
+  'Obesity',
+  'Proteinuria',
+  'History of Acute Kidney Injury (AKI)',
+] as const;
+
+export const MEDICATION_RELATED_COMORBIDITIES = [
+  'Use of ACE inhibitors / ARBs',
+  'Use of MRAs (spironolactone, eplerenone)',
+  'NSAID use',
+  'Diuretics (loop / thiazide)',
+  'SGLT2 inhibitors',
+] as const;
+
+export const OPTIONAL_COMORBIDITIES = [
+  'Peripheral vascular disease',
+  'Stroke',
+  'Chronic liver disease',
+  'COPD',
+  'Hypothyroidism',
+  'Autoimmune kidney disorders (IgA nephropathy, lupus nephritis)',
+] as const;

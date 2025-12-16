@@ -214,4 +214,3 @@ const BloodPressurePicker: React.FC<BloodPressurePickerProps> = ({
 };
 
 export default BloodPressurePicker;
-

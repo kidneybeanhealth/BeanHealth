@@ -23,7 +23,7 @@ const LineChart: React.FC<ChartProps> = ({ data, lines, xAxisKey }) => {
   const svgHeight = height + padding * 2;
   
   if (!data || data.length < 2) {
-    return <div className="min-h-[200px] sm:min-h-[250px] lg:min-h-[300px] flex items-center justify-center text-gray-500 dark:text-gray-400 p-4">Not enough data to display chart.</div>;
+    return <div className="h-[350px] flex items-center justify-center text-gray-500 dark:text-gray-400">Not enough data to display chart.</div>;
   }
   
   const axisColor = theme === 'dark' ? '#94a3b8' : '#64748b';
@@ -91,8 +91,8 @@ const LineChart: React.FC<ChartProps> = ({ data, lines, xAxisKey }) => {
   };
   
   return (
-    <div className="relative w-full">
-      <svg className="w-full h-auto" viewBox={`0 0 ${svgWidth} ${svgHeight}`} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} role="img" aria-label={`Line chart showing trends for ${lines.map(l => l.dataKey).join(', ')}`} preserveAspectRatio="xMidYMid meet">
+    <div className="relative">
+      <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} role="img" aria-label={`Line chart showing trends for ${lines.map(l => l.dataKey).join(', ')}`}>
         {/* Y-Axis */}
         {[...Array(6)].map((_, i) => {
           const yValue = yDomainMin + i * (yDomainMax - yDomainMin) / 5;

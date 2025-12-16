@@ -56,7 +56,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
         <div className="p-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Update Profile Photo</h2>
-          <button onClick={onClose} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 min-w-[44px] min-h-[44px] flex items-center justify-center">
+          <button onClick={onClose} className="p-1 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
             <XIcon className="h-6 w-6" />
           </button>
         </div>
@@ -66,7 +66,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-secondary-500 dark:hover:border-secondary-400 transition-colors"
+            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors"
           >
             <input
               type="file"
@@ -98,7 +98,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
           <button
             onClick={handleSave}
             disabled={!imageSrc}
-            className="px-4 py-2 text-sm font-semibold text-white bg-secondary-600 rounded-lg hover:bg-secondary-700 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed"
           >
             Save Photo
           </button>
@@ -109,4 +109,3 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
 };
 
 export default ProfilePhotoUploader;
-

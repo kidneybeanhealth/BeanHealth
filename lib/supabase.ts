@@ -12,7 +12,6 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Capacitor } from '@capacitor/core'
-import type { Database as DatabaseTypes } from './supabase.types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -120,6 +119,9 @@ export interface Database {
           urgent_credits?: number
           trial_ends_at?: string
           notes?: string
+          referral_code?: string
+          referred_by?: string
+          patient_id?: string
           created_at: string
           updated_at: string
         }
@@ -136,6 +138,9 @@ export interface Database {
           urgent_credits?: number
           trial_ends_at?: string
           notes?: string
+          referral_code?: string
+          referred_by?: string
+          patient_id?: string
           created_at?: string
           updated_at?: string
         }
@@ -152,6 +157,9 @@ export interface Database {
           urgent_credits?: number
           trial_ends_at?: string
           notes?: string
+          referral_code?: string
+          referred_by?: string
+          patient_id?: string
           created_at?: string
           updated_at?: string
         }

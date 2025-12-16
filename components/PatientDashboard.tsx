@@ -3,10 +3,13 @@ import { useAuth } from "../contexts/AuthContext";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Dashboard from "./Dashboard";
+import CKDDashboard from "./CKDDashboard";
 import Records from "./Records";
 import Upload from "./Upload";
 import Messages from "./Messages";
 import Billing from "./Billing";
+import DoctorsPage from "./DoctorsPage";
+import OnboardingModal, { OnboardingData } from "./OnboardingModal";
 import { View, Patient, Vitals, Medication, MedicalRecord, User, Doctor, ChatMessage } from "../types";
 import { MedicalRecordsService } from "../services/medicalRecordsService";
 import { uploadFileToSupabase, uploadFileToSupabaseSimple, testStorageConnection, deleteFileFromSupabase } from "../services/storageService";
@@ -16,12 +19,14 @@ import { UserService } from "../services/authService";
 import { PatientAdditionService } from "../services/patientInvitationService";
 import { ChatService } from "../services/chatService";
 import { VitalsService } from "../services/dataService";
+import { OnboardingService } from "../services/onboardingService";
 
 
 const PatientDashboard: React.FC = () => {
   const { user, profile, signOut } = useAuth();
   const [activeView, setActiveView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // State management
   const [vitals, setVitals] = useState<Vitals>({
@@ -57,6 +62,13 @@ const PatientDashboard: React.FC = () => {
           // Initialize storage
           await testStorageConnection();
 
+          // Check if user needs onboarding
+          const isOnboarded = await OnboardingService.checkOnboardingStatus(user.id);
+          if (!isOnboarded) {
+            setShowOnboarding(true);
+            return; // Don't load other data until onboarding is complete
+          }
+
           // Load existing vitals from database
           const latestVitals = await VitalsService.getLatestVitals(user.id);
           if (latestVitals) {
@@ -67,13 +79,7 @@ const PatientDashboard: React.FC = () => {
           // Load existing medical records
           const records = await MedicalRecordsService.getMedicalRecordsByPatientId(user.id);
           setMedicalRecords(records);
-          
-          // Load AI summary from database if it exists
-          if (profile?.notes) {
-            setAiSummary(profile.notes);
-            console.log('✅ Loaded AI summary from database');
-          }
-          
+
           // Generate initial AI summary if records exist
           if (records.length > 0) {
             setIsSummaryLoading(true);
@@ -86,7 +92,7 @@ const PatientDashboard: React.FC = () => {
               setIsSummaryLoading(false);
             }
           }
-          
+
           // Check if we need to extract vitals from the most recent record on app load
           // This is useful if vitals are empty but we have recent records
           const hasEmptyVitals = !latestVitals || (!latestVitals.bloodPressure.value && !latestVitals.heartRate.value && !latestVitals.temperature.value);
@@ -94,11 +100,11 @@ const PatientDashboard: React.FC = () => {
             // Find the most recent record
             const sortedRecords = records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             const mostRecentRecord = sortedRecords[0];
-            
+
             // Only check records from the last 30 days to avoid outdated vitals
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            
+
             if (new Date(mostRecentRecord.date) > thirtyDaysAgo) {
               // This would require the file to extract vitals, which we don't have access to here
               // So we'll skip this for now, but the feature will work for newly uploaded records
@@ -213,6 +219,27 @@ const PatientDashboard: React.FC = () => {
   );
 
   // Event handlers
+  const handleOnboardingComplete = async (data: OnboardingData) => {
+    if (!user?.id) return;
+
+    try {
+      const result = await OnboardingService.completeOnboarding(user.id, data);
+      console.log('✅ Onboarding complete:', result);
+
+      // Update the modal to show patient ID
+      // The modal will handle the success screen display
+
+      // Close modal after short delay
+      setTimeout(() => {
+        setShowOnboarding(false);
+      }, 100);
+    } catch (error) {
+      console.error('Onboarding error:', error);
+      throw error; // Modal will handle error display
+    }
+  };
+
+  // Original event handlers
   const handleVitalsChange = async (vitalKey: keyof Vitals, newValue: string) => {
     // Update local state immediately for responsive UI
     setVitals((prev) => ({
@@ -253,22 +280,14 @@ const PatientDashboard: React.FC = () => {
   };
 
   const handleRefreshSummary = async () => {
-    if (isSummaryLoading || !user?.id) {
+    if (isSummaryLoading) {
       return;
     }
-    
+
     setIsSummaryLoading(true);
     try {
       const summary = await summarizeAllRecords(medicalRecords);
       setAiSummary(summary);
-      
-      // Save the AI summary to the database
-      try {
-        await UserService.updateUser(user.id, { notes: summary });
-        console.log('✅ AI summary refreshed and saved to database');
-      } catch (saveError) {
-        console.error('Failed to save AI summary to database:', saveError);
-      }
     } catch (error) {
       console.error('Error generating AI summary:', error);
       setAiSummary('Unable to generate summary at this time. Please try again later.');
@@ -280,11 +299,11 @@ const PatientDashboard: React.FC = () => {
   const handleUpdateAvatar = async (dataUrl: string) => {
     // Handle avatar update by saving to the database
     if (!user?.id) return;
-    
+
     try {
       // Update the avatar URL in the database
       await UserService.updateUser(user.id, { avatar_url: dataUrl });
-      
+
       // The avatar will be updated in the UI automatically when the profile refreshes
       console.log("Avatar updated successfully");
     } catch (error) {
@@ -301,19 +320,19 @@ const PatientDashboard: React.FC = () => {
     const recordsWithDates = allRecords
       .map(record => ({ ...record, dateObj: new Date(record.date) }))
       .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
-    
+
     const currentRecordDate = new Date(recordDate);
     const mostRecentRecord = recordsWithDates[0];
-    
+
     // Only update vitals if this is the most recent record or if current vitals are empty
     const isCurrentVitalsEmpty = !vitals.bloodPressure.value && !vitals.heartRate.value && !vitals.temperature.value;
     const isMostRecentRecord = mostRecentRecord.dateObj.getTime() === currentRecordDate.getTime();
     const shouldUpdate = isMostRecentRecord || isCurrentVitalsEmpty;
-    
+
     if (!shouldUpdate) {
       return;
     }
-    
+
     const updatedVitals = { ...vitals };
     let hasUpdates = false;
     const updatedFields: string[] = [];
@@ -345,7 +364,7 @@ const PatientDashboard: React.FC = () => {
     if (extractedVitals.temperature) {
       const { value, unit } = extractedVitals.temperature;
       // Convert to Fahrenheit if needed
-      const tempInF = unit === 'C' ? (value * 9/5) + 32 : value;
+      const tempInF = unit === 'C' ? (value * 9 / 5) + 32 : value;
       updatedVitals.temperature = {
         value: tempInF.toFixed(1),
         unit: "°F",
@@ -383,7 +402,7 @@ const PatientDashboard: React.FC = () => {
 
         // Update local state
         setVitals(updatedVitals);
-        
+
         // Update the tracking of when vitals were last updated from records
         setVitalsLastUpdatedFromRecord(prev => {
           const updated = { ...prev };
@@ -393,7 +412,7 @@ const PatientDashboard: React.FC = () => {
           if (extractedVitals.glucose) updated.glucose = recordDate;
           return updated;
         });
-        
+
         // Show a single notification to the user
         setTimeout(() => {
           const fieldsText = updatedFields.join(", ");
@@ -403,7 +422,7 @@ const PatientDashboard: React.FC = () => {
         console.error('❌ Error saving vitals to database:', error);
         // Still update local state even if database save fails
         setVitals(updatedVitals);
-        
+
         setTimeout(() => {
           const fieldsText = updatedFields.join(", ");
           alert(`Vital signs updated locally: ${fieldsText}\nWarning: Could not save to database. Please check your connection.`);
@@ -419,13 +438,13 @@ const PatientDashboard: React.FC = () => {
     }
 
     setIsUploadLoading(true);
-    
+
     try {
       // Step 1: AI categorizes the document (fast, minimal tokens)
       console.log('🤖 Step 1: AI categorizing document...');
       const category = await categorizeMedicalRecord(file);
       console.log(`✅ Document categorized as: ${category}`);
-      
+
       // Step 2: Start file upload and detailed AI analysis in parallel
       const uploadPromise = (async () => {
         try {
@@ -436,19 +455,19 @@ const PatientDashboard: React.FC = () => {
           return await uploadFileToSupabase(file);
         }
       })();
-      
+
       const analysisPromise = analyzeMedicalRecord(file);
-      
+
       // Wait for both operations to complete
       console.log('⏳ Step 2: Uploading file and analyzing content...');
       const [fileUrl, analysisResult] = await Promise.all([
-        uploadPromise, 
+        uploadPromise,
         analysisPromise
       ]);
-      
+
       // Extract vitals from the combined analysis result
       const extractedVitals = analysisResult.extractedVitals;
-      
+
       // Create the medical record in the database
       const newRecord = await MedicalRecordsService.createMedicalRecord({
         patientId: user.id,
@@ -463,34 +482,34 @@ const PatientDashboard: React.FC = () => {
       // Update local state with the new record
       const updatedRecords = [newRecord, ...medicalRecords];
       setMedicalRecords(updatedRecords);
-      
+
       // Update vitals if extracted from the medical record
       if (extractedVitals) {
         await updateVitalsFromRecord(extractedVitals, newRecord.date, updatedRecords);
       } else {
         console.log('❌ No vitals extracted from the medical record');
-        
+
         // For testing when AI quota is exceeded: simulate vitals extraction
         // This helps test the vitals update feature when AI is unavailable
-        if (analysisResult.summary.toLowerCase().includes('patient') || 
-            analysisResult.type.toLowerCase().includes('doctor') ||
-            analysisResult.type.toLowerCase().includes('medical')) {
-          
+        if (analysisResult.summary.toLowerCase().includes('patient') ||
+          analysisResult.type.toLowerCase().includes('doctor') ||
+          analysisResult.type.toLowerCase().includes('medical')) {
+
           const simulatedVitals: ExtractedVitals = {
             bloodPressure: { systolic: 120, diastolic: 80 },
             heartRate: 72,
             temperature: { value: 98.6, unit: "F" },
             date: newRecord.date
           };
-          
+
           console.log('🧪 AI quota exceeded - using simulated vitals for testing:', simulatedVitals);
           await updateVitalsFromRecord(simulatedVitals, newRecord.date, updatedRecords);
         }
       }
-      
+
       // Generate AI summary with the updated records immediately
       setIsSummaryLoading(true);
-      
+
       try {
         const summary = await summarizeAllRecords(updatedRecords);
         setAiSummary(summary);
@@ -501,10 +520,10 @@ const PatientDashboard: React.FC = () => {
       } finally {
         setIsSummaryLoading(false);
       }
-      
+
       // Switch to records view to show the new record
       setActiveView("records");
-      
+
       // Create a more informative success message
       let successMessage = 'Medical record uploaded and analyzed successfully!';
       if (extractedVitals) {
@@ -513,24 +532,24 @@ const PatientDashboard: React.FC = () => {
         if (extractedVitals.heartRate) extractedFields.push('Heart Rate');
         if (extractedVitals.temperature) extractedFields.push('Temperature');
         if (extractedVitals.glucose) extractedFields.push('Blood Glucose');
-        
+
         if (extractedFields.length > 0) {
           successMessage += `\n\n📊 Vital signs detected: ${extractedFields.join(', ')}`;
         }
       }
-      
+
       alert(successMessage);
-      
+
     } catch (error) {
       console.error('Error in file upload process:', error);
-      
+
       let errorMessage = 'Failed to upload and analyze the medical record.';
       if (error instanceof Error) {
         errorMessage += ` Error: ${error.message}`;
-        
+
 
       }
-      
+
       alert(errorMessage + ' Please check the console for more details.');
     } finally {
       setIsUploadLoading(false);
@@ -541,19 +560,9 @@ const PatientDashboard: React.FC = () => {
     switch (activeView) {
       case "dashboard":
         return (
-          <Dashboard
+          <CKDDashboard
             patient={patient}
-            aiSummary={aiSummary}
-            onRefreshSummary={handleRefreshSummary}
-            isSummaryLoading={isSummaryLoading}
-            onSummaryChange={setAiSummary}
-            summaryNote={summaryNote}
-            onSummaryNoteChange={setSummaryNote}
-            onVitalsChange={handleVitalsChange}
-            onMedicationAdd={handleMedicationAdd}
-            onMedicationChange={handleMedicationChange}
-            onMedicationRemove={handleMedicationRemove}
-            vitalsLastUpdatedFromRecord={vitalsLastUpdatedFromRecord}
+            onNavigateToDoctors={() => setActiveView("doctors")}
           />
         );
       case "records":
@@ -564,7 +573,7 @@ const PatientDashboard: React.FC = () => {
               try {
                 // Delete the record and get the file URL
                 const fileUrl = await MedicalRecordsService.deleteMedicalRecord(recordId);
-                
+
                 // Delete the file from storage if it exists
                 if (fileUrl) {
                   const storageDeleted = await deleteFileFromSupabase(fileUrl);
@@ -572,37 +581,22 @@ const PatientDashboard: React.FC = () => {
                     console.warn('Record deleted from database but file may still exist in storage');
                   }
                 }
-                
+
                 // Update local state
                 setMedicalRecords((prev) =>
                   prev.filter((record) => record.id !== recordId)
                 );
-                
+
                 // Refresh AI summary after removing record (only if there are remaining records)
                 const remainingRecords = medicalRecords.filter((record) => record.id !== recordId);
                 if (remainingRecords.length > 0) {
                   // Use the remaining records directly to avoid state delay
                   const summary = await summarizeAllRecords(remainingRecords);
                   setAiSummary(summary);
-                  
-                  // Save updated summary to database
-                  try {
-                    await UserService.updateUser(user!.id, { notes: summary });
-                    console.log('✅ AI summary updated after record deletion');
-                  } catch (saveError) {
-                    console.error('Failed to save updated AI summary:', saveError);
-                  }
                 } else {
-                  const placeholderText = "Upload your first medical record to get an AI-powered health summary.";
-                  setAiSummary(placeholderText);
-                  // Clear summary from database
-                  try {
-                    await UserService.updateUser(user!.id, { notes: placeholderText });
-                  } catch (saveError) {
-                    console.error('Failed to clear AI summary:', saveError);
-                  }
+                  setAiSummary("Upload your first medical record to get an AI-powered health summary.");
                 }
-                
+
               } catch (error) {
                 console.error('Error removing record:', error);
                 alert('Failed to remove record. Please try again.');
@@ -646,7 +640,7 @@ const PatientDashboard: React.FC = () => {
               // TODO: Implement mark as read functionality in ChatService
             }}
             preselectedContactId={null}
-            clearPreselectedContact={() => {}}
+            clearPreselectedContact={() => { }}
             onNavigateToBilling={() => setActiveView("billing")}
             onMenuClick={() => setSidebarOpen(true)}
           />
@@ -662,6 +656,16 @@ const PatientDashboard: React.FC = () => {
             onUpgradeSubscription={(tier) => {
               console.log("Upgrading subscription to:", tier);
               // In a real app, this would handle subscription upgrade
+            }}
+          />
+        );
+      case "doctors":
+        return (
+          <DoctorsPage
+            patientId={user!.id}
+            onNavigateToChat={(doctorId) => {
+              // Navigate to messages and could pre-select the doctor
+              setActiveView("messages");
             }}
           />
         );
@@ -709,6 +713,12 @@ const PatientDashboard: React.FC = () => {
 
         <main className={`flex-1 overflow-y-auto ${activeView === 'messages' ? 'p-0' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>{renderContent()}</main>
       </div>
+
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onComplete={handleOnboardingComplete}
+      />
     </div>
   );
 };

@@ -17,7 +17,7 @@ import { SparklesIcon } from './icons/SparklesIcon';
 import { UserPlusIcon } from './icons/UserPlusIcon';
 import { DashboardIcon } from './icons/DashboardIcon';
 import { AlertIcon } from './icons/AlertIcon';
-import DoctorReferralCodeCard from './DoctorReferralCodeCard';
+import DoctorReferralCard from './DoctorReferralCard';
 
 const DoctorDashboardMain: React.FC = () => {
   const { user, profile, signOut } = useAuth();
@@ -32,7 +32,7 @@ const DoctorDashboardMain: React.FC = () => {
   // Fetch doctor's patients
   const fetchPatients = async () => {
     if (!user?.id) return;
-    
+
     try {
       setLoading(true);
       const patientsData = await PatientAdditionService.getDoctorPatients(user.id);
@@ -49,7 +49,7 @@ const DoctorDashboardMain: React.FC = () => {
   // Fetch messages for all patients
   const fetchMessages = async () => {
     if (!user?.id || patients.length === 0) return;
-    
+
     try {
       const allMessages = await ChatService.getAllConversations(user.id);
       setMessages(allMessages);
@@ -105,7 +105,7 @@ const DoctorDashboardMain: React.FC = () => {
     try {
       // Fetch patient's medical records
       const records = await MedicalRecordsService.getMedicalRecordsByPatientId(patient.id);
-      
+
       // Fetch patient's vitals - use getLatestVitals for current vitals
       let vitalsData;
       try {
@@ -115,7 +115,7 @@ const DoctorDashboardMain: React.FC = () => {
         console.log('No vitals data available for patient:', err);
         vitalsData = null;
       }
-      
+
       // Fetch patient's vitals history
       let vitalsHistory;
       try {
@@ -124,7 +124,7 @@ const DoctorDashboardMain: React.FC = () => {
         console.log('No vitals history available');
         vitalsHistory = [];
       }
-      
+
       // Fetch patient's medications
       let medicationsData;
       try {
@@ -151,12 +151,12 @@ const DoctorDashboardMain: React.FC = () => {
         medications: medicationsData || [],
         records: records || [],
         doctors: [],
-        chatMessages: messages.filter(m => 
+        chatMessages: messages.filter(m =>
           (m.senderId === patient.id && m.recipientId === user?.id) ||
           (m.senderId === user?.id && m.recipientId === patient.id)
         )
       };
-      
+
       console.log('Created patient data with vitals:', patientData.vitals);
       setSelectedPatient(patientData);
       setActiveView('patient-detail');
@@ -171,7 +171,7 @@ const DoctorDashboardMain: React.FC = () => {
     setActiveView('dashboard');
   };
 
-  const unreadMessagesCount = messages.filter(m => 
+  const unreadMessagesCount = messages.filter(m =>
     m.recipientId === user?.id && !m.isRead
   ).length;
 
@@ -200,21 +200,16 @@ const DoctorDashboardMain: React.FC = () => {
         </div>
       </div>
 
-      {/* Referral Code Card */}
-      <div className="mb-6 sm:mb-8">
-        <DoctorReferralCodeCard />
-      </div>
-
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div className="card group hover-lift">
           <div className="flex items-center">
-            <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-700 rounded-2xl transition-all duration-300 group-hover:scale-110">
-              <UserGroupIcon className="h-6 w-6 sm:h-7 sm:w-7 text-gray-700 dark:text-gray-300" />
+            <div className="p-3 sm:p-4 bg-slate-100 dark:bg-slate-700 rounded-2xl transition-all duration-300 group-hover:scale-110">
+              <UserGroupIcon className="h-6 w-6 sm:h-7 sm:w-7 text-slate-700 dark:text-slate-300" />
             </div>
             <div className="ml-3 sm:ml-4">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Patients</p>
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-900 dark:text-white">
+              <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">Total Patients</p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-900 dark:text-white">
                 {loading ? '...' : patients.length}
               </p>
             </div>
@@ -223,12 +218,12 @@ const DoctorDashboardMain: React.FC = () => {
 
         <div className="card group hover-lift">
           <div className="flex items-center">
-            <div className="p-3 sm:p-4 bg-secondary-100 dark:bg-secondary-900/30 rounded-2xl transition-all duration-300 group-hover:scale-110">
-              <MessagesIcon className="h-6 w-6 sm:h-7 sm:w-7 text-secondary-700 dark:text-secondary-400" />
+            <div className="p-3 sm:p-4 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl transition-all duration-300 group-hover:scale-110">
+              <MessagesIcon className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-700 dark:text-emerald-400" />
             </div>
             <div className="ml-3 sm:ml-4">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">New Messages</p>
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-secondary-700 dark:text-secondary-400">
+              <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">New Messages</p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-emerald-600 dark:text-emerald-400">
                 {unreadMessagesCount}
               </p>
             </div>
@@ -237,12 +232,12 @@ const DoctorDashboardMain: React.FC = () => {
 
         <div className="card group hover-lift sm:col-span-2 lg:col-span-1">
           <div className="flex items-center">
-            <div className="p-3 sm:p-4 bg-secondary-100 dark:bg-secondary-900/30 rounded-2xl transition-all duration-300 group-hover:scale-110">
-              <DocumentIcon className="h-6 w-6 sm:h-7 sm:w-7 text-secondary-700 dark:text-secondary-400" />
+            <div className="p-3 sm:p-4 bg-amber-100 dark:bg-amber-900/30 rounded-2xl transition-all duration-300 group-hover:scale-110">
+              <DocumentIcon className="h-6 w-6 sm:h-7 sm:w-7 text-amber-700 dark:text-amber-400" />
             </div>
             <div className="ml-3 sm:ml-4">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Pending Reviews</p>
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-secondary-700 dark:text-secondary-400">0</p>
+              <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">Pending Reviews</p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-amber-600 dark:text-amber-400">0</p>
             </div>
           </div>
         </div>
@@ -260,7 +255,7 @@ const DoctorDashboardMain: React.FC = () => {
             <div className="p-4 sm:p-6">
               {loading ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-4 border-gray-300 border-t-secondary-700 dark:border-gray-700 dark:border-t-secondary-400 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-4 border-sky-200 border-t-sky-600 dark:border-gray-700 dark:border-t-sky-400 mx-auto"></div>
                   <p className="mt-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">Loading patients...</p>
                 </div>
               ) : error ? (
@@ -271,15 +266,15 @@ const DoctorDashboardMain: React.FC = () => {
                   <p className="text-sm sm:text-base text-red-600 dark:text-red-400 font-medium">{error}</p>
                   <button
                     onClick={fetchPatients}
-                    className="mt-4 px-4 py-2 bg-secondary-700 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-medium hover:bg-secondary-800 dark:hover:bg-gray-100 transition-all duration-200"
+                    className="mt-4 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-all duration-200"
                   >
                     Try again
                   </button>
                 </div>
               ) : patients.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="bg-gray-100 dark:bg-gray-800 p-4 sm:p-6 rounded-3xl inline-block mb-4">
-                    <UserGroupIcon className="h-12 w-12 sm:h-16 sm:w-16 text-gray-600 dark:text-gray-400" />
+                  <div className="bg-slate-100 dark:bg-slate-800 p-4 sm:p-6 rounded-3xl inline-block mb-4">
+                    <UserGroupIcon className="h-12 w-12 sm:h-16 sm:w-16 text-slate-600 dark:text-slate-400" />
                   </div>
                   <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100">No patients yet</h3>
                   <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 max-w-sm mx-auto px-4">
@@ -296,7 +291,7 @@ const DoctorDashboardMain: React.FC = () => {
               ) : (
                 <div className="space-y-2 sm:space-y-3">
                   {patients.slice(0, 5).map((patient, index) => (
-                    <div key={patient.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300/60 dark:border-gray-700/60 transition-all duration-200 animate-slideUp gap-3" style={{ animationDelay: `${index * 50}ms` }}>
+                    <div key={patient.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700/60 transition-all duration-200 animate-slideUp gap-3" style={{ animationDelay: `${index * 50}ms` }}>
                       <div className="flex items-center space-x-3 sm:space-x-4 flex-1 cursor-pointer" onClick={() => handleViewPatient(patient)}>
                         <div className={`h-10 w-10 sm:h-12 sm:w-12 ${getInitialsColor(patient.name, patient.email)} rounded-2xl flex items-center justify-center flex-shrink-0`}>
                           <span className="text-xs sm:text-sm font-bold text-white">
@@ -304,10 +299,10 @@ const DoctorDashboardMain: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                             {patient.name || patient.email}
                           </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                             {patient.email}
                           </p>
                         </div>
@@ -315,13 +310,13 @@ const DoctorDashboardMain: React.FC = () => {
                       <div className="flex items-center space-x-2 sm:ml-4">
                         <button
                           onClick={() => handleViewPatient(patient)}
-                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-secondary-700 dark:bg-white text-white dark:text-gray-900 rounded-xl text-xs sm:text-sm font-medium hover:bg-secondary-800 dark:hover:bg-gray-100 transition-all duration-200"
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs sm:text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-all duration-200"
                         >
                           View Profile
                         </button>
                         <button
                           onClick={() => setActiveView('messages')}
-                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-secondary-700 dark:bg-secondary-700 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-secondary-800 dark:hover:bg-secondary-800 transition-all duration-200"
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-emerald-600 dark:bg-emerald-600 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-emerald-700 dark:hover:bg-emerald-700 transition-all duration-200"
                         >
                           Message
                         </button>
@@ -338,6 +333,14 @@ const DoctorDashboardMain: React.FC = () => {
             </div>
           </div>
 
+          {/* Referral Code Card */}
+          <div className="card">
+            {user?.id && <DoctorReferralCard doctorId={user.id} />}
+          </div>
+        </div>
+
+        {/* Getting Started Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 sm:gap-8">
           {/* Getting Started */}
           <div className="card">
             <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
@@ -346,16 +349,16 @@ const DoctorDashboardMain: React.FC = () => {
             </div>
             <div className="p-4 sm:p-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border border-gray-300/60 dark:border-gray-700/60 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group animate-slideUp" style={{ animationDelay: '0ms' }}>
+                <div className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200 group animate-slideUp" style={{ animationDelay: '0ms' }}>
                   <div className="flex items-center space-x-3 sm:space-x-4">
-                    <div className="bg-secondary-700 dark:bg-white p-2 sm:p-3 rounded-xl transition-all duration-200">
-                      <UserGroupIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white dark:text-gray-900" />
+                    <div className="bg-slate-900 dark:bg-white p-2 sm:p-3 rounded-xl transition-all duration-200">
+                      <UserGroupIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white dark:text-slate-900" />
                     </div>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">Add patients</span>
+                    <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white">Add patients</span>
                   </div>
                   <button
                     onClick={handleAddPatientClick}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-secondary-700 dark:bg-white text-white dark:text-gray-900 rounded-xl text-xs sm:text-sm font-medium hover:bg-secondary-800 dark:hover:bg-gray-100 transition-all duration-200"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs sm:text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-all duration-200"
                   >
                     Add
                   </button>
@@ -386,7 +389,7 @@ const DoctorDashboardMain: React.FC = () => {
       medications: [],
       records: [],
       doctors: [], // Required for Patient type
-      chatMessages: messages.filter(m => 
+      chatMessages: messages.filter(m =>
         (m.senderId === patient.id && m.recipientId === user?.id) ||
         (m.senderId === user?.id && m.recipientId === patient.id)
       ),
@@ -425,15 +428,15 @@ const DoctorDashboardMain: React.FC = () => {
         onSendMessage={handleSendMessage}
         onMarkMessagesAsRead={handleMarkMessagesAsRead}
         preselectedContactId={null}
-        clearPreselectedContact={() => {}}
-        onNavigateToBilling={() => {}}
+        clearPreselectedContact={() => { }}
+        onNavigateToBilling={() => { }}
         onMenuClick={() => setActiveView('dashboard')}
       />
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Hide header on mobile when in messages view */}
       <div className={activeView === 'messages' ? 'hidden md:block' : ''}>
         <SimpleHeader
@@ -444,27 +447,25 @@ const DoctorDashboardMain: React.FC = () => {
       </div>
 
       {/* Navigation - Hide on mobile when in messages view */}
-      <div className={`glass-effect border-b border-gray-300/60 dark:border-gray-800 sticky top-0 z-10 ${activeView === 'messages' ? 'hidden md:flex' : ''}`}>
+      <div className={`glass-effect border-b border-slate-200/60 dark:border-slate-800 sticky top-0 z-10 ${activeView === 'messages' ? 'hidden md:flex' : ''}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <nav className="flex space-x-4 sm:space-x-8">
             <button
               onClick={() => setActiveView('dashboard')}
-              className={`py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${
-                activeView === 'dashboard'
-                  ? 'border-secondary-700 dark:border-white text-gray-900 dark:text-white'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
+              className={`py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${activeView === 'dashboard'
+                  ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
             >
               <DashboardIcon className={`inline h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2`} />
               <span className="hidden sm:inline">Dashboard</span>
             </button>
             <button
               onClick={() => setActiveView('messages')}
-              className={`relative py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${
-                activeView === 'messages'
-                  ? 'border-secondary-700 dark:border-white text-gray-900 dark:text-white'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
+              className={`relative py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${activeView === 'messages'
+                  ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
             >
               <MessagesIcon className={`inline h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2`} />
               <span className="hidden sm:inline">Messages</span>
@@ -483,7 +484,7 @@ const DoctorDashboardMain: React.FC = () => {
           {activeView === 'dashboard' && renderDashboard()}
           {activeView === 'messages' && renderMessages()}
           {activeView === 'patient-detail' && selectedPatient && (
-            <DoctorPatientView 
+            <DoctorPatientView
               patient={selectedPatient}
               onBack={handleBackToDashboard}
             />
@@ -505,7 +506,3 @@ const DoctorDashboardMain: React.FC = () => {
 };
 
 export default DoctorDashboardMain;
-
-
-
-

@@ -34,7 +34,7 @@ export const FileMessage: React.FC<FileMessageProps> = ({
       case 'image':
         return <CameraIcon className="w-6 h-6 text-green-500" />;
       case 'audio':
-        return <MicrophoneIcon className="w-6 h-6 text-secondary-500" />;
+        return <MicrophoneIcon className="w-6 h-6 text-blue-500" />;
       default:
         return <DocumentIcon className="w-6 h-6 text-gray-500" />;
     }
@@ -142,7 +142,7 @@ export const FileMessage: React.FC<FileMessageProps> = ({
               </div>
               <button
                 onClick={handleDownload}
-                className="text-secondary-500 hover:text-secondary-600 text-xs font-medium"
+                className="text-blue-500 hover:text-blue-600 text-xs font-medium"
               >
                 Download
               </button>
@@ -151,11 +151,11 @@ export const FileMessage: React.FC<FileMessageProps> = ({
         }
 
         return (
-          <div className="space-y-2 max-w-full">
+          <div className="space-y-2">
             <img
               src={message.fileUrl}
               alt={message.fileName || 'Shared image'}
-              className="max-w-full sm:max-w-xs max-h-64 w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity object-cover"
+              className="max-w-xs max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
               onError={() => setImageError(true)}
               onClick={() => window.open(message.fileUrl, '_blank')}
             />
@@ -171,7 +171,7 @@ export const FileMessage: React.FC<FileMessageProps> = ({
           <div className="flex items-center space-x-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
             <button
               onClick={handleAudioPlayPause}
-              className="p-2 bg-secondary-500 text-white rounded-full hover:bg-secondary-600 transition-colors"
+              className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
             >
               {isPlaying ? (
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -193,7 +193,7 @@ export const FileMessage: React.FC<FileMessageProps> = ({
             </div>
             <button
               onClick={handleDownload}
-              className="text-secondary-500 hover:text-secondary-600 text-xs font-medium"
+              className="text-blue-500 hover:text-blue-600 text-xs font-medium"
             >
               Download
             </button>
@@ -228,7 +228,7 @@ export const FileMessage: React.FC<FileMessageProps> = ({
                 handleDownload();
               }}
               disabled={isDownloading}
-              className="flex items-center space-x-2 px-4 py-2.5 bg-secondary-500 hover:bg-secondary-600 active:bg-secondary-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer relative z-20"
+              className="flex items-center space-x-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer relative z-20"
               title={isDownloading ? "Downloading..." : "Download prescription"}
               style={{ pointerEvents: 'auto' }}
             >

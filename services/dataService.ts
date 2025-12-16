@@ -1,43 +1,15 @@
-/**
- * Data Services
- * 
- * FIXES APPLIED:
- * - Added timeout handling to all database operations
- * - Improved error messages and logging
- * - Added defensive null checks
- * - Proper error propagation
- * 
- * WHY: Prevents hanging on slow database queries and provides better error feedback
- */
-
 import { supabase } from '../lib/supabase'
 import { Vitals, VitalsRecord, Medication, MedicalRecord } from '../types'
-import { withTimeout } from '../utils/requestUtils'
 
 export class VitalsService {
   static async getPatientVitals(patientId: string): Promise<VitalsRecord[]> {
-    try {
-      console.log('[VitalsService] Fetching vitals for patient:', patientId);
-      
-      const { data, error } = await withTimeout(
-        supabase
-          .from('vitals')
-          .select('*')
-          .eq('patient_id', patientId)
-          .order('recorded_at', { ascending: false }),
-        10000,
-        'Vitals fetch timeout'
-      );
+    const { data, error } = await supabase
+      .from('vitals')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('recorded_at', { ascending: false })
 
-      if (error) {
-        console.error('[VitalsService] Error fetching vitals:', error);
-        throw error;
-      }
-      
-      if (!data) {
-        console.warn('[VitalsService] No vitals data returned');
-        return [];
-      }
+    if (error) throw error
 
     return data.map(vital => ({
       date: vital.recorded_at.split('T')[0],
@@ -65,68 +37,51 @@ export class VitalsService {
           }
         })
       }
-    }));
-    } catch (error) {
-      console.error('[VitalsService] Failed to fetch patient vitals:', error);
-      throw error;
-    }
+    }))
   }
 
   static async getLatestVitals(patientId: string): Promise<Vitals | null> {
-    try {
-      console.log('[VitalsService] Fetching latest vitals for patient:', patientId);
-      
-      const { data, error } = await withTimeout(
-        supabase
-          .from('vitals')
-          .select('*')
-          .eq('patient_id', patientId)
-          .order('recorded_at', { ascending: false })
-          .limit(1),
-        10000,
-        'Latest vitals fetch timeout'
-      );
+    const { data, error } = await supabase
+      .from('vitals')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('recorded_at', { ascending: false })
+      .limit(1)
 
-      if (error) {
-        console.error('[VitalsService] Error fetching latest vitals:', error);
-        throw error;
-      }
+    if (error) {
+      throw error
+    }
 
-      // If no data or empty array, return null
-      if (!data || data.length === 0) {
-        console.log('[VitalsService] No vitals found for patient');
-        return null;
-      }
+    // If no data or empty array, return null
+    if (!data || data.length === 0) {
+      return null
+    }
 
-      const vital = data[0];
+    const vital = data[0]
 
-      return {
-        bloodPressure: {
-          value: vital.blood_pressure_value || '',
-          unit: vital.blood_pressure_unit || 'mmHg',
-          trend: vital.blood_pressure_trend || 'stable'
-        },
-        heartRate: {
-          value: vital.heart_rate_value || '',
-          unit: vital.heart_rate_unit || 'bpm',
-          trend: vital.heart_rate_trend || 'stable'
-        },
-        temperature: {
-          value: vital.temperature_value || '',
-          unit: vital.temperature_unit || '°F',
-          trend: vital.temperature_trend || 'stable'
-        },
-        ...(vital.glucose_value && {
-          glucose: {
-            value: vital.glucose_value,
-            unit: vital.glucose_unit || 'mg/dL',
-            trend: vital.glucose_trend || 'stable'
-          }
-        })
-      };
-    } catch (error) {
-      console.error('[VitalsService] Failed to fetch latest vitals:', error);
-      throw error;
+    return {
+      bloodPressure: {
+        value: vital.blood_pressure_value || '',
+        unit: vital.blood_pressure_unit || 'mmHg',
+        trend: vital.blood_pressure_trend || 'stable'
+      },
+      heartRate: {
+        value: vital.heart_rate_value || '',
+        unit: vital.heart_rate_unit || 'bpm',
+        trend: vital.heart_rate_trend || 'stable'
+      },
+      temperature: {
+        value: vital.temperature_value || '',
+        unit: vital.temperature_unit || '°F',
+        trend: vital.temperature_trend || 'stable'
+      },
+      ...(vital.glucose_value && {
+        glucose: {
+          value: vital.glucose_value,
+          unit: vital.glucose_unit || 'mg/dL',
+          trend: vital.glucose_trend || 'stable'
+        }
+      })
     }
   }
 

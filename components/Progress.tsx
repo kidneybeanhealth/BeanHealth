@@ -44,8 +44,8 @@ const Progress: React.FC<ProgressProps> = ({ patient }) => {
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center mb-2 md:mb-0">
-          <ProgressIcon className="mr-3 h-8 w-8 text-secondary-600" />
+        <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center mb-2 md:mb-0">
+          <ProgressIcon className="mr-3 h-8 w-8 text-indigo-600" />
           Health Progress
         </h2>
         <p className="text-gray-500 dark:text-gray-400">Visualizing your key health metrics over time.</p>
@@ -82,4 +82,3 @@ const Progress: React.FC<ProgressProps> = ({ patient }) => {
 };
 
 export default Progress;
-

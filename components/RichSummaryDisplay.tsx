@@ -35,7 +35,7 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
   // If not JSON or empty, display as plain text
   if (!isJSON || !parsedData) {
     return (
-      <div className={`prose prose-gray dark:prose-invert max-w-none ${className}`}>
+      <div className={`prose prose-slate dark:prose-invert max-w-none ${className}`}>
         <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
           {summary}
         </div>
@@ -54,8 +54,8 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
     "Medical History": {
       icon: "📋",
       title: "Medical History",
-      color: "text-secondary-700 dark:text-secondary-400",
-      bgColor: "bg-secondary-50 dark:bg-secondary-900/20"
+      color: "text-blue-700 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-900/20"
     },
     "Findings/Results": {
       icon: "🔬",
@@ -66,8 +66,8 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
     "Diagnosis": {
       icon: "⚕️",
       title: "Diagnosis",
-      color: "text-secondary-700 dark:text-secondary-400",
-      bgColor: "bg-rose-50 dark:bg-secondary-900/20"
+      color: "text-indigo-700 dark:text-indigo-400",
+      bgColor: "bg-rose-50 dark:bg-indigo-900/20"
     },
     "Medications/Treatment": {
       icon: "💊",
@@ -78,8 +78,8 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
     "Recommendations/Follow-up": {
       icon: "📌",
       title: "Recommendations & Follow-up",
-      color: "text-secondary-700 dark:text-secondary-400",
-      bgColor: "bg-secondary-50 dark:bg-secondary-900/20"
+      color: "text-amber-700 dark:text-amber-400",
+      bgColor: "bg-amber-50 dark:bg-amber-900/20"
     }
   };
 
@@ -123,4 +123,3 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
 };
 
 export default RichSummaryDisplay;
-

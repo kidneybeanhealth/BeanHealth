@@ -177,7 +177,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         className={`
           border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all
           ${isDragOver 
-            ? 'border-secondary-500 bg-secondary-50 dark:bg-secondary-900/20' 
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
             : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
           }
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}

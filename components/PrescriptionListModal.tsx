@@ -123,7 +123,7 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white truncate">E-Prescriptions</h3>
-                    <p className="text-secondary-100 text-xs sm:text-sm mt-0.5 truncate">
+                    <p className="text-sky-100 text-xs sm:text-sm mt-0.5 truncate">
                       {isDoctor ? 'Sent to patient' : 'From doctor'}
                     </p>
                   </div>
@@ -191,7 +191,7 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                 : prescription.status === 'completed'
                                 ? 'bg-secondary-100 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400'
-                                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                : 'bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400'
                             }`}>
                               {prescription.status}
                             </span>
@@ -258,13 +258,13 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white truncate">Prescription Details</h3>
-                    <p className="text-secondary-100 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">
+                    <p className="text-sky-100 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">
                       {formatDate(selectedPrescription.createdAt)}
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedPrescription(null)}
-                    className="text-white hover:text-secondary-100 transition-colors p-1.5 sm:p-2 hover:bg-white/20 rounded-lg flex-shrink-0"
+                    className="text-white hover:text-sky-100 transition-colors p-1.5 sm:p-2 hover:bg-white/20 rounded-lg flex-shrink-0"
                   >
                     <XIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </button>
@@ -343,8 +343,8 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
 
                 {/* Notes */}
                 {selectedPrescription.notes && (
-                  <div className="bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 dark:border-secondary-800 rounded-lg p-3 sm:p-4">
-                    <h4 className="text-xs sm:text-sm font-semibold text-secondary-800 dark:text-secondary-400 mb-1 sm:mb-2">
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 sm:p-4">
+                    <h4 className="text-xs sm:text-sm font-semibold text-amber-800 dark:text-amber-400 mb-1 sm:mb-2">
                       Additional Notes
                     </h4>
                     <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
@@ -364,7 +364,7 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
                 </button>
                 <button
                   onClick={() => handleDownloadPrescription(selectedPrescription)}
-                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-secondary-500 to-secondary-900 rounded-lg hover:from-secondary-600 hover:to-secondary-800 transition-all shadow-lg hover:shadow-xl"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg hover:from-secondary-600 hover:to-secondary-800 transition-all shadow-lg hover:shadow-xl"
                 >
                   Download PDF
                 </button>
@@ -378,4 +378,3 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
 };
 
 export default PrescriptionListModal;
-

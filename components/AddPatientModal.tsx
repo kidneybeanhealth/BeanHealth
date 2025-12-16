@@ -139,13 +139,13 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
                     value={searchEmail}
                     onChange={(e) => setSearchEmail(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-secondary-500 dark:bg-gray-700 dark:text-gray-100"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-100"
                     placeholder="patient@example.com"
                   />
                   <button
                     onClick={handleSearch}
                     disabled={searching}
-                    className="px-4 py-2 bg-secondary-600 text-white rounded-md hover:bg-secondary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {searching ? 'Searching...' : 'Search'}
                   </button>
@@ -158,8 +158,8 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
                 </div>
               )}
 
-              <div className="bg-secondary-50 dark:bg-secondary-900/50 border border-secondary-200 dark:border-secondary-800 rounded-md p-3">
-                <p className="text-sm text-secondary-600 dark:text-secondary-400">
+              <div className="bg-blue-50 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+                <p className="text-sm text-blue-600 dark:text-blue-400">
                   💡 Search for patients who have already registered on BeanHealth. 
                   Once added, they'll appear in your patient roster and chat will be available immediately.
                 </p>

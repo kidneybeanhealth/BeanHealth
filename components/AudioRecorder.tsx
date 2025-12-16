@@ -168,7 +168,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
           <div className="flex items-center space-x-3">
             <button
               onClick={playRecording}
-              className="p-2 bg-secondary-500 text-white rounded-full hover:bg-secondary-600 transition-colors"
+              className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
             >
               {isPlaying ? (
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -194,7 +194,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
             </button>
             <button
               onClick={sendRecording}
-              className="px-4 py-1 bg-secondary-500 text-white text-sm rounded hover:bg-secondary-600 transition-colors"
+              className="px-4 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
             >
               Send
             </button>

@@ -20,7 +20,7 @@ const MedicationTimeline: React.FC<MedicationTimelineProps> = ({ medications }) 
                 {timelineEvents.map((event, index) => (
                     <div key={index} className="flex items-center">
                         <div className="flex flex-col items-center mr-4">
-                            <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-secondary-500 ring-4 ring-secondary-100 dark:ring-secondary-900/50' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                            <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-900/50' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
                             {index < timelineEvents.length - 1 && <div className="w-0.5 h-12 bg-gray-300 dark:bg-gray-600"></div>}
                         </div>
                         <div className="flex-1 pb-10">
@@ -41,5 +41,3 @@ const MedicationTimeline: React.FC<MedicationTimelineProps> = ({ medications }) 
 };
 
 export default MedicationTimeline;
-
-

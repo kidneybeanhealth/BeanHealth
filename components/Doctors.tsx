@@ -15,11 +15,11 @@ const Doctors: React.FC<DoctorsProps> = ({ doctors, onSelectDoctor, messagingEna
     return (
         <div>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center mb-2 md:mb-0">
-                    <DoctorIcon className="mr-3 h-8 w-8 text-secondary-600" />
+                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center mb-2 md:mb-0">
+                    <DoctorIcon className="mr-3 h-8 w-8 text-indigo-600" />
                     My Care Team
                 </h2>
-                <button className="flex items-center justify-center px-4 py-2 bg-secondary-600 text-white font-semibold rounded-lg hover:bg-secondary-700 transition-colors">
+                <button className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
                     <UserPlusIcon className="h-5 w-5 mr-2" />
                     Add New Doctor
                 </button>
@@ -40,12 +40,12 @@ const Doctors: React.FC<DoctorsProps> = ({ doctors, onSelectDoctor, messagingEna
                               </span>
                             </div>
                             <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{doctor.name}</h3>
-                            <p className="text-secondary-600 dark:text-secondary-400 font-medium">{doctor.specialty}</p>
+                            <p className="text-indigo-600 dark:text-indigo-400 font-medium">{doctor.specialty}</p>
                             <div className="mt-4 flex space-x-2">
                                 <button 
                                     onClick={() => messagingEnabled && onSelectDoctor?.(doctor.id)} 
                                     disabled={!messagingEnabled}
-                                    className="flex-1 bg-secondary-100 dark:bg-secondary-900/50 text-secondary-700 dark:text-secondary-300 px-4 py-2 text-sm font-semibold rounded-lg hover:bg-secondary-200 dark:hover:bg-secondary-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-4 py-2 text-sm font-semibold rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Message
                                 </button>
