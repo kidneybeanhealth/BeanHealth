@@ -48,15 +48,16 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
         setIsLoading(true);
         try {
             // Step 1: Get all patient-doctor relationships for this patient
+            // Use select('*') to be safe against missing columns and filter in memory
             const { data: relationships, error: relError } = await supabase
                 .from('patient_doctor_relationships')
-                .select('doctor_id, created_at, status')
-                .eq('patient_id', patientId)
-                .returns<Relationship[]>();
+                .select('*')
+                .eq('patient_id', patientId);
 
             if (relError) {
                 console.error('Error fetching relationships:', relError);
-                throw relError;
+                setIsLoading(false);
+                return; // Stop here if error
             }
 
             console.log('Relationships found:', relationships);
@@ -69,11 +70,15 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
             }
 
             // Filter to only active or null status (backward compatible)
-            // Filter to only active or null status (backward compatible)
-            // Also include 'accepted' if that's a status used
-            const activeRelationships = relationships.filter(rel =>
-                !rel.status || rel.status === 'active' || rel.status === 'accepted' || rel.status === 'pending'
-            );
+            // Filter out only explicitly inactive relationships
+            const activeRelationships = (relationships || [])
+                .map(rel => ({
+                    ...rel,
+                    status: rel.status || 'active' // Default to active if status is null/missing (legacy records)
+                }))
+                .filter(rel => rel.status !== 'inactive' && rel.status !== 'archived');
+
+            console.log('Active relationships:', activeRelationships);
 
             if (activeRelationships.length === 0) {
                 console.log('No active relationships');
