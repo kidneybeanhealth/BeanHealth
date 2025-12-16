@@ -110,7 +110,7 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
     }
 
     return (
-        <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 p-6 rounded-3xl border border-cyan-200/50 dark:border-cyan-800/50">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-6 rounded-3xl border border-gray-200/50 dark:border-gray-700/50">
             <div className="flex items-start justify-between mb-4">
                 <div>
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Your Referral Code</h3>
@@ -119,15 +119,15 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-400 text-sm font-medium rounded-full">
+                    <span className="px-3 py-1 bg-secondary-100 dark:bg-secondary-900/40 text-secondary-700 dark:text-secondary-400 text-sm font-medium rounded-full">
                         {specialty}
                     </span>
                 </div>
             </div>
 
             {/* Referral Code Display */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl mb-4 shadow-sm">
-                <p className="text-3xl font-mono font-bold text-center text-cyan-600 dark:text-cyan-400 tracking-wider">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl mb-4 shadow-sm border border-secondary-100 dark:border-secondary-900/30">
+                <p className="text-3xl font-mono font-bold text-center text-secondary-700 dark:text-secondary-400 tracking-wider">
                     {referralCode}
                 </p>
             </div>
@@ -137,8 +137,8 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
                 <button
                     onClick={handleCopyCode}
                     className={`flex-1 py-3 px-4 font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${copied
-                            ? 'bg-green-500 text-white'
-                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                         }`}
                 >
                     {copied ? (
@@ -159,7 +159,7 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
                 </button>
                 <button
                     onClick={handleShareCode}
-                    className="flex-1 py-3 px-4 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 px-4 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2"
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
