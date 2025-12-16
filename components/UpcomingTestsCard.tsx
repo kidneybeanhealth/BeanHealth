@@ -105,15 +105,15 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
         if (daysUntil < 0) return 'text-red-600 dark:text-red-400';
         if (daysUntil <= 7) return 'text-orange-600 dark:text-orange-400';
         if (daysUntil <= 14) return 'text-yellow-600 dark:text-yellow-400';
-        return 'text-slate-600 dark:text-slate-400';
+        return 'text-gray-600 dark:text-gray-400';
     };
 
     const allTests = [...overdueTests, ...upcomingTests];
 
     return (
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200/40 dark:border-slate-700/40 hover:shadow-lg transition-all duration-300">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200/40 dark:border-gray-700/40 hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Upcoming Tests</h3>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Upcoming Tests</h3>
                 <button
                     onClick={() => setIsAddingTest(true)}
                     className="px-4 py-2 text-sm font-medium text-white bg-cyan-500 rounded-xl hover:bg-cyan-600 transition-colors"
@@ -124,15 +124,15 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
 
             {/* Add Test Modal */}
             {isAddingTest && (
-                <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-                    <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Schedule New Test</h4>
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Schedule New Test</h4>
                     <div className="space-y-3 mb-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Test Name</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Name</label>
                             <select
                                 value={newTest.testName}
                                 onChange={(e) => setNewTest({ ...newTest, testName: e.target.value })}
-                                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                             >
                                 <option value="">Select a test...</option>
                                 {UpcomingTestsService.COMMON_TESTS.map((test) => (
@@ -145,50 +145,50 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                     type="text"
                                     placeholder="Enter custom test name"
                                     onChange={(e) => setNewTest({ ...newTest, testName: e.target.value })}
-                                    className="w-full mt-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                    className="w-full mt-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                                 />
                             )}
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Date</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date</label>
                                 <input
                                     type="date"
                                     value={newTest.scheduledDate}
                                     onChange={(e) => setNewTest({ ...newTest, scheduledDate: e.target.value })}
                                     min={new Date().toISOString().split('T')[0]}
-                                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Location</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Location</label>
                                 <input
                                     type="text"
                                     value={newTest.location}
                                     onChange={(e) => setNewTest({ ...newTest, location: e.target.value })}
                                     placeholder="Lab location"
-                                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Doctor (Optional)</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Doctor (Optional)</label>
                             <input
                                 type="text"
                                 value={newTest.doctorName}
                                 onChange={(e) => setNewTest({ ...newTest, doctorName: e.target.value })}
                                 placeholder="Ordering physician"
-                                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Notes (Optional)</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes (Optional)</label>
                             <textarea
                                 value={newTest.notes}
                                 onChange={(e) => setNewTest({ ...newTest, notes: e.target.value })}
                                 placeholder="Special instructions..."
                                 rows={2}
-                                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                             />
                         </div>
                     </div>
@@ -201,7 +201,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                         </button>
                         <button
                             onClick={() => setIsAddingTest(false)}
-                            className="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-300 font-medium rounded-xl transition-colors"
+                            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors"
                         >
                             Cancel
                         </button>
@@ -230,7 +230,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                 key={test.id}
                                 className={`p-4 rounded-xl border transition-all ${isOverdue
                                         ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
-                                        : 'bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600'
+                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
                                     }`}
                             >
                                 <div className="flex items-start gap-3">
@@ -241,7 +241,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                         className="mt-1 w-5 h-5 text-cyan-500 rounded focus:ring-2 focus:ring-cyan-500"
                                     />
                                     <div className="flex-1">
-                                        <h4 className={`font-semibold text-slate-900 dark:text-slate-100 ${test.completed ? 'line-through opacity-50' : ''}`}>
+                                        <h4 className={`font-semibold text-gray-900 dark:text-gray-100 ${test.completed ? 'line-through opacity-50' : ''}`}>
                                             {test.testName}
                                         </h4>
                                         <div className="flex items-center gap-4 mt-1 text-sm">
@@ -252,18 +252,18 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                                 {!isOverdue && daysUntil > 0 && ` (in ${daysUntil} days)`}
                                             </span>
                                             {test.location && (
-                                                <span className="text-slate-600 dark:text-slate-400">
+                                                <span className="text-gray-600 dark:text-gray-400">
                                                     📍 {test.location}
                                                 </span>
                                             )}
                                         </div>
                                         {test.doctorName && (
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 Dr. {test.doctorName}
                                             </p>
                                         )}
                                         {test.notes && (
-                                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 italic">
+                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic">
                                                 {test.notes}
                                             </p>
                                         )}
@@ -279,7 +279,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                         );
                     })
                 ) : (
-                    <p className="text-center text-slate-500 dark:text-slate-400 py-8 italic">
+                    <p className="text-center text-gray-500 dark:text-gray-400 py-8 italic">
                         No upcoming tests scheduled
                     </p>
                 )}

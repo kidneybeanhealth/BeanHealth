@@ -64,7 +64,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Welcome Step */}
                 {step === 'welcome' && (
                     <div className="p-8 md:p-12">
@@ -74,10 +74,10 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                             </div>
-                            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-3">
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3">
                                 Welcome to BeanHealth CKD!
                             </h2>
-                            <p className="text-lg text-slate-600 dark:text-slate-400">
+                            <p className="text-lg text-gray-600 dark:text-gray-400">
                                 Let's set up your profile to get started with your kidney health journey
                             </p>
                         </div>
@@ -86,22 +86,22 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                             <div className="flex items-start gap-3 p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-xl">
                                 <span className="text-2xl">🏥</span>
                                 <div>
-                                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">Track Your Health</h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">Monitor vitals, labs, and medications</p>
+                                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">Track Your Health</h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Monitor vitals, labs, and medications</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
                                 <span className="text-2xl">👨‍⚕️</span>
                                 <div>
-                                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">Connect with Your Doctor</h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">Share data and get personalized care</p>
+                                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">Connect with Your Doctor</h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Share data and get personalized care</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3 p-4 bg-teal-50 dark:bg-teal-900/20 rounded-xl">
                                 <span className="text-2xl">📊</span>
                                 <div>
-                                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">Visualize Trends</h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">See your progress over time</p>
+                                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">Visualize Trends</h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">See your progress over time</p>
                                 </div>
                             </div>
                         </div>
@@ -118,17 +118,17 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                 {/* Profile Step */}
                 {step === 'profile' && (
                     <div className="p-8 md:p-12">
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
                             Complete Your Profile
                         </h2>
-                        <p className="text-slate-600 dark:text-slate-400 mb-8">
+                        <p className="text-gray-600 dark:text-gray-400 mb-8">
                             Tell us a bit about yourself
                         </p>
 
                         <div className="space-y-6 mb-8">
                             {/* Full Name */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Full Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -136,13 +136,13 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                                     value={formData.fullName}
                                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                                     placeholder="Enter your full name"
-                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                                 />
                             </div>
 
                             {/* Age */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Age <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -152,19 +152,19 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                                     placeholder="Enter your age"
                                     min="1"
                                     max="120"
-                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                                 />
                             </div>
 
                             {/* Gender */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Gender <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     value={formData.gender}
                                     onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
-                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                                 >
                                     <option value="prefer_not_to_say">Prefer not to say</option>
                                     <option value="male">Male</option>
@@ -187,15 +187,15 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                 {/* Referral Code Step */}
                 {step === 'referral' && (
                     <div className="p-8 md:p-12">
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
                             Link to Your Doctor
                         </h2>
-                        <p className="text-slate-600 dark:text-slate-400 mb-8">
+                        <p className="text-gray-600 dark:text-gray-400 mb-8">
                             Have a doctor's referral code? Enter it below to connect with your healthcare provider
                         </p>
 
                         <div className="mb-8">
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Doctor's Referral Code (Optional)
                             </label>
                             <input
@@ -203,9 +203,9 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                                 value={formData.referralCode}
                                 onChange={(e) => setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })}
                                 placeholder="DR-XXXX-XXXX"
-                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100 font-mono"
+                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100 font-mono"
                             />
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                                 Format: DR-XXXX-XXXX (e.g., DR-NEPH-A7K2)
                             </p>
                         </div>
@@ -213,7 +213,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                         <div className="flex gap-3">
                             <button
                                 onClick={handleSkipReferral}
-                                className="flex-1 py-4 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-semibold rounded-xl transition-all"
+                                className="flex-1 py-4 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-xl transition-all"
                             >
                                 Skip for Now
                             </button>
@@ -237,10 +237,10 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
-                            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-3">
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3">
                                 Setup Complete!
                             </h2>
-                            <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
+                            <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
                                 Welcome to your CKD monitoring dashboard, {formData.fullName}
                             </p>
                         </div>

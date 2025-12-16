@@ -412,34 +412,34 @@ const Messages: React.FC<MessagesProps> = ({
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
 
   return (
-    <div className="flex flex-col h-screen md:h-[800px] md:flex-row bg-white dark:bg-slate-900 md:rounded-3xl overflow-hidden border-0 md:border border-slate-200/60 dark:border-slate-700/60">
+    <div className="flex flex-col h-screen md:h-[800px] md:flex-row bg-white dark:bg-gray-900 md:rounded-3xl overflow-hidden border-0 md:border border-gray-200/60 dark:border-gray-700/60">
       {/* Mobile-only Header - Shows only when no contact selected */}
       {!selectedContactId && onMenuClick && (
-        <div className="md:hidden sticky top-0 z-20 px-4 py-3 border-b border-slate-200/60 dark:border-slate-700/60 flex items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+        <div className="md:hidden sticky top-0 z-20 px-4 py-3 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
           <button
             onClick={onMenuClick}
-            className="p-2 -ml-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200"
+            className="p-2 -ml-1 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
             aria-label="Open menu"
           >
-            <MenuIcon className="h-5 w-5 text-slate-700 dark:text-slate-300" />
+            <MenuIcon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
           </button>
-          <h1 className="ml-3 text-lg font-semibold text-slate-900 dark:text-white tracking-tight">Messages</h1>
+          <h1 className="ml-3 text-lg font-semibold text-gray-900 dark:text-white tracking-tight">Messages</h1>
         </div>
       )}
       
       {/* Contact List Panel - Modern Sidebar */}
-      <div className={`w-full md:w-80 lg:w-96 border-r border-slate-200/60 dark:border-slate-700/60 flex flex-col ${selectedContactId ? 'hidden md:flex' : 'flex'} min-h-0 bg-slate-50 dark:bg-slate-900`}>
+      <div className={`w-full md:w-80 lg:w-96 border-r border-gray-200/60 dark:border-gray-700/60 flex flex-col ${selectedContactId ? 'hidden md:flex' : 'flex'} min-h-0 bg-gray-50 dark:bg-gray-900`}>
         {/* Sidebar Header - Hidden on mobile, use mobile header instead */}
-        <div className="hidden md:block px-4 sm:px-5 lg:px-6 py-4 sm:py-5 border-b border-slate-200/60 dark:border-slate-700/60 flex-shrink-0">
+        <div className="hidden md:block px-4 sm:px-5 lg:px-6 py-4 sm:py-5 border-b border-gray-200/60 dark:border-gray-700/60 flex-shrink-0">
           <div className="flex items-center space-x-2 mb-2">
             <div className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></div>
-            <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white tracking-tight">Messages</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white tracking-tight">Messages</h3>
           </div>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">{sortedContacts.length} {sortedContacts.length === 1 ? 'conversation' : 'conversations'}</p>
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">{sortedContacts.length} {sortedContacts.length === 1 ? 'conversation' : 'conversations'}</p>
         </div>
 
         {/* Contact List with Enhanced Design */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
           <div className="p-2 sm:p-3 space-y-1.5">
             {sortedContacts.map(contact => {
                const unreadMessages = messages.filter(m => m.senderId === contact.id && m.recipientId === currentUser.id && !m.isRead);
@@ -450,18 +450,18 @@ const Messages: React.FC<MessagesProps> = ({
                       onClick={() => handleSelectContact(contact.id)}
                       className={`group relative w-full text-left px-3 sm:px-4 py-3 sm:py-3.5 flex items-center space-x-3 rounded-2xl transition-all duration-300 overflow-hidden ${
                         selectedContactId === contact.id
-                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                          : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700/60'
+                          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                          : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200/60 dark:border-gray-700/60'
                       }`}
                   >
                       <div className="relative flex-shrink-0">
                           <InitialsAvatar contact={contact} size="md" />
                           {/* Online Status Indicator */}
-                          <span className="absolute -bottom-0.5 -right-0.5 block h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-800"></span>
+                          <span className="absolute -bottom-0.5 -right-0.5 block h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-800"></span>
                           {hasUnreadUrgent && (
                             <span className="absolute -top-1 -right-1 flex h-5 w-5">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 ring-2 ring-white dark:ring-slate-800"></span>
+                              <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>
                             </span>
                           )}
                       </div>
@@ -469,15 +469,15 @@ const Messages: React.FC<MessagesProps> = ({
                       <div className="relative flex-1 min-w-0">
                         <p className={`font-semibold truncate text-sm sm:text-base mb-0.5 ${
                           selectedContactId === contact.id
-                            ? 'text-white dark:text-slate-900'
-                            : 'text-slate-900 dark:text-white'
+                            ? 'text-white dark:text-gray-900'
+                            : 'text-gray-900 dark:text-white'
                         }`}>
                           {contact.name}
                         </p>
                         <p className={`text-xs truncate font-medium ${
                           selectedContactId === contact.id
-                            ? 'text-slate-200 dark:text-slate-700'
-                            : 'text-slate-500 dark:text-slate-400'
+                            ? 'text-gray-200 dark:text-gray-700'
+                            : 'text-gray-500 dark:text-gray-400'
                         }`}>
                           {(contact as Doctor).specialty || (contact as Patient).condition}
                         </p>
@@ -486,8 +486,8 @@ const Messages: React.FC<MessagesProps> = ({
                       {unreadMessages.length > 0 && !hasUnreadUrgent && (
                           <span className={`relative text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center flex-shrink-0 ${
                             selectedContactId === contact.id
-                              ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900'
-                              : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                              ? 'bg-white/20 text-white dark:bg-gray-900/20 dark:text-gray-900'
+                              : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                           }`}>
                               {unreadMessages.length > 9 ? '9+' : unreadMessages.length}
                           </span>
@@ -504,13 +504,13 @@ const Messages: React.FC<MessagesProps> = ({
         {selectedContact ? (
           <>
             {/* Chat Header - Modern Design with Sticky Position */}
-            <div className="sticky top-0 z-10 px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-b border-slate-200/60 dark:border-slate-700/60 flex items-center flex-shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+            <div className="sticky top-0 z-10 px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center flex-shrink-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
               <div className="relative flex items-center space-x-3 flex-1 min-w-0">
                 <button
                   onClick={() => setSelectedContactId(null)}
-                  className="md:hidden p-2 -ml-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 flex-shrink-0"
+                  className="md:hidden p-2 -ml-1 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 flex-shrink-0"
                 >
-                  <ArrowLeftIcon className="h-5 w-5 text-slate-700 dark:text-slate-300"/>
+                  <ArrowLeftIcon className="h-5 w-5 text-gray-700 dark:text-gray-300"/>
                 </button>
 
                 <div className="relative flex-shrink-0">
@@ -519,13 +519,13 @@ const Messages: React.FC<MessagesProps> = ({
                   {isConnected && (
                     <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 ring-2 ring-white dark:ring-slate-900"></span>
+                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 ring-2 ring-white dark:ring-gray-900"></span>
                     </span>
                   )}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white truncate">{selectedContact.name}</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">{selectedContact.name}</h3>
                   <div className="flex items-center space-x-2 mt-0.5">
                     {typingUsers.has(selectedContact.id) && (
                       <TypingIndicator
@@ -542,7 +542,7 @@ const Messages: React.FC<MessagesProps> = ({
                 {/* E-Prescriptions List Button */}
                 <button
                   onClick={() => setShowPrescriptionListModal(true)}
-                  className="flex items-center space-x-1.5 px-2.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-300 whitespace-nowrap"
+                  className="flex items-center space-x-1.5 px-2.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-300 whitespace-nowrap"
                   aria-label="View prescriptions"
                   title="View E-Prescriptions"
                 >
@@ -555,7 +555,7 @@ const Messages: React.FC<MessagesProps> = ({
                 {isDoctor && selectedContact.role === 'patient' && (
                   <button
                     onClick={() => setShowPrescriptionModal(true)}
-                    className="flex items-center space-x-1.5 px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-all duration-300 whitespace-nowrap"
+                    className="flex items-center space-x-1.5 px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-300 whitespace-nowrap"
                     aria-label="Create prescription"
                   >
                     <svg className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -571,19 +571,19 @@ const Messages: React.FC<MessagesProps> = ({
             <div
               ref={messagesContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 min-h-0 max-h-[calc(100vh-280px)] md:max-h-[600px] scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent"
+              className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 min-h-0 max-h-[calc(100vh-280px)] md:max-h-[600px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
             >
               <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6 max-w-5xl mx-auto">
                 <div className="space-y-3 sm:space-y-4">
                   {currentConversationMessages.length === 0 ? (
                     <div className="text-center py-16 sm:py-20 animate-fade-in">
-                      <div className="relative inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-slate-100 dark:bg-slate-800 mb-6">
-                        <svg className="w-10 h-10 sm:w-12 sm:h-12 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="relative inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gray-100 dark:bg-gray-800 mb-6">
+                        <svg className="w-10 h-10 sm:w-12 sm:h-12 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                       </div>
-                      <h4 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white mb-2">Start a Conversation</h4>
-                      <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-sm mx-auto">Send a message to begin your healthcare conversation</p>
+                      <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">Start a Conversation</h4>
+                      <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-sm mx-auto">Send a message to begin your healthcare conversation</p>
                     </div>
                   ) : (
                     currentConversationMessages.map((msg, index) => (
@@ -591,9 +591,9 @@ const Messages: React.FC<MessagesProps> = ({
                         <div className={`max-w-[85%] sm:max-w-[75%] lg:max-w-lg xl:max-w-xl ${msg.senderId === currentUser.id ? 'ml-4 sm:ml-12' : 'mr-4 sm:mr-12'}`}>
                           <div className={`group relative px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-3.5 rounded-2xl text-sm sm:text-base break-words transition-all duration-300 ${
                             msg.senderId === currentUser.id
-                              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-br-md'
-                              : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md border border-slate-200/60 dark:border-slate-700/60'
-                          } ${msg.isUrgent ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-900' : ''} ${
+                              ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-br-md'
+                              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md border border-gray-200/60 dark:border-gray-700/60'
+                          } ${msg.isUrgent ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900' : ''} ${
                             pendingMessages.has(msg.id) ? 'opacity-70' : ''
                           }`}>
                             {msg.isUrgent && (
@@ -649,7 +649,7 @@ const Messages: React.FC<MessagesProps> = ({
                     setShouldAutoScroll(true);
                     scrollToBottom(true);
                   }}
-                  className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl hover:scale-110 active:scale-95 transition-all duration-300 z-10 animate-slideUp backdrop-blur-sm"
+                  className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl hover:scale-110 active:scale-95 transition-all duration-300 z-10 animate-slideUp backdrop-blur-sm"
                   aria-label="Scroll to bottom"
                 >
                   <svg className="w-5 h-5 sm:w-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -660,7 +660,7 @@ const Messages: React.FC<MessagesProps> = ({
             </div>
             
             {/* Message Input Area - Modern Design */}
-            <div className="relative px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-t border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 flex-shrink-0 overflow-visible">
+            <div className="relative px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-t border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 flex-shrink-0 overflow-visible">
                {showCreditWarning && (
                 <div className="relative bottom-full left-0 right-0 mb-3 p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/50 text-yellow-900 dark:text-yellow-200 text-xs sm:text-sm rounded-2xl border-2 border-yellow-300 dark:border-yellow-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-slide-up">
                     <div className="flex items-center">
@@ -702,7 +702,7 @@ const Messages: React.FC<MessagesProps> = ({
                
               <form onSubmit={handleSendMessage} className="relative z-10 flex items-center gap-2">
                 {/* Input Container with Urgent Credits - Mobile optimized */}
-                <div className="relative flex items-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-slate-400 dark:hover:border-slate-500 focus-within:border-slate-900 dark:focus-within:border-white transition-all duration-300 flex-1 max-w-[calc(100%-60px)] sm:max-w-none">
+                <div className="relative flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl hover:border-gray-400 dark:hover:border-gray-500 focus-within:border-gray-900 dark:focus-within:border-white transition-all duration-300 flex-1 max-w-[calc(100%-60px)] sm:max-w-none">
                   {/* Left Side - Urgent Credits Inside */}
                   <div className="flex items-center pl-2 sm:pl-3">
                     <div className="relative flex-shrink-0">
@@ -713,14 +713,14 @@ const Messages: React.FC<MessagesProps> = ({
                         className={`p-1.5 sm:p-2.5 rounded-full transition-all duration-200 ${
                           isUrgent
                             ? 'bg-red-500 text-white'
-                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-red-600 dark:hover:text-red-400'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                         aria-label="Toggle urgent message"
                       >
                         <AlertIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                       </button>
                       {isPatient && patientData && (
-                        <span className="absolute -top-1 -right-1 text-[9px] sm:text-xs bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-slate-800">
+                        <span className="absolute -top-1 -right-1 text-[9px] sm:text-xs bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-800">
                           {patientData.urgentCredits}
                         </span>
                       )}
@@ -798,7 +798,7 @@ const Messages: React.FC<MessagesProps> = ({
                 {input.trim() ? (
                   <button
                     type="submit"
-                    className="flex-shrink-0 p-2.5 sm:p-2.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-110 active:scale-95 transition-all duration-300"
+                    className="flex-shrink-0 p-2.5 sm:p-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:scale-110 active:scale-95 transition-all duration-300"
                     aria-label="Send message"
                   >
                     <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -827,19 +827,19 @@ const Messages: React.FC<MessagesProps> = ({
             </div>
           </>
         ) : (
-          <div className="hidden md:flex flex-col items-center justify-center h-full text-center p-8 bg-slate-50 dark:bg-slate-900">
-            <div className="relative bg-white dark:bg-slate-800 rounded-3xl p-12 sm:p-16 border border-slate-200/60 dark:border-slate-700/60 max-w-md animate-fade-in">
+          <div className="hidden md:flex flex-col items-center justify-center h-full text-center p-8 bg-gray-50 dark:bg-gray-900">
+            <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-12 sm:p-16 border border-gray-200/60 dark:border-gray-700/60 max-w-md animate-fade-in">
               <div className="relative">
                 <div className="relative inline-flex items-center justify-center mb-8">
-                  <div className="relative bg-slate-100 dark:bg-slate-700 rounded-full p-8">
-                    <EmptyMessagesIcon className="h-20 w-20 sm:h-24 sm:w-24 text-slate-500 dark:text-slate-400" />
+                  <div className="relative bg-gray-100 dark:bg-gray-700 rounded-full p-8">
+                    <EmptyMessagesIcon className="h-20 w-20 sm:h-24 sm:w-24 text-gray-500 dark:text-gray-400" />
                   </div>
                 </div>
 
-                <h3 className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white mb-4 tracking-tight">Select a Conversation</h3>
-                <p className="text-slate-600 dark:text-slate-400 max-w-sm font-medium leading-relaxed">Choose a contact from the list to start chatting and stay connected with your healthcare team.</p>
+                <h3 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-4 tracking-tight">Select a Conversation</h3>
+                <p className="text-gray-600 dark:text-gray-400 max-w-sm font-medium leading-relaxed">Choose a contact from the list to start chatting and stay connected with your healthcare team.</p>
 
-                <div className="mt-8 flex items-center justify-center space-x-2 text-xs text-slate-400 dark:text-slate-500">
+                <div className="mt-8 flex items-center justify-center space-x-2 text-xs text-gray-400 dark:text-gray-500">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></div>
                   <span className="font-semibold">Ready to connect</span>
                 </div>

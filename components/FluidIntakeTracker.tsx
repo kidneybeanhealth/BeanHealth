@@ -124,18 +124,18 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
     };
 
     return (
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200/40 dark:border-slate-700/40 hover:shadow-lg transition-all duration-300">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200/40 dark:border-gray-700/40 hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Fluid Intake Tracker</h3>
-                <span className="text-sm text-slate-500 dark:text-slate-400">Today</span>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Fluid Intake Tracker</h3>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Today</span>
             </div>
 
             {/* Progress Bar */}
             <div className="mb-6">
                 <div className="flex justify-between items-baseline mb-2">
                     <div>
-                        <span className="text-3xl font-bold text-slate-900 dark:text-slate-100">{todayTotal}</span>
-                        <span className="text-lg text-slate-500 dark:text-slate-400 ml-1">ml</span>
+                        <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">{todayTotal}</span>
+                        <span className="text-lg text-gray-500 dark:text-gray-400 ml-1">ml</span>
                     </div>
                     <div className="text-right">
                         {isEditingTarget ? (
@@ -144,7 +144,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                                     type="number"
                                     value={editTargetValue}
                                     onChange={(e) => setEditTargetValue(e.target.value)}
-                                    className="w-20 px-2 py-1 text-sm bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    className="w-20 px-2 py-1 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                 />
                                 <button
                                     onClick={handleSaveTarget}
@@ -157,7 +157,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                                         setEditTargetValue(dailyTarget.toString());
                                         setIsEditingTarget(false);
                                     }}
-                                    className="px-2 py-1 text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg"
+                                    className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg"
                                 >
                                     Cancel
                                 </button>
@@ -165,20 +165,20 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                         ) : (
                             <button
                                 onClick={() => setIsEditingTarget(true)}
-                                className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                             >
                                 Target: {dailyTarget} ml ✏️
                             </button>
                         )}
                     </div>
                 </div>
-                <div className="relative w-full h-4 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div className="relative w-full h-4 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                     <div
                         className={`h-full ${getProgressColor()} transition-all duration-500 rounded-full`}
                         style={{ width: `${progressPercent}%` }}
                     />
                 </div>
-                <div className="flex justify-between mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
                     <span>{progressPercent.toFixed(0)}% of daily target</span>
                     {isOverTarget && <span className="text-red-500 font-medium">Over target!</span>}
                 </div>
@@ -186,7 +186,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
 
             {/* Fluid Type Selector */}
             <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Fluid Type</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fluid Type</label>
                 <div className="flex gap-2 flex-wrap">
                     {['water', 'juice', 'tea', 'coffee', 'milk', 'other'].map((type) => (
                         <button
@@ -194,7 +194,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                             onClick={() => setSelectedType(type)}
                             className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${selectedType === type
                                     ? 'bg-cyan-500 text-white'
-                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                         >
                             {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -236,7 +236,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                     onChange={(e) => setCustomAmount(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleCustomAdd()}
                     placeholder="Custom amount (ml)"
-                    className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                    className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                 />
                 <button
                     onClick={handleCustomAdd}
@@ -249,22 +249,22 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
 
             {/* Today's Log */}
             <div>
-                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Today's Log</h4>
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Today's Log</h4>
                 {todayEntries.length > 0 ? (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                         {todayEntries.map((entry) => (
                             <div
                                 key={entry.id}
-                                className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
+                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                             >
                                 <div className="flex items-center gap-3">
-                                    <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
                                         {entry.amountMl} ml
                                     </span>
-                                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">
                                         {entry.fluidType}
                                     </span>
-                                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">
                                         {new Date(entry.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
@@ -278,7 +278,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                         ))}
                     </div>
                 ) : (
-                    <p className="text-sm text-slate-500 dark:text-slate-400 italic text-center py-4">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-4">
                         No fluid intake recorded today
                     </p>
                 )}

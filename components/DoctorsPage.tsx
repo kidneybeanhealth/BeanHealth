@@ -181,14 +181,14 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">My Doctors</h1>
-                <p className="text-slate-600 dark:text-slate-400">Connect and communicate with your healthcare providers</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">My Doctors</h1>
+                <p className="text-gray-600 dark:text-gray-400">Connect and communicate with your healthcare providers</p>
             </div>
 
             {/* Add Doctor Section */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200/40 dark:border-slate-700/40">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Add a Doctor</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Add a Doctor</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Enter your doctor's referral code to connect with them. Ask your doctor for their code.
                 </p>
 
@@ -202,7 +202,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                             setLinkSuccess('');
                         }}
                         placeholder="DR-XXXX-XXXX"
-                        className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-mono text-center tracking-wider focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-mono text-center tracking-wider focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                     <button
                         onClick={handleLinkDoctor}
@@ -222,23 +222,23 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
             </div>
 
             {/* Linked Doctors List */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200/40 dark:border-slate-700/40">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Linked Doctors</h2>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Linked Doctors</h2>
 
                 {isLoading ? (
                     <div className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-4 border-cyan-200 border-t-cyan-600 mx-auto"></div>
-                        <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">Loading doctors...</p>
+                        <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading doctors...</p>
                     </div>
                 ) : linkedDoctors.length === 0 ? (
                     <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full mx-auto mb-4 flex items-center justify-center">
-                            <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mx-auto mb-4 flex items-center justify-center">
+                            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
                         </div>
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">No doctors linked yet</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No doctors linked yet</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             Enter a doctor's referral code above to get started
                         </p>
                     </div>
@@ -247,7 +247,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                         {linkedDoctors.map((doctor) => (
                             <div
                                 key={doctor.id}
-                                className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl"
+                                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
                             >
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 ${getInitialsColor(doctor.name, doctor.email)} rounded-xl flex items-center justify-center`}>
@@ -256,14 +256,14 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                                         </span>
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-slate-900 dark:text-slate-100">
+                                        <p className="font-semibold text-gray-900 dark:text-gray-100">
                                             Dr. {doctor.name}
                                         </p>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
                                             {doctor.specialty || 'General Practice'}
                                         </p>
                                         {doctor.linkedSince && (
-                                            <p className="text-xs text-slate-500 dark:text-slate-500">
+                                            <p className="text-xs text-gray-500 dark:text-gray-500">
                                                 Connected since {new Date(doctor.linkedSince).toLocaleDateString()}
                                             </p>
                                         )}
@@ -278,7 +278,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                                     </button>
                                     <button
                                         onClick={() => handleUnlinkDoctor(doctor.id)}
-                                        className="px-4 py-2 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl transition-colors"
+                                        className="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl transition-colors"
                                     >
                                         Unlink
                                     </button>

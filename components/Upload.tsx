@@ -52,10 +52,10 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
     <>
       <div className="max-w-3xl mx-auto animate-fadeIn space-y-8">
         <div className="text-center">
-          <h2 className="text-2xl lg:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
+          <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">
             Upload Medical Record
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-2">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
             Upload your file and our AI will automatically categorize and analyze it
           </p>
         </div>
@@ -63,7 +63,7 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
         <div className="card p-8 lg:p-10">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div>
-              <label className="block text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-6">
+              <label className="block text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-6">
                 Select your medical record
               </label>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -80,35 +80,35 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
                   onDrop={handleDrop}
                   className={`flex-1 border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center cursor-pointer transition-all duration-300 ${
                     selectedFile
-                      ? "border-slate-400 dark:border-slate-500 bg-slate-50 dark:bg-slate-700/30"
-                      : "border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/30"
+                      ? "border-gray-400 dark:border-gray-500 bg-gray-50 dark:bg-gray-700/30"
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/30"
                   }`}
                 >
                   {selectedFile ? (
                     <div className="space-y-3">
-                      <DocumentUploadIcon className="h-8 w-8 sm:h-10 sm:w-10 text-slate-700 dark:text-slate-300 mx-auto" />
-                      <p className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base break-all">
+                      <DocumentUploadIcon className="h-8 w-8 sm:h-10 sm:w-10 text-gray-700 dark:text-gray-300 mx-auto" />
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base break-all">
                         {selectedFile.name}
                       </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Click to change file</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Click to change file</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <DocumentUploadIcon className="h-10 w-10 sm:h-12 sm:w-12 text-slate-400 dark:text-slate-500 mx-auto" />
-                      <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 font-medium">
+                      <DocumentUploadIcon className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 dark:text-gray-500 mx-auto" />
+                      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium">
                         Drag & drop or click to select
                       </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">PDF or Image files</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">PDF or Image files</p>
                     </div>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsCameraOpen(true)}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 sm:w-auto w-full p-4 sm:p-5 border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 rounded-2xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300 group"
+                  className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 sm:w-auto w-full p-4 sm:p-5 border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 rounded-2xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-all duration-300 group"
                 >
-                  <div className="bg-slate-900 dark:bg-white p-2.5 rounded-xl transition-all duration-200">
-                    <CameraIcon className="h-6 w-6 text-white dark:text-slate-900" />
+                  <div className="bg-gray-900 dark:bg-white p-2.5 rounded-xl transition-all duration-200">
+                    <CameraIcon className="h-6 w-6 text-white dark:text-gray-900" />
                   </div>
                   <span className="font-semibold text-sm sm:text-base">Use Camera</span>
                 </button>
@@ -155,7 +155,7 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
       </div>
 
       {isCameraOpen && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+        <div className="fixed inset-0 bg-gray-900/90 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
           <CameraCapture
             onPhotoTaken={handlePhotoTaken}
             onClose={() => setIsCameraOpen(false)}

@@ -41,13 +41,13 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
   if (!isTyping) return null;
 
   return (
-    <div className={`flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 ${className}`}>
+    <div className={`flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 ${className}`}>
       <div className="flex space-x-1">
-        <div className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-        <div className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-        <div className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+        <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+        <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
       </div>
-      <span className="text-slate-600 dark:text-slate-400">typing...</span>
+      <span className="text-gray-600 dark:text-gray-400">typing...</span>
     </div>
   );
 };

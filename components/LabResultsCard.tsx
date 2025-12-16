@@ -107,9 +107,9 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
     const keyTests: LabTestType[] = ['egfr', 'creatinine', 'potassium', 'hemoglobin'];
 
     return (
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200/40 dark:border-slate-700/40 hover:shadow-lg transition-all duration-300">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200/40 dark:border-gray-700/40 hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Lab Results & Trends</h3>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Lab Results & Trends</h3>
                 <button
                     onClick={() => setIsAddingResult(true)}
                     className="px-4 py-2 text-sm font-medium text-white bg-cyan-500 rounded-xl hover:bg-cyan-600 transition-colors"
@@ -120,15 +120,15 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
 
             {/* Add Result Modal */}
             {isAddingResult && (
-                <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-                    <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Add New Lab Result</h4>
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Add New Lab Result</h4>
                     <div className="grid grid-cols-3 gap-4 mb-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Test Type</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Type</label>
                             <select
                                 value={newResult.testType}
                                 onChange={(e) => setNewResult({ ...newResult, testType: e.target.value as LabTestType })}
-                                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                             >
                                 {Object.keys(latestResults).map((testType) => (
                                     <option key={testType} value={testType}>
@@ -138,23 +138,23 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Value</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Value</label>
                             <input
                                 type="number"
                                 step="0.01"
                                 value={newResult.value}
                                 onChange={(e) => setNewResult({ ...newResult, value: e.target.value })}
                                 placeholder="Enter value"
-                                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Test Date</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Date</label>
                             <input
                                 type="date"
                                 value={newResult.testDate}
                                 onChange={(e) => setNewResult({ ...newResult, testDate: e.target.value })}
-                                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-slate-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
                             />
                         </div>
                     </div>
@@ -167,7 +167,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                         </button>
                         <button
                             onClick={() => setIsAddingResult(false)}
-                            className="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-300 font-medium rounded-xl transition-colors"
+                            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors"
                         >
                             Cancel
                         </button>
@@ -179,7 +179,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
             <div className="grid grid-cols-2 gap-4 mb-6">
                 {keyTests.map((testType) => {
                     const result = latestResults[testType];
-                    const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-500 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-600' };
+                    const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-600' };
                     const icon = result ? getStatusIcon(result.status) : '⚪';
 
                     return (
@@ -189,7 +189,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                             onClick={() => result && handleViewTrend(testType)}
                         >
                             <div className="flex items-start justify-between mb-2">
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{getTestName(testType)}</h4>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{getTestName(testType)}</h4>
                                 <span className="text-lg">{icon}</span>
                             </div>
                             {result ? (
@@ -197,12 +197,12 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                     <p className={`text-2xl font-bold ${colors.text}`}>
                                         {result.value} <span className="text-sm font-normal">{result.unit}</span>
                                     </p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                         {new Date(result.testDate).toLocaleDateString()}
                                     </p>
                                 </>
                             ) : (
-                                <p className="text-sm text-slate-500 dark:text-slate-400 italic">No data</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 italic">No data</p>
                             )}
                         </div>
                     );
@@ -213,7 +213,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
             <div className="grid grid-cols-3 gap-3">
                 {['bun', 'bicarbonate', 'acr'].map((testType) => {
                     const result = latestResults[testType as LabTestType];
-                    const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-slate-50 dark:bg-slate-700', text: 'text-slate-500 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-600' };
+                    const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-600' };
                     const icon = result ? getStatusIcon(result.status) : '⚪';
 
                     return (
@@ -223,7 +223,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                             onClick={() => result && handleViewTrend(testType as LabTestType)}
                         >
                             <div className="flex items-center justify-between mb-1">
-                                <h5 className="text-xs font-semibold text-slate-700 dark:text-slate-300">{getTestName(testType as LabTestType)}</h5>
+                                <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300">{getTestName(testType as LabTestType)}</h5>
                                 <span className="text-sm">{icon}</span>
                             </div>
                             {result ? (
@@ -231,7 +231,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                     {result.value} <span className="text-xs">{result.unit}</span>
                                 </p>
                             ) : (
-                                <p className="text-xs text-slate-500 dark:text-slate-400 italic">No data</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 italic">No data</p>
                             )}
                         </div>
                     );
@@ -241,14 +241,14 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
             {/* Trend View Modal */}
             {viewingTrend && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                                 {getTestName(viewingTrend)} Trend
                             </h3>
                             <button
                                 onClick={() => setViewingTrend(null)}
-                                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl"
+                                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl"
                             >
                                 ×
                             </button>
@@ -257,7 +257,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                         {trendData.length > 0 ? (
                             <div className="space-y-4">
                                 {/* Simple line chart visualization */}
-                                <div className="relative h-48 bg-slate-50 dark:bg-slate-700 rounded-xl p-4">
+                                <div className="relative h-48 bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
                                     <svg className="w-full h-full" viewBox="0 0 400 150">
                                         <polyline
                                             fill="none"
@@ -296,11 +296,11 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                 <div className="space-y-2">
                                     {trendData.map((point, idx) => {
                                         const result = latestResults[viewingTrend];
-                                        const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-700 dark:text-slate-300' };
+                                        const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300' };
 
                                         return (
                                             <div key={idx} className={`flex justify-between items-center p-3 rounded-lg ${colors.bg}`}>
-                                                <span className="text-sm text-slate-600 dark:text-slate-400">
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">
                                                     {new Date(point.date).toLocaleDateString()}
                                                 </span>
                                                 <span className={`text-lg font-bold ${colors.text}`}>
@@ -312,7 +312,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-center text-slate-500 dark:text-slate-400 py-8">No trend data available</p>
+                            <p className="text-center text-gray-500 dark:text-gray-400 py-8">No trend data available</p>
                         )}
                     </div>
                 </div>

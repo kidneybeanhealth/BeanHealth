@@ -184,9 +184,9 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
             </div>
 
             {/* Vital Signs Section - Now at top, smaller */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/40 dark:border-slate-700/40">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Vital Signs</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Vital Signs</h3>
                     {!isEditingVitals && (
                         <button
                             onClick={() => {
@@ -199,7 +199,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                                 });
                                 setIsEditingVitals(true);
                             }}
-                            className="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                         >
                             Update
                         </button>
@@ -210,42 +210,42 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Systolic</label>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Systolic</label>
                                 <input
                                     type="number"
                                     value={editVitals.systolic}
                                     onChange={(e) => setEditVitals({ ...editVitals, systolic: e.target.value })}
-                                    className="w-full px-2 py-1.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
+                                    className="w-full px-2 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm"
                                     placeholder="120"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Diastolic</label>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Diastolic</label>
                                 <input
                                     type="number"
                                     value={editVitals.diastolic}
                                     onChange={(e) => setEditVitals({ ...editVitals, diastolic: e.target.value })}
-                                    className="w-full px-2 py-1.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
+                                    className="w-full px-2 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm"
                                     placeholder="80"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Heart Rate</label>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Heart Rate</label>
                                 <input
                                     type="number"
                                     value={editVitals.heartRate}
                                     onChange={(e) => setEditVitals({ ...editVitals, heartRate: e.target.value })}
-                                    className="w-full px-2 py-1.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
+                                    className="w-full px-2 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm"
                                     placeholder="72"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">SpO2</label>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">SpO2</label>
                                 <input
                                     type="number"
                                     value={editVitals.spo2}
                                     onChange={(e) => setEditVitals({ ...editVitals, spo2: e.target.value })}
-                                    className="w-full px-2 py-1.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm"
+                                    className="w-full px-2 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm"
                                     placeholder="98"
                                 />
                             </div>
@@ -259,7 +259,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                             </button>
                             <button
                                 onClick={() => setIsEditingVitals(false)}
-                                className="flex-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors"
+                                className="flex-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
                             >
                                 Cancel
                             </button>
@@ -268,7 +268,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {/* Blood Pressure Card */}
-                        <div className={`p-3 rounded-xl border ${vitals.bloodPressure ? getStatusColor(getBPStatus(vitals.bloodPressure.systolic, vitals.bloodPressure.diastolic)) : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700'}`}>
+                        <div className={`p-3 rounded-xl border ${vitals.bloodPressure ? getStatusColor(getBPStatus(vitals.bloodPressure.systolic, vitals.bloodPressure.diastolic)) : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'}`}>
                             <div className="flex items-center gap-1.5 mb-1">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -284,7 +284,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                         </div>
 
                         {/* Heart Rate Card */}
-                        <div className={`p-3 rounded-xl border ${vitals.heartRate ? getStatusColor(getHRStatus(vitals.heartRate)) : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700'}`}>
+                        <div className={`p-3 rounded-xl border ${vitals.heartRate ? getStatusColor(getHRStatus(vitals.heartRate)) : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'}`}>
                             <div className="flex items-center gap-1.5 mb-1">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -298,7 +298,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                         </div>
 
                         {/* SpO2 Card */}
-                        <div className={`p-3 rounded-xl border ${vitals.spo2 ? getStatusColor(getSpO2Status(vitals.spo2)) : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700'}`}>
+                        <div className={`p-3 rounded-xl border ${vitals.spo2 ? getStatusColor(getSpO2Status(vitals.spo2)) : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'}`}>
                             <div className="flex items-center gap-1.5 mb-1">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
@@ -312,14 +312,14 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                         </div>
 
                         {/* Temperature Card */}
-                        <div className="p-3 rounded-xl border bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                        <div className="p-3 rounded-xl border bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300">
                             <div className="flex items-center gap-1.5 mb-1">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
                                 <span className="text-xs font-medium opacity-80">Temp</span>
                             </div>
-                            <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                            <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
                                 {vitals.temperature ?? '—'}
                             </p>
                             <p className="text-xs opacity-60">°F</p>

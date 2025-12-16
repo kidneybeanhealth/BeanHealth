@@ -88,18 +88,18 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
 
     if (isLoading) {
         return (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200/40 dark:border-slate-700/40 animate-pulse">
-                <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-4"></div>
-                <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded mb-4"></div>
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200/40 dark:border-gray-700/40 animate-pulse">
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+                <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
             </div>
         );
     }
 
     if (!referralCode) {
         return (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200/40 dark:border-slate-700/40">
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Your Referral Code</h3>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200/40 dark:border-gray-700/40">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Your Referral Code</h3>
                 <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
                     <p className="text-sm text-yellow-700 dark:text-yellow-400">
                         ⚠️ Referral code not generated yet. Please run the database schema update.
@@ -113,8 +113,8 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
         <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 p-6 rounded-3xl border border-cyan-200/50 dark:border-cyan-800/50">
             <div className="flex items-start justify-between mb-4">
                 <div>
-                    <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Your Referral Code</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Your Referral Code</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                         Share with patients to connect
                     </p>
                 </div>
@@ -126,7 +126,7 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
             </div>
 
             {/* Referral Code Display */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl mb-4 shadow-sm">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl mb-4 shadow-sm">
                 <p className="text-3xl font-mono font-bold text-center text-cyan-600 dark:text-cyan-400 tracking-wider">
                     {referralCode}
                 </p>
@@ -138,7 +138,7 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
                     onClick={handleCopyCode}
                     className={`flex-1 py-3 px-4 font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${copied
                             ? 'bg-green-500 text-white'
-                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                         }`}
                 >
                     {copied ? (
@@ -170,20 +170,20 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
 
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/50 dark:bg-slate-800/50 p-4 rounded-xl text-center">
-                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{linkedPatientsCount}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Linked Patients</p>
+                <div className="bg-white/50 dark:bg-gray-800/50 p-4 rounded-xl text-center">
+                    <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{linkedPatientsCount}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Linked Patients</p>
                 </div>
-                <div className="bg-white/50 dark:bg-slate-800/50 p-4 rounded-xl text-center">
+                <div className="bg-white/50 dark:bg-gray-800/50 p-4 rounded-xl text-center">
                     <p className="text-3xl font-bold text-green-600 dark:text-green-400">Active</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Code Status</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Code Status</p>
                 </div>
             </div>
 
             {/* Instructions */}
-            <div className="mt-6 p-4 bg-white/80 dark:bg-slate-800/80 rounded-xl">
-                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">How it works</h4>
-                <ol className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-decimal list-inside">
+            <div className="mt-6 p-4 bg-white/80 dark:bg-gray-800/80 rounded-xl">
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">How it works</h4>
+                <ol className="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
                     <li>Share this code with your patient</li>
                     <li>Patient enters the code during their profile setup</li>
                     <li>You'll see them appear in your patient list</li>
