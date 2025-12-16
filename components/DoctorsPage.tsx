@@ -17,6 +17,21 @@ interface LinkedDoctor {
     linkedSince?: string;
 }
 
+interface Relationship {
+    doctor_id: string;
+    created_at: string;
+    status?: string | null;
+}
+
+interface DoctorUser {
+    id: string;
+    name: string;
+    specialty?: string;
+    referral_code?: string;
+    email: string;
+    role: string;
+}
+
 const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }) => {
     const [linkedDoctors, setLinkedDoctors] = useState<LinkedDoctor[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -36,7 +51,8 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
             const { data: relationships, error: relError } = await supabase
                 .from('patient_doctor_relationships')
                 .select('doctor_id, created_at, status')
-                .eq('patient_id', patientId);
+                .eq('patient_id', patientId)
+                .returns<Relationship[]>();
 
             if (relError) {
                 console.error('Error fetching relationships:', relError);
@@ -53,8 +69,10 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
             }
 
             // Filter to only active or null status (backward compatible)
+            // Filter to only active or null status (backward compatible)
+            // Also include 'accepted' if that's a status used
             const activeRelationships = relationships.filter(rel =>
-                rel.status === 'active' || rel.status === null || rel.status === undefined
+                !rel.status || rel.status === 'active' || rel.status === 'accepted' || rel.status === 'pending'
             );
 
             if (activeRelationships.length === 0) {
@@ -71,7 +89,8 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                 .from('users')
                 .select('id, name, email, specialty, referral_code')
                 .in('id', doctorIds)
-                .eq('role', 'doctor');
+                .eq('role', 'doctor')
+                .returns<DoctorUser[]>();
 
             if (docError) {
                 console.error('Error fetching doctors:', docError);
@@ -115,9 +134,11 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                 .select('id, name, specialty, referral_code')
                 .eq('referral_code', referralCode.toUpperCase().trim())
                 .eq('role', 'doctor')
-                .single();
+                .maybeSingle();
 
-            if (doctorError || !doctor) {
+            const foundDoctor = doctor as unknown as DoctorUser | null;
+
+            if (doctorError || !foundDoctor) {
                 setLinkError('Invalid referral code. Please check and try again.');
                 return;
             }
@@ -127,8 +148,8 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                 .from('patient_doctor_relationships')
                 .select('id')
                 .eq('patient_id', patientId)
-                .eq('doctor_id', doctor.id)
-                .single();
+                .eq('doctor_id', foundDoctor.id)
+                .maybeSingle();
 
             if (existing) {
                 setLinkError('You are already linked with this doctor.');
@@ -140,14 +161,14 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                 .from('patient_doctor_relationships')
                 .insert({
                     patient_id: patientId,
-                    doctor_id: doctor.id,
+                    doctor_id: foundDoctor.id,
                     status: 'active',
                     notes: `Linked via referral code ${referralCode}`
-                });
+                } as any);
 
             if (linkError) throw linkError;
 
-            setLinkSuccess(`Successfully linked with Dr. ${doctor.name}!`);
+            setLinkSuccess(`Successfully linked with Dr. ${foundDoctor.name}!`);
             setReferralCode('');
             loadLinkedDoctors();
         } catch (error) {
@@ -164,7 +185,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
         try {
             const { error } = await supabase
                 .from('patient_doctor_relationships')
-                .update({ status: 'inactive' })
+                .update({ status: 'inactive' } as any)
                 .eq('patient_id', patientId)
                 .eq('doctor_id', doctorId);
 
@@ -202,12 +223,12 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                             setLinkSuccess('');
                         }}
                         placeholder="DR-XXXX-XXXX"
-                        className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-mono text-center tracking-wider focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-mono text-center tracking-wider focus:outline-none focus:ring-2 focus:ring-secondary-700"
                     />
                     <button
                         onClick={handleLinkDoctor}
                         disabled={isLinking || !referralCode.trim()}
-                        className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-6 py-3 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isLinking ? 'Linking...' : 'Link Doctor'}
                     </button>
@@ -227,7 +248,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
 
                 {isLoading ? (
                     <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-4 border-cyan-200 border-t-cyan-600 mx-auto"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-secondary-700 mx-auto"></div>
                         <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading doctors...</p>
                     </div>
                 ) : linkedDoctors.length === 0 ? (
@@ -272,7 +293,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => onNavigateToChat(doctor.id)}
-                                        className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium rounded-xl transition-colors"
+                                        className="px-4 py-2 bg-secondary-700 hover:bg-secondary-800 text-white text-sm font-medium rounded-xl transition-colors"
                                     >
                                         Message
                                     </button>
@@ -290,9 +311,9 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
             </div>
 
             {/* Help Section */}
-            <div className="bg-cyan-50 dark:bg-cyan-900/20 p-6 rounded-2xl border border-cyan-200/50 dark:border-cyan-800/50">
-                <h3 className="font-semibold text-cyan-900 dark:text-cyan-300 mb-2">How it works</h3>
-                <ul className="text-sm text-cyan-800 dark:text-cyan-400 space-y-1">
+            <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">How it works</h3>
+                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                     <li>1. Ask your doctor for their referral code (format: DR-XXXX-XXXX)</li>
                     <li>2. Enter the code above and click "Link Doctor"</li>
                     <li>3. Once linked, your doctor can see your health data and you can message them</li>
