@@ -7,7 +7,6 @@ import { MedicalRecordsService } from '../services/medicalRecordsService';
 import { VitalsService, MedicationService } from '../services/dataService';
 import { getInitials, getInitialsColor } from '../utils/avatarUtils';
 import SimpleHeader from './SimpleHeader';
-import AddPatientModal from './AddPatientModal';
 import Messages from './Messages';
 import DoctorPatientView from './DoctorPatientView';
 import { UserGroupIcon } from './icons/UserGroupIcon';
@@ -21,7 +20,6 @@ import DoctorReferralCard from './DoctorReferralCard';
 
 const DoctorDashboardMain: React.FC = () => {
   const { user, profile, signOut } = useAuth();
-  const [showAddPatientModal, setShowAddPatientModal] = useState(false);
   const [patients, setPatients] = useState<User[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,19 +64,9 @@ const DoctorDashboardMain: React.FC = () => {
     fetchMessages();
   }, [patients, user?.id]);
 
-  const handleAddPatientClick = () => {
-    setShowAddPatientModal(true);
-  };
-
-  const handleModalClose = () => {
-    setShowAddPatientModal(false);
-  };
-
-  const handlePatientAdded = () => {
-    // Refresh patient list
-    fetchPatients();
-    console.log('Patient added successfully');
-  };
+  useEffect(() => {
+    fetchMessages();
+  }, [patients, user?.id]);
 
   const handleSendMessage = async (message: Omit<ChatMessage, 'id' | 'timestamp' | 'isRead'>) => {
     try {
@@ -188,14 +176,10 @@ const DoctorDashboardMain: React.FC = () => {
               <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
                 Your practice dashboard and patient overview
               </p>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
+                Your practice dashboard and patient overview
+              </p>
             </div>
-            <button
-              onClick={handleAddPatientClick}
-              className="btn-primary flex items-center justify-center text-sm sm:text-base"
-            >
-              <UserPlusIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-              Add New Patient
-            </button>
           </div>
         </div>
       </div>
@@ -278,15 +262,8 @@ const DoctorDashboardMain: React.FC = () => {
                   </div>
                   <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100">No patients yet</h3>
                   <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 max-w-sm mx-auto px-4">
-                    Get started by adding existing patients to your roster.
+                    Share your referral code (below) with patients to link them to your practice.
                   </p>
-                  <button
-                    onClick={handleAddPatientClick}
-                    className="btn-primary mt-6 inline-flex items-center text-sm sm:text-base"
-                  >
-                    <UserPlusIcon className="h-4 w-4 mr-2" />
-                    Add First Patient
-                  </button>
                 </div>
               ) : (
                 <div className="space-y-2 sm:space-y-3">
@@ -333,38 +310,9 @@ const DoctorDashboardMain: React.FC = () => {
             </div>
           </div>
 
-          {/* Referral Code Card */}
-          <div className="card">
+          {/* Referral Code Card - Full Width if no patients, otherwise side */}
+          <div className="card lg:col-span-1">
             {user?.id && <DoctorReferralCard doctorId={user.id} />}
-          </div>
-        </div>
-
-        {/* Getting Started Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 sm:gap-8">
-          {/* Getting Started */}
-          <div className="card">
-            <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Getting Started</h2>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Complete these steps to set up your practice</p>
-            </div>
-            <div className="p-4 sm:p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group animate-slideUp" style={{ animationDelay: '0ms' }}>
-                  <div className="flex items-center space-x-3 sm:space-x-4">
-                    <div className="bg-secondary-700 dark:bg-secondary-600 p-2 sm:p-3 rounded-xl transition-all duration-200">
-                      <UserGroupIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white dark:text-gray-900" />
-                    </div>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">Add patients</span>
-                  </div>
-                  <button
-                    onClick={handleAddPatientClick}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-all duration-200"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -492,15 +440,7 @@ const DoctorDashboardMain: React.FC = () => {
         </div>
       </main>
 
-      {/* Add Patient Modal */}
-      {user?.id && (
-        <AddPatientModal
-          isOpen={showAddPatientModal}
-          onClose={handleModalClose}
-          doctorId={user.id}
-          onPatientAdded={handlePatientAdded}
-        />
-      )}
+      {/* Modal removed */}
     </div>
   );
 };
