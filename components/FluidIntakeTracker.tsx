@@ -118,9 +118,9 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
 
     const getProgressColor = () => {
         if (isOverTarget) return 'bg-red-500';
-        if (progressPercent >= 80) return 'bg-cyan-500';
-        if (progressPercent >= 50) return 'bg-yellow-500';
-        return 'bg-blue-500';
+        if (progressPercent >= 80) return 'bg-secondary-700';
+        if (progressPercent >= 50) return 'bg-secondary-500';
+        return 'bg-secondary-600';
     };
 
     return (
@@ -144,11 +144,11 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                                     type="number"
                                     value={editTargetValue}
                                     onChange={(e) => setEditTargetValue(e.target.value)}
-                                    className="w-20 px-2 py-1 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    className="w-20 px-2 py-1 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700"
                                 />
                                 <button
                                     onClick={handleSaveTarget}
-                                    className="px-2 py-1 text-xs bg-cyan-500 text-white rounded-lg hover:bg-cyan-600"
+                                    className="px-2 py-1 text-xs bg-secondary-700 text-white rounded-lg hover:bg-secondary-800"
                                 >
                                     Save
                                 </button>
@@ -193,8 +193,8 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                             key={type}
                             onClick={() => setSelectedType(type)}
                             className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${selectedType === type
-                                    ? 'bg-cyan-500 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ? 'bg-secondary-700 text-white'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                         >
                             {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -208,21 +208,21 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                 <button
                     onClick={() => handleQuickAdd(250)}
                     disabled={isLoading}
-                    className="px-4 py-3 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-semibold rounded-xl hover:bg-blue-200 dark:hover:bg-blue-900/40 transition-colors disabled:opacity-50"
+                    className="px-4 py-3 bg-secondary-100 dark:bg-secondary-900/20 text-secondary-700 dark:text-secondary-400 font-semibold rounded-xl hover:bg-secondary-200 dark:hover:bg-secondary-900/40 transition-colors disabled:opacity-50"
                 >
                     + 250 ml
                 </button>
                 <button
                     onClick={() => handleQuickAdd(500)}
                     disabled={isLoading}
-                    className="px-4 py-3 bg-cyan-100 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-400 font-semibold rounded-xl hover:bg-cyan-200 dark:hover:bg-cyan-900/40 transition-colors disabled:opacity-50"
+                    className="px-4 py-3 bg-secondary-200 dark:bg-secondary-900/20 text-secondary-700 dark:text-secondary-400 font-semibold rounded-xl hover:bg-secondary-300 dark:hover:bg-secondary-900/40 transition-colors disabled:opacity-50"
                 >
                     + 500 ml
                 </button>
                 <button
                     onClick={() => handleQuickAdd(1000)}
                     disabled={isLoading}
-                    className="px-4 py-3 bg-teal-100 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 font-semibold rounded-xl hover:bg-teal-200 dark:hover:bg-teal-900/40 transition-colors disabled:opacity-50"
+                    className="px-4 py-3 bg-secondary-300 dark:bg-secondary-900/20 text-secondary-800 dark:text-secondary-400 font-semibold rounded-xl hover:bg-secondary-400 dark:hover:bg-secondary-900/40 transition-colors disabled:opacity-50"
                 >
                     + 1 L
                 </button>
@@ -236,12 +236,12 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                     onChange={(e) => setCustomAmount(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleCustomAdd()}
                     placeholder="Custom amount (ml)"
-                    className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                    className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                 />
                 <button
                     onClick={handleCustomAdd}
                     disabled={isLoading || !customAmount}
-                    className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
+                    className="px-6 py-2 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
                 >
                     Add
                 </button>

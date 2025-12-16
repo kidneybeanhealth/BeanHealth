@@ -199,7 +199,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                             placeholder="Enter full name"
                         />
                     </div>
@@ -214,7 +214,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                                 type="number"
                                 value={editAge}
                                 onChange={(e) => setEditAge(e.target.value)}
-                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                                 placeholder="Enter age"
                             />
                         </div>
@@ -227,7 +227,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                             <select
                                 value={editGender}
                                 onChange={(e) => setEditGender(e.target.value)}
-                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                             >
                                 <option value="">Select gender</option>
                                 <option value="male">Male</option>
@@ -248,7 +248,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                             step="0.1"
                             value={editWeight}
                             onChange={(e) => setEditWeight(e.target.value)}
-                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                             placeholder="Enter baseline weight"
                         />
                     </div>
@@ -267,7 +267,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                                             key={condition}
                                             onClick={() => toggleComorbidity(condition)}
                                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${selectedComorbidities.includes(condition)
-                                                ? 'bg-cyan-500 text-white'
+                                                ? 'bg-secondary-700 text-white'
                                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                                 }`}
                                         >
@@ -284,7 +284,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                                             key={condition}
                                             onClick={() => toggleComorbidity(condition)}
                                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${selectedComorbidities.includes(condition)
-                                                ? 'bg-cyan-500 text-white'
+                                                ? 'bg-secondary-700 text-white'
                                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                                 }`}
                                         >
@@ -301,7 +301,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
                         >
                             {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>
@@ -320,7 +320,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                     <div className="grid grid-cols-2 gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Patient ID</p>
-                            <p className="text-lg font-mono font-bold text-cyan-600 dark:text-cyan-400">
+                            <p className="text-lg font-mono font-bold text-secondary-700 dark:text-secondary-400">
                                 {patientDisplayId || '—'}
                             </p>
                         </div>
@@ -368,8 +368,8 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
 
                     {/* Fluid Target Info */}
                     {ckdStage && (
-                        <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-xl border border-cyan-200 dark:border-cyan-800">
-                            <p className="text-sm text-cyan-700 dark:text-cyan-400">
+                        <div className="p-3 bg-secondary-50 dark:bg-secondary-900/20 rounded-xl border border-secondary-200 dark:border-secondary-800">
+                            <p className="text-sm text-secondary-700 dark:text-secondary-400">
                                 💧 Recommended daily fluid: <strong>{recommendedFluidTarget} ml</strong>
                             </p>
                         </div>

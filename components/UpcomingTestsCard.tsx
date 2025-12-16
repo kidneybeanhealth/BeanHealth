@@ -116,7 +116,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Upcoming Tests</h3>
                 <button
                     onClick={() => setIsAddingTest(true)}
-                    className="px-4 py-2 text-sm font-medium text-white bg-cyan-500 rounded-xl hover:bg-cyan-600 transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-white bg-secondary-700 rounded-xl hover:bg-secondary-800 transition-colors"
                 >
                     + Schedule Test
                 </button>
@@ -132,7 +132,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                             <select
                                 value={newTest.testName}
                                 onChange={(e) => setNewTest({ ...newTest, testName: e.target.value })}
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                             >
                                 <option value="">Select a test...</option>
                                 {UpcomingTestsService.COMMON_TESTS.map((test) => (
@@ -145,7 +145,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                     type="text"
                                     placeholder="Enter custom test name"
                                     onChange={(e) => setNewTest({ ...newTest, testName: e.target.value })}
-                                    className="w-full mt-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                    className="w-full mt-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                                 />
                             )}
                         </div>
@@ -157,7 +157,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                     value={newTest.scheduledDate}
                                     onChange={(e) => setNewTest({ ...newTest, scheduledDate: e.target.value })}
                                     min={new Date().toISOString().split('T')[0]}
-                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                                 />
                             </div>
                             <div>
@@ -167,7 +167,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                     value={newTest.location}
                                     onChange={(e) => setNewTest({ ...newTest, location: e.target.value })}
                                     placeholder="Lab location"
-                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                                 />
                             </div>
                         </div>
@@ -188,14 +188,14 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                 onChange={(e) => setNewTest({ ...newTest, notes: e.target.value })}
                                 placeholder="Special instructions..."
                                 rows={2}
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                             />
                         </div>
                     </div>
                     <div className="flex gap-3">
                         <button
                             onClick={handleAddTest}
-                            className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-colors"
+                            className="flex-1 px-4 py-2 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-colors"
                         >
                             Schedule Test
                         </button>
@@ -229,8 +229,8 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                             <div
                                 key={test.id}
                                 className={`p-4 rounded-xl border transition-all ${isOverdue
-                                        ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
-                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                                    ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+                                    : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
                                     }`}
                             >
                                 <div className="flex items-start gap-3">
@@ -238,7 +238,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                         type="checkbox"
                                         checked={test.completed}
                                         onChange={() => handleToggleComplete(test.id, test.completed)}
-                                        className="mt-1 w-5 h-5 text-cyan-500 rounded focus:ring-2 focus:ring-cyan-500"
+                                        className="mt-1 w-5 h-5 text-secondary-700 rounded focus:ring-2 focus:ring-secondary-700"
                                     />
                                     <div className="flex-1">
                                         <h4 className={`font-semibold text-gray-900 dark:text-gray-100 ${test.completed ? 'line-through opacity-50' : ''}`}>

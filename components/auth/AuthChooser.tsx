@@ -34,11 +34,10 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                 {/* Patient Card - Minimalist */}
                 <button
                     onClick={() => handleRoleSelect('patient')}
-                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-gray-400 ${
-                        selectedRole === 'patient'
-                            ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white'
+                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${selectedRole === 'patient'
+                            ? 'border-secondary-700 dark:border-secondary-600 bg-secondary-700 dark:bg-secondary-600'
                             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
+                        }`}
                 >
                     {/* Selection Indicator */}
                     {selectedRole === 'patient' && (
@@ -50,18 +49,17 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                     )}
 
                     <div className="flex flex-col space-y-6">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                            selectedRole === 'patient'
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${selectedRole === 'patient'
                                 ? 'bg-white/10 dark:bg-gray-900/10'
                                 : 'bg-gray-100 dark:bg-gray-700'
-                        }`}>
-                            <UserIcon className={`h-8 w-8 ${selectedRole === 'patient' ? 'text-white dark:text-gray-900' : 'text-gray-600 dark:text-gray-300'}`} />
+                            }`}>
+                            <UserIcon className={`h-8 w-8 ${selectedRole === 'patient' ? 'text-white dark:text-white' : 'text-gray-600 dark:text-gray-300'}`} />
                         </div>
                         <div className="space-y-2">
-                            <h3 className={`text-2xl font-semibold ${selectedRole === 'patient' ? 'text-white dark:text-gray-900' : 'text-gray-900 dark:text-white'}`}>
+                            <h3 className={`text-2xl font-semibold ${selectedRole === 'patient' ? 'text-white dark:text-white' : 'text-gray-900 dark:text-white'}`}>
                                 Patient
                             </h3>
-                            <p className={`text-sm leading-relaxed ${selectedRole === 'patient' ? 'text-white/80 dark:text-gray-900/80' : 'text-gray-600 dark:text-gray-400'}`}>
+                            <p className={`text-sm leading-relaxed ${selectedRole === 'patient' ? 'text-white/80 dark:text-white/80' : 'text-gray-600 dark:text-gray-400'}`}>
                                 Track health records, medications, and connect with doctors
                             </p>
                         </div>
@@ -93,11 +91,10 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                 {/* Doctor Card - Minimalist */}
                 <button
                     onClick={() => handleRoleSelect('doctor')}
-                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-gray-400 ${
-                        selectedRole === 'doctor'
-                            ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white'
+                    className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${selectedRole === 'doctor'
+                            ? 'border-secondary-700 dark:border-secondary-600 bg-secondary-700 dark:bg-secondary-600'
                             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
+                        }`}
                 >
                     {/* Selection Indicator */}
                     {selectedRole === 'doctor' && (
@@ -109,18 +106,17 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                     )}
 
                     <div className="flex flex-col space-y-6">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                            selectedRole === 'doctor'
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${selectedRole === 'doctor'
                                 ? 'bg-white/10 dark:bg-gray-900/10'
                                 : 'bg-gray-100 dark:bg-gray-700'
-                        }`}>
-                            <DoctorIcon className={`h-8 w-8 ${selectedRole === 'doctor' ? 'text-white dark:text-gray-900' : 'text-gray-600 dark:text-gray-300'}`} />
+                            }`}>
+                            <DoctorIcon className={`h-8 w-8 ${selectedRole === 'doctor' ? 'text-white dark:text-white' : 'text-gray-600 dark:text-gray-300'}`} />
                         </div>
                         <div className="space-y-2">
-                            <h3 className={`text-2xl font-semibold ${selectedRole === 'doctor' ? 'text-white dark:text-gray-900' : 'text-gray-900 dark:text-white'}`}>
+                            <h3 className={`text-2xl font-semibold ${selectedRole === 'doctor' ? 'text-white dark:text-white' : 'text-gray-900 dark:text-white'}`}>
                                 Doctor
                             </h3>
-                            <p className={`text-sm leading-relaxed ${selectedRole === 'doctor' ? 'text-white/80 dark:text-gray-900/80' : 'text-gray-600 dark:text-gray-400'}`}>
+                            <p className={`text-sm leading-relaxed ${selectedRole === 'doctor' ? 'text-white/80 dark:text-white/80' : 'text-gray-600 dark:text-gray-400'}`}>
                                 Manage patients, prescribe medications, and provide care
                             </p>
                         </div>
@@ -153,11 +149,10 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
             <button
                 onClick={handleContinue}
                 disabled={!selectedRole}
-                className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-medium text-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 ${
-                    selectedRole
-                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
+                className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-medium text-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700 ${selectedRole
+                        ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white hover:bg-secondary-800 dark:hover:bg-secondary-700'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                }`}
+                    }`}
             >
                 <span>Continue to Sign In</span>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

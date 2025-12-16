@@ -266,7 +266,7 @@ const DoctorDashboardMain: React.FC = () => {
                   <p className="text-sm sm:text-base text-red-600 dark:text-red-400 font-medium">{error}</p>
                   <button
                     onClick={fetchPatients}
-                    className="mt-4 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-200"
+                    className="mt-4 px-4 py-2 bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white rounded-xl text-sm font-medium hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-all duration-200"
                   >
                     Try again
                   </button>
@@ -310,7 +310,7 @@ const DoctorDashboardMain: React.FC = () => {
                       <div className="flex items-center space-x-2 sm:ml-4">
                         <button
                           onClick={() => handleViewPatient(patient)}
-                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-xs sm:text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-200"
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-all duration-200"
                         >
                           View Profile
                         </button>
@@ -351,14 +351,14 @@ const DoctorDashboardMain: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group animate-slideUp" style={{ animationDelay: '0ms' }}>
                   <div className="flex items-center space-x-3 sm:space-x-4">
-                    <div className="bg-gray-900 dark:bg-white p-2 sm:p-3 rounded-xl transition-all duration-200">
+                    <div className="bg-secondary-700 dark:bg-secondary-600 p-2 sm:p-3 rounded-xl transition-all duration-200">
                       <UserGroupIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white dark:text-gray-900" />
                     </div>
                     <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">Add patients</span>
                   </div>
                   <button
                     onClick={handleAddPatientClick}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-xs sm:text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-200"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-all duration-200"
                   >
                     Add
                   </button>
@@ -453,8 +453,8 @@ const DoctorDashboardMain: React.FC = () => {
             <button
               onClick={() => setActiveView('dashboard')}
               className={`py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${activeView === 'dashboard'
-                  ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
               <DashboardIcon className={`inline h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2`} />
@@ -463,8 +463,8 @@ const DoctorDashboardMain: React.FC = () => {
             <button
               onClick={() => setActiveView('messages')}
               className={`relative py-3 sm:py-4 px-1 border-b-2 font-semibold text-xs sm:text-sm transition-all duration-200 ${activeView === 'messages'
-                  ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
             >
               <MessagesIcon className={`inline h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2`} />

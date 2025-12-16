@@ -112,7 +112,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Lab Results & Trends</h3>
                 <button
                     onClick={() => setIsAddingResult(true)}
-                    className="px-4 py-2 text-sm font-medium text-white bg-cyan-500 rounded-xl hover:bg-cyan-600 transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-white bg-secondary-700 rounded-xl hover:bg-secondary-800 transition-colors"
                 >
                     + Add Result
                 </button>
@@ -128,7 +128,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                             <select
                                 value={newResult.testType}
                                 onChange={(e) => setNewResult({ ...newResult, testType: e.target.value as LabTestType })}
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                             >
                                 {Object.keys(latestResults).map((testType) => (
                                     <option key={testType} value={testType}>
@@ -145,7 +145,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                 value={newResult.value}
                                 onChange={(e) => setNewResult({ ...newResult, value: e.target.value })}
                                 placeholder="Enter value"
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                             />
                         </div>
                         <div>
@@ -154,14 +154,14 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                 type="date"
                                 value={newResult.testDate}
                                 onChange={(e) => setNewResult({ ...newResult, testDate: e.target.value })}
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
                             />
                         </div>
                     </div>
                     <div className="flex gap-3">
                         <button
                             onClick={handleAddResult}
-                            className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-colors"
+                            className="flex-1 px-4 py-2 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-colors"
                         >
                             Add Result
                         </button>
@@ -263,7 +263,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                             fill="none"
                                             stroke="currentColor"
                                             strokeWidth="2"
-                                            className="text-cyan-500"
+                                            className="text-secondary-700"
                                             points={trendData.map((point, idx) => {
                                                 const x = (idx / (trendData.length - 1)) * 380 + 10;
                                                 const maxValue = Math.max(...trendData.map(p => p.value));
@@ -285,7 +285,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                                     cx={x}
                                                     cy={y}
                                                     r="4"
-                                                    className="fill-cyan-500"
+                                                    className="fill-secondary-700"
                                                 />
                                             );
                                         })}

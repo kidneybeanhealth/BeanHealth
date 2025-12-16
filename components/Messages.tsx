@@ -37,16 +37,16 @@ interface MessagesProps {
   onMenuClick?: () => void;
 }
 
-const Messages: React.FC<MessagesProps> = ({ 
-    currentUser, 
-    contacts, 
-    messages: _messages, 
-    onSendMessage: _onSendMessage, 
-    onMarkMessagesAsRead: _onMarkMessagesAsRead,
-    preselectedContactId, 
-    clearPreselectedContact,
-    onNavigateToBilling,
-    onMenuClick
+const Messages: React.FC<MessagesProps> = ({
+  currentUser,
+  contacts,
+  messages: _messages,
+  onSendMessage: _onSendMessage,
+  onMarkMessagesAsRead: _onMarkMessagesAsRead,
+  preselectedContactId,
+  clearPreselectedContact,
+  onNavigateToBilling,
+  onMenuClick
 }) => {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -65,13 +65,13 @@ const Messages: React.FC<MessagesProps> = ({
   const isDoctor = currentUser.role === 'doctor';
   const patientData = isPatient ? (currentUser as Patient) : null;
   const hasCredits = patientData ? patientData.urgentCredits > 0 : false;
-  
+
   // Real-time chat hook
   const realTimeChat = useRealTimeChat({
     currentUserId: currentUser.id,
     selectedContactId: selectedContactId || undefined
   });
-  
+
   const {
     messages,
     unreadCount,
@@ -81,33 +81,33 @@ const Messages: React.FC<MessagesProps> = ({
     sendMessage: sendRealTimeMessage,
     markConversationAsRead
   } = realTimeChat;
-  
+
   // Get messages for the current conversation
-  const currentConversationMessages = selectedContactId 
+  const currentConversationMessages = selectedContactId
     ? realTimeChat.getConversationMessages(selectedContactId)
     : [];
 
   const sortedContacts = useMemo(() => {
     if (currentUser.role !== 'doctor') return contacts;
-    
+
     const getUnreadInfo = (contactId: string) => {
-        const unreadMessages = messages.filter(m => m.senderId === contactId && m.recipientId === currentUser.id && !m.isRead);
-        const hasUrgent = unreadMessages.some(m => m.isUrgent);
-        return { count: unreadMessages.length, hasUrgent };
+      const unreadMessages = messages.filter(m => m.senderId === contactId && m.recipientId === currentUser.id && !m.isRead);
+      const hasUrgent = unreadMessages.some(m => m.isUrgent);
+      return { count: unreadMessages.length, hasUrgent };
     };
 
     return [...contacts].sort((a, b) => {
-        const aInfo = getUnreadInfo(a.id);
-        const bInfo = getUnreadInfo(b.id);
+      const aInfo = getUnreadInfo(a.id);
+      const bInfo = getUnreadInfo(b.id);
 
-        if (aInfo.hasUrgent && !bInfo.hasUrgent) return -1;
-        if (!aInfo.hasUrgent && bInfo.hasUrgent) return 1;
-        if (aInfo.count > 0 && bInfo.count === 0) return -1;
-        if (aInfo.count === 0 && bInfo.count > 0) return 1;
-        return a.name.localeCompare(b.name);
+      if (aInfo.hasUrgent && !bInfo.hasUrgent) return -1;
+      if (!aInfo.hasUrgent && bInfo.hasUrgent) return 1;
+      if (aInfo.count > 0 && bInfo.count === 0) return -1;
+      if (aInfo.count === 0 && bInfo.count > 0) return 1;
+      return a.name.localeCompare(b.name);
     });
   }, [contacts, messages, currentUser.id, currentUser.role]);
-  
+
   useEffect(() => {
     if (preselectedContactId) {
       setSelectedContactId(preselectedContactId);
@@ -122,7 +122,7 @@ const Messages: React.FC<MessagesProps> = ({
         markConversationAsRead(firstContactId);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedContactId, clearPreselectedContact, sortedContacts]);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -131,8 +131,8 @@ const Messages: React.FC<MessagesProps> = ({
 
   const scrollToBottom = useCallback((smooth = true) => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: smooth ? 'smooth' : 'auto', 
+      messagesEndRef.current.scrollIntoView({
+        behavior: smooth ? 'smooth' : 'auto',
         block: 'end',
         inline: 'nearest'
       });
@@ -160,13 +160,13 @@ const Messages: React.FC<MessagesProps> = ({
   useEffect(() => {
     const currentLength = currentConversationMessages.length;
     const isNewMessage = currentLength > previousMessagesLength.current;
-    
+
     if (isNewMessage && shouldAutoScroll) {
       // Small delay to ensure DOM has updated
       const timer = setTimeout(() => scrollToBottom(true), 100);
       return () => clearTimeout(timer);
     }
-    
+
     previousMessagesLength.current = currentLength;
   }, [currentConversationMessages.length, shouldAutoScroll, scrollToBottom]);
 
@@ -197,10 +197,10 @@ const Messages: React.FC<MessagesProps> = ({
   }, [showAttachMenu]);
 
   const handleSelectContact = (contactId: string) => {
-      setSelectedContactId(contactId);
-      markConversationAsRead(contactId);
+    setSelectedContactId(contactId);
+    markConversationAsRead(contactId);
   }
-  
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !selectedContactId) return;
@@ -214,7 +214,7 @@ const Messages: React.FC<MessagesProps> = ({
       await sendRealTimeMessage(selectedContactId, input, isUrgent);
       setInput('');
       setIsUrgent(false);
-      
+
       // Stop typing indicator after sending
       if (realTimeChat.stopTyping) {
         realTimeChat.stopTyping(selectedContactId);
@@ -227,15 +227,15 @@ const Messages: React.FC<MessagesProps> = ({
 
   const handleToggleUrgent = () => {
     if (isPatient && patientData) {
-        if (!hasCredits && !isUrgent) {
-          showWarningToast('You have no urgent credits left. Purchase more from the Billing page.');
-          return;
-        }
-        if(patientData.urgentCredits === 1 && !isUrgent) {
-            setShowCreditWarning(true);
-            showWarningToast('This is your last urgent credit!');
-            setTimeout(() => setShowCreditWarning(false), 5000);
-        }
+      if (!hasCredits && !isUrgent) {
+        showWarningToast('You have no urgent credits left. Purchase more from the Billing page.');
+        return;
+      }
+      if (patientData.urgentCredits === 1 && !isUrgent) {
+        setShowCreditWarning(true);
+        showWarningToast('This is your last urgent credit!');
+        setTimeout(() => setShowCreditWarning(false), 5000);
+      }
     }
     setIsUrgent(prev => !prev);
   };
@@ -257,7 +257,7 @@ const Messages: React.FC<MessagesProps> = ({
     try {
       // Upload file to storage
       const fileData = await uploadChatFile(file, currentUser.id, selectedContactId, fileType);
-      
+
       setUploadProgress({
         fileName: file.name,
         progress: 100,
@@ -284,9 +284,9 @@ const Messages: React.FC<MessagesProps> = ({
 
       // Reset urgent flag if it was set
       setIsUrgent(false);
-      
+
       showSuccessToast('File sent successfully');
-      
+
       // Clear upload progress after a delay
       setTimeout(() => {
         setUploadProgress(null);
@@ -296,14 +296,14 @@ const Messages: React.FC<MessagesProps> = ({
       console.error('File upload error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       showErrorToast(`File upload failed: ${errorMessage}`);
-      
+
       setUploadProgress({
         fileName: file.name,
         progress: 0,
         status: 'error',
         error: errorMessage
       });
-      
+
       // Clear error after delay
       setTimeout(() => {
         setUploadProgress(null);
@@ -330,7 +330,7 @@ const Messages: React.FC<MessagesProps> = ({
     try {
       // Upload audio recording
       const audioData = await uploadAudioRecording(audioBlob, currentUser.id, selectedContactId, duration);
-      
+
       setUploadProgress({
         fileName: 'Voice message',
         progress: 100,
@@ -357,9 +357,9 @@ const Messages: React.FC<MessagesProps> = ({
 
       // Reset urgent flag if it was set
       setIsUrgent(false);
-      
+
       showSuccessToast('Voice message sent successfully');
-      
+
       // Clear upload progress after a delay
       setTimeout(() => {
         setUploadProgress(null);
@@ -369,14 +369,14 @@ const Messages: React.FC<MessagesProps> = ({
       console.error('Audio upload error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       showErrorToast(`Voice message failed: ${errorMessage}`);
-      
+
       setUploadProgress({
         fileName: 'Voice message',
         progress: 0,
         status: 'error',
         error: errorMessage
       });
-      
+
       // Clear error after delay
       setTimeout(() => {
         setUploadProgress(null);
@@ -397,7 +397,7 @@ const Messages: React.FC<MessagesProps> = ({
     const initials = getInitials(contact.name, contact.email);
     const colorClass = getInitialsColor(contact.name, contact.email);
     const sizeClasses = getInitialsAvatarClasses(size);
-    
+
     return (
       <div className={`${sizeClasses} ${colorClass}`}>
         <span className="text-white font-medium">
@@ -408,7 +408,7 @@ const Messages: React.FC<MessagesProps> = ({
   };
 
   const selectedContact = contacts.find(d => d.id === selectedContactId);
-  
+
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
 
   return (
@@ -426,7 +426,7 @@ const Messages: React.FC<MessagesProps> = ({
           <h1 className="ml-3 text-lg font-semibold text-gray-900 dark:text-white tracking-tight">Messages</h1>
         </div>
       )}
-      
+
       {/* Contact List Panel - Modern Sidebar */}
       <div className={`w-full md:w-80 lg:w-96 border-r border-gray-200/60 dark:border-gray-700/60 flex flex-col ${selectedContactId ? 'hidden md:flex' : 'flex'} min-h-0 bg-gray-50 dark:bg-gray-900`}>
         {/* Sidebar Header - Hidden on mobile, use mobile header instead */}
@@ -442,63 +442,59 @@ const Messages: React.FC<MessagesProps> = ({
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
           <div className="p-2 sm:p-3 space-y-1.5">
             {sortedContacts.map(contact => {
-               const unreadMessages = messages.filter(m => m.senderId === contact.id && m.recipientId === currentUser.id && !m.isRead);
-               const hasUnreadUrgent = unreadMessages.some(m => m.isUrgent);
+              const unreadMessages = messages.filter(m => m.senderId === contact.id && m.recipientId === currentUser.id && !m.isRead);
+              const hasUnreadUrgent = unreadMessages.some(m => m.isUrgent);
               return (
-                  <button
-                      key={contact.id}
-                      onClick={() => handleSelectContact(contact.id)}
-                      className={`group relative w-full text-left px-3 sm:px-4 py-3 sm:py-3.5 flex items-center space-x-3 rounded-2xl transition-all duration-300 overflow-hidden ${
-                        selectedContactId === contact.id
-                          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                          : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200/60 dark:border-gray-700/60'
-                      }`}
-                  >
-                      <div className="relative flex-shrink-0">
-                          <InitialsAvatar contact={contact} size="md" />
-                          {/* Online Status Indicator */}
-                          <span className="absolute -bottom-0.5 -right-0.5 block h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-800"></span>
-                          {hasUnreadUrgent && (
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>
-                            </span>
-                          )}
-                      </div>
+                <button
+                  key={contact.id}
+                  onClick={() => handleSelectContact(contact.id)}
+                  className={`group relative w-full text-left px-3 sm:px-4 py-3 sm:py-3.5 flex items-center space-x-3 rounded-2xl transition-all duration-300 overflow-hidden ${selectedContactId === contact.id
+                    ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white'
+                    : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200/60 dark:border-gray-700/60'
+                    }`}
+                >
+                  <div className="relative flex-shrink-0">
+                    <InitialsAvatar contact={contact} size="md" />
+                    {/* Online Status Indicator */}
+                    <span className="absolute -bottom-0.5 -right-0.5 block h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-800"></span>
+                    {hasUnreadUrgent && (
+                      <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>
+                      </span>
+                    )}
+                  </div>
 
-                      <div className="relative flex-1 min-w-0">
-                        <p className={`font-semibold truncate text-sm sm:text-base mb-0.5 ${
-                          selectedContactId === contact.id
-                            ? 'text-white dark:text-gray-900'
-                            : 'text-gray-900 dark:text-white'
-                        }`}>
-                          {contact.name}
-                        </p>
-                        <p className={`text-xs truncate font-medium ${
-                          selectedContactId === contact.id
-                            ? 'text-gray-200 dark:text-gray-700'
-                            : 'text-gray-500 dark:text-gray-400'
-                        }`}>
-                          {(contact as Doctor).specialty || (contact as Patient).condition}
-                        </p>
-                      </div>
+                  <div className="relative flex-1 min-w-0">
+                    <p className={`font-semibold truncate text-sm sm:text-base mb-0.5 ${selectedContactId === contact.id
+                      ? 'text-white dark:text-gray-900'
+                      : 'text-gray-900 dark:text-white'
+                      }`}>
+                      {contact.name}
+                    </p>
+                    <p className={`text-xs truncate font-medium ${selectedContactId === contact.id
+                      ? 'text-gray-200 dark:text-gray-700'
+                      : 'text-gray-500 dark:text-gray-400'
+                      }`}>
+                      {(contact as Doctor).specialty || (contact as Patient).condition}
+                    </p>
+                  </div>
 
-                      {unreadMessages.length > 0 && !hasUnreadUrgent && (
-                          <span className={`relative text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center flex-shrink-0 ${
-                            selectedContactId === contact.id
-                              ? 'bg-white/20 text-white dark:bg-gray-900/20 dark:text-gray-900'
-                              : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                          }`}>
-                              {unreadMessages.length > 9 ? '9+' : unreadMessages.length}
-                          </span>
-                      )}
-                  </button>
+                  {unreadMessages.length > 0 && !hasUnreadUrgent && (
+                    <span className={`relative text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center flex-shrink-0 ${selectedContactId === contact.id
+                      ? 'bg-white/20 text-white dark:bg-secondary-900/20 dark:text-white'
+                      : 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white'
+                      }`}>
+                      {unreadMessages.length > 9 ? '9+' : unreadMessages.length}
+                    </span>
+                  )}
+                </button>
               )
             })}
           </div>
         </div>
       </div>
-      
+
       {/* Chat Panel */}
       <div className={`w-full md:flex-1 flex flex-col ${selectedContactId ? 'flex' : 'hidden md:flex'} min-h-0`}>
         {selectedContact ? (
@@ -510,7 +506,7 @@ const Messages: React.FC<MessagesProps> = ({
                   onClick={() => setSelectedContactId(null)}
                   className="md:hidden p-2 -ml-1 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 flex-shrink-0"
                 >
-                  <ArrowLeftIcon className="h-5 w-5 text-gray-700 dark:text-gray-300"/>
+                  <ArrowLeftIcon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                 </button>
 
                 <div className="relative flex-shrink-0">
@@ -555,7 +551,7 @@ const Messages: React.FC<MessagesProps> = ({
                 {isDoctor && selectedContact.role === 'patient' && (
                   <button
                     onClick={() => setShowPrescriptionModal(true)}
-                    className="flex items-center space-x-1.5 px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-300 whitespace-nowrap"
+                    className="flex items-center space-x-1.5 px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-secondary-700 dark:bg-secondary-600 rounded-xl hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-all duration-300 whitespace-nowrap"
                     aria-label="Create prescription"
                   >
                     <svg className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -566,7 +562,7 @@ const Messages: React.FC<MessagesProps> = ({
                 )}
               </div>
             </div>
-            
+
             {/* Messages Area - Enhanced Design with Fixed Height */}
             <div
               ref={messagesContainerRef}
@@ -589,21 +585,19 @@ const Messages: React.FC<MessagesProps> = ({
                     currentConversationMessages.map((msg, index) => (
                       <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'} animate-slide-up`} style={{ animationDelay: `${index * 20}ms` }}>
                         <div className={`max-w-[85%] sm:max-w-[75%] lg:max-w-lg xl:max-w-xl ${msg.senderId === currentUser.id ? 'ml-4 sm:ml-12' : 'mr-4 sm:mr-12'}`}>
-                          <div className={`group relative px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-3.5 rounded-2xl text-sm sm:text-base break-words transition-all duration-300 ${
-                            msg.senderId === currentUser.id
-                              ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-br-md'
-                              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md border border-gray-200/60 dark:border-gray-700/60'
-                          } ${msg.isUrgent ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900' : ''} ${
-                            pendingMessages.has(msg.id) ? 'opacity-70' : ''
-                          }`}>
+                          <div className={`group relative px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-3.5 rounded-2xl text-sm sm:text-base break-words transition-all duration-300 ${msg.senderId === currentUser.id
+                            ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white rounded-br-md'
+                            : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md border border-gray-200/60 dark:border-gray-700/60'
+                            } ${msg.isUrgent ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900' : ''} ${pendingMessages.has(msg.id) ? 'opacity-70' : ''
+                            }`}>
                             {msg.isUrgent && (
                               <div className="relative inline-flex items-center px-2.5 py-1 bg-red-500 text-white text-xs font-bold rounded-full mb-2">
-                                <AlertIcon className="h-3 w-3 mr-1"/>
+                                <AlertIcon className="h-3 w-3 mr-1" />
                                 URGENT
                               </div>
                             )}
                             {msg.fileUrl ? (
-                              <FileMessage 
+                              <FileMessage
                                 message={msg}
                                 isCurrentUser={msg.senderId === currentUser.id}
                               />
@@ -611,15 +605,14 @@ const Messages: React.FC<MessagesProps> = ({
                               <p className="relative whitespace-pre-wrap leading-relaxed font-medium">{msg.text}</p>
                             )}
                           </div>
-                          <div className={`text-xs text-gray-400 dark:text-gray-500 mt-2 px-2 flex items-center space-x-2 ${
-                            msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'
-                          }`}>
+                          <div className={`text-xs text-gray-400 dark:text-gray-500 mt-2 px-2 flex items-center space-x-2 ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'
+                            }`}>
                             {msg.senderId === currentUser.id && (
-                                <MessageStatus 
-                                  isRead={msg.isRead}
-                                  timestamp={msg.timestamp}
-                                  isUrgent={msg.isUrgent}
-                                />
+                              <MessageStatus
+                                isRead={msg.isRead}
+                                timestamp={msg.timestamp}
+                                isUrgent={msg.isUrgent}
+                              />
                             )}
                             {msg.senderId !== currentUser.id && (
                               <span className="font-medium">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -649,7 +642,7 @@ const Messages: React.FC<MessagesProps> = ({
                     setShouldAutoScroll(true);
                     scrollToBottom(true);
                   }}
-                  className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl hover:scale-110 active:scale-95 transition-all duration-300 z-10 animate-slideUp backdrop-blur-sm"
+                  className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 p-3 bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white rounded-2xl hover:scale-110 active:scale-95 transition-all duration-300 z-10 animate-slideUp backdrop-blur-sm"
                   aria-label="Scroll to bottom"
                 >
                   <svg className="w-5 h-5 sm:w-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -658,48 +651,48 @@ const Messages: React.FC<MessagesProps> = ({
                 </button>
               )}
             </div>
-            
+
             {/* Message Input Area - Modern Design */}
             <div className="relative px-4 sm:px-5 lg:px-6 py-3 sm:py-4 border-t border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 flex-shrink-0 overflow-visible">
-               {showCreditWarning && (
+              {showCreditWarning && (
                 <div className="relative bottom-full left-0 right-0 mb-3 p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/50 text-yellow-900 dark:text-yellow-200 text-xs sm:text-sm rounded-2xl border-2 border-yellow-300 dark:border-yellow-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-slide-up">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 p-2 bg-yellow-400 dark:bg-yellow-600 rounded-xl mr-3">
-                        <AlertIcon className="h-5 w-5 text-yellow-900 dark:text-yellow-100" />
-                      </div>
-                      <span className="font-semibold">You are about to use your last urgent credit.</span>
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 p-2 bg-yellow-400 dark:bg-yellow-600 rounded-xl mr-3">
+                      <AlertIcon className="h-5 w-5 text-yellow-900 dark:text-yellow-100" />
                     </div>
-                    <button
-                        onClick={onNavigateToBilling}
-                        className="px-4 sm:px-5 py-2.5 bg-yellow-500 dark:bg-yellow-600 text-white font-semibold rounded-xl hover:bg-yellow-600 dark:hover:bg-yellow-700 text-xs transition-all duration-300 w-full sm:w-auto text-center"
-                    >
-                        Purchase More Credits
-                    </button>
+                    <span className="font-semibold">You are about to use your last urgent credit.</span>
+                  </div>
+                  <button
+                    onClick={onNavigateToBilling}
+                    className="px-4 sm:px-5 py-2.5 bg-yellow-500 dark:bg-yellow-600 text-white font-semibold rounded-xl hover:bg-yellow-600 dark:hover:bg-yellow-700 text-xs transition-all duration-300 w-full sm:w-auto text-center"
+                  >
+                    Purchase More Credits
+                  </button>
                 </div>
-               )}
+              )}
 
-               {/* Upload Progress */}
-               {uploadProgress && (
-                 <div className="relative mb-4 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-2xl border border-blue-200 dark:border-blue-700">
-                   <div className="flex items-center justify-between text-sm text-blue-800 dark:text-blue-200 mb-3 font-semibold">
-                     <span className="flex items-center">
-                       <svg className="animate-spin h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                       </svg>
-                       Uploading {uploadProgress.fileName}
-                     </span>
-                     <span className="text-lg font-semibold">{Math.round(uploadProgress.progress)}%</span>
-                   </div>
-                   <div className="relative w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3 overflow-hidden">
-                     <div
-                       className="absolute inset-0 bg-blue-600 dark:bg-blue-500 h-3 rounded-full transition-all duration-300"
-                       style={{ width: `${uploadProgress.progress}%` }}
-                     />
-                   </div>
-                 </div>
-               )}
-               
+              {/* Upload Progress */}
+              {uploadProgress && (
+                <div className="relative mb-4 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-2xl border border-blue-200 dark:border-blue-700">
+                  <div className="flex items-center justify-between text-sm text-blue-800 dark:text-blue-200 mb-3 font-semibold">
+                    <span className="flex items-center">
+                      <svg className="animate-spin h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Uploading {uploadProgress.fileName}
+                    </span>
+                    <span className="text-lg font-semibold">{Math.round(uploadProgress.progress)}%</span>
+                  </div>
+                  <div className="relative w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="absolute inset-0 bg-blue-600 dark:bg-blue-500 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress.progress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleSendMessage} className="relative z-10 flex items-center gap-2">
                 {/* Input Container with Urgent Credits - Mobile optimized */}
                 <div className="relative flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl hover:border-gray-400 dark:hover:border-gray-500 focus-within:border-gray-900 dark:focus-within:border-white transition-all duration-300 flex-1 max-w-[calc(100%-60px)] sm:max-w-none">
@@ -710,17 +703,16 @@ const Messages: React.FC<MessagesProps> = ({
                         type="button"
                         onClick={handleToggleUrgent}
                         disabled={cannotTurnOnUrgent}
-                        className={`p-1.5 sm:p-2.5 rounded-full transition-all duration-200 ${
-                          isUrgent
-                            ? 'bg-red-500 text-white'
-                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        className={`p-1.5 sm:p-2.5 rounded-full transition-all duration-200 ${isUrgent
+                          ? 'bg-red-500 text-white'
+                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
                         aria-label="Toggle urgent message"
                       >
                         <AlertIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                       </button>
                       {isPatient && patientData && (
-                        <span className="absolute -top-1 -right-1 text-[9px] sm:text-xs bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-800">
+                        <span className="absolute -top-1 -right-1 text-[9px] sm:text-xs bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center border-2 border-white dark:border-gray-800">
                           {patientData.urgentCredits}
                         </span>
                       )}
@@ -756,10 +748,10 @@ const Messages: React.FC<MessagesProps> = ({
                         aria-label="Attach options"
                       >
                         <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                         </svg>
                       </button>
-                      
+
                       {/* Dropdown Menu */}
                       {showAttachMenu && (
                         <div className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden z-50">
@@ -798,7 +790,7 @@ const Messages: React.FC<MessagesProps> = ({
                 {input.trim() ? (
                   <button
                     type="submit"
-                    className="flex-shrink-0 p-2.5 sm:p-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:scale-110 active:scale-95 transition-all duration-300"
+                    className="flex-shrink-0 p-2.5 sm:p-2.5 rounded-full bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white hover:scale-110 active:scale-95 transition-all duration-300"
                     aria-label="Send message"
                   >
                     <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
