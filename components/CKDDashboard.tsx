@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Patient, Vitals } from '../types';
 import PatientInfoCard from './PatientInfoCard';
+import CaseDetailsCard from './CaseDetailsCard';
+import EnhancedMedicationCard from './EnhancedMedicationCard';
 import FluidIntakeTracker from './FluidIntakeTracker';
 import LabResultsCard from './LabResultsCard';
 import UpcomingTestsCard from './UpcomingTestsCard';
@@ -337,6 +339,12 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                 baselineWeight={(patient as any).baselineWeight || (patient as any).baseline_weight}
                 onUpdate={handleUpdatePatientInfo}
             />
+
+            {/* Case Details */}
+            <CaseDetailsCard patientId={patient.id} />
+
+            {/* Enhanced Medications with Adherence Tracking */}
+            <EnhancedMedicationCard patientId={patient.id} />
 
             {/* Fluid Intake Tracking */}
             <FluidIntakeTracker

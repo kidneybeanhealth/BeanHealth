@@ -1,8 +1,8 @@
 export type View = 'dashboard' | 'records' | 'upload' | 'messages' | 'billing' | 'doctors';
 
-export type UserRole = 'patient' | 'doctor';
+export type UserRole = 'patient' | 'doctor' | 'admin';
 
-export type AuthView = 'chooser' | 'patient-login' | 'doctor-login';
+export type AuthView = 'chooser' | 'patient-login' | 'doctor-login' | 'admin-login';
 
 export type DoctorPortalView = 'dashboard' | 'messages';
 
@@ -13,6 +13,8 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  patientId?: string; // User-friendly patient ID (e.g., P-20231217-XXXX)
+  patient_id?: string; // Database field name
   avatarUrl?: string;
   avatar_url?: string; // Database field name
   specialty?: string;
@@ -248,3 +250,102 @@ export const OPTIONAL_COMORBIDITIES = [
   'Hypothyroidism',
   'Autoimmune kidney disorders (IgA nephropathy, lupus nephritis)',
 ] as const;
+
+// ============================================
+// ENHANCED MEDICATION TYPES
+// ============================================
+
+export type MedicationFrequency =
+  | 'once_daily'
+  | 'twice_daily'
+  | 'three_times_daily'
+  | 'four_times_daily'
+  | 'every_other_day'
+  | 'weekly'
+  | 'as_needed';
+
+export interface EnhancedMedication {
+  id: string;
+  patientId: string;
+  patient_id?: string; // Database field
+  name: string;
+  dosage: string;
+  dosageUnit: string; // mg, ml, mcg, units
+  dosage_unit?: string; // Database field
+  frequency: MedicationFrequency;
+  scheduledTimes: string[]; // e.g., ["08:00", "20:00"] for twice daily
+  scheduled_times?: string[]; // Database field
+  instructions?: string;
+  category?: string; // e.g., "Blood Pressure", "Diabetes"
+  startDate: string;
+  start_date?: string; // Database field
+  endDate?: string;
+  end_date?: string; // Database field
+  isActive: boolean;
+  is_active?: boolean; // Database field
+  isCustom?: boolean; // Whether user added custom medication
+  is_custom?: boolean; // Database field
+  reminderEnabled: boolean;
+  reminder_enabled?: boolean; // Database field
+  // Source tracking
+  source?: 'manual' | 'ai_extracted' | 'doctor_prescribed';
+  addedByDoctorId?: string;
+  added_by_doctor_id?: string; // Database field
+  sourceRecordId?: string; // Link to the medical record this was extracted from
+  source_record_id?: string; // Database field
+  createdAt?: string;
+  created_at?: string; // Database field
+  updatedAt?: string;
+  updated_at?: string; // Database field
+}
+
+// AI extracted medication from medical records
+export interface ExtractedMedication {
+  name: string;
+  dosage: string;
+  unit: string;
+  frequency?: string;
+  instructions?: string;
+}
+
+export interface MedicationAdherenceEntry {
+  id: string;
+  medicationId: string;
+  medication_id?: string; // Database field
+  patientId: string;
+  patient_id?: string; // Database field
+  scheduledDate: string; // YYYY-MM-DD
+  scheduled_date?: string; // Database field
+  scheduledTime: string; // HH:mm
+  scheduled_time?: string; // Database field
+  taken: boolean;
+  takenAt?: string; // ISO timestamp
+  taken_at?: string; // Database field
+  skipped: boolean;
+  skipReason?: string;
+  skip_reason?: string; // Database field
+  createdAt?: string;
+  created_at?: string; // Database field
+}
+
+// ============================================
+// CASE DETAILS TYPES
+// ============================================
+
+export interface CaseDetails {
+  id: string;
+  patientId: string;
+  patient_id?: string; // Database field
+  primaryCondition: string;
+  primary_condition?: string; // Database field
+  latestComplaint: string;
+  latest_complaint?: string; // Database field
+  complaintDate?: string;
+  complaint_date?: string; // Database field
+  medicalHistory: string[];
+  medical_history?: string[]; // Database field
+  createdAt?: string;
+  created_at?: string; // Database field
+  updatedAt?: string;
+  updated_at?: string; // Database field
+}

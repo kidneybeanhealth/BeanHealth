@@ -35,3 +35,4 @@ SELECT id, patient_id, amount_ml, fluid_type, recorded_at
 FROM public.fluid_intake 
 WHERE patient_id = auth.uid()
 LIMIT 5;
+A

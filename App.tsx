@@ -21,6 +21,7 @@ import Auth from './components/auth/Auth';
 import ProfileSetup from './components/auth/ProfileSetup';
 import PatientDashboard from './components/PatientDashboard';
 import DoctorDashboardMain from './components/DoctorDashboardMain';
+import AdminDashboardMain from './components/AdminDashboardMain';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
@@ -139,6 +140,9 @@ const AppContent: React.FC = () => {
   if (profile?.role === 'doctor') {
     console.log('[App] Rendering DoctorDashboardMain');
     return <DoctorDashboardMain />;
+  } else if (profile?.role === 'admin') {
+    console.log('[App] Rendering AdminDashboardMain');
+    return <AdminDashboardMain />;
   } else if (profile?.role === 'patient') {
     console.log('[App] Rendering PatientDashboard');
     return <PatientDashboard />;

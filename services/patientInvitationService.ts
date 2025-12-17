@@ -31,6 +31,8 @@ export class PatientAdditionService {
         email: user.email,
         name: user.name,
         role: user.role,
+        patientId: user.patient_id, // User-friendly patient ID (e.g., P-20231217-XXXX)
+        patient_id: user.patient_id,
         avatarUrl: null, // No longer use external avatar URLs
         avatar_url: null,
         specialty: user.specialty,

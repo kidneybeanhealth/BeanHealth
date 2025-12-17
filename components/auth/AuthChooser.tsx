@@ -4,9 +4,10 @@ import { UserIcon } from '../icons/UserIcon';
 
 interface AuthChooserProps {
     onNext: () => void;
+    onAdminLogin?: () => void;
 }
 
-const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
+const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onAdminLogin }) => {
     const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | null>(null);
 
     const handleRoleSelect = (role: 'patient' | 'doctor') => {
@@ -35,8 +36,8 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                 <button
                     onClick={() => handleRoleSelect('patient')}
                     className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${selectedRole === 'patient'
-                            ? 'border-secondary-700 dark:border-secondary-600 bg-secondary-700 dark:bg-secondary-600'
-                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                        ? 'border-secondary-700 dark:border-secondary-600 bg-secondary-700 dark:bg-secondary-600'
+                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
                         }`}
                 >
                     {/* Selection Indicator */}
@@ -50,8 +51,8 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
 
                     <div className="flex flex-col space-y-6">
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${selectedRole === 'patient'
-                                ? 'bg-white/10 dark:bg-gray-900/10'
-                                : 'bg-gray-100 dark:bg-gray-700'
+                            ? 'bg-white/10 dark:bg-gray-900/10'
+                            : 'bg-gray-100 dark:bg-gray-700'
                             }`}>
                             <UserIcon className={`h-8 w-8 ${selectedRole === 'patient' ? 'text-white dark:text-white' : 'text-gray-600 dark:text-gray-300'}`} />
                         </div>
@@ -92,8 +93,8 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                 <button
                     onClick={() => handleRoleSelect('doctor')}
                     className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left focus:outline-none focus:ring-2 focus:ring-secondary-700 ${selectedRole === 'doctor'
-                            ? 'border-secondary-700 dark:border-secondary-600 bg-secondary-700 dark:bg-secondary-600'
-                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                        ? 'border-secondary-700 dark:border-secondary-600 bg-secondary-700 dark:bg-secondary-600'
+                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
                         }`}
                 >
                     {/* Selection Indicator */}
@@ -107,8 +108,8 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
 
                     <div className="flex flex-col space-y-6">
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${selectedRole === 'doctor'
-                                ? 'bg-white/10 dark:bg-gray-900/10'
-                                : 'bg-gray-100 dark:bg-gray-700'
+                            ? 'bg-white/10 dark:bg-gray-900/10'
+                            : 'bg-gray-100 dark:bg-gray-700'
                             }`}>
                             <DoctorIcon className={`h-8 w-8 ${selectedRole === 'doctor' ? 'text-white dark:text-white' : 'text-gray-600 dark:text-gray-300'}`} />
                         </div>
@@ -146,12 +147,22 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext }) => {
                 </button>
             </div>
 
+            {/* Admin Access Link - Subtle */}
+            <div className="text-center">
+                <button
+                    onClick={() => onAdminLogin?.()}
+                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors underline underline-offset-2"
+                >
+                    Admin Access
+                </button>
+            </div>
+
             <button
                 onClick={handleContinue}
                 disabled={!selectedRole}
                 className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-medium text-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700 ${selectedRole
-                        ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white hover:bg-secondary-800 dark:hover:bg-secondary-700'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white hover:bg-secondary-800 dark:hover:bg-secondary-700'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                     }`}
             >
                 <span>Continue to Sign In</span>

@@ -5,15 +5,19 @@ import { PatientAdditionService } from '../services/patientInvitationService';
 import { ChatService } from '../services/chatService';
 import { MedicalRecordsService } from '../services/medicalRecordsService';
 import { VitalsService, MedicationService } from '../services/dataService';
+import { AlertService } from '../services/alertService';
 import { getInitials, getInitialsColor } from '../utils/avatarUtils';
 import ThemeToggle from './ThemeToggle';
 import { LogoutIcon } from './icons/LogoutIcon';
 import Messages from './Messages';
 import DoctorPatientView from './DoctorPatientView';
+import AlertSummaryWidget from './AlertSummaryWidget';
+import AlertsPage from './AlertsPage';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { MessagesIcon } from './icons/MessagesIcon';
 import { DocumentIcon } from './icons/DocumentIcon';
 import DoctorReferralCard from './DoctorReferralCard';
+import type { AlertCounts } from '../types/alerts';
 
 const DoctorDashboardMain: React.FC = () => {
   const { user, profile, signOut } = useAuth();
@@ -21,8 +25,29 @@ const DoctorDashboardMain: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'dashboard' | 'messages' | 'patient-detail'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'messages' | 'patient-detail' | 'monitoring' | 'alerts'>('dashboard');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [alertCounts, setAlertCounts] = useState<AlertCounts>({ total: 0, urgent: 0, review: 0, info: 0, unacknowledged: 0 });
+
+  // Fetch alert counts
+  const fetchAlertCounts = async () => {
+    if (!user?.id) return;
+    try {
+      const counts = await AlertService.getAlertCounts(user.id);
+      setAlertCounts(counts);
+    } catch (err) {
+      console.error('Error fetching alert counts:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchAlertCounts();
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchAlertCounts, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.id]);
 
   // Fetch doctor's patients
   const fetchPatients = async () => {
@@ -91,6 +116,7 @@ const DoctorDashboardMain: React.FC = () => {
       const patientData: Patient = {
         ...patient,
         role: 'patient' as const,
+        patientId: patient.patientId || patient.patient_id, // User-friendly patient ID
         dateOfBirth: patient.dateOfBirth || patient.date_of_birth || '1990-01-01',
         condition: patient.condition || 'General Health',
         subscriptionTier: (patient.subscriptionTier || patient.subscription_tier || 'FreeTrial') as 'FreeTrial' | 'Paid',
@@ -311,6 +337,137 @@ const DoctorDashboardMain: React.FC = () => {
     );
   };
 
+  // Determine patient status based on alerts and vitals
+  const getPatientStatus = (patientId: string): 'critical' | 'attention' | 'stable' => {
+    // For now, base on alert counts - in future, check individual patient alerts
+    if (alertCounts.urgent > 0) return 'critical';
+    if (alertCounts.review > 0) return 'attention';
+    return 'stable';
+  };
+
+  const statusConfig = {
+    critical: { color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900/30', icon: '🔴', label: 'Critical' },
+    attention: { color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30', icon: '🟡', label: 'Attention' },
+    stable: { color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30', icon: '🟢', label: 'Stable' }
+  };
+
+  const renderMonitoring = () => (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Patient Monitoring</h1>
+          <p className="text-gray-600 dark:text-gray-400">Real-time patient status and alerts</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {alertCounts.urgent > 0 && (
+            <button
+              onClick={() => setActiveView('alerts')}
+              className="flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl font-medium animate-pulse"
+            >
+              <span>🔴</span>
+              <span>{alertCounts.urgent} Urgent</span>
+            </button>
+          )}
+          <button
+            onClick={() => setActiveView('alerts')}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            <span>View All Alerts</span>
+            {alertCounts.total > 0 && (
+              <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full">{alertCounts.total}</span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Alert Summary Widget */}
+      <AlertSummaryWidget
+        doctorId={user?.id || ''}
+        onViewAll={() => setActiveView('alerts')}
+        onAlertClick={(alert) => {
+          const patient = patients.find(p => p.id === alert.patient_id);
+          if (patient) handleViewPatient(patient);
+        }}
+      />
+
+      {/* Patients Grid */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your Patients ({patients.length})</h2>
+        </div>
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+          {loading ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto"></div>
+              <p className="text-gray-500 dark:text-gray-400 mt-2">Loading patients...</p>
+            </div>
+          ) : patients.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-gray-500 dark:text-gray-400">No patients linked yet.</p>
+            </div>
+          ) : patients.map(patient => {
+            const status = getPatientStatus(patient.id);
+            const config = statusConfig[status];
+            return (
+              <div key={patient.id} className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div className="flex items-center gap-4">
+                  {/* Avatar */}
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${getInitialsColor(patient.name || '', patient.email)}`}>
+                    {getInitials(patient.name || '', patient.email)}
+                  </div>
+                  {/* Info */}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-900 dark:text-white">{patient.name || patient.email}</p>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.color}`}>
+                        {config.icon} {config.label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {patient.patientId || 'ID pending'} • {patient.condition || 'No condition set'}
+                    </p>
+                  </div>
+                </div>
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setActiveView('messages');
+                      // Could pre-select patient in messages
+                    }}
+                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    title="Send Message"
+                  >
+                    <MessagesIcon className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleViewPatient(patient)}
+                    className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                    title="View Patient"
+                  >
+                    <DocumentIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAlerts = () => (
+    <AlertsPage
+      doctorId={user?.id || ''}
+      onBack={() => setActiveView('monitoring')}
+      onViewPatient={(patientId) => {
+        const patient = patients.find(p => p.id === patientId);
+        if (patient) handleViewPatient(patient);
+      }}
+    />
+  );
+
   return (
     <div className="min-h-screen bg-[#F7F7F7] dark:bg-black font-sans text-[#222222] selection:bg-[#FF385C] selection:text-white">
 
@@ -333,7 +490,7 @@ const DoctorDashboardMain: React.FC = () => {
             <nav className="absolute left-1/2 transform -translate-x-1/2 flex p-1 bg-gray-100 dark:bg-[#2c2c2c] rounded-full">
               <button
                 onClick={() => setActiveView('dashboard')}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'dashboard'
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'dashboard'
                   ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
                   : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
                   }`}
@@ -341,8 +498,22 @@ const DoctorDashboardMain: React.FC = () => {
                 <span>Dashboard</span>
               </button>
               <button
+                onClick={() => setActiveView('monitoring')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'monitoring' || activeView === 'alerts'
+                  ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
+                  : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                  }`}
+              >
+                <span>Monitoring</span>
+                {alertCounts.urgent > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
+                    {alertCounts.urgent}
+                  </span>
+                )}
+              </button>
+              <button
                 onClick={() => setActiveView('messages')}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'messages'
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'messages'
                   ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
                   : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
                   }`}
@@ -370,7 +541,7 @@ const DoctorDashboardMain: React.FC = () => {
                   </p>
                 </div>
                 <div className="h-10 w-10 bg-gradient-to-br from-gray-800 to-black dark:from-white dark:to-gray-200 rounded-full flex items-center justify-center text-white dark:text-black font-bold text-sm shadow-md">
-                  {getInitials(profile?.name || user?.email || 'Dr')}
+                  {getInitials(profile?.name || user?.email || 'Dr', user?.email || '')}
                 </div>
               </div>
 
@@ -392,6 +563,10 @@ const DoctorDashboardMain: React.FC = () => {
       <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)]' : 'py-10'}`}>
         <div className={`${activeView === 'messages' ? 'h-full' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'}`}>
           {activeView === 'dashboard' && renderDashboard()}
+
+          {activeView === 'monitoring' && renderMonitoring()}
+
+          {activeView === 'alerts' && renderAlerts()}
 
           {activeView === 'messages' && (
             <div className="h-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black">

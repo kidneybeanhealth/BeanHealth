@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import Login from './Login';
+import AdminLogin from './AdminLogin';
 import { LogoIcon } from '../icons/LogoIcon';
 import AuthChooser from './AuthChooser';
 
 const Auth: React.FC = () => {
-  const [view, setView] = useState<'chooser' | 'login'>('chooser');
+  const [view, setView] = useState<'chooser' | 'login' | 'admin-login'>('chooser');
 
   const renderView = () => {
     switch (view) {
       case 'login':
         return <Login onSwitchToChooser={() => setView('chooser')} />;
+      case 'admin-login':
+        return <AdminLogin onSwitchToChooser={() => setView('chooser')} />;
       case 'chooser':
       default:
-        return <AuthChooser onNext={() => setView('login')} />;
+        return <AuthChooser onNext={() => setView('login')} onAdminLogin={() => setView('admin-login')} />;
     }
   }
 

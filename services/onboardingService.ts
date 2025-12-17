@@ -60,8 +60,10 @@ export class OnboardingService {
 
             // 3. Update user profile with existing columns
             // Note: Using 'name' column instead of 'full_name' to match existing schema
+            // Also save the generated patient_id so it persists and can be shown to doctors
             const updateData = {
                 name: onboardingData.fullName,
+                patient_id: patientId,
                 updated_at: new Date().toISOString()
             };
             const { error: updateError } = await (supabase as any)

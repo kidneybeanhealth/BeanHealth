@@ -161,14 +161,12 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
                 return;
             }
 
-            // Create relationship
+            // Create relationship - only use columns that exist
             const { error: linkError } = await supabase
                 .from('patient_doctor_relationships')
                 .insert({
                     patient_id: patientId,
-                    doctor_id: foundDoctor.id,
-                    status: 'active',
-                    notes: `Linked via referral code ${referralCode}`
+                    doctor_id: foundDoctor.id
                 } as any);
 
             if (linkError) throw linkError;
@@ -176,9 +174,12 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
             setLinkSuccess(`Successfully linked with Dr. ${foundDoctor.name}!`);
             setReferralCode('');
             loadLinkedDoctors();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error linking doctor:', error);
-            setLinkError('Failed to link doctor. Please try again.');
+            console.error('Error details:', JSON.stringify(error, null, 2));
+            // Show more specific error
+            const errorMsg = error?.message || error?.details || error?.hint || 'Failed to link doctor. Please try again.';
+            setLinkError(errorMsg);
         } finally {
             setIsLinking(false);
         }
