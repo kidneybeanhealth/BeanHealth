@@ -7,6 +7,7 @@ import ThemeToggle from './ThemeToggle';
 import { LogoutIcon } from './icons/LogoutIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { getInitials, getInitialsColor } from '../utils/avatarUtils';
+import AdminLabTypesPanel from './AdminLabTypesPanel';
 
 // Mock data for initial development - will be replaced with real service calls
 const MOCK_USERS: User[] = [
@@ -16,7 +17,7 @@ const MOCK_USERS: User[] = [
     { id: '4', name: 'Dr. Michael Chen', email: 'michael@clinic.com', role: 'doctor', specialty: 'Cardiology' },
 ];
 
-type AdminView = 'dashboard' | 'users' | 'relationships' | 'alerts';
+type AdminView = 'dashboard' | 'users' | 'relationships' | 'alerts' | 'labtypes';
 
 const AdminDashboardMain: React.FC = () => {
     const { user, profile, signOut } = useAuth();
@@ -122,11 +123,46 @@ const AdminDashboardMain: React.FC = () => {
     const patientCount = users.filter(u => u.role === 'patient').length;
     const doctorCount = users.filter(u => u.role === 'doctor').length;
 
-    // Handle user impersonation (for debugging)
+    // Handle user impersonation (for debugging/support)
+    const [isImpersonating, setIsImpersonating] = useState(false);
+
     const handleImpersonate = async (targetUser: User) => {
-        // This would require a special admin token or session swap
-        // For now, just show an alert
-        alert(`Impersonate feature: Would log in as ${targetUser.name} (${targetUser.email})\n\nThis feature requires backend implementation.`);
+        if (!profile) {
+            alert('Admin profile not loaded');
+            return;
+        }
+
+        const confirmImpersonate = confirm(
+            `Impersonate ${targetUser.name} (${targetUser.email})?\n\n` +
+            `You will be logged in as this ${targetUser.role} and can view their dashboard.\n\n` +
+            `A "Return to Admin" button will appear to restore your admin session.`
+        );
+
+        if (!confirmImpersonate) return;
+
+        setIsImpersonating(true);
+
+        try {
+            // Dynamic import to avoid circular dependencies
+            const { ImpersonationService } = await import('../services/impersonationService');
+
+            const result = await ImpersonationService.startImpersonation(
+                targetUser.id,
+                profile.id,
+                profile.email,
+                profile.name
+            );
+
+            if (!result.success) {
+                alert(`Impersonation failed: ${result.error}`);
+                setIsImpersonating(false);
+            }
+            // If successful, the page will reload or redirect
+        } catch (error) {
+            console.error('Impersonation error:', error);
+            alert('Failed to start impersonation. Please try again.');
+            setIsImpersonating(false);
+        }
     };
 
     // Handle user deletion
@@ -1290,7 +1326,7 @@ const AdminDashboardMain: React.FC = () => {
 
                         {/* Nav Tabs */}
                         <nav className="hidden md:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
-                            {(['dashboard', 'users', 'relationships', 'alerts'] as AdminView[]).map((view) => (
+                            {(['dashboard', 'users', 'relationships', 'alerts', 'labtypes'] as AdminView[]).map((view) => (
                                 <button
                                     key={view}
                                     onClick={() => setActiveView(view)}
@@ -1299,7 +1335,7 @@ const AdminDashboardMain: React.FC = () => {
                                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                                         }`}
                                 >
-                                    {view.charAt(0).toUpperCase() + view.slice(1)}
+                                    {view === 'labtypes' ? 'Lab Types' : view.charAt(0).toUpperCase() + view.slice(1)}
                                 </button>
                             ))}
                         </nav>
@@ -1334,6 +1370,7 @@ const AdminDashboardMain: React.FC = () => {
                 {activeView === 'users' && renderUsers()}
                 {activeView === 'relationships' && renderRelationships()}
                 {activeView === 'alerts' && renderAlerts()}
+                {activeView === 'labtypes' && <AdminLabTypesPanel adminId={profile?.id || user?.id || ''} />}
             </main>
 
             {/* User Detail Modal */}

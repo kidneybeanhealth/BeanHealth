@@ -22,6 +22,7 @@ import ProfileSetup from './components/auth/ProfileSetup';
 import PatientDashboard from './components/PatientDashboard';
 import DoctorDashboardMain from './components/DoctorDashboardMain';
 import AdminDashboardMain from './components/AdminDashboardMain';
+import ReturnToAdminButton from './components/ReturnToAdminButton';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
@@ -171,6 +172,7 @@ const App: React.FC = () => {
             />
             <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
               <AppContent />
+              <ReturnToAdminButton />
             </div>
           </DataProvider>
         </ThemeProvider>

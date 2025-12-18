@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { LabResult, LabTestType } from '../types';
+import { LabResult, LabTestType, CustomLabType } from '../types';
 import { LabResultsService } from '../services/labResultsService';
+import { CustomLabTypesService } from '../services/customLabTypesService';
 import { getStatusIcon, getStatusColorClasses } from '../utils/ckdUtils';
 
 interface LabResultsCardProps {
@@ -8,29 +9,47 @@ interface LabResultsCardProps {
 }
 
 const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
-    const [latestResults, setLatestResults] = useState<Record<LabTestType, LabResult | null>>({
-        creatinine: null,
-        egfr: null,
-        bun: null,
-        potassium: null,
-        hemoglobin: null,
-        bicarbonate: null,
-        acr: null
-    });
+    // Dynamic lab types from database
+    const [availableLabTypes, setAvailableLabTypes] = useState<CustomLabType[]>([]);
+    const [latestResults, setLatestResults] = useState<Record<string, LabResult | null>>({});
     const [isAddingResult, setIsAddingResult] = useState(false);
     const [newResult, setNewResult] = useState({
-        testType: 'egfr' as LabTestType,
+        testType: '' as LabTestType,
         value: '',
         testDate: new Date().toISOString().split('T')[0]
     });
     const [viewingTrend, setViewingTrend] = useState<LabTestType | null>(null);
     const [trendData, setTrendData] = useState<{ date: string; value: number }[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadLatestResults();
+        loadLabTypesAndResults();
     }, [patientId]);
 
-    const loadLatestResults = async () => {
+    const loadLabTypesAndResults = async () => {
+        setIsLoading(true);
+        try {
+            // Load available lab types for this patient
+            const labTypes = await CustomLabTypesService.getLabTypesForPatient(patientId);
+            setAvailableLabTypes(labTypes);
+
+            // Set default test type for new results
+            if (labTypes.length > 0 && !newResult.testType) {
+                setNewResult(prev => ({ ...prev, testType: labTypes[0].code }));
+            }
+
+            // Load latest results
+            await loadLatestResults(labTypes);
+        } catch (error) {
+            console.error('Error loading lab types:', error);
+            // Fallback to loading just results with system types
+            await loadLatestResults([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const loadLatestResults = async (labTypes?: CustomLabType[]) => {
         try {
             const results = await LabResultsService.getLatestResults(patientId);
             setLatestResults(results);
@@ -55,10 +74,10 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                 unit,
                 newResult.testDate
             );
-            await loadLatestResults();
+            await loadLabTypesAndResults();
             setIsAddingResult(false);
             setNewResult({
-                testType: 'egfr',
+                testType: availableLabTypes[0]?.code || 'egfr',
                 value: '',
                 testDate: new Date().toISOString().split('T')[0]
             });
@@ -78,8 +97,13 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
         }
     };
 
+    // Get unit from available lab types or fallback to hardcoded
     const getUnitForTest = (testType: LabTestType): string => {
-        const units: Record<LabTestType, string> = {
+        const labType = availableLabTypes.find(lt => lt.code === testType);
+        if (labType) return labType.unit;
+
+        // Fallback for system types
+        const units: Record<string, string> = {
             creatinine: 'mg/dL',
             egfr: 'ml/min/1.73m²',
             bun: 'mg/dL',
@@ -88,11 +112,16 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
             bicarbonate: 'mmol/L',
             acr: 'mg/g'
         };
-        return units[testType];
+        return units[testType] || '';
     };
 
+    // Get display name from available lab types or fallback
     const getTestName = (testType: LabTestType): string => {
-        const names: Record<LabTestType, string> = {
+        const labType = availableLabTypes.find(lt => lt.code === testType);
+        if (labType) return labType.name;
+
+        // Fallback for system types
+        const names: Record<string, string> = {
             creatinine: 'Creatinine',
             egfr: 'eGFR',
             bun: 'BUN',
@@ -101,10 +130,13 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
             bicarbonate: 'Bicarbonate',
             acr: 'ACR'
         };
-        return names[testType];
+        return names[testType] || testType;
     };
 
-    const keyTests: LabTestType[] = ['egfr', 'creatinine', 'potassium', 'hemoglobin'];
+    // Key tests to show prominently (first 4 by display order)
+    const keyTests = availableLabTypes.slice(0, 4).map(lt => lt.code);
+    // Secondary tests (remaining)
+    const secondaryTests = availableLabTypes.slice(4).map(lt => lt.code);
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200/40 dark:border-gray-700/40 hover:shadow-lg transition-all duration-300">
@@ -210,33 +242,35 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
             </div>
 
             {/* Secondary Labs */}
-            <div className="grid grid-cols-3 gap-3">
-                {['bun', 'bicarbonate', 'acr'].map((testType) => {
-                    const result = latestResults[testType as LabTestType];
-                    const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-600' };
-                    const icon = result ? getStatusIcon(result.status) : '⚪';
+            {secondaryTests.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                    {secondaryTests.map((testType) => {
+                        const result = latestResults[testType];
+                        const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-600' };
+                        const icon = result ? getStatusIcon(result.status) : '⚪';
 
-                    return (
-                        <div
-                            key={testType}
-                            className={`p-3 rounded-lg border ${colors.border} ${colors.bg} cursor-pointer hover:scale-105 transition-transform`}
-                            onClick={() => result && handleViewTrend(testType as LabTestType)}
-                        >
-                            <div className="flex items-center justify-between mb-1">
-                                <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300">{getTestName(testType as LabTestType)}</h5>
-                                <span className="text-sm">{icon}</span>
+                        return (
+                            <div
+                                key={testType}
+                                className={`p-3 rounded-lg border ${colors.border} ${colors.bg} cursor-pointer hover:scale-105 transition-transform`}
+                                onClick={() => result && handleViewTrend(testType as LabTestType)}
+                            >
+                                <div className="flex items-center justify-between mb-1">
+                                    <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300">{getTestName(testType as LabTestType)}</h5>
+                                    <span className="text-sm">{icon}</span>
+                                </div>
+                                {result ? (
+                                    <p className={`text-lg font-bold ${colors.text}`}>
+                                        {result.value} <span className="text-xs">{result.unit}</span>
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 italic">No data</p>
+                                )}
                             </div>
-                            {result ? (
-                                <p className={`text-lg font-bold ${colors.text}`}>
-                                    {result.value} <span className="text-xs">{result.unit}</span>
-                                </p>
-                            ) : (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 italic">No data</p>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Trend View Modal */}
             {viewingTrend && (

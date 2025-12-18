@@ -1,19 +1,24 @@
 {
-  "name": "BeanHealth - Healthcare Management Platform",
+  "name": "BeanHealth",
   "short_name": "BeanHealth",
-  "description": "Comprehensive healthcare management platform for patients and doctors",
+  "description": "Continuous. Connected. Complete. - Healthcare Management Platform",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#3B82F6",
+  "background_color": "#fdf8f6",
+  "theme_color": "#3D2820",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/vite.svg",
-      "sizes": "32x32",
-      "type": "image/svg+xml",
+      "src": "/beanhealth-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/beanhealth-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "categories": ["health", "medical", "productivity"],
-  "orientation": "portrait-primary"
+  ]
 }

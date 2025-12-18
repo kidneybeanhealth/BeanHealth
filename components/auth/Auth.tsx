@@ -27,11 +27,12 @@ const Auth: React.FC = () => {
       <div className="relative z-10 w-full max-w-4xl">
         {/* Logo Header - Minimal */}
         <div className="flex justify-center items-center gap-4 mb-12 animate-fade-in">
-          <div className="bg-secondary-700 dark:bg-secondary-600 p-3.5 rounded-2xl">
-            <LogoIcon className="h-10 w-10 text-white dark:text-white" />
+          <div className="bg-[#3D2820] p-3.5 rounded-2xl">
+            <LogoIcon className="h-10 w-10" />
           </div>
-          <h1 className="text-5xl lg:text-6xl font-semibold text-gray-900 dark:text-white tracking-tight">
-            BeanHealth
+          <h1 className="text-5xl lg:text-6xl font-semibold tracking-tight">
+            <span className="text-[#3D2820] dark:text-[#e6b8a3]">Bean</span>
+            <span className="text-[#7CB342]">Health</span>
           </h1>
         </div>
 

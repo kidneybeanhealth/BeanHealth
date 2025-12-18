@@ -716,6 +716,17 @@ const PatientDashboard: React.FC = () => {
                             // Navigate to messages and could pre-select the doctor
                             setActiveView("messages");
                         }}
+                        onDoctorLinked={async () => {
+                            // Refresh doctors list so Messages component has updated contacts
+                            if (user?.id) {
+                                try {
+                                    const doctorsData = await PatientAdditionService.getPatientDoctors(user.id);
+                                    setDoctors(doctorsData);
+                                } catch (error) {
+                                    console.error('Error refreshing doctors:', error);
+                                }
+                            }
+                        }}
                     />
                 );
             default:

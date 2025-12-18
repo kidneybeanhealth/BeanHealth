@@ -149,7 +149,49 @@ export type CKDStage = '1' | '2' | '3a' | '3b' | '4' | '5';
 
 export type VitalStatus = 'normal' | 'borderline' | 'abnormal' | 'critical';
 
-export type LabTestType = 'creatinine' | 'egfr' | 'bun' | 'potassium' | 'hemoglobin' | 'bicarbonate' | 'acr';
+// Core lab test type codes (system defaults)
+export type SystemLabTestType = 'creatinine' | 'egfr' | 'bun' | 'potassium' | 'hemoglobin' | 'bicarbonate' | 'acr';
+
+// Extended to support custom lab types (can be any string code)
+export type LabTestType = SystemLabTestType | string;
+
+// Custom Lab Type interface (admin-managed)
+export interface CustomLabType {
+  id: string;
+  name: string;                          // Display name (e.g., "Phosphorus")
+  code: string;                          // Internal code (e.g., "phosphorus")
+  unit: string;                          // Unit of measurement
+  referenceRangeMin?: number;
+  reference_range_min?: number;          // Database field
+  referenceRangeMax?: number;
+  reference_range_max?: number;          // Database field
+  category: 'system' | 'custom';         // System = built-in, custom = admin-created
+  description?: string;
+  isUniversal: boolean;                  // If true, available to all patients
+  is_universal?: boolean;                // Database field
+  enabled: boolean;
+  displayOrder?: number;
+  display_order?: number;                // Database field
+  createdBy?: string;
+  created_by?: string;                   // Database field
+  createdAt?: string;
+  created_at?: string;                   // Database field
+  updatedAt?: string;
+  updated_at?: string;                   // Database field
+}
+
+// Patient-specific lab type assignment
+export interface PatientLabTypeAssignment {
+  id: string;
+  patientId: string;
+  patient_id?: string;                   // Database field
+  labTypeId: string;
+  lab_type_id?: string;                  // Database field
+  assignedBy?: string;
+  assigned_by?: string;                  // Database field
+  createdAt?: string;
+  created_at?: string;                   // Database field
+}
 
 export interface FluidIntake {
   id: string;

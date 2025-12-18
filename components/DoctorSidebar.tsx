@@ -22,10 +22,13 @@ const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ activeView, setActiveView
     <aside className={`fixed inset-y-0 left-0 z-30 w-64 sm:w-72 bg-white dark:bg-gray-900 flex-shrink-0 flex flex-col border-r border-gray-200/60 dark:border-gray-800 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200/60 dark:border-gray-800">
         <button onClick={() => setActiveView('dashboard')} className="flex items-center space-x-3 focus:outline-none rounded-xl -ml-1 p-1">
-          <div className="bg-secondary-700 dark:bg-secondary-600 p-2.5 rounded-xl">
-            <LogoIcon className="h-6 w-6 text-white dark:text-white" />
+          <div className="bg-[#3D2820] p-2.5 rounded-xl">
+            <LogoIcon className="h-6 w-6" />
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">BeanHealth</h1>
+          <h1 className="text-xl font-semibold tracking-tight">
+            <span className="text-[#3D2820] dark:text-[#e6b8a3]">Bean</span>
+            <span className="text-[#7CB342]">Health</span>
+          </h1>
         </button>
         <button onClick={onClose} className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
           <XIcon className="h-6 w-6 text-gray-500 dark:text-gray-400" />
@@ -38,8 +41,8 @@ const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ activeView, setActiveView
               <button
                 onClick={() => setActiveView(item.view)}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all duration-200 ${activeView === item.view
-                    ? 'bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  ? 'bg-[#7CB342] text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
               >
                 <span>{item.icon}</span>

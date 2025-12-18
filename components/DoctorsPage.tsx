@@ -6,6 +6,7 @@ import { getInitials, getInitialsColor } from '../utils/avatarUtils';
 interface DoctorsPageProps {
     patientId: string;
     onNavigateToChat: (doctorId: string) => void;
+    onDoctorLinked?: () => void;  // Callback when doctor is linked/unlinked
 }
 
 interface LinkedDoctor {
@@ -32,7 +33,7 @@ interface DoctorUser {
     role: string;
 }
 
-const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }) => {
+const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, onDoctorLinked }) => {
     const [linkedDoctors, setLinkedDoctors] = useState<LinkedDoctor[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [referralCode, setReferralCode] = useState('');
@@ -174,6 +175,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
             setLinkSuccess(`Successfully linked with Dr. ${foundDoctor.name}!`);
             setReferralCode('');
             loadLinkedDoctors();
+            onDoctorLinked?.();  // Notify parent to refresh contacts
         } catch (error: any) {
             console.error('Error linking doctor:', error);
             console.error('Error details:', JSON.stringify(error, null, 2));
@@ -198,6 +200,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat }
             if (error) throw error;
 
             loadLinkedDoctors();
+            onDoctorLinked?.();  // Notify parent to refresh contacts
         } catch (error) {
             console.error('Error unlinking doctor:', error);
             alert('Failed to unlink doctor');
