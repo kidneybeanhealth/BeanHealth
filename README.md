@@ -28,10 +28,16 @@
 - � Patient health monitoring
 
 ### 🆕 Latest Features
+- **Real-time Notifications** - Airbnb-style toast notifications with sound for new messages
+- **Urgent Message System** - Priority messaging with credit-based system
+- **Live Credit Tracking** - Real-time urgent credit updates across the app
+- **WhatsApp-style Audio Recorder** - Inline voice message recording with waveform visualization
+- **Enhanced Chat UI** - Message previews, timestamps, unread indicators
 - **Prescription System** - Doctors can create professional prescriptions with automatic PDF generation and chat delivery
 - **AI Health Assistant** - Google Gemini-powered medical insights
 - **Real-time Chat** - Instant messaging with file sharing
 - **Smart Vitals Extraction** - Auto-extract health data from documents
+
 
 ---
 
@@ -70,20 +76,30 @@ npm run dev
 
 ```
 BeanHealth/
-├── components/          # React components (40+ files)
+├── components/          # React components (45+ files)
+│   ├── auth/           # Authentication components
+│   ├── icons/          # Icon components
+│   └── ...             # Feature components
+├── contexts/           # React contexts
+│   ├── AuthContext     # Authentication state
+│   ├── DataContext     # Global data management
+│   ├── ThemeContext    # Dark/light mode
+│   ├── NotificationContext  # Real-time message notifications
+│   └── UrgentCreditsContext # Urgent credit tracking
 ├── services/           # Business logic & API calls
 ├── utils/              # Helper functions (PDF, avatars, etc.)
-├── contexts/           # React contexts (Auth, Data, Theme)
 ├── hooks/              # Custom React hooks
 ├── docs/               # Feature documentation
 ├── *.sql               # Database migration files
 └── config files        # TypeScript, Vite, Tailwind
 ```
 
+
 ---
 
 ## 📚 Documentation
 
+- **[CHANGELOG.md](./CHANGELOG.md)** - Version history & updates
 - **[SETUP.md](./SETUP.md)** - Installation & configuration
 - **[DATABASE.md](./DATABASE.md)** - Database setup guide
 - **[docs/PRESCRIPTION_README.md](./docs/PRESCRIPTION_README.md)** - Prescription feature
