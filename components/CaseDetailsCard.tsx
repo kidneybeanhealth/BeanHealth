@@ -131,7 +131,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                 {!readOnly && !isEditing && (
                     <button
                         onClick={handleStartEdit}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
+                        className="flex items-center gap-1.5 min-w-[80px] px-4 py-2 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
                     >
                         <EditIcon className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Add</span>
@@ -239,14 +239,14 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                     <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-[#8AC43C]/10">
                         <button
                             onClick={handleCancelEdit}
-                            className="px-6 py-2.5 text-sm font-bold text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                            className="min-w-[100px] px-4 py-2.5 text-xs font-bold text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="px-6 py-2.5 text-sm font-bold text-white dark:text-[#222222] bg-[#8AC43C] hover:bg-[#7ab332] rounded-full transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none ml-auto"
+                            className="min-w-[120px] px-4 py-2.5 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] hover:bg-[#7ab332] rounded-full transition-all disabled:opacity-50 ml-auto"
                         >
                             {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>

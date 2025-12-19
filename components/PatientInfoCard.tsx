@@ -181,7 +181,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                 {!isEditing && (
                     <button
                         onClick={handleStartEdit}
-                        className="px-4 py-2 text-sm font-semibold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
+                        className="min-w-[100px] px-4 py-2 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
                     >
                         Edit Details
                     </button>
@@ -306,14 +306,14 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                         <button
                             onClick={() => setIsEditing(false)}
                             disabled={isSaving}
-                            className="px-6 py-2.5 text-sm font-bold text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                            className="min-w-[100px] px-4 py-2.5 text-xs font-bold text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="px-6 py-2.5 text-sm font-bold text-white dark:text-[#222222] bg-[#8AC43C] hover:bg-[#7ab332] rounded-full transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none ml-auto"
+                            className="min-w-[120px] px-4 py-2.5 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] hover:bg-[#7ab332] rounded-full transition-all disabled:opacity-50 ml-auto"
                         >
                             {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>

@@ -297,12 +297,12 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                 )}
 
                 {/* Tabs */}
-                <div className="flex p-1.5 bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl mb-6">
+                <div className="flex p-1.5 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/10 backdrop-blur-sm rounded-2xl mb-6 border border-[#8AC43C]/20 dark:border-[#8AC43C]/20">
                     <button
                         onClick={() => setActiveTab('schedule')}
                         className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all duration-200 ${activeTab === 'schedule'
-                            ? 'bg-white dark:bg-[#1a1a1a] text-[#222222] dark:text-white shadow-sm'
-                            : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#222222] dark:hover:text-white'
+                            ? 'bg-white dark:bg-[#1a1a1a] text-[#8AC43C] shadow-sm'
+                            : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#8AC43C] dark:hover:text-[#8AC43C]'
                             }`}
                     >
                         Today
@@ -310,8 +310,8 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                     <button
                         onClick={() => setActiveTab('medications')}
                         className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all duration-200 ${activeTab === 'medications'
-                            ? 'bg-white dark:bg-[#1a1a1a] text-[#222222] dark:text-white shadow-sm'
-                            : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#222222] dark:hover:text-white'
+                            ? 'bg-white dark:bg-[#1a1a1a] text-[#8AC43C] shadow-sm'
+                            : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#8AC43C] dark:hover:text-[#8AC43C]'
                             }`}
                     >
                         Active

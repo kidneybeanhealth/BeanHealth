@@ -116,7 +116,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                 <h3 className="text-xl font-bold text-[#222222] dark:text-white">Upcoming Tests</h3>
                 <button
                     onClick={() => setIsAddingTest(true)}
-                    className="px-6 py-2.5 text-sm font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:opacity-90 transition-all shadow-sm transform active:scale-95"
+                    className="min-w-[120px] px-4 py-2 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:opacity-90 transition-all shadow-sm active:scale-95"
                 >
                     + Schedule Test
                 </button>
@@ -195,13 +195,13 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                     <div className="flex gap-3">
                         <button
                             onClick={handleAddTest}
-                            className="flex-1 px-4 py-2 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-colors"
+                            className="flex-1 min-w-[100px] px-4 py-2.5 bg-[#8AC43C] hover:bg-[#7ab332] text-white dark:text-[#222222] text-xs font-bold rounded-full transition-colors"
                         >
                             Schedule Test
                         </button>
                         <button
                             onClick={() => setIsAddingTest(false)}
-                            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors"
+                            className="flex-1 min-w-[100px] px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-[#222222] dark:text-white text-xs font-bold rounded-full transition-colors"
                         >
                             Cancel
                         </button>
