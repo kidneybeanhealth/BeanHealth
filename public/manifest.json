@@ -4,10 +4,16 @@
   "description": "Continuous. Connected. Complete. - Healthcare Management Platform",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fdf8f6",
-  "theme_color": "#3D2820",
+  "background_color": "#FBFCF8",
+  "theme_color": "#3A2524",
   "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/beanhealth-logo.png",
       "sizes": "192x192",

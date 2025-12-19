@@ -9,6 +9,7 @@ import { AlertService } from '../services/alertService';
 import { getInitials, getInitialsColor } from '../utils/avatarUtils';
 import ThemeToggle from './ThemeToggle';
 import { LogoutIcon } from './icons/LogoutIcon';
+import { LogoIcon } from './icons/LogoIcon';
 import Messages from './Messages';
 import DoctorPatientView from './DoctorPatientView';
 import AlertSummaryWidget from './AlertSummaryWidget';
@@ -477,11 +478,14 @@ const DoctorDashboardMain: React.FC = () => {
           <div className="flex items-center justify-between h-20">
             {/* Logo / Brand Area */}
             <div className="flex items-center gap-4">
-              <div className="h-10 w-10 bg-[#FF385C] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-sm">
-                B
+              <div className="h-10 w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
+                <LogoIcon className="w-10 h-10" />
               </div>
               <div className="hidden md:block">
-                <h2 className="text-xl font-bold text-[#FF385C] leading-none tracking-tight">BeanHealth</h2>
+                <h2 className="text-xl font-bold leading-none tracking-tight">
+                  <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
+                  <span className="text-[#8AC43C]">Health</span>
+                </h2>
                 <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-1">DOCTOR PORTAL</p>
               </div>
             </div>

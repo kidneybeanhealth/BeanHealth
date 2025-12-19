@@ -18,27 +18,27 @@ export class PDFGenerator {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    
-    // Colors
-    const primaryColor: [number, number, number] = [14, 165, 233]; // Sky blue
-    const secondaryColor: [number, number, number] = [190, 18, 60]; // Burgundy Red
+
+    // Colors - Updated to match new BeanHealth logo
+    const primaryColor: [number, number, number] = [138, 196, 60]; // Lime Green #8AC43C
+    const secondaryColor: [number, number, number] = [58, 37, 36]; // Dark Brown #3A2524
     const textColor: [number, number, number] = [51, 65, 85]; // Slate gray
-    const lightGray: [number, number, number] = [241, 245, 249];
-    
+    const lightGray: [number, number, number] = [251, 252, 248]; // Light cream from logo #FBFCF8
+
     // Header with gradient effect (simulated with rectangles)
-    doc.setFillColor(...primaryColor);
+    doc.setFillColor(...secondaryColor); // Dark brown base
     doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setFillColor(...secondaryColor);
-    doc.rect(0, 0, pageWidth, 35, 'F');
-    
+    doc.setFillColor(...primaryColor); // Lime green accent
+    doc.rect(0, 35, pageWidth, 5, 'F');
+
     // Logo area (placeholder - you can add actual logo if available)
-    doc.setFillColor(255, 255, 255);
+    doc.setFillColor(251, 252, 248); // Light cream background
     doc.roundedRect(15, 10, 30, 20, 3, 3, 'F');
     doc.setFontSize(14);
-    doc.setTextColor(14, 165, 233);
+    doc.setTextColor(...primaryColor); // Lime green text
     doc.setFont('helvetica', 'bold');
     doc.text('BH', 23, 23);
-    
+
     // App name
     doc.setFontSize(22);
     doc.setTextColor(255, 255, 255);
@@ -47,39 +47,39 @@ export class PDFGenerator {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text('Healthcare Management Platform', 50, 27);
-    
+
     // Title
     doc.setFontSize(18);
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'bold');
     doc.text('PRESCRIPTION', pageWidth / 2, 55, { align: 'center' });
-    
+
     // Doctor Information Box
     let yPos = 70;
     doc.setFillColor(...lightGray);
     doc.roundedRect(15, yPos, (pageWidth - 30) / 2 - 5, 30, 3, 3, 'F');
-    
+
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...primaryColor);
     doc.text('Doctor Information', 20, yPos + 7);
-    
+
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...textColor);
     doc.setFontSize(9);
     doc.text(`Dr. ${data.doctorName}`, 20, yPos + 14);
     doc.text(data.doctorSpecialty, 20, yPos + 20);
-    
+
     // Patient Information Box
     const patientBoxX = pageWidth / 2 + 5;
     doc.setFillColor(...lightGray);
     doc.roundedRect(patientBoxX, yPos, (pageWidth - 30) / 2 - 5, 30, 3, 3, 'F');
-    
+
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...primaryColor);
     doc.setFontSize(10);
     doc.text('Patient Information', patientBoxX + 5, yPos + 7);
-    
+
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...textColor);
     doc.setFontSize(9);
@@ -87,33 +87,33 @@ export class PDFGenerator {
     if (data.patientAge) {
       doc.text(`Age: ${data.patientAge}`, patientBoxX + 5, yPos + 20);
     }
-    
+
     // Date
     yPos += 38;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...textColor);
     const date = new Date(data.prescription.createdAt);
-    doc.text(`Date: ${date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    doc.text(`Date: ${date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     })}`, 15, yPos);
-    
+
     // Rx Symbol
     yPos += 10;
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...primaryColor);
     doc.text('℞', 15, yPos);
-    
+
     // Medications Header
     yPos += 5;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...textColor);
     doc.text('Prescribed Medications', 27, yPos - 3);
-    
+
     // Medications Table
     yPos += 2;
     const tableData = data.prescription.medications.map((med: PrescriptionMedication, index: number) => [
@@ -125,7 +125,7 @@ export class PDFGenerator {
       med.timing || '-',
       med.instructions || '-'
     ]);
-    
+
     autoTable(doc, {
       startY: yPos,
       head: [['#', 'Medication', 'Dosage', 'Frequency', 'Duration', 'Timing', 'Instructions']],
@@ -157,66 +157,66 @@ export class PDFGenerator {
       },
       margin: { left: 15, right: 15 }
     });
-    
+
     // Get Y position after table
     const finalY = (doc as any).lastAutoTable.finalY;
     yPos = finalY + 10;
-    
+
     // Additional Notes
     if (data.prescription.notes && data.prescription.notes.trim()) {
       doc.setFillColor(...lightGray);
       doc.roundedRect(15, yPos, pageWidth - 30, 'auto' as any, 3, 3, 'F');
-      
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(...primaryColor);
       doc.text('Additional Notes:', 20, yPos + 7);
-      
+
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(...textColor);
       const notes = doc.splitTextToSize(data.prescription.notes, pageWidth - 50);
       doc.text(notes, 20, yPos + 14);
-      
+
       yPos += 10 + (notes.length * 5);
     }
-    
+
     // Doctor's Signature Line
     yPos = Math.max(yPos + 15, pageHeight - 60);
     doc.setDrawColor(...textColor);
     doc.setLineWidth(0.5);
     doc.line(pageWidth - 80, yPos, pageWidth - 20, yPos);
-    
+
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...textColor);
     doc.text("Doctor's Signature", pageWidth - 50, yPos + 6, { align: 'center' });
-    
+
     // Footer with logo and disclaimer
     const footerY = pageHeight - 30;
     doc.setDrawColor(...lightGray);
     doc.setLineWidth(0.5);
     doc.line(15, footerY - 5, pageWidth - 15, footerY - 5);
-    
+
     // Logo in footer
-    doc.setFillColor(...primaryColor);
+    doc.setFillColor(...secondaryColor); // Dark brown circle
     doc.circle(pageWidth / 2, footerY + 5, 8, 'F');
     doc.setFontSize(10);
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(251, 252, 248); // Light cream text
     doc.setFont('helvetica', 'bold');
     doc.text('BH', pageWidth / 2, footerY + 8, { align: 'center' });
-    
+
     // Footer text
     doc.setFontSize(9);
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'bold');
     doc.text('BeanHealth', pageWidth / 2, footerY + 18, { align: 'center' });
-    
+
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
     doc.text('Healthcare Management Platform', pageWidth / 2, footerY + 23, { align: 'center' });
-    
+
     // Disclaimer
     doc.setFontSize(6);
     doc.setTextColor(148, 163, 184);
@@ -226,10 +226,10 @@ export class PDFGenerator {
       footerY + 28,
       { align: 'center' }
     );
-    
+
     return doc;
   }
-  
+
   /**
    * Generate and download prescription PDF
    */
@@ -238,7 +238,7 @@ export class PDFGenerator {
     const fileName = `Prescription_${data.patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
   }
-  
+
   /**
    * Generate and open prescription PDF in new tab
    */
@@ -248,7 +248,7 @@ export class PDFGenerator {
     const pdfUrl = URL.createObjectURL(pdfBlob);
     window.open(pdfUrl, '_blank');
   }
-  
+
   /**
    * Get PDF as blob for upload or sharing
    */

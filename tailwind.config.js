@@ -13,45 +13,45 @@ export default {
   theme: {
     extend: {
       colors: {
-        // BeanHealth Brand Colors
-        // Primary: Dark Brown/Maroon (the bean)
+        // BeanHealth Brand Colors (Updated to match new logo)
+        // Primary: Dark Brown (the bean) #3A2524
         primary: {
-          50: '#fdf8f6',
+          50: '#fbfcf8',   // Light cream from logo
           100: '#f9ebe5',
           200: '#f2d5c8',
           300: '#e6b8a3',
           400: '#d4927a',
-          500: '#3D2820',  // Main bean color
-          600: '#362319',
-          700: '#2f1e15',
-          800: '#281a12',
-          900: '#21150f',
-          950: '#1a100c',
+          500: '#3A2524',  // Main bean color (updated)
+          600: '#322019',
+          700: '#2a1b16',
+          800: '#221612',
+          900: '#1a110e',
+          950: '#120c0b',
         },
-        // Secondary: Lime Green (the stem/health)
+        // Secondary: Lime Green (the stem/health) #8AC43C
         secondary: {
           50: '#f6fdf0',
           100: '#e8f9d8',
           200: '#d2f3b4',
           300: '#b3e985',
           400: '#95db5a',
-          500: '#7CB342',  // Main green color
-          600: '#5d9a2a',
-          700: '#487725',
-          800: '#3b5f22',
-          900: '#334f20',
-          950: '#182b0d',
+          500: '#8AC43C',  // Main green color (updated)
+          600: '#6ea530',
+          700: '#548027',
+          800: '#456620',
+          900: '#3a541c',
+          950: '#1f2e0f',
         },
         // Accent colors for the app
         bean: {
-          DEFAULT: '#3D2820',
-          light: '#5a3d32',
+          DEFAULT: '#3A2524',
+          light: '#5a3d34',
           dark: '#2a1b16',
         },
         stem: {
-          DEFAULT: '#7CB342',
-          light: '#95db5a',
-          dark: '#5d9a2a',
+          DEFAULT: '#8AC43C',
+          light: '#a5d862',
+          dark: '#6ea530',
         },
       },
       fontFamily: {

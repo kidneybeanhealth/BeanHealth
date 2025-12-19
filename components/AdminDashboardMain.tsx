@@ -5,6 +5,7 @@ import { AlertDefinition } from '../types/alerts';
 import { supabase } from '../lib/supabase';
 import ThemeToggle from './ThemeToggle';
 import { LogoutIcon } from './icons/LogoutIcon';
+import { LogoIcon } from './icons/LogoIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { getInitials, getInitialsColor } from '../utils/avatarUtils';
 import AdminLabTypesPanel from './AdminLabTypesPanel';
@@ -1315,8 +1316,8 @@ const AdminDashboardMain: React.FC = () => {
                     <div className="flex items-center justify-between h-16">
                         {/* Logo */}
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-amber-600 rounded-xl flex items-center justify-center">
-                                <span className="text-white font-bold text-lg">B</span>
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
+                                <LogoIcon className="w-10 h-10" />
                             </div>
                             <div>
                                 <h1 className="text-lg font-bold text-gray-900 dark:text-white">BeanHealth</h1>
