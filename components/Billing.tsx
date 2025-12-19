@@ -4,6 +4,7 @@ import { BillingIcon } from './icons/BillingIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { AlertIcon } from './icons/AlertIcon';
+import { useUrgentCredits } from '../contexts/UrgentCreditsContext';
 
 interface BillingProps {
     patient: Patient;
@@ -17,6 +18,18 @@ const FeatureListItem: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <span className="text-gray-600 dark:text-gray-300">{children}</span>
     </li>
 );
+
+// Component to display urgent credits with real-time updates
+const UrgentCreditsDisplay: React.FC<{ fallback: number }> = ({ fallback }) => {
+    const { credits } = useUrgentCredits();
+    const displayCredits = credits ?? fallback;
+
+    return (
+        <p className="text-2xl font-bold text-[#222222] dark:text-white flex items-center mb-1">
+            <SparklesIcon className="mr-2 h-5 w-5 text-[#FF385C]" /> {displayCredits}
+        </p>
+    );
+};
 
 const Billing: React.FC<BillingProps> = ({ patient, onPurchaseCredits, onUpgradeSubscription }) => {
     const [isProcessing, setIsProcessing] = useState<string | number | null>(null);
@@ -57,76 +70,79 @@ const Billing: React.FC<BillingProps> = ({ patient, onPurchaseCredits, onUpgrade
     const currentPlanName = patient.subscriptionTier === 'FreeTrial' ? 'Free Trial' : 'Paid Plan';
 
     return (
-        <div className="space-y-12 max-w-[1400px] mx-auto animate-fadeIn">
-            <div className="flex items-center space-x-3">
-                <BillingIcon className="h-8 w-8 text-gray-600 dark:text-gray-400" />
-                <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Billing & Subscription</h2>
+        <div className="space-y-6 pb-8 animate-fade-in max-w-[1440px] mx-auto pt-0">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-[#222222] dark:text-white tracking-tight">
+                        Billing & Subscription
+                    </h1>
+                    <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">Manage your plan and credits</p>
+                </div>
             </div>
 
             {/* Current Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200/60 dark:border-gray-700/60">
-                    <h3 className="text-lg font-semibold text-gray-500 dark:text-gray-400">Current Plan</h3>
-                    <p className={`text-3xl font-semibold ${patient.subscriptionTier === 'Paid' ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'}`}>{currentPlanName}</p>
-                    {isTrialActive && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">You have <span className="font-semibold text-emerald-600 dark:text-emerald-400">{trialDaysLeft} days</span> left in your trial.</p>}
-                    {isTrialExpired && <p className="text-sm text-red-500 dark:text-red-400 font-semibold mt-1">Your free trial has expired.</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white dark:bg-[#1e1e1e] p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800">
+                    <h3 className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Current Plan</h3>
+                    <p className="text-2xl font-bold text-[#222222] dark:text-white mb-1">{currentPlanName}</p>
+                    {isTrialActive && <p className="text-xs text-[#717171] dark:text-[#a0a0a0]">You have <span className="font-bold text-emerald-600 dark:text-emerald-400">{trialDaysLeft} days</span> left.</p>}
+                    {isTrialExpired && <p className="text-xs text-red-500 dark:text-red-400 font-bold">Free trial expired.</p>}
                 </div>
-                <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200/60 dark:border-gray-700/60">
-                    <h3 className="text-lg font-semibold text-gray-500 dark:text-gray-400">Urgent Credits</h3>
-                    <p className="text-3xl font-semibold text-gray-900 dark:text-white flex items-center">
-                        <SparklesIcon className="mr-2 h-7 w-7" /> {patient.urgentCredits}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Credits for priority messages to your doctor.</p>
+                <div className="bg-white dark:bg-[#1e1e1e] p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800">
+                    <h3 className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Urgent Credits</h3>
+                    <UrgentCreditsDisplay fallback={patient.urgentCredits} />
+                    <p className="text-xs text-[#717171] dark:text-[#a0a0a0]">Credits for priority messages.</p>
                 </div>
             </div>
 
             {/* Subscription Plans */}
             <div>
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Manage Subscription</h3>
+                <h3 className="text-xl font-bold text-[#222222] dark:text-white mb-4">Manage Subscription</h3>
                 {isTrialExpired && (
-                    <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 p-4 rounded-2xl mb-6 flex items-center">
-                        <AlertIcon className="h-6 w-6 mr-3 flex-shrink-0" />
+                    <div className="bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-200/50 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-200 p-3 rounded-xl mb-4 flex items-center">
+                        <AlertIcon className="h-5 w-5 mr-3 flex-shrink-0" />
                         <div>
-                            <h4 className="font-semibold">Your Trial Has Ended</h4>
-                            <p className="text-sm">Please upgrade to the Paid Plan to continue using premium features like AI summaries and record uploads.</p>
+                            <p className="text-xs font-bold uppercase tracking-wide">Trial Ended</p>
+                            <p className="text-[10px] opacity-80 mt-0.5">Please upgrade to continue using premium features.</p>
                         </div>
                     </div>
                 )}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
                     {/* Free Trial Plan */}
-                    <div className={`p-8 rounded-3xl border ${patient.subscriptionTier === 'FreeTrial' ? 'border-gray-900 dark:border-white bg-white dark:bg-gray-800' : 'bg-white dark:bg-gray-800 border-gray-200/60 dark:border-gray-700/60'}`}>
-                        <h4 className="text-xl font-semibold text-gray-900 dark:text-white">Free Trial</h4>
-                        <p className="text-gray-500 dark:text-gray-400 mb-4">Explore all features for one month.</p>
-                        <p className="text-3xl font-semibold text-gray-900 dark:text-white mb-4">Free</p>
-                        <ul className="space-y-2 mb-6">
-                            <FeatureListItem>Vitals Tracking & Progress Charts</FeatureListItem>
-                            <FeatureListItem>Unlimited Record Uploads & AI Summaries</FeatureListItem>
-                            <FeatureListItem>Secure Doctor Messaging</FeatureListItem>
+                    <div className={`p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-all ${patient.subscriptionTier === 'FreeTrial' ? 'border-2 border-[#222222] dark:border-white bg-white dark:bg-[#1e1e1e]' : 'bg-white dark:bg-[#1e1e1e] border border-transparent dark:border-gray-800'}`}>
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white">Free Trial</h4>
+                        <p className="text-gray-500 dark:text-gray-400 mb-3 text-xs leading-relaxed">Basic healthcare tracking.</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Free</p>
+                        <ul className="space-y-2 mb-6 text-xs">
+                            <FeatureListItem>Vitals Tracking & Charts</FeatureListItem>
+                            <FeatureListItem>Basic AI Summaries</FeatureListItem>
+                            <FeatureListItem>Secure Messaging</FeatureListItem>
                         </ul>
-                        <button disabled className="w-full text-center py-3 px-4 rounded-xl font-semibold bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                            {isTrialActive ? 'Active Trial' : (isTrialExpired ? 'Trial Expired' : 'Not Active')}
+                        <button disabled className="w-full text-center py-2.5 px-4 rounded-full font-bold bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-gray-400 cursor-not-allowed text-xs uppercase tracking-wide">
+                            {isTrialActive ? 'Active' : (isTrialExpired ? 'Expired' : 'Not Active')}
                         </button>
                     </div>
                     {/* Paid Plan */}
-                    <div className={`p-8 rounded-3xl border ${patient.subscriptionTier === 'Paid' ? 'border-gray-900 dark:border-white bg-white dark:bg-gray-800' : 'bg-white dark:bg-gray-800 border-gray-200/60 dark:border-gray-700/60'}`}>
-                        <h4 className="text-xl font-semibold text-gray-900 dark:text-white">Paid Plan</h4>
-                        <p className="text-gray-500 dark:text-gray-400 mb-4">For comprehensive insights and support.</p>
-                        <p className="text-3xl font-semibold text-gray-900 dark:text-white mb-4">₹2000<span className="text-base font-medium text-gray-500 dark:text-gray-400">/month</span></p>
-                        <ul className="space-y-2 mb-6">
-                            <FeatureListItem>Advanced Vitals Tracking & Progress Charts</FeatureListItem>
-                            <FeatureListItem>Unlimited Record Uploads & AI Summaries</FeatureListItem>
-                            <FeatureListItem>Secure Doctor Messaging</FeatureListItem>
-                            <FeatureListItem>Purchase & Use Urgent Message Credits</FeatureListItem>
+                    <div className={`p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-all ${patient.subscriptionTier === 'Paid' ? 'border-2 border-[#222222] dark:border-white bg-white dark:bg-[#1e1e1e]' : 'bg-white dark:bg-[#1e1e1e] border border-transparent dark:border-gray-800'}`}>
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white">Paid Plan</h4>
+                        <p className="text-gray-500 dark:text-gray-400 mb-3 text-xs leading-relaxed">Full medical support package.</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white mb-4">₹2000<span className="text-sm font-medium text-gray-400">/mo</span></p>
+                        <ul className="space-y-2 mb-6 text-xs">
+                            <FeatureListItem>Advanced Vitals & Charts</FeatureListItem>
+                            <FeatureListItem>Unlimited record AI summaries</FeatureListItem>
+                            <FeatureListItem>Premium Support Access</FeatureListItem>
+                            <FeatureListItem>Urgent message credits ready</FeatureListItem>
                         </ul>
                         {patient.subscriptionTier === 'Paid' ? (
-                            <button disabled className="w-full text-center py-3 px-4 rounded-xl font-semibold bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400">Current Plan</button>
+                            <button disabled className="w-full text-center py-2.5 px-4 rounded-full font-bold bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Current</button>
                         ) : (
                             <button
                                 onClick={() => handleUpgrade('Paid')}
                                 disabled={!!isProcessing}
-                                className="w-full text-center py-3 px-4 rounded-xl font-semibold bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                className="w-full text-center py-2.5 px-6 rounded-full font-bold bg-[#222222] dark:bg-white text-white dark:text-[#222222] hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs uppercase tracking-wide"
                             >
-                                {isProcessing === 'upgrade' ? 'Processing...' : 'Upgrade to Paid Plan'}
+                                {isProcessing === 'upgrade' ? '...' : 'Upgrade Now'}
                             </button>
                         )}
                     </div>
@@ -135,25 +151,25 @@ const Billing: React.FC<BillingProps> = ({ patient, onPurchaseCredits, onUpgrade
 
             {/* Purchase Credits */}
             <div>
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Purchase Urgent Credits</h3>
+                <h3 className="text-xl font-bold text-[#222222] dark:text-white mb-4 mt-2">Add Urgent Credits</h3>
                 {patient.subscriptionTier === 'FreeTrial' ? (
-                    <div className="text-center p-8 bg-gray-100 dark:bg-gray-800 rounded-3xl border border-gray-200/60 dark:border-gray-700/60">
-                        <p className="text-gray-600 dark:text-gray-300">Upgrade to the <span className="font-semibold text-gray-900 dark:text-white">Paid Plan</span> to purchase and use urgent credits.</p>
+                    <div className="text-center p-8 bg-gray-50 dark:bg-[#2a2a2a] rounded-2xl border border-gray-100 dark:border-gray-800">
+                        <p className="text-sm text-[#717171] dark:text-[#a0a0a0]">Upgrade to use urgent credits.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {creditPacks.map(pack => (
-                            <div key={pack.amount} className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200/60 dark:border-gray-700/60 text-center">
-                                <p className="text-4xl font-semibold text-gray-900 dark:text-white flex items-center justify-center">
-                                    <SparklesIcon className="mr-2 h-8 w-8" /> {pack.amount}
+                            <div key={pack.amount} className="bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800 text-center transition-all hover:scale-[1.01]">
+                                <p className="text-3xl font-bold text-[#222222] dark:text-white flex items-center justify-center mb-1">
+                                    <SparklesIcon className="mr-2 h-6 w-6 text-[#FF385C]" /> {pack.amount}
                                 </p>
-                                <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">Credits</p>
+                                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Credits Pack</p>
                                 <button
                                     onClick={() => handlePurchase(pack.amount)}
                                     disabled={!!isProcessing}
-                                    className="w-full text-center py-3 px-4 rounded-xl font-semibold bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                    className="w-full text-center py-2.5 px-6 rounded-full font-bold bg-[#222222] dark:bg-white text-white dark:text-[#222222] hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs uppercase tracking-wide"
                                 >
-                                    {isProcessing === pack.amount ? 'Processing...' : `Purchase for ₹${pack.price}`}
+                                    {isProcessing === pack.amount ? '...' : `₹${pack.price}`}
                                 </button>
                             </div>
                         ))}

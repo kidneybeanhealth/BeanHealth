@@ -56,59 +56,61 @@ export class PatientAdditionService {
   static async getPatientDoctors(patientId: string): Promise<User[]> {
     console.log('[PatientAdditionService] Fetching doctors for patient:', patientId);
 
-    const { data, error } = await supabase
+    // Step 1: Get relationships
+    const { data: relationships, error: relError } = await supabase
       .from('patient_doctor_relationships')
-      .select(`
-        status,
-        doctor:users!patient_doctor_relationships_doctor_id_fkey(*)
-      `)
+      .select('*')
       .eq('patient_id', patientId)
 
-    if (error) {
-      console.error('[PatientAdditionService] Error fetching relationships:', error);
-      throw error;
+    if (relError) {
+      console.error('[PatientAdditionService] Error fetching relationships:', relError);
+      throw relError;
     }
 
-    console.log('[PatientAdditionService] Raw relationships:', data);
-
     // Filter out inactive/archived relationships
-    const activeRelationships = (data as any[] || []).filter(rel => {
+    const activeRelationships = ((relationships as any[]) || []).filter(rel => {
       const status = rel.status || 'active'; // Default to active if null (legacy records)
       return status !== 'inactive' && status !== 'archived';
     });
 
-    console.log('[PatientAdditionService] Active relationships:', activeRelationships);
+    if (activeRelationships.length === 0) {
+      return [];
+    }
 
-    const doctors = activeRelationships.map(relationship => {
-      const user = relationship.doctor as any;
-      if (!user) {
-        console.warn('[PatientAdditionService] Relationship missing doctor data:', relationship);
-        return null;
-      }
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatarUrl: null, // No longer use external avatar URLs
-        avatar_url: null,
-        specialty: user.specialty,
-        dateOfBirth: user.date_of_birth,
-        date_of_birth: user.date_of_birth,
-        condition: user.condition,
-        subscriptionTier: user.subscription_tier,
-        subscription_tier: user.subscription_tier,
-        urgentCredits: user.urgent_credits,
-        urgent_credits: user.urgent_credits,
-        trialEndsAt: user.trial_ends_at,
-        trial_ends_at: user.trial_ends_at,
-        notes: user.notes,
-        created_at: user.created_at,
-        updated_at: user.updated_at
-      }
-    }).filter(Boolean) as User[];
+    const doctorIds = activeRelationships.map(rel => rel.doctor_id);
 
-    console.log('[PatientAdditionService] Returning doctors:', doctors.length, doctors.map(d => d.name));
-    return doctors;
+    // Step 2: Get doctor details
+    const { data: doctorsData, error: docError } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', doctorIds)
+      .eq('role', 'doctor')
+
+    if (docError) {
+      console.error('[PatientAdditionService] Error fetching doctor details:', docError);
+      throw docError;
+    }
+
+    return (doctorsData as any[]).map(user => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      avatarUrl: null, // No longer use external avatar URLs
+      avatar_url: null,
+      specialty: user.specialty,
+      dateOfBirth: user.date_of_birth,
+      date_of_birth: user.date_of_birth,
+      condition: user.condition,
+      subscriptionTier: user.subscription_tier,
+      subscription_tier: user.subscription_tier,
+      urgentCredits: user.urgent_credits,
+      urgent_credits: user.urgent_credits,
+      trialEndsAt: user.trial_ends_at,
+      trial_ends_at: user.trial_ends_at,
+      notes: user.notes,
+      created_at: user.created_at,
+      updated_at: user.updated_at
+    })) as User[];
   }
 }

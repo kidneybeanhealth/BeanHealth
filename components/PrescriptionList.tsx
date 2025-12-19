@@ -27,7 +27,7 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
     setIsLoading(true);
     try {
       let result;
-      
+
       if (isDoctor && patientId) {
         // Doctor viewing specific patient's prescriptions
         result = await PrescriptionService.getPrescriptionsForPatient(user.id, patientId);
@@ -103,14 +103,14 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-8">
+        <h3 className="text-2xl font-extrabold text-[#222222] dark:text-white">
           {isDoctor && patientId ? 'Patient Prescriptions' : 'Prescriptions'}
         </h3>
         <button
           onClick={loadPrescriptions}
-          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="p-3 text-[#717171] dark:text-[#a0a0a0] hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
           aria-label="Refresh prescriptions"
         >
           <RefreshIcon className="h-5 w-5" />
@@ -118,21 +118,23 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
       </div>
 
       {prescriptions.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <DocumentIcon className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-            No prescriptions found
+        <div className="text-center py-16 bg-gray-50 dark:bg-[#1e1e1e] rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-[#333] rounded-full flex items-center justify-center mx-auto mb-6">
+            <DocumentIcon className="h-8 w-8 text-[#717171] dark:text-[#a0a0a0]" />
+          </div>
+          <p className="text-[#222222] dark:text-white text-lg font-bold">
+            No prescriptions yet
           </p>
-          <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-            {isDoctor ? 'Create prescriptions from patient chats' : 'Your doctor will send prescriptions here'}
+          <p className="text-[#717171] dark:text-[#a0a0a0] text-sm mt-2 max-w-xs mx-auto">
+            {isDoctor ? 'Create prescriptions from patient chats' : 'Your doctor will send prescriptions here. They will appear in this list.'}
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {prescriptions.map((prescription) => (
             <div
               key={prescription.id}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-lg transition-all duration-200 cursor-pointer"
+              className="bg-white dark:bg-[#1e1e1e] rounded-2xl padding-6 p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-xl transition-all duration-300 cursor-pointer border border-transparent dark:border-gray-800"
               onClick={() => setSelectedPrescription(prescription)}
             >
               <div className="flex items-start justify-between">
@@ -142,15 +144,14 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
                     <h4 className="font-semibold text-gray-800 dark:text-gray-100">
                       {isDoctor ? prescription.patientName : `Dr. ${prescription.doctorName}`}
                     </h4>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      prescription.status === 'active' 
+                    <span className={`text-xs px-2 py-1 rounded-full ${prescription.status === 'active'
                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>
+                      }`}>
                       {prescription.status}
                     </span>
                   </div>
-                  
+
                   <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                     {isDoctor && prescription.doctorSpecialty && (
                       <p className="mb-1">{prescription.doctorSpecialty}</p>
@@ -202,27 +203,27 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
               onClick={() => setSelectedPrescription(null)}
             ></div>
 
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+            <div className="inline-block align-bottom bg-white dark:bg-[#1e1e1e] rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full animate-scaleIn">
               {/* Header */}
-              <div className="bg-gradient-to-r from-rose-500 to-rose-900 px-6 py-4">
+              <div className="bg-white dark:bg-[#1e1e1e] px-8 py-6 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-2xl font-bold text-white">Prescription Details</h3>
-                    <p className="text-sky-100 text-sm mt-1">
-                      {formatDate(selectedPrescription.createdAt)}
+                    <h3 className="text-2xl font-extrabold text-[#222222] dark:text-white">Prescription Details</h3>
+                    <p className="text-[#717171] dark:text-[#a0a0a0] text-sm font-medium mt-1">
+                      Issued on {formatDate(selectedPrescription.createdAt)}
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedPrescription(null)}
-                    className="text-white hover:text-sky-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
+                    className="p-2 bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                   >
-                    <XIcon className="h-6 w-6" />
+                    <XIcon className="h-5 w-5 text-[#222222] dark:text-white" />
                   </button>
                 </div>
               </div>
 
               {/* Body */}
-              <div className="px-6 py-6 max-h-[70vh] overflow-y-auto">
+              <div className="px-8 py-8 max-h-[70vh] overflow-y-auto">
                 {/* Doctor and Patient Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
@@ -305,16 +306,16 @@ const PrescriptionList: React.FC<PrescriptionListProps> = ({ user, patientId }) 
               </div>
 
               {/* Footer */}
-              <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="bg-gray-50 dark:bg-[#2a2a2a] px-8 py-6 flex justify-end space-x-4 border-t border-gray-100 dark:border-gray-800">
                 <button
                   onClick={() => handlePreviewPrescription(selectedPrescription)}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                  className="px-6 py-3 text-sm font-bold text-[#222222] dark:text-white bg-white dark:bg-[#333] border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
                 >
                   Preview PDF
                 </button>
                 <button
                   onClick={() => handleDownloadPrescription(selectedPrescription)}
-                  className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg hover:from-secondary-600 hover:to-secondary-800 transition-all shadow-lg hover:shadow-xl"
+                  className="px-6 py-3 text-sm font-bold text-white bg-[#222222] dark:bg-white dark:text-[#222222] rounded-full hover:opacity-90 transition-all shadow-lg"
                 >
                   Download PDF
                 </button>

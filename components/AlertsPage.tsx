@@ -100,54 +100,54 @@ const AlertsPage: React.FC<AlertsPageProps> = ({ doctorId, onBack, onViewPatient
     };
 
     return (
-        <div className="min-h-screen bg-primary-50 dark:bg-primary-900">
+        <div className="min-h-screen bg-[#F7F7F7] dark:bg-black font-sans">
             {/* Header */}
-            <div className="bg-white dark:bg-primary-800 border-b border-primary-200 dark:border-primary-700 sticky top-0 z-10">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+            <div className="bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 sticky top-0 z-10 transition-colors">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-6">
                             {onBack && (
                                 <button
                                     onClick={onBack}
-                                    className="p-2 hover:bg-primary-100 dark:hover:bg-primary-700 rounded-xl transition-colors"
+                                    className="p-3 bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors group"
                                 >
-                                    <svg className="w-5 h-5 text-primary-600 dark:text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    <svg className="w-5 h-5 text-[#222222] dark:text-white group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                                     </svg>
                                 </button>
                             )}
                             <div>
-                                <h1 className="text-2xl font-bold text-primary-800 dark:text-primary-100">Clinical Alerts</h1>
-                                <p className="text-sm text-primary-500 dark:text-primary-400">
+                                <h1 className="text-3xl font-extrabold text-[#222222] dark:text-white tracking-tight">Clinical Alerts</h1>
+                                <p className="text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">
                                     {counts.unacknowledged} unacknowledged alerts
                                 </p>
                             </div>
                         </div>
 
                         {/* Stats */}
-                        <div className="flex gap-3">
-                            <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 rounded-xl">
+                        <div className="flex gap-4">
+                            <div className="px-6 py-3 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center gap-2 border border-red-100 dark:border-red-900/30">
                                 <span className="text-2xl font-bold text-red-600 dark:text-red-400">{counts.urgent}</span>
-                                <span className="text-xs text-red-600 dark:text-red-400 ml-1">Urgent</span>
+                                <span className="text-sm font-bold text-red-600 dark:text-red-400">Urgent</span>
                             </div>
-                            <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+                            <div className="px-6 py-3 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center gap-2 border border-amber-100 dark:border-amber-900/30">
                                 <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">{counts.review}</span>
-                                <span className="text-xs text-amber-600 dark:text-amber-400 ml-1">Review</span>
+                                <span className="text-sm font-bold text-amber-600 dark:text-amber-400">Review</span>
                             </div>
-                            <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                            <div className="px-6 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center gap-2 border border-blue-100 dark:border-blue-900/30">
                                 <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{counts.info}</span>
-                                <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">Info</span>
+                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">Info</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Filters */}
-                    <div className="flex items-center gap-3 mt-4">
+                    <div className="flex items-center gap-3 mt-6 pb-2 overflow-x-auto no-scrollbar">
                         <button
                             onClick={() => setFilter(f => ({ ...f, severity: undefined }))}
-                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${!filter.severity
-                                    ? 'bg-primary-800 dark:bg-primary-100 text-white dark:text-primary-900'
-                                    : 'bg-primary-100 dark:bg-primary-700 text-primary-700 dark:text-primary-200 hover:bg-primary-200'
+                            className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${!filter.severity
+                                ? 'bg-[#222222] dark:bg-white text-white dark:text-[#222222] shadow-md'
+                                : 'bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-[#a0a0a0] hover:bg-gray-200 dark:hover:bg-gray-700'
                                 }`}
                         >
                             All
@@ -156,21 +156,21 @@ const AlertsPage: React.FC<AlertsPageProps> = ({ doctorId, onBack, onViewPatient
                             <button
                                 key={sev}
                                 onClick={() => setFilter(f => ({ ...f, severity: f.severity === sev ? undefined : sev }))}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter.severity === sev
-                                        ? severityConfig[sev as keyof typeof severityConfig].badge
-                                        : 'bg-primary-100 dark:bg-primary-700 text-primary-700 dark:text-primary-200 hover:bg-primary-200'
+                                className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${filter.severity === sev
+                                    ? severityConfig[sev as keyof typeof severityConfig].badge
+                                    : 'bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-[#a0a0a0] hover:bg-gray-200 dark:hover:bg-gray-700'
                                     }`}
                             >
                                 {sev}
                             </button>
                         ))}
                         <div className="flex-1" />
-                        <label className="flex items-center gap-2 text-sm text-primary-600 dark:text-primary-300 cursor-pointer">
+                        <label className="flex items-center gap-3 text-sm font-bold text-[#222222] dark:text-white cursor-pointer select-none bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-full border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                             <input
                                 type="checkbox"
                                 checked={filter.showAcknowledged}
                                 onChange={(e) => setFilter(f => ({ ...f, showAcknowledged: e.target.checked }))}
-                                className="rounded border-primary-300 dark:border-primary-600 text-secondary-600 focus:ring-secondary-500"
+                                className="rounded border-gray-300 dark:border-gray-600 text-[#222222] focus:ring-[#222222]"
                             />
                             Show acknowledged
                         </label>
@@ -179,13 +179,13 @@ const AlertsPage: React.FC<AlertsPageProps> = ({ doctorId, onBack, onViewPatient
             </div>
 
             {/* Alert List */}
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {loading ? (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className="bg-white dark:bg-primary-800 rounded-2xl p-6 animate-pulse">
-                                <div className="h-6 bg-primary-200 dark:bg-primary-700 rounded w-1/3 mb-3"></div>
-                                <div className="h-4 bg-primary-100 dark:bg-primary-700 rounded w-2/3"></div>
+                            <div key={i} className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-8 animate-pulse shadow-[0_6px_16px_rgba(0,0,0,0.06)]">
+                                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+                                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-2/3"></div>
                             </div>
                         ))}
                     </div>
@@ -206,24 +206,24 @@ const AlertsPage: React.FC<AlertsPageProps> = ({ doctorId, onBack, onViewPatient
                             return (
                                 <div
                                     key={alert.id}
-                                    className={`bg-white dark:bg-primary-800 rounded-2xl border-l-4 ${config.border} overflow-hidden shadow-sm hover:shadow-md transition-shadow`}
+                                    className={`bg-white dark:bg-[#1e1e1e] rounded-2xl border-l-4 ${config.border} overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-lg transition-all duration-300`}
                                 >
-                                    <div className="p-5">
-                                        <div className="flex items-start gap-4">
-                                            <span className="text-2xl">{config.icon}</span>
+                                    <div className="p-8">
+                                        <div className="flex items-start gap-6">
+                                            <span className="text-3xl filter drop-shadow-sm">{config.icon}</span>
                                             <div className="flex-1">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <span className={`px-2.5 py-0.5 text-xs font-bold uppercase rounded-full ${config.badge}`}>
+                                                <div className="flex items-center flex-wrap gap-3 mb-3">
+                                                    <span className={`px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wide shadow-sm ${config.badge}`}>
                                                         {alert.severity}
                                                     </span>
-                                                    <span className="text-xs text-primary-400 dark:text-primary-500 px-2 py-0.5 bg-primary-100 dark:bg-primary-700 rounded-full">
+                                                    <span className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
                                                         {categoryLabels[alert.alert_definition?.category || ''] || alert.alert_definition?.category}
                                                     </span>
-                                                    <span className="text-xs text-primary-400 dark:text-primary-500">
+                                                    <span className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0]">
                                                         {formatDate(alert.fired_at)}
                                                     </span>
                                                     {alert.acknowledged_at && (
-                                                        <span className="text-xs text-secondary-600 dark:text-secondary-400 flex items-center gap-1">
+                                                        <span className="text-xs font-bold text-[#8AC43C] flex items-center gap-1">
                                                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                             </svg>
@@ -232,18 +232,18 @@ const AlertsPage: React.FC<AlertsPageProps> = ({ doctorId, onBack, onViewPatient
                                                     )}
                                                 </div>
 
-                                                <h3 className="text-lg font-semibold text-primary-800 dark:text-primary-100 mb-1">
+                                                <h3 className="text-xl font-bold text-[#222222] dark:text-white mb-1">
                                                     {alert.alert_definition?.name || alert.rule_id}
                                                 </h3>
 
                                                 <button
                                                     onClick={() => onViewPatient?.(alert.patient_id)}
-                                                    className="text-secondary-600 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-300 font-medium text-sm mb-3"
+                                                    className="text-[#222222] dark:text-white hover:text-[#FF385C] dark:hover:text-[#FF385C] font-bold text-sm mb-4 transition-colors underline decoration-2 underline-offset-4"
                                                 >
                                                     {alert.patient_name} →
                                                 </button>
 
-                                                <p className="text-primary-600 dark:text-primary-300 text-sm leading-relaxed mb-4">
+                                                <p className="text-[#717171] dark:text-[#a0a0a0] text-base leading-relaxed mb-6">
                                                     {alert.rationale}
                                                 </p>
 
@@ -268,16 +268,16 @@ const AlertsPage: React.FC<AlertsPageProps> = ({ doctorId, onBack, onViewPatient
 
                                                 {/* Actions */}
                                                 {!alert.acknowledged_at && (
-                                                    <div className="flex items-center gap-3 pt-3 border-t border-primary-100 dark:border-primary-700">
+                                                    <div className="flex items-center gap-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                                                         <button
                                                             onClick={() => setSelectedAlert(alert)}
-                                                            className="px-4 py-2 bg-secondary-600 hover:bg-secondary-700 text-white text-sm font-medium rounded-xl transition-colors"
+                                                            className="px-6 py-2.5 bg-[#222222] dark:bg-white text-white dark:text-[#222222] text-sm font-bold rounded-full hover:opacity-90 transition-opacity shadow-md"
                                                         >
                                                             Acknowledge
                                                         </button>
                                                         <button
                                                             onClick={() => handleDismiss(alert.id, 'Dismissed by clinician')}
-                                                            className="px-4 py-2 bg-primary-100 dark:bg-primary-700 hover:bg-primary-200 dark:hover:bg-primary-600 text-primary-700 dark:text-primary-200 text-sm font-medium rounded-xl transition-colors"
+                                                            className="px-6 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-[#717171] dark:text-white text-sm font-bold rounded-full transition-colors"
                                                         >
                                                             Dismiss
                                                         </button>
@@ -295,31 +295,31 @@ const AlertsPage: React.FC<AlertsPageProps> = ({ doctorId, onBack, onViewPatient
 
             {/* Acknowledge Modal */}
             {selectedAlert && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-primary-800 rounded-2xl max-w-md w-full p-6">
-                        <h3 className="text-lg font-semibold text-primary-800 dark:text-primary-100 mb-4">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+                    <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl max-w-md w-full p-8 shadow-2xl animate-scaleIn">
+                        <h3 className="text-2xl font-bold text-[#222222] dark:text-white mb-2">
                             Acknowledge Alert
                         </h3>
-                        <p className="text-sm text-primary-600 dark:text-primary-300 mb-4">
+                        <p className="text-sm font-medium text-[#717171] dark:text-[#a0a0a0] mb-6">
                             {selectedAlert.alert_definition?.name} - {selectedAlert.patient_name}
                         </p>
                         <textarea
                             value={acknowledgeNote}
                             onChange={(e) => setAcknowledgeNote(e.target.value)}
                             placeholder="Add a note (optional)..."
-                            className="w-full px-4 py-3 bg-primary-50 dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl text-primary-800 dark:text-primary-100 placeholder:text-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500 resize-none"
+                            className="w-full px-5 py-4 bg-gray-50 dark:bg-[#2a2a2a] border-none rounded-2xl text-[#222222] dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-[#222222] dark:focus:ring-white resize-none mb-6"
                             rows={3}
                         />
-                        <div className="flex justify-end gap-3 mt-4">
+                        <div className="flex justify-end gap-3">
                             <button
                                 onClick={() => { setSelectedAlert(null); setAcknowledgeNote(''); }}
-                                className="px-4 py-2 text-primary-600 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-700 rounded-xl transition-colors"
+                                className="px-6 py-2.5 text-[#717171] dark:text-[#a0a0a0] font-bold hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={() => handleAcknowledge(selectedAlert.id)}
-                                className="px-4 py-2 bg-secondary-600 hover:bg-secondary-700 text-white font-medium rounded-xl transition-colors"
+                                className="px-6 py-2.5 bg-[#222222] dark:bg-white hover:opacity-90 text-white dark:text-[#222222] font-bold rounded-full transition-colors shadow-lg"
                             >
                                 Acknowledge
                             </button>

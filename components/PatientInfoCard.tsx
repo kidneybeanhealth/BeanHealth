@@ -55,8 +55,8 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
     useEffect(() => {
         const loadPatientData = async () => {
             try {
-                const { data, error } = await supabase
-                    .from('users')
+                const { data, error } = await (supabase
+                    .from('users') as any)
                     .select('full_name, age, gender, ckd_stage, comorbidities, baseline_weight, patient_id')
                     .eq('id', patientId)
                     .single();
@@ -95,8 +95,8 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
         setIsSaving(true);
         try {
             // Update database directly
-            const { error } = await supabase
-                .from('users')
+            const { error } = await (supabase
+                .from('users') as any)
                 .update({
                     full_name: editName || null,
                     age: editAge ? parseInt(editAge) : null,
@@ -175,15 +175,15 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
     const recommendedFluidTarget = ckdStage ? getFluidTargetByStage(ckdStage) : 1500;
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200/40 dark:border-gray-700/40 hover:shadow-lg transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Patient Information</h3>
+        <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all duration-300 border border-transparent dark:border-gray-800">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xl font-bold text-[#222222] dark:text-white">Patient Information</h3>
                 {!isEditing && (
                     <button
                         onClick={handleStartEdit}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        className="px-4 py-2 text-sm font-semibold text-white bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
                     >
-                        Edit
+                        Edit Details
                     </button>
                 )}
             </div>
@@ -192,14 +192,14 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                 <div className="space-y-6">
                     {/* Name Input */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-2 uppercase tracking-wider">
                             Full Name
                         </label>
                         <input
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
                             placeholder="Enter full name"
                         />
                     </div>
@@ -207,27 +207,27 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         {/* Age Input */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-2 uppercase tracking-wider">
                                 Age
                             </label>
                             <input
                                 type="number"
                                 value={editAge}
                                 onChange={(e) => setEditAge(e.target.value)}
-                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
+                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
                                 placeholder="Enter age"
                             />
                         </div>
 
                         {/* Gender Input */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-2 uppercase tracking-wider">
                                 Gender
                             </label>
                             <select
                                 value={editGender}
                                 onChange={(e) => setEditGender(e.target.value)}
-                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
+                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
                             >
                                 <option value="">Select gender</option>
                                 <option value="male">Male</option>
@@ -240,7 +240,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
 
                     {/* Baseline Weight Input */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-2 uppercase tracking-wider">
                             Baseline Weight (kg)
                         </label>
                         <input
@@ -248,7 +248,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                             step="0.1"
                             value={editWeight}
                             onChange={(e) => setEditWeight(e.target.value)}
-                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
                             placeholder="Enter baseline weight"
                         />
                     </div>
@@ -317,80 +317,77 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
             ) : (
                 <div className="space-y-4">
                     {/* Patient ID and Name */}
-                    <div className="grid grid-cols-2 gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="grid grid-cols-2 gap-2 pb-3 border-b border-gray-100 dark:border-gray-800">
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Patient ID</p>
-                            <p className="text-lg font-mono font-bold text-secondary-700 dark:text-secondary-400">
+                            <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Patient ID</p>
+                            <p className="text-lg font-mono font-bold text-[#8AC43C] tracking-wide">
                                 {patientDisplayId || '—'}
                             </p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Full Name</p>
-                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Full Name</p>
+                            <p className="text-lg font-bold text-[#222222] dark:text-white">
                                 {fullName || '—'}
                             </p>
                         </div>
                     </div>
 
                     {/* Age, Gender, CKD Stage Row */}
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Age</p>
-                            <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                            <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Age</p>
+                            <p className="text-lg font-extrabold text-[#222222] dark:text-white">
                                 {age || '—'}
                             </p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Gender</p>
-                            <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                            <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Gender</p>
+                            <p className="text-xl font-bold text-[#222222] dark:text-white">
                                 {getGenderDisplay(gender)}
                             </p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">CKD Stage</p>
-                            <span className={`inline-block px-3 py-1 text-sm font-bold rounded-xl ${getStageColor(ckdStage)}`}>
+                            <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">CKD Stage</p>
+                            <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full ${getStageColor(ckdStage)}`}>
                                 {ckdStage ? `Stage ${ckdStage}` : '—'}
                             </span>
-                            {ckdStage && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Auto-calculated
-                                </p>
-                            )}
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Weight</p>
-                            <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                            <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Weight</p>
+                            <p className="text-lg font-extrabold text-[#222222] dark:text-white">
                                 {baselineWeight ? `${baselineWeight}` : '—'}
-                                {baselineWeight && <span className="text-sm font-normal"> kg</span>}
+                                {baselineWeight && <span className="text-sm font-medium text-[#717171] ml-1">kg</span>}
                             </p>
                         </div>
                     </div>
 
                     {/* Fluid Target Info */}
                     {ckdStage && (
-                        <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                                💧 Recommended daily fluid: <strong className="text-secondary-700 dark:text-secondary-400">{recommendedFluidTarget} ml</strong>
+                        <div className="p-3 bg-cyan-50 dark:bg-cyan-900/10 rounded-xl border border-cyan-100 dark:border-cyan-800/30">
+                            <p className="text-sm font-medium text-cyan-800 dark:text-cyan-200 flex items-center gap-2">
+                                <span className="text-xl">💧</span>
+                                Recommended daily fluid:
+                                <strong className="text-cyan-900 dark:text-cyan-100 text-lg">{recommendedFluidTarget} ml</strong>
                             </p>
                         </div>
                     )}
 
                     {/* Comorbidities */}
                     <div>
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Comorbidities</p>
+                        <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-3">Recorded Conditions</p>
                         {comorbidities.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
                                 {comorbidities.map((condition) => (
                                     <span
                                         key={condition}
-                                        className="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg"
+                                        className="px-3 py-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-[#a0a0a0] rounded-lg"
                                     >
                                         {condition}
                                     </span>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">No comorbidities recorded</p>
+                            <p className="text-sm font-medium text-[#717171] dark:text-[#a0a0a0] italic">No known comorbidities</p>
                         )}
                     </div>
                 </div>

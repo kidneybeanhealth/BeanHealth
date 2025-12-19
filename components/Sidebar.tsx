@@ -14,9 +14,18 @@ interface SidebarProps {
   setActiveView: (view: View) => void;
   isOpen: boolean;
   onClose: () => void;
+  unreadMessageCount?: number;
+  hasUrgentMessages?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  activeView,
+  setActiveView,
+  isOpen,
+  onClose,
+  unreadMessageCount = 0,
+  hasUrgentMessages = false
+}) => {
   const navItems: { view: View; label: string; icon: React.ReactElement }[] = [
     { view: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
     { view: 'records', label: 'Records', icon: <RecordsIcon /> },
@@ -36,32 +45,31 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
         ></div>
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-white dark:bg-gray-900 flex-shrink-0 flex flex-col transform transition-all duration-300 ease-out md:relative md:translate-x-0 md:z-10 border-r border-gray-200/60 dark:border-gray-800 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        {/* Header - Minimal & Clean */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200/60 dark:border-gray-800">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-black flex-shrink-0 flex flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] md:sticky md:top-4 md:m-4 md:h-[calc(100vh-2rem)] md:rounded-3xl md:translate-x-0 md:z-10 md:border md:border-gray-200 md:dark:border-white/10 md:shadow-2xl border-r border-gray-100 dark:border-white/5 md:border-r-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        {/* Header - Spacious & Clean */}
+        <div className="h-24 flex items-center relative pl-8 pr-6">
           <button
             onClick={() => setActiveView('dashboard')}
-            className="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-gray-400 rounded-2xl p-2 -ml-2 hover:scale-105 active:scale-95 transition-all duration-200"
+            className="flex items-center gap-3.5 focus:outline-none rounded-xl transition-transform active:scale-95 duration-200 group"
           >
-            <div className="rounded-xl overflow-hidden">
-              <LogoIcon className="h-10 w-10" />
+            <div className="rounded-2xl overflow-hidden transition-transform group-hover:scale-110 duration-300 drop-shadow-sm">
+              <LogoIcon className="h-10 w-10 md:h-11 md:w-11" />
             </div>
-            <h1 className="text-xl font-semibold tracking-tight">
-              <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
-              <span className="text-[#8AC43C]">Health</span>
+            <h1 className="text-2xl font-bold tracking-tight text-[#3A2524] dark:text-[#e6b8a3]">
+              Bean<span className="text-[#8AC43C]">Health</span>
             </h1>
           </button>
           <button
             onClick={onClose}
-            className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            className="absolute right-6 md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <XIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            <XIcon className="h-5 w-5 text-gray-500" />
           </button>
         </div>
 
-        {/* Navigation - Ultra Clean */}
-        <nav className="flex-1 px-4 py-8 overflow-y-auto">
-          <ul className="space-y-2">
+        {/* Navigation - Minimal Pill Style */}
+        <nav className="flex-1 px-4 pt-2 pb-8 overflow-y-auto">
+          <ul className="space-y-1">
             {navItems.map((item) => (
               <li key={item.view}>
                 <button
@@ -69,33 +77,48 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
                     setActiveView(item.view);
                     onClose();
                   }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all duration-200 ${activeView === item.view
-                    ? 'bg-[#8AC43C] text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                  className={`group w-full flex items-center gap-3.5 px-4 py-3.5 rounded-full text-left transition-all duration-200 relative ${activeView === item.view
+                    ? 'bg-gray-100 dark:bg-white/10 text-black dark:text-white font-bold'
+                    : 'text-gray-500 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-gray-200'
                     }`}
                 >
-                  <span className={`${activeView === item.view ? 'text-white dark:text-gray-900' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'} transition-colors duration-200`}>
-                    {item.icon}
+                  <span className={`${activeView === item.view ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-900 dark:group-hover:text-gray-200'
+                    } transition-colors duration-200 relative`}>
+                    {/* Scale icons slightly down for refined look */}
+                    {React.cloneElement(item.icon as any, { className: 'w-5 h-5' })}
+
+                    {/* Notification dot for messages */}
+                    {item.view === 'messages' && unreadMessageCount > 0 && activeView !== 'messages' && (
+                      <span className={`absolute -top-1 -right-1 flex h-2.5 w-2.5 ${hasUrgentMessages ? 'animate-ping-slow' : ''}`}>
+                        <span className={`absolute inline-flex h-full w-full rounded-full ${hasUrgentMessages ? 'bg-red-500 animate-ping' : 'bg-[#8AC43C]'} opacity-75`}></span>
+                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${hasUrgentMessages ? 'bg-red-500' : 'bg-[#8AC43C]'}`}></span>
+                      </span>
+                    )}
                   </span>
-                  <span className="font-medium text-[15px]">{item.label}</span>
+                  <span className="text-sm flex-1">{item.label}</span>
+
+                  {/* Unread count badge for messages */}
+                  {item.view === 'messages' && unreadMessageCount > 0 && activeView !== 'messages' && (
+                    <span className={`text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center ${hasUrgentMessages
+                        ? 'bg-red-500 text-white animate-pulse'
+                        : 'bg-[#8AC43C] text-white'
+                      }`}>
+                      {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                    </span>
+                  )}
                 </button>
               </li>
             ))}
           </ul>
         </nav>
 
-        {/* Footer - Minimal */}
-        <div className="p-6 border-t border-gray-200/60 dark:border-gray-800">
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 mb-4 border border-gray-200/60 dark:border-gray-700/60">
-            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Need help?</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">Reach out to our support team</p>
-            <button className="w-full px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200 border border-gray-200 dark:border-gray-600">
-              Contact Support
-            </button>
+        {/* Footer - Minimal Links */}
+        <div className="p-6 pb-8 border-t border-gray-100 dark:border-white/5 space-y-4">
+          <div className="px-4 text-center">
+            <p className="text-xs font-semibold text-gray-300 dark:text-gray-700 uppercase tracking-widest">
+              © 2025 BeanHealth
+            </p>
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 text-center font-medium">
-            © 2025 BeanHealth
-          </p>
         </div>
       </aside>
     </>
@@ -103,3 +126,4 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, on
 };
 
 export default Sidebar;
+

@@ -14,8 +14,8 @@ const MedicationTimeline: React.FC<MedicationTimelineProps> = ({ medications }) 
     ];
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Today's Schedule</h3>
+        <div className="bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-shadow duration-300 border border-transparent dark:border-gray-800">
+            <h3 className="text-xl font-bold text-[#222222] dark:text-white mb-6">Today's Schedule</h3>
             <div>
                 {timelineEvents.map((event, index) => (
                     <div key={index} className="flex items-center">

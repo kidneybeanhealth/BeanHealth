@@ -249,24 +249,24 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
     }
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
+        <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all duration-300 border border-transparent dark:border-gray-800">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-xl">
-                        <PillIcon className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="p-3 bg-rose-50 dark:bg-rose-900/20 rounded-full shrink-0">
+                        <PillIcon className="h-6 w-6 text-[#222222] dark:text-white" />
                     </div>
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Medications</h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{medications.length} active</p>
+                    <div className="min-w-0">
+                        <h3 className="text-xl font-bold text-[#222222] dark:text-white truncate">Medications</h3>
+                        <p className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0] mt-1 uppercase tracking-wider truncate">{medications.length} active</p>
                     </div>
                 </div>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#8AC43C] text-white text-xs font-bold rounded-full hover:opacity-90 transition-all shadow-sm transform active:scale-95 whitespace-nowrap shrink-0 ml-3"
                 >
                     <PlusCircleIcon className="h-4 w-4" />
-                    <span className="hidden sm:inline">Add Medication</span>
+                    <span>Add</span>
                 </button>
             </div>
 
@@ -276,8 +276,8 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Today's Progress</span>
                         <span className={`text-lg font-bold ${adherencePercentage >= 80 ? 'text-green-600 dark:text-green-400' :
-                                adherencePercentage >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                                    'text-red-600 dark:text-red-400'
+                            adherencePercentage >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                'text-red-600 dark:text-red-400'
                             }`}>
                             {adherencePercentage}%
                         </span>
@@ -285,8 +285,8 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                     <div className="mt-2 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                         <div
                             className={`h-full transition-all duration-500 ${adherencePercentage >= 80 ? 'bg-green-500' :
-                                    adherencePercentage >= 50 ? 'bg-yellow-500' :
-                                        'bg-red-500'
+                                adherencePercentage >= 50 ? 'bg-yellow-500' :
+                                    'bg-red-500'
                                 }`}
                             style={{ width: `${adherencePercentage}%` }}
                         />
@@ -295,21 +295,21 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
             )}
 
             {/* Tabs */}
-            <div className="flex gap-2 mb-4">
+            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6">
                 <button
                     onClick={() => setActiveTab('schedule')}
-                    className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${activeTab === 'schedule'
-                            ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    className={`flex-1 py-2.5 px-4 text-sm font-bold rounded-lg transition-all ${activeTab === 'schedule'
+                        ? 'bg-white dark:bg-[#1e1e1e] text-[#222222] dark:text-white shadow-sm'
+                        : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#222222] dark:hover:text-white'
                         }`}
                 >
                     Today's Schedule
                 </button>
                 <button
                     onClick={() => setActiveTab('medications')}
-                    className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${activeTab === 'medications'
-                            ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    className={`flex-1 py-2.5 px-4 text-sm font-bold rounded-lg transition-all ${activeTab === 'medications'
+                        ? 'bg-white dark:bg-[#1e1e1e] text-[#222222] dark:text-white shadow-sm'
+                        : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#222222] dark:hover:text-white'
                         }`}
                 >
                     All Medications
@@ -325,7 +325,7 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                             <p>No medications scheduled for today</p>
                             <button
                                 onClick={() => setShowAddModal(true)}
-                                className="mt-2 text-rose-600 dark:text-rose-400 text-sm font-medium hover:underline"
+                                className="mt-2 text-[#8AC43C] text-sm font-bold hover:underline"
                             >
                                 Add your first medication
                             </button>
@@ -339,20 +339,20 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                 <div
                                     key={`${item.medication.id}-${item.scheduledTime}-${index}`}
                                     className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isTaken
-                                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                                            : status === 'current'
-                                                ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                                                : status === 'past'
-                                                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                                                    : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'
+                                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                                        : status === 'current'
+                                            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                                            : status === 'past'
+                                                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                                                : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'
                                         }`}
                                 >
                                     {/* Time */}
                                     <div className="w-16 text-center">
                                         <span className={`text-sm font-bold ${isTaken ? 'text-green-700 dark:text-green-400' :
-                                                status === 'current' ? 'text-yellow-700 dark:text-yellow-400' :
-                                                    status === 'past' ? 'text-red-700 dark:text-red-400' :
-                                                        'text-gray-700 dark:text-gray-300'
+                                            status === 'current' ? 'text-yellow-700 dark:text-yellow-400' :
+                                                status === 'past' ? 'text-red-700 dark:text-red-400' :
+                                                    'text-gray-700 dark:text-gray-300'
                                             }`}>
                                             {item.scheduledTime}
                                         </span>
@@ -362,8 +362,8 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                     <button
                                         onClick={() => handleToggleAdherence(item)}
                                         className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isTaken
-                                                ? 'bg-green-500 border-green-500'
-                                                : 'border-gray-300 dark:border-gray-600 hover:border-rose-500'
+                                            ? 'bg-green-500 border-green-500'
+                                            : 'border-gray-300 dark:border-gray-600 hover:border-rose-500'
                                             }`}
                                     >
                                         {isTaken && <CheckIcon className="h-4 w-4 text-white" />}
@@ -371,7 +371,7 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
 
                                     {/* Medication Info */}
                                     <div className="flex-1 min-w-0">
-                                        <p className={`font-medium truncate ${isTaken ? 'text-green-800 dark:text-green-300 line-through' : 'text-gray-900 dark:text-gray-100'
+                                        <p className={`text-base font-bold truncate ${isTaken ? 'text-[#717171] line-through' : 'text-[#222222] dark:text-white'
                                             }`}>
                                             {item.medication.name}
                                         </p>
@@ -471,8 +471,8 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                         <button
                                             onClick={() => setSelectedCategory('all')}
                                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${selectedCategory === 'all'
-                                                    ? 'bg-rose-600 text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                                ? 'bg-rose-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                                                 }`}
                                         >
                                             All
@@ -482,8 +482,8 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                                 key={cat.id}
                                                 onClick={() => setSelectedCategory(cat.id)}
                                                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${selectedCategory === cat.id
-                                                        ? 'bg-rose-600 text-white'
-                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                                    ? 'bg-rose-600 text-white'
+                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                                                     }`}
                                             >
                                                 {cat.label}

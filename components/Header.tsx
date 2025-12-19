@@ -1,83 +1,77 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { User } from '../types';
 import { LogoutIcon } from './icons/LogoutIcon';
 import ThemeToggle from './ThemeToggle';
 import { MenuIcon } from './icons/MenuIcon';
-import ProfilePhotoUploader from './ProfilePhotoUploader';
-import { getInitials, getInitialsColor, getInitialsAvatarClasses } from '../utils/avatarUtils';
+import { getInitials } from '../utils/avatarUtils';
 
 interface HeaderProps {
-    user: User;
-    onLogout: () => void;
-    onMenuClick: () => void;
-    onUpdateAvatar: (dataUrl: string) => void;
+  user: User;
+  onLogout: () => void;
+  onMenuClick: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onUpdateAvatar }) => {
-  const [isUploaderOpen, setIsUploaderOpen] = useState(false);
-
-  const handleSaveAvatar = (dataUrl: string) => {
-    if(user.role === 'patient') {
-      onUpdateAvatar(dataUrl);
-    }
-    setIsUploaderOpen(false);
-  };
-
+const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick }) => {
   const initials = getInitials(user.name, user.email);
-  const colorClass = getInitialsColor(user.name, user.email);
-  const avatarClasses = getInitialsAvatarClasses('lg');
 
   return (
-    <header className="sticky top-0 z-40 h-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl flex-shrink-0 border-b border-gray-200/60 dark:border-gray-800 flex items-center justify-between px-6 lg:px-8">
+    <header className="flex-shrink-0 mx-4 mt-4 h-20 bg-white/80 dark:bg-black/90 backdrop-blur-2xl rounded-3xl border border-gray-100 dark:border-white/10 shadow-lg flex items-center transition-all duration-300 z-40">
+      <div className="w-full flex items-center justify-between px-6 lg:px-8">
         <div className="flex items-center gap-4 flex-1 min-w-0">
-             <button
-              onClick={onMenuClick}
-              className="md:hidden p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
-              aria-label="Toggle menu"
-            >
-                <MenuIcon className="h-6 w-6" />
-            </button>
-            <div className="animate-fade-in min-w-0 flex-1">
-                <h2 className="text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white tracking-tight truncate">
-                  Welcome back, {user.name}
-                </h2>
-                <p className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                  {user.role === 'patient' ? "Your health at a glance" : "Manage your patients"}
-                </p>
-            </div>
+          <button
+            onClick={onMenuClick}
+            className="md:hidden p-2 -ml-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Toggle menu"
+          >
+            <MenuIcon className="h-6 w-6" />
+          </button>
+
+          <div className="animate-fade-in min-w-0 flex-1 flex flex-col justify-center">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">
+              Welcome back, <span className="text-[#8AC43C]">{user.name}</span>
+            </h2>
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 mt-0.5 truncate tracking-wide uppercase opacity-90">
+              {user.role === 'patient' ? "Your Health Dashboard" : "Manage Patients"}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="hidden sm:block">
             <ThemeToggle />
-            <button
-              onClick={() => setIsUploaderOpen(true)}
-              className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all duration-200"
-              aria-label="Update profile photo"
-            >
+          </div>
+
+          <div className="hidden sm:block h-8 w-px bg-gray-200 dark:bg-white/10 mx-2"></div>
+
+          <button
+            onClick={onLogout}
+            className="group flex items-center p-1 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-500 ease-out"
+            aria-label="Log out"
+          >
+            <div className="relative z-10">
               {user.avatarUrl || user.avatar_url ? (
-                <div className="h-11 w-11 lg:h-12 lg:w-12 ring-2 ring-gray-200 dark:ring-gray-700 group-hover:ring-gray-300 dark:group-hover:ring-gray-600 transition-all duration-200 rounded-full overflow-hidden bg-white dark:bg-gray-800">
-                  <img
-                    src={user.avatarUrl || user.avatar_url}
-                    alt={user.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <img
+                  src={user.avatarUrl || user.avatar_url}
+                  alt={user.name}
+                  className="h-10 w-10 rounded-full object-cover ring-2 ring-white dark:ring-black shadow-md transition-all duration-300"
+                />
               ) : (
-                <div className={`h-11 w-11 lg:h-12 lg:w-12 ${colorClass} ring-2 ring-gray-200 dark:ring-gray-700 group-hover:ring-gray-300 dark:group-hover:ring-gray-600 transition-all duration-200 rounded-full flex items-center justify-center`}>
-                  <span className="text-white font-semibold text-sm lg:text-base">{initials}</span>
+                <div className="h-10 w-10 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center ring-2 ring-white dark:ring-black shadow-md font-bold text-sm transition-colors duration-300">
+                  {initials}
                 </div>
               )}
-            </button>
-            <button
-              onClick={onLogout}
-              className="flex items-center justify-center p-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-              aria-label="Log out"
-            >
-              <LogoutIcon className="h-5 w-5" />
-            </button>
+              <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white dark:ring-black bg-green-500"></span>
+            </div>
+
+            <div className="max-w-0 group-hover:max-w-[120px] overflow-hidden transition-all duration-500 ease-out opacity-0 group-hover:opacity-100">
+              <div className="flex items-center gap-2 pl-3 pr-2 whitespace-nowrap text-sm font-semibold text-gray-700 dark:text-gray-200">
+                <span>Log out</span>
+                <LogoutIcon className="h-4 w-4 text-red-500" />
+              </div>
+            </div>
+          </button>
         </div>
-        {isUploaderOpen && (
-            <ProfilePhotoUploader onClose={() => setIsUploaderOpen(false)} onSave={handleSaveAvatar} />
-        )}
+      </div>
     </header>
   );
 };

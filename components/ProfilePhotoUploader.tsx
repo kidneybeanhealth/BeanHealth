@@ -22,7 +22,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
         setError('File is too large. Maximum size is 5MB.');
         return;
       }
-      
+
       setError(null);
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -35,7 +35,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
   const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleFileChange(e.target.files?.[0] || null);
   };
-  
+
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
@@ -44,10 +44,10 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
     e.preventDefault();
     handleFileChange(e.dataTransfer.files?.[0] || null);
   };
-  
+
   const handleSave = () => {
     if (imageSrc) {
-        onSave(imageSrc);
+      onSave(imageSrc);
     }
   };
 
@@ -60,7 +60,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
             <XIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="p-6">
           <div
             onDragOver={handleDragOver}
@@ -79,7 +79,7 @@ const ProfilePhotoUploader: React.FC<ProfilePhotoUploaderProps> = ({ onClose, on
               <img src={imageSrc} alt="Preview" className="mx-auto h-40 w-40 rounded-full object-cover" />
             ) : (
               <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
-                <UploadIcon className="h-12 w-12 mb-2"/>
+                <UploadIcon className="h-12 w-12 mb-2" />
                 <p className="font-semibold">Click to upload or drag and drop</p>
                 <p className="text-sm">PNG, JPG, or WEBP (max 5MB)</p>
               </div>

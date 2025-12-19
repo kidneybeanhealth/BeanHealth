@@ -10,9 +10,18 @@ interface DoctorSidebarProps {
   setActiveView: (view: DoctorPortalView) => void;
   isOpen: boolean;
   onClose: () => void;
+  unreadMessageCount?: number;
+  hasUrgentMessages?: boolean;
 }
 
-const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ activeView, setActiveView, isOpen, onClose }) => {
+const DoctorSidebar: React.FC<DoctorSidebarProps> = ({
+  activeView,
+  setActiveView,
+  isOpen,
+  onClose,
+  unreadMessageCount = 0,
+  hasUrgentMessages = false
+}) => {
   const navItems: { view: DoctorPortalView; label: string; icon: React.ReactElement }[] = [
     { view: 'dashboard', label: 'Patient Roster', icon: <UserGroupIcon /> },
     { view: 'messages', label: 'Messages', icon: <MessagesIcon /> },
@@ -40,13 +49,32 @@ const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ activeView, setActiveView
             <li key={item.view}>
               <button
                 onClick={() => setActiveView(item.view)}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all duration-200 ${activeView === item.view
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all duration-200 relative ${activeView === item.view
                   ? 'bg-[#8AC43C] text-white'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
               >
-                <span>{item.icon}</span>
-                <span className="font-medium text-[15px]">{item.label}</span>
+                <span className="relative">
+                  {item.icon}
+                  {/* Notification dot for messages */}
+                  {item.view === 'messages' && unreadMessageCount > 0 && activeView !== 'messages' && (
+                    <span className={`absolute -top-1 -right-1 flex h-2.5 w-2.5`}>
+                      <span className={`absolute inline-flex h-full w-full rounded-full ${hasUrgentMessages ? 'bg-red-500 animate-ping' : 'bg-white'} opacity-75`}></span>
+                      <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${hasUrgentMessages ? 'bg-red-500' : 'bg-white'}`}></span>
+                    </span>
+                  )}
+                </span>
+                <span className="font-medium text-[15px] flex-1">{item.label}</span>
+
+                {/* Unread count badge for messages */}
+                {item.view === 'messages' && unreadMessageCount > 0 && activeView !== 'messages' && (
+                  <span className={`text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center ${hasUrgentMessages
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : 'bg-[#8AC43C] text-white'
+                    }`}>
+                    {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                  </span>
+                )}
               </button>
             </li>
           ))}

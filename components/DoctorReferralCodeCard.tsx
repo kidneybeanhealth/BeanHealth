@@ -53,58 +53,61 @@ const DoctorReferralCodeCard: React.FC = () => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-900/20 dark:to-orange-900/20 rounded-xl shadow-sm border-2 border-rose-200 dark:border-rose-800 p-6">
-      <div className="flex items-start justify-between mb-4">
+    <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-8 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+      <div className="flex items-start justify-between mb-8">
         <div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+          <h3 className="text-xl font-extrabold text-[#222222] dark:text-white mb-2">
             Your Referral Code
           </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-[#717171] dark:text-[#a0a0a0] font-medium">
             Share this with your patients to register under your care
           </p>
         </div>
-        <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center">
+          <svg className="w-6 h-6 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="flex-1 bg-white dark:bg-gray-900 rounded-lg px-4 py-3 border-2 border-rose-300 dark:border-rose-700">
-          <p className="text-2xl font-bold font-mono text-rose-900 dark:text-rose-400 tracking-wider text-center">
+      <div className="flex items-center gap-4">
+        <div className="flex-1 bg-gray-50 dark:bg-[#2a2a2a] rounded-xl px-6 py-4 border border-dashed border-gray-300 dark:border-gray-700">
+          <p className="text-3xl font-extrabold font-mono text-[#222222] dark:text-white tracking-widest text-center">
             {referralCode}
           </p>
         </div>
-        
+
         <button
           onClick={handleCopy}
-          className="flex-shrink-0 p-3 rounded-lg bg-white dark:bg-gray-900 border-2 border-rose-300 dark:border-rose-700 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all duration-200 group relative"
+          className="flex-shrink-0 p-4 rounded-xl bg-[#222222] dark:bg-white hover:opacity-90 transition-all duration-200 group relative shadow-md"
           title="Copy to clipboard"
         >
           {copied ? (
-            <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg className="w-6 h-6 text-green-400 dark:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
             </svg>
           ) : (
-            <svg className="w-6 h-6 text-rose-700 dark:text-rose-400 group-hover:text-rose-900 dark:group-hover:text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-white dark:text-[#222222]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
           )}
-          
+
           {copied && (
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1 rounded-lg whitespace-nowrap">
+            <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black dark:bg-white text-white dark:text-black text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
               Copied!
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-black dark:border-t-white"></div>
             </div>
           )}
         </button>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-rose-200 dark:border-rose-800">
-        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-          <svg className="w-4 h-4 text-rose-600 dark:text-rose-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
+      <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-3 text-sm font-medium text-[#717171] dark:text-[#a0a0a0]">
+          <div className="w-6 h-6 rounded-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center flex-shrink-0">
+            <svg className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+          </div>
           <span>Patients need this code to register and connect with you</span>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { NotificationProvider, useNotifications } from '../contexts/NotificationContext';
 import { User, ChatMessage, Patient } from '../types';
 import { PatientAdditionService } from '../services/patientInvitationService';
 import { ChatService } from '../services/chatService';
@@ -149,9 +150,53 @@ const DoctorDashboardMain: React.FC = () => {
     setActiveView('dashboard');
   };
 
-  const unreadMessagesCount = messages.filter(m =>
+  // Local calculation for fallback
+  const localUnreadCount = messages.filter(m =>
     m.recipientId === user?.id && !m.isRead
   ).length;
+
+  // Helper component to display notification badge with context
+  const MessagesNotificationBadge: React.FC<{ localCount: number }> = ({ localCount }) => {
+    const { unreadMessageCount, hasUrgentMessages } = useNotifications();
+    const count = unreadMessageCount || localCount;
+
+    if (count === 0) return null;
+
+    return (
+      <>
+        <span className={`text-white text-[10px] px-1.5 py-0.5 rounded-full ${hasUrgentMessages ? 'bg-red-500 animate-pulse' : 'bg-[#FF385C]'}`}>
+          {count}
+        </span>
+        {hasUrgentMessages && (
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+          </span>
+        )}
+      </>
+    );
+  };
+
+  // Helper component for Messages stat card with context
+  const MessagesStatCard: React.FC<{ localCount: number }> = ({ localCount }) => {
+    const { unreadMessageCount } = useNotifications();
+    const count = unreadMessageCount || localCount;
+
+    return (
+      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-shadow duration-300 border border-transparent dark:border-gray-800">
+        <div className="flex flex-col h-full justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">Messages</h3>
+              <MessagesIcon className="w-6 h-6 text-[#FF385C]" />
+            </div>
+            <span className="text-4xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{count}</span>
+          </div>
+          <p className="text-sm font-medium text-[#717171] dark:text-[#888888] mt-2">Awaiting response</p>
+        </div>
+      </div>
+    );
+  };
 
   const StatCard = ({ title, value, subtext, icon: Icon, colorClass }: any) => (
     <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-shadow duration-300 border border-transparent dark:border-gray-800">
@@ -196,13 +241,7 @@ const DoctorDashboardMain: React.FC = () => {
           icon={UserGroupIcon}
           colorClass="text-[#FF385C]"
         />
-        <StatCard
-          title="Messages"
-          value={unreadMessagesCount}
-          subtext="Awaiting response"
-          icon={MessagesIcon}
-          colorClass="text-[#FF385C]"
-        />
+        <MessagesStatCard localCount={localUnreadCount} />
         <StatCard
           title="Reviews"
           value="0"
@@ -246,7 +285,7 @@ const DoctorDashboardMain: React.FC = () => {
                       }`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`h-12 w-12 rounded-full ${getInitialsColor(patient.name, patient.email)} flex items-center justify-center text-white font-bold text-sm shadow-sm scale-100 group-hover:scale-105 transition-transform`}>
+                      <div className={`h-12 w-12 rounded-full bg-[#222222] dark:bg-white flex items-center justify-center text-white dark:text-[#222222] font-bold text-sm shadow-sm scale-100 group-hover:scale-105 transition-transform`}>
                         {getInitials(patient.name, patient.email)}
                       </div>
                       <div>
@@ -261,7 +300,7 @@ const DoctorDashboardMain: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleViewPatient(patient); }}
-                        className="px-5 py-2.5 rounded-xl bg-white dark:bg-[#333] border border-gray-200 dark:border-gray-600 text-sm font-semibold text-[#222222] dark:text-white hover:border-black dark:hover:border-white transition-colors"
+                        className="px-6 py-2.5 rounded-full bg-white dark:bg-[#333] border border-gray-200 dark:border-gray-600 text-sm font-bold text-[#222222] dark:text-white hover:border-[#222222] dark:hover:border-white transition-colors"
                       >
                         View
                       </button>
@@ -364,7 +403,7 @@ const DoctorDashboardMain: React.FC = () => {
           {alertCounts.urgent > 0 && (
             <button
               onClick={() => setActiveView('alerts')}
-              className="flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl font-medium animate-pulse"
+              className="flex items-center gap-2 px-6 py-2.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full font-bold animate-pulse"
             >
               <span>🔴</span>
               <span>{alertCounts.urgent} Urgent</span>
@@ -372,7 +411,7 @@ const DoctorDashboardMain: React.FC = () => {
           )}
           <button
             onClick={() => setActiveView('alerts')}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="flex items-center gap-2 px-6 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#222222] dark:text-white rounded-full font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             <span>View All Alerts</span>
             {alertCounts.total > 0 && (
@@ -393,7 +432,7 @@ const DoctorDashboardMain: React.FC = () => {
       />
 
       {/* Patients Grid */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800 overflow-hidden">
         <div className="p-4 border-b border-gray-100 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your Patients ({patients.length})</h2>
         </div>
@@ -470,125 +509,123 @@ const DoctorDashboardMain: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#F7F7F7] dark:bg-black font-sans text-[#222222] selection:bg-[#FF385C] selection:text-white">
+    <NotificationProvider userId={user?.id || ''} activeView={activeView}>
+      <div className="min-h-screen bg-[#F7F7F7] dark:bg-black font-sans text-[#222222] selection:bg-[#FF385C] selection:text-white">
 
-      {/* Sticky Header */}
-      <div className={`sticky top-0 z-30 transition-all duration-300 bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            {/* Logo / Brand Area */}
-            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
-                <LogoIcon className="w-10 h-10" />
-              </div>
-              <div className="hidden md:block">
-                <h2 className="text-xl font-bold leading-none tracking-tight">
-                  <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
-                  <span className="text-[#8AC43C]">Health</span>
-                </h2>
-                <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-1">DOCTOR PORTAL</p>
-              </div>
-            </div>
-
-            {/* Center Tabs */}
-            <nav className="absolute left-1/2 transform -translate-x-1/2 flex p-1 bg-gray-100 dark:bg-[#2c2c2c] rounded-full">
-              <button
-                onClick={() => setActiveView('dashboard')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'dashboard'
-                  ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
-                  : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
-                  }`}
-              >
-                <span>Dashboard</span>
-              </button>
-              <button
-                onClick={() => setActiveView('monitoring')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'monitoring' || activeView === 'alerts'
-                  ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
-                  : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
-                  }`}
-              >
-                <span>Monitoring</span>
-                {alertCounts.urgent > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
-                    {alertCounts.urgent}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveView('messages')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'messages'
-                  ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
-                  : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
-                  }`}
-              >
-                <span>Messages</span>
-                {unreadMessagesCount > 0 && (
-                  <span className="bg-[#FF385C] text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                    {unreadMessagesCount}
-                  </span>
-                )}
-              </button>
-            </nav>
-
-            {/* Right User Actions */}
-            <div className="flex items-center gap-5">
-              <ThemeToggle />
-
-              <div className="hidden md:flex items-center gap-3 pl-3 border-l border-gray-200 dark:border-gray-700">
-                <div className="text-right">
-                  <p className="text-sm font-bold text-[#222222] dark:text-white leading-none">
-                    {profile?.name || user?.email?.split('@')[0] || 'Doctor'}
-                  </p>
-                  <p className="text-xs text-[#717171] dark:text-[#a0a0a0] font-medium mt-0.5">
-                    {profile?.specialty || 'MD'}
-                  </p>
+        {/* Sticky Header */}
+        <div className={`sticky top-0 z-30 transition-all duration-300 bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-20">
+              {/* Logo / Brand Area */}
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
+                  <LogoIcon className="w-10 h-10" />
                 </div>
-                <div className="h-10 w-10 bg-gradient-to-br from-gray-800 to-black dark:from-white dark:to-gray-200 rounded-full flex items-center justify-center text-white dark:text-black font-bold text-sm shadow-md">
-                  {getInitials(profile?.name || user?.email || 'Dr', user?.email || '')}
+                <div className="hidden md:block">
+                  <h2 className="text-xl font-bold leading-none tracking-tight">
+                    <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
+                    <span className="text-[#8AC43C]">Health</span>
+                  </h2>
+                  <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-1">DOCTOR PORTAL</p>
                 </div>
               </div>
 
-              <div className="hidden md:block">
+              {/* Center Tabs */}
+              <nav className="absolute left-1/2 transform -translate-x-1/2 flex p-1 bg-gray-100 dark:bg-[#2c2c2c] rounded-full">
                 <button
-                  onClick={signOut}
-                  className="p-2.5 text-[#717171] hover:text-[#FF385C] hover:bg-red-50 dark:hover:bg-red-900/10 rounded-full transition-colors"
-                  title="Sign Out"
+                  onClick={() => setActiveView('dashboard')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'dashboard'
+                    ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
+                    : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                    }`}
                 >
-                  <LogoutIcon className="w-5 h-5" />
+                  <span>Dashboard</span>
                 </button>
+                <button
+                  onClick={() => setActiveView('monitoring')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'monitoring' || activeView === 'alerts'
+                    ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
+                    : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                    }`}
+                >
+                  <span>Monitoring</span>
+                  {alertCounts.urgent > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
+                      {alertCounts.urgent}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveView('messages')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 relative ${activeView === 'messages'
+                    ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
+                    : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                    }`}
+                >
+                  <span>Messages</span>
+                  <MessagesNotificationBadge localCount={localUnreadCount} />
+                </button>
+              </nav>
+
+              {/* Right User Actions */}
+              <div className="flex items-center gap-5">
+                <ThemeToggle />
+
+                <div className="hidden md:flex items-center gap-3 pl-3 border-l border-gray-200 dark:border-gray-700">
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-[#222222] dark:text-white leading-none">
+                      {profile?.name || user?.email?.split('@')[0] || 'Doctor'}
+                    </p>
+                    <p className="text-xs text-[#717171] dark:text-[#a0a0a0] font-medium mt-0.5">
+                      {profile?.specialty || 'MD'}
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 bg-gradient-to-br from-gray-800 to-black dark:from-white dark:to-gray-200 rounded-full flex items-center justify-center text-white dark:text-black font-bold text-sm shadow-md">
+                    {getInitials(profile?.name || user?.email || 'Dr', user?.email || '')}
+                  </div>
+                </div>
+
+                <div className="hidden md:block">
+                  <button
+                    onClick={signOut}
+                    className="p-2.5 text-[#717171] hover:text-[#FF385C] hover:bg-red-50 dark:hover:bg-red-900/10 rounded-full transition-colors"
+                    title="Sign Out"
+                  >
+                    <LogoutIcon className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Main Content Area */}
+        <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)]' : 'py-10'}`}>
+          <div className={`${activeView === 'messages' ? 'h-full' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'}`}>
+            {activeView === 'dashboard' && renderDashboard()}
+
+            {activeView === 'monitoring' && renderMonitoring()}
+
+            {activeView === 'alerts' && renderAlerts()}
+
+            {activeView === 'messages' && (
+              <div className="h-full px-4 pt-4">
+                {renderMessages()}
+              </div>
+            )}
+
+            {activeView === 'patient-detail' && selectedPatient && (
+              <div className="animate-slide-up bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] min-h-[80vh]">
+                <DoctorPatientView
+                  patient={selectedPatient}
+                  onBack={handleBackToDashboard}
+                />
+              </div>
+            )}
+          </div>
+        </main>
       </div>
-
-      {/* Main Content Area */}
-      <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)]' : 'py-10'}`}>
-        <div className={`${activeView === 'messages' ? 'h-full' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'}`}>
-          {activeView === 'dashboard' && renderDashboard()}
-
-          {activeView === 'monitoring' && renderMonitoring()}
-
-          {activeView === 'alerts' && renderAlerts()}
-
-          {activeView === 'messages' && (
-            <div className="h-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black">
-              {renderMessages()}
-            </div>
-          )}
-
-          {activeView === 'patient-detail' && selectedPatient && (
-            <div className="animate-slide-up bg-white dark:bg-[#1e1e1e] rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] min-h-[80vh]">
-              <DoctorPatientView
-                patient={selectedPatient}
-                onBack={handleBackToDashboard}
-              />
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+    </NotificationProvider>
   );
 };
 

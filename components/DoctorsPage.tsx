@@ -53,7 +53,8 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             const { data: relationships, error: relError } = await supabase
                 .from('patient_doctor_relationships')
                 .select('*')
-                .eq('patient_id', patientId);
+                .eq('patient_id', patientId)
+                .returns<Relationship[]>();
 
             if (relError) {
                 console.error('Error fetching relationships:', relError);
@@ -163,12 +164,12 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             }
 
             // Create relationship - only use columns that exist
-            const { error: linkError } = await supabase
-                .from('patient_doctor_relationships')
+            const { error: linkError } = await (supabase
+                .from('patient_doctor_relationships') as any)
                 .insert({
                     patient_id: patientId,
                     doctor_id: foundDoctor.id
-                } as any);
+                });
 
             if (linkError) throw linkError;
 
@@ -191,9 +192,9 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
         if (!confirm('Are you sure you want to unlink this doctor?')) return;
 
         try {
-            const { error } = await supabase
-                .from('patient_doctor_relationships')
-                .update({ status: 'inactive' } as any)
+            const { error } = await (supabase
+                .from('patient_doctor_relationships') as any)
+                .update({ status: 'inactive' })
                 .eq('patient_id', patientId)
                 .eq('doctor_id', doctorId);
 
@@ -208,21 +209,25 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">My Doctors</h1>
-                <p className="text-gray-600 dark:text-gray-400">Connect and communicate with your healthcare providers</p>
+        <div className="space-y-6 pb-8 animate-fade-in max-w-[1440px] mx-auto pt-0">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-[#222222] dark:text-white tracking-tight">
+                        My Doctors
+                    </h1>
+                    <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">Connect and communicate with your healthcare providers</p>
+                </div>
             </div>
 
             {/* Add Doctor Section */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Add a Doctor</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Enter your doctor's referral code to connect with them. Ask your doctor for their code.
+            <div className="bg-white dark:bg-[#1e1e1e] p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800 transition-all">
+                <h2 className="text-xl font-bold text-[#222222] dark:text-white mb-1">Add a Doctor</h2>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                    Enter your doctor's referral code to connect.
                 </p>
 
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                     <input
                         type="text"
                         value={referralCode}
@@ -232,83 +237,79 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                             setLinkSuccess('');
                         }}
                         placeholder="DR-XXXX-XXXX"
-                        className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-mono text-center tracking-wider focus:outline-none focus:ring-2 focus:ring-secondary-700"
+                        className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl font-mono text-base text-center tracking-wider focus:outline-none focus:ring-1 focus:ring-[#8AC43C] text-[#222222] dark:text-white placeholder-gray-400"
                     />
                     <button
                         onClick={handleLinkDoctor}
                         disabled={isLinking || !referralCode.trim()}
-                        className="px-6 py-3 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-6 py-3 bg-[#222222] dark:bg-white text-white dark:text-[#222222] font-bold text-sm rounded-full hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isLinking ? 'Linking...' : 'Link Doctor'}
                     </button>
                 </div>
 
                 {linkError && (
-                    <p className="mt-3 text-sm text-red-600 dark:text-red-400">{linkError}</p>
+                    <p className="mt-2 text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wide">{linkError}</p>
                 )}
                 {linkSuccess && (
-                    <p className="mt-3 text-sm text-green-600 dark:text-green-400">{linkSuccess}</p>
+                    <p className="mt-2 text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wide">{linkSuccess}</p>
                 )}
             </div>
 
             {/* Linked Doctors List */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Linked Doctors</h2>
+            <div className="bg-white dark:bg-[#1e1e1e] p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800 transition-all">
+                <h2 className="text-xl font-bold text-[#222222] dark:text-white mb-4">Linked Doctors</h2>
 
                 {isLoading ? (
-                    <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-secondary-700 mx-auto"></div>
-                        <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading doctors...</p>
+                    <div className="text-center py-6">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-200 border-t-[#8AC43C] mx-auto"></div>
                     </div>
                 ) : linkedDoctors.length === 0 ? (
-                    <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mx-auto mb-4 flex items-center justify-center">
-                            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No doctors linked yet</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Enter a doctor's referral code above to get started
-                        </p>
+                    <div className="text-center py-6">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No doctors linked yet.</p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         {linkedDoctors.map((doctor) => (
                             <div
                                 key={doctor.id}
-                                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
+                                className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700 transition-all"
                             >
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 ${getInitialsColor(doctor.name, doctor.email)} rounded-xl flex items-center justify-center`}>
-                                        <span className="text-sm font-bold text-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-black dark:bg-white rounded-full flex items-center justify-center shadow-sm">
+                                        <span className="text-xs font-bold text-white dark:text-black">
                                             {getInitials(doctor.name, doctor.email)}
                                         </span>
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                        <p className="font-bold text-[#222222] dark:text-white text-base">
                                             Dr. {doctor.name}
                                         </p>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                                            {doctor.specialty || 'General Practice'}
-                                        </p>
-                                        {doctor.linkedSince && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-500">
-                                                Connected since {new Date(doctor.linkedSince).toLocaleDateString()}
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0]">
+                                                {doctor.specialty || 'General Practice'}
                                             </p>
-                                        )}
+                                            {doctor.linkedSince && (
+                                                <>
+                                                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>
+                                                    <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                        Since {new Date(doctor.linkedSince).toLocaleDateString()}
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-1.5">
                                     <button
                                         onClick={() => onNavigateToChat(doctor.id)}
-                                        className="px-4 py-2 bg-secondary-700 hover:bg-secondary-800 text-white text-sm font-medium rounded-xl transition-colors"
+                                        className="px-4 py-2 bg-[#222222] dark:bg-white text-white dark:text-[#222222] text-xs font-bold rounded-full hover:opacity-90 transition-all shadow-sm active:scale-95"
                                     >
                                         Message
                                     </button>
                                     <button
                                         onClick={() => handleUnlinkDoctor(doctor.id)}
-                                        className="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl transition-colors"
+                                        className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-gray-400 text-xs font-bold rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors active:scale-95"
                                     >
                                         Unlink
                                     </button>

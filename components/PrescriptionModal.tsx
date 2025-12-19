@@ -96,7 +96,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       }
 
       // Calculate patient age
-      const patientAge = patient.dateOfBirth 
+      const patientAge = patient.dateOfBirth
         ? Math.floor((Date.now() - new Date(patient.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toString()
         : undefined;
 
@@ -151,12 +151,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       );
 
       showSuccessToast('Prescription sent to patient successfully!');
-      
+
       // Call callback if provided
       if (onPrescriptionSent) {
         onPrescriptionSent();
       }
-      
+
       handleClose();
     } catch (error) {
       console.error('Error sending prescription:', error);
@@ -216,29 +216,29 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           ></div>
 
           {/* Modal panel */}
-          <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+          <div className="inline-block align-bottom bg-white dark:bg-[#1e1e1e] rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full animate-scaleIn">
             {/* Header */}
-            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4">
+            <div className="bg-white dark:bg-[#1e1e1e] px-8 py-6 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-bold text-white">✅ Prescription Created!</h3>
-                  <p className="text-emerald-100 text-sm mt-1">
+                  <h3 className="text-3xl font-extrabold text-[#222222] dark:text-white">Prescription Ready!</h3>
+                  <p className="text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">
                     Review and send to {patient.name}
                   </p>
                 </div>
                 <button
                   onClick={handleClose}
-                  className="text-white hover:text-emerald-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
+                  className="p-2 bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                 >
-                  <XIcon className="h-6 w-6" />
+                  <XIcon className="h-6 w-6 text-[#222222] dark:text-white" />
                 </button>
               </div>
             </div>
 
             {/* Body */}
-            <div className="px-6 py-6">
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl p-6 mb-6">
-                <div className="flex items-center space-x-3 mb-4">
+            <div className="px-8 py-8">
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-6 mb-6">
+                <div className="flex items-center space-x-4 mb-4">
                   <svg className="h-12 w-12 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -287,27 +287,27 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="bg-gray-50 dark:bg-[#2a2a2a] px-8 py-6 flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-4 border-t border-gray-100 dark:border-gray-800">
               <button
                 onClick={handleBackToEdit}
                 disabled={isSubmitting}
-                className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 text-sm font-bold text-[#717171] dark:text-[#a0a0a0] bg-white dark:bg-[#333] border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
               >
                 ← Back to Edit
               </button>
-              
-              <div className="flex space-x-3">
+
+              <div className="flex space-x-4">
                 <button
                   onClick={handleDownloadOnly}
                   disabled={isSubmitting}
-                  className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none px-6 py-3 text-sm font-bold text-[#717171] dark:text-[#a0a0a0] bg-white dark:bg-[#333] border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
                 >
                   💾 Download Only
                 </button>
                 <button
                   onClick={handleSendToPatient}
                   disabled={isSubmitting}
-                  className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  className="flex-1 sm:flex-none px-8 py-3 text-sm font-bold text-white bg-[#222222] dark:bg-white dark:text-[#222222] rounded-full hover:opacity-90 transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2"
                 >
                   {isSubmitting ? (
                     <>
@@ -344,37 +344,37 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         ></div>
 
         {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+        <div className="inline-block align-bottom bg-white dark:bg-[#1e1e1e] rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full animate-scaleIn">
           {/* Header */}
-          <div className="bg-gradient-to-r from-rose-500 to-rose-900 px-6 py-4">
+          <div className="bg-white dark:bg-[#1e1e1e] px-8 py-6 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-2xl font-bold text-white">Create Prescription</h3>
-                <p className="text-sky-100 text-sm mt-1">
-                  Patient: <span className="font-semibold">{patient.name}</span>
+                <h3 className="text-3xl font-extrabold text-[#222222] dark:text-white">Create Prescription</h3>
+                <p className="text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">
+                  Patient: <span className="font-bold text-[#222222] dark:text-white">{patient.name}</span>
                 </p>
               </div>
               <button
                 onClick={handleClose}
-                className="text-white hover:text-sky-100 transition-colors p-2 hover:bg-white/20 rounded-lg"
+                className="p-2 bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
               >
-                <XIcon className="h-6 w-6" />
+                <XIcon className="h-6 w-6 text-[#222222] dark:text-white" />
               </button>
             </div>
           </div>
 
           {/* Body */}
-          <form onSubmit={handleSubmit} className="px-6 py-6 max-h-[70vh] overflow-y-auto">
+          <form onSubmit={handleSubmit} className="px-8 py-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
             {/* Medications Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="text-xl font-bold text-[#222222] dark:text-white">
                   Medications
                 </h4>
                 <button
                   type="button"
                   onClick={handleAddMedication}
-                  className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-rose-900 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-secondary-200 dark:border-secondary-800 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors"
+                  className="flex items-center space-x-2 px-6 py-2.5 text-sm font-bold text-white bg-[#222222] dark:bg-white dark:text-[#222222] rounded-full hover:opacity-90 transition-opacity shadow-md"
                 >
                   <PlusCircleIcon className="h-5 w-5" />
                   <span>Add Medication</span>
@@ -506,12 +506,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           </form>
 
           {/* Footer */}
-          <div className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="bg-gray-50 dark:bg-[#2a2a2a] px-8 py-6 flex justify-end space-x-4 border-t border-gray-100 dark:border-gray-800">
             <button
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 text-sm font-bold text-[#717171] dark:text-[#a0a0a0] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
@@ -519,7 +519,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               type="submit"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg hover:from-secondary-600 hover:to-secondary-800 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              className="px-8 py-3 text-sm font-bold text-white bg-[#222222] dark:bg-white dark:text-[#222222] rounded-full hover:opacity-90 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               {isSubmitting ? (
                 <>

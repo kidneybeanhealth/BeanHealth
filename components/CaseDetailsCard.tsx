@@ -110,19 +110,19 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
     }
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
+        <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all duration-300 border border-transparent dark:border-gray-800">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                        <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="p-2.5 bg-gray-100 dark:bg-[#2a2a2a] rounded-full">
+                        <svg className="h-5 w-5 text-[#222222] dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Case Details</h3>
+                        <h3 className="text-base font-bold text-[#222222] dark:text-white">Case Details</h3>
                         {caseDetails?.updatedAt && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-[10px] font-medium text-[#717171] dark:text-[#a0a0a0] mt-0.5">
                                 Updated {new Date(caseDetails.updatedAt).toLocaleDateString()}
                             </p>
                         )}
@@ -131,10 +131,10 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                 {!readOnly && !isEditing && (
                     <button
                         onClick={handleStartEdit}
-                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
                     >
-                        <EditIcon className="h-4 w-4" />
-                        <span className="hidden sm:inline">Edit</span>
+                        <EditIcon className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Add</span>
                     </button>
                 )}
             </div>
@@ -257,11 +257,11 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                 <div className="space-y-4">
                     {/* Primary Condition */}
                     <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium mb-1">
+                        <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">
                             Primary Condition
                         </p>
                         {caseDetails?.primaryCondition ? (
-                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            <p className="text-base font-bold text-[#222222] dark:text-white">
                                 {caseDetails.primaryCondition}
                             </p>
                         ) : (
@@ -273,7 +273,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
 
                     {/* Latest Complaint */}
                     <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium mb-1">
+                        <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">
                             Latest Complaint / Chief Issue
                             {caseDetails?.complaintDate && (
                                 <span className="ml-2 text-gray-400 normal-case">
@@ -282,7 +282,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                             )}
                         </p>
                         {caseDetails?.latestComplaint ? (
-                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                            <p className="text-base font-medium text-[#222222] dark:text-gray-200 leading-relaxed">
                                 {caseDetails.latestComplaint}
                             </p>
                         ) : (
@@ -302,7 +302,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                                 {caseDetails.medicalHistory.map((item, index) => (
                                     <span
                                         key={index}
-                                        className="inline-flex items-center px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-sm rounded-full"
+                                        className="inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-gray-800 text-[#222222] dark:text-white text-xs font-bold rounded-lg"
                                     >
                                         {item}
                                     </span>
@@ -316,17 +316,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                     </div>
 
                     {/* Empty State for New Patients */}
-                    {!caseDetails && !readOnly && (
-                        <div className="text-center py-4">
-                            <button
-                                onClick={handleStartEdit}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
-                            >
-                                <PlusCircleIcon className="h-5 w-5" />
-                                Add Case Details
-                            </button>
-                        </div>
-                    )}
+
                 </div>
             )}
         </div>

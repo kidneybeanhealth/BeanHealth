@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { NotificationProvider, useNotifications } from "../contexts/NotificationContext";
+import { UrgentCreditsProvider, useUrgentCredits } from "../contexts/UrgentCreditsContext";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Dashboard from "./Dashboard";
@@ -192,6 +194,7 @@ const PatientDashboard: React.FC = () => {
         email: user?.email || "",
         role: "patient" as const,
         avatarUrl: "", // No longer sync Google photos or random pics - use initials only
+        urgentCredits: profile?.urgent_credits ?? 5, // Include urgent credits for messaging
     };
 
     // Remove debug logging for avatar sources since we no longer use external sources
@@ -310,21 +313,7 @@ const PatientDashboard: React.FC = () => {
         }
     };
 
-    const handleUpdateAvatar = async (dataUrl: string) => {
-        // Handle avatar update by saving to the database
-        if (!user?.id) return;
 
-        try {
-            // Update the avatar URL in the database
-            await UserService.updateUser(user.id, { avatar_url: dataUrl });
-
-            // The avatar will be updated in the UI automatically when the profile refreshes
-            console.log("Avatar updated successfully");
-        } catch (error) {
-            console.error("Failed to update avatar:", error);
-            alert("Failed to update profile picture. Please try again.");
-        }
-    };
 
 
 
@@ -750,59 +739,84 @@ const PatientDashboard: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col md:flex-row">
-            {/* Sidebar */}
-            <Sidebar
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isOpen={sidebarOpen}
-                onClose={() => setSidebarOpen(false)}
-            />
-
-            {/* Main content wrapper */}
-            <div className="flex-1 flex flex-col min-w-0 w-full md:w-auto">
-                {/* Hide header on mobile when in messages view */}
-                <div className={activeView === 'messages' ? 'hidden md:block' : ''}>
-                    <Header
-                        user={appUser}
-                        onLogout={signOut}
-                        onMenuClick={() => setSidebarOpen(true)}
-                        onUpdateAvatar={handleUpdateAvatar}
+        <UrgentCreditsProvider userId={user?.id || ''} initialCredits={profile?.urgent_credits ?? 5}>
+            <NotificationProvider userId={user?.id || ''} activeView={activeView}>
+                <div className="h-screen bg-[#F7F7F7] dark:bg-black flex flex-col md:flex-row overflow-hidden">
+                    {/* Sidebar */}
+                    <SidebarWithNotifications
+                        activeView={activeView}
+                        setActiveView={setActiveView}
+                        isOpen={sidebarOpen}
+                        onClose={() => setSidebarOpen(false)}
                     />
+
+                    {/* Main content wrapper */}
+                    <div className="flex-1 flex flex-col min-w-0 w-full md:w-auto h-full overflow-hidden">
+                        {/* Hide header on mobile when in messages view */}
+                        <div className={`flex-shrink-0 ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
+                            <Header
+                                user={appUser}
+                                onLogout={signOut}
+                                onMenuClick={() => setSidebarOpen(true)}
+                            />
+                        </div>
+
+                        <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-4 pt-4 pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-5 lg:px-6 pt-6 pb-8'}`}>{renderContent()}</main>
+                    </div>
+
+                    {/* Onboarding Modal */}
+                    <OnboardingModal
+                        isOpen={showOnboarding}
+                        onComplete={handleOnboardingComplete}
+                    />
+
+                    {/* Extracted Medications Modal */}
+                    {extractedMedsData && (
+                        <ExtractedMedicationsModal
+                            isOpen={showExtractedMedsModal}
+                            onClose={() => {
+                                setShowExtractedMedsModal(false);
+                                setExtractedMedsData(null);
+                            }}
+                            extractedMedications={extractedMedsData.medications}
+                            sourceRecordId={extractedMedsData.recordId}
+                            sourceRecordType={extractedMedsData.recordType}
+                            sourceRecordDate={extractedMedsData.recordDate}
+                            patientId={user?.id || ''}
+                            onMedicationsAdded={(added, skipped) => {
+                                console.log(`✅ Added ${added.length} medications, skipped ${skipped.length}`);
+                                if (added.length > 0) {
+                                    alert(`${added.length} medication(s) added to your tracker!${skipped.length > 0 ? `\n${skipped.length} already existed and were skipped.` : ''}`);
+                                }
+                            }}
+                        />
+                    )}
                 </div>
+            </NotificationProvider>
+        </UrgentCreditsProvider>
+    );
+};
 
-                <main className={`flex-1 overflow-y-auto ${activeView === 'messages' ? 'p-0' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>{renderContent()}</main>
-            </div>
+// Sidebar wrapper that uses notification context
+const SidebarWithNotifications: React.FC<{
+    activeView: View;
+    setActiveView: (view: View) => void;
+    isOpen: boolean;
+    onClose: () => void;
+}> = ({ activeView, setActiveView, isOpen, onClose }) => {
+    const { unreadMessageCount, hasUrgentMessages } = useNotifications();
 
-            {/* Onboarding Modal */}
-            <OnboardingModal
-                isOpen={showOnboarding}
-                onComplete={handleOnboardingComplete}
-            />
-
-            {/* Extracted Medications Modal */}
-            {extractedMedsData && (
-                <ExtractedMedicationsModal
-                    isOpen={showExtractedMedsModal}
-                    onClose={() => {
-                        setShowExtractedMedsModal(false);
-                        setExtractedMedsData(null);
-                    }}
-                    extractedMedications={extractedMedsData.medications}
-                    sourceRecordId={extractedMedsData.recordId}
-                    sourceRecordType={extractedMedsData.recordType}
-                    sourceRecordDate={extractedMedsData.recordDate}
-                    patientId={user?.id || ''}
-                    onMedicationsAdded={(added, skipped) => {
-                        console.log(`✅ Added ${added.length} medications, skipped ${skipped.length}`);
-                        if (added.length > 0) {
-                            alert(`${added.length} medication(s) added to your tracker!${skipped.length > 0 ? `\n${skipped.length} already existed and were skipped.` : ''}`);
-                        }
-                    }}
-                />
-            )}
-        </div>
+    return (
+        <Sidebar
+            activeView={activeView}
+            setActiveView={setActiveView}
+            isOpen={isOpen}
+            onClose={onClose}
+            unreadMessageCount={unreadMessageCount}
+            hasUrgentMessages={hasUrgentMessages}
+        />
     );
 };
 
 export default PatientDashboard;
+

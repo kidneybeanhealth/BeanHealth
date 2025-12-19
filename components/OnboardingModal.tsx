@@ -71,8 +71,8 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                 {step === 'welcome' && (
                     <div className="p-8 md:p-12">
                         <div className="text-center mb-8">
-                            <div className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full mx-auto mb-6 flex items-center justify-center">
-                                <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="w-20 h-20 bg-[#222222] dark:bg-white rounded-full mx-auto mb-6 flex items-center justify-center shadow-xl">
+                                <svg className="w-10 h-10 text-white dark:text-[#222222]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                             </div>
@@ -110,7 +110,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
 
                         <button
                             onClick={handleContinue}
-                            className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                            className="w-full py-4 bg-[#222222] hover:opacity-90 text-white font-bold rounded-full transition-all shadow-lg hover:shadow-xl"
                         >
                             Get Started
                         </button>
@@ -138,7 +138,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                                     value={formData.fullName}
                                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                                     placeholder="Enter your full name"
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100"
+                                    className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#222222] dark:focus:ring-white text-gray-900 dark:text-gray-100 placeholder-gray-400"
                                 />
                             </div>
 
@@ -179,7 +179,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                         <button
                             onClick={handleContinue}
                             disabled={!formData.fullName || !formData.age}
-                            className="w-full py-4 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-4 bg-[#222222] hover:opacity-90 text-white font-bold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Continue
                         </button>
@@ -205,7 +205,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                                 value={formData.referralCode}
                                 onChange={(e) => setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })}
                                 placeholder="DR-XXXX-XXXX"
-                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-gray-100 font-mono"
+                                className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#222222] dark:focus:ring-white text-gray-900 dark:text-gray-100 font-mono placeholder-gray-400"
                             />
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                                 Format: DR-XXXX-XXXX (e.g., DR-NEPH-A7K2)
@@ -215,14 +215,14 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
                         <div className="flex gap-3">
                             <button
                                 onClick={handleSkipReferral}
-                                className="flex-1 py-4 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-xl transition-all"
+                                className="flex-1 py-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-[#222222] dark:text-gray-300 font-bold rounded-full transition-all"
                             >
                                 Skip for Now
                             </button>
                             <button
                                 onClick={handleContinue}
                                 disabled={isLoading}
-                                className="flex-1 py-4 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50"
+                                className="flex-1 py-4 bg-[#222222] hover:opacity-90 text-white font-bold rounded-full transition-all disabled:opacity-50"
                             >
                                 {isLoading ? 'Completing...' : 'Complete Setup'}
                             </button>
@@ -264,7 +264,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete })
 
                         <button
                             onClick={() => window.location.reload()}
-                            className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all"
+                            className="w-full py-4 bg-[#222222] hover:opacity-90 text-white font-bold rounded-full transition-all shadow-lg"
                         >
                             Go to Dashboard
                         </button>

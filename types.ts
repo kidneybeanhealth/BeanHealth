@@ -30,6 +30,8 @@ export interface User {
   notes?: string;
   created_at?: string;
   updated_at?: string;
+  referralCode?: string;
+  referral_code?: string; // Database field name
 }
 
 export interface Vital {

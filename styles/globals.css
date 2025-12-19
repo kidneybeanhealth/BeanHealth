@@ -227,35 +227,64 @@ a:hover {
   color: var(--secondary-300);
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Professional & Subtle Auto-hide */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--gray-100);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--gray-300);
-  border-radius: var(--radius-full);
+  background: transparent;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background-clip: content-box;
 }
 
+/* Show thumb on hover of the scrollable element */
+*:hover::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--gray-400);
+  background: rgba(0, 0, 0, 0.15);
+  background-clip: content-box;
 }
 
-.dark ::-webkit-scrollbar-track {
-  background: var(--gray-800);
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: #8AC43C;
+  background-clip: content-box;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: var(--gray-600);
+  background: transparent;
 }
 
+.dark *:hover::-webkit-scrollbar-thumb,
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: var(--gray-500);
+  background: rgba(255, 255, 255, 0.15);
+  background-clip: content-box;
+}
+
+.dark *:hover::-webkit-scrollbar-thumb:hover {
+  background: #8AC43C;
+  background-clip: content-box;
+}
+
+/* Firefox Support */
+* {
+  scrollbar-width: none; /* Hide by default */
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+*:hover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.dark *:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
 /* Hide scrollbar utility */

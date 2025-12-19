@@ -50,17 +50,18 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
 
   return (
     <>
-      <div className="max-w-3xl mx-auto animate-fadeIn space-y-8">
-        <div className="text-center">
-          <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">
-            Upload Medical Record
-          </h2>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
-            Upload your file and our AI will automatically categorize and analyze it
-          </p>
+      <div className="space-y-6 pb-8 animate-fade-in max-w-[1440px] mx-auto pt-0">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-[#222222] dark:text-white tracking-tight">
+              Upload Records
+            </h1>
+            <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">AI will automatically categorize and analyze your files</p>
+          </div>
         </div>
 
-        <div className="card p-8 lg:p-10">
+        <div className="bg-white dark:bg-[#1e1e1e] p-8 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div>
               <label className="block text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-6">
@@ -78,9 +79,9 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
                   onClick={() => fileInputRef.current?.click()}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
-                  className={`flex-1 border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center cursor-pointer transition-all duration-300 ${selectedFile
-                      ? "border-gray-400 dark:border-gray-500 bg-gray-50 dark:bg-gray-700/30"
-                      : "border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/30"
+                  className={`flex-1 border-2 border-dashed rounded-3xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-300 ${selectedFile
+                    ? "border-[#222222] dark:border-white bg-gray-50 dark:bg-gray-800"
+                    : "border-gray-200 dark:border-gray-700 hover:border-[#222222] dark:hover:border-white hover:bg-gray-50 dark:hover:bg-gray-800"
                     }`}
                 >
                   {selectedFile ? (
@@ -104,12 +105,12 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
                 <button
                   type="button"
                   onClick={() => setIsCameraOpen(true)}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 sm:w-auto w-full p-4 sm:p-5 border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 rounded-2xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-all duration-300 group"
+                  className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:w-auto w-full p-6 border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-[#222222] dark:hover:border-white rounded-3xl text-[#717171] dark:text-[#a0a0a0] hover:text-[#222222] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-300 group"
                 >
-                  <div className="bg-secondary-700 dark:bg-secondary-600 p-2.5 rounded-xl transition-all duration-200">
-                    <CameraIcon className="h-6 w-6 text-white dark:text-white" />
+                  <div className="bg-[#222222] dark:bg-white p-3 rounded-full transition-all duration-200 shadow-md">
+                    <CameraIcon className="h-6 w-6 text-white dark:text-[#222222]" />
                   </div>
-                  <span className="font-semibold text-sm sm:text-base">Use Camera</span>
+                  <span className="font-bold text-sm sm:text-base">Use Camera</span>
                 </button>
               </div>
             </div>
@@ -138,7 +139,7 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
               <button
                 type="submit"
                 disabled={isSubmitDisabled}
-                className="btn-primary w-full flex justify-center items-center text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 bg-[#222222] dark:bg-white text-white dark:text-[#222222] font-bold text-lg rounded-full hover:opacity-90 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
               >
                 {isLoading && (
                   <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

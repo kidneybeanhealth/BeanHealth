@@ -324,28 +324,30 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="bg-secondary-700 dark:bg-secondary-600 rounded-3xl p-4 sm:p-6 lg:p-8 border border-gray-200/60 dark:border-gray-700/60">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
+      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 lg:p-8 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-6 w-full sm:w-auto">
             <button
               onClick={onBack}
-              className="p-2 sm:p-3 rounded-xl bg-gray-800 dark:bg-gray-100 hover:bg-gray-700 dark:hover:bg-gray-200 transition-all duration-200 flex-shrink-0"
+              className="p-3 rounded-full bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 flex-shrink-0"
             >
-              <ArrowLeftIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white dark:text-gray-900" />
+              <ArrowLeftIcon className="h-5 w-5 text-[#222222] dark:text-white" />
             </button>
-            <div className={`h-12 w-12 sm:h-16 sm:w-16 ${getInitialsColor(patient.name, patient.email)} rounded-2xl flex items-center justify-center flex-shrink-0`}>
-              <span className="text-white text-base sm:text-xl font-bold">
-                {getInitials(patient.name, patient.email)}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white dark:text-gray-900 truncate">{patient.name}</h1>
-              <p className="text-gray-300 dark:text-gray-600 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">{patient.email}</p>
+            <div className="flex items-center gap-4">
+              <div className={`h-16 w-16 bg-[#222222] dark:bg-white rounded-full flex items-center justify-center shadow-md`}>
+                <span className="text-white dark:text-[#222222] text-xl font-bold">
+                  {getInitials(patient.name, patient.email)}
+                </span>
+              </div>
+              <div className="flex-1">
+                <h1 className="text-3xl font-extrabold text-[#222222] dark:text-white truncate tracking-tight">{patient.name}</h1>
+                <p className="text-[#717171] dark:text-[#a0a0a0] text-sm font-medium mt-1">{patient.email}</p>
+              </div>
             </div>
           </div>
-          <div className="bg-gray-800 dark:bg-gray-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl w-full sm:w-auto">
-            <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-600">Patient ID</p>
-            <p className="text-white dark:text-gray-900 font-mono font-semibold text-xs sm:text-sm truncate">
+          <div className="bg-gray-50 dark:bg-[#2a2a2a] px-6 py-3 rounded-2xl w-full sm:w-auto border border-gray-100 dark:border-gray-800">
+            <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Patient ID</p>
+            <p className="text-[#222222] dark:text-white font-mono font-bold text-base truncate">
               {patient.patientId || patient.patient_id || `${patient.id.slice(0, 8)}...`}
             </p>
           </div>
@@ -357,29 +359,29 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
         {/* Left Column */}
         <div className="space-y-4">
           {/* Patient Information Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg border border-gray-200 dark:border-gray-700">
-            <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-3">Patient Information</h3>
-            <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+            <h3 className="text-lg font-bold text-[#222222] dark:text-white mb-4">Patient Information</h3>
+            <div className="grid grid-cols-3 gap-6">
               <div>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Condition</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5 truncate">{patient.condition}</p>
+                <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Condition</p>
+                <p className="text-lg font-bold text-[#222222] dark:text-white truncate">{patient.condition}</p>
               </div>
               <div>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Records</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">{medicalRecords.length} docs</p>
+                <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Records</p>
+                <p className="text-lg font-bold text-[#222222] dark:text-white">{medicalRecords.length}</p>
               </div>
               <div>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Medications</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">{patient.medications.length + prescriptionMedications.length}</p>
+                <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Medications</p>
+                <p className="text-lg font-bold text-[#222222] dark:text-white">{patient.medications.length + prescriptionMedications.length}</p>
               </div>
             </div>
           </div>
 
           {/* Health Vitals Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">Health Vitals</h3>
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 italic">Auto-updates</span>
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[#222222] dark:text-white">Health Vitals</h3>
+              <span className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0] bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">Live</span>
             </div>
             <div className="space-y-2">
               {/* Blood Pressure */}
@@ -445,18 +447,18 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
         {/* Right Column */}
         <div className="space-y-4">
           {/* Current Medications Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">Medications</h3>
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-[#222222] dark:text-white">Medications</h3>
               <div className="flex items-center gap-2">
                 {latestPrescription && (
-                  <span className="text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded font-semibold">
+                  <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-3 py-1 rounded-full font-bold">
                     Rx: {new Date(latestPrescription.createdAt).toLocaleDateString()}
                   </span>
                 )}
                 <button
                   onClick={() => setShowAddMedication(true)}
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors"
+                  className="flex items-center gap-1 px-4 py-1.5 text-xs font-bold text-white bg-[#222222] dark:bg-white dark:text-[#222222] hover:opacity-90 rounded-full transition-colors"
                 >
                   + Add
                 </button>
@@ -718,11 +720,11 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
           </div>
 
           {/* Case Details Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Case Details</h3>
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-[#222222] dark:text-white">Case Details</h3>
               {caseDetails?.updatedAt && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 italic">
+                <span className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0]">
                   Updated {new Date(caseDetails.updatedAt).toLocaleDateString()}
                 </span>
               )}
@@ -789,11 +791,11 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
       </div>
 
       {/* Medical Records Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-8 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Medical Records</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <h2 className="text-2xl font-bold text-[#222222] dark:text-white">Medical Records</h2>
+            <p className="text-sm font-medium text-[#717171] dark:text-[#a0a0a0] mt-1">
               {filteredRecords.length} {selectedCategory === 'all' ? 'total' : selectedCategory} record(s)
             </p>
           </div>

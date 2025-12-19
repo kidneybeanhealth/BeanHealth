@@ -8,6 +8,10 @@ import LabResultsCard from './LabResultsCard';
 import UpcomingTestsCard from './UpcomingTestsCard';
 import { UserService } from '../services/authService';
 import { supabase } from '../lib/supabase';
+import { BloodPressureIcon } from './icons/BloodPressureIcon';
+import { HeartIcon } from './icons/HeartIcon';
+import { TemperatureIcon } from './icons/TemperatureIcon';
+import { FeatureVitalsIcon } from './icons/FeatureVitalsIcon';
 
 interface CKDDashboardProps {
     patient: Patient;
@@ -135,19 +139,10 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
 
     const getStatusColor = (status: VitalStatus) => {
         switch (status) {
-            case 'normal': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800';
-            case 'borderline': return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800';
-            case 'abnormal': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800';
-            case 'critical': return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800';
-        }
-    };
-
-    const getStatusBadge = (status: VitalStatus) => {
-        switch (status) {
-            case 'normal': return '✓ Normal';
-            case 'borderline': return '⚠ Borderline';
-            case 'abnormal': return '⚠ High';
-            case 'critical': return '🚨 Critical';
+            case 'normal': return 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20';
+            case 'borderline': return 'text-amber-500 bg-amber-50 dark:bg-amber-900/20';
+            case 'abnormal': return 'text-orange-500 bg-orange-50 dark:bg-orange-900/20';
+            case 'critical': return 'text-rose-500 bg-rose-50 dark:bg-rose-900/20';
         }
     };
 
@@ -170,194 +165,215 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
             alert('Failed to update patient information');
         }
     };
+
+    const firstName = patient.name.split(' ')[0];
+
     return (
-        <div className="space-y-6 animate-fade-in max-w-[1400px] mx-auto">
-            {/* Quick Action Header */}
-            <div className="flex justify-end">
-                <button
-                    onClick={onNavigateToDoctors}
-                    className="flex items-center gap-2 px-4 py-2 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
-                >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Connect with Doctor
-                </button>
+        <div className="space-y-6 pb-8 animate-fade-in max-w-[1440px] mx-auto pt-0">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-[#222222] dark:text-white tracking-tight">
+                        Dashboard
+                    </h1>
+                    <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">Managing your kidney health journey</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={onNavigateToDoctors}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#222222] dark:bg-white text-white dark:text-[#222222] text-sm font-bold rounded-full transition-all shadow-md hover:shadow-lg active:scale-95"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Connect with Doctor
+                    </button>
+                </div>
             </div>
 
-            {/* Vital Signs Section - Now at top, smaller */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Vital Signs</h3>
-                    {!isEditingVitals && (
-                        <button
-                            onClick={() => {
-                                setEditVitals({
-                                    systolic: vitals.bloodPressure?.systolic?.toString() || '',
-                                    diastolic: vitals.bloodPressure?.diastolic?.toString() || '',
-                                    heartRate: vitals.heartRate?.toString() || '',
-                                    spo2: vitals.spo2?.toString() || '',
-                                    temperature: vitals.temperature?.toString() || ''
-                                });
-                                setIsEditingVitals(true);
-                            }}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                        >
-                            Update
-                        </button>
-                    )}
-                </div>
+            {/* Vital Signs Section */}
+            <div>
+
 
                 {isEditingVitals ? (
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] animate-fade-in">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Systolic</label>
+                                <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">Systolic</label>
                                 <input
                                     type="number"
                                     value={editVitals.systolic}
                                     onChange={(e) => setEditVitals({ ...editVitals, systolic: e.target.value })}
-                                    className="w-full px-2 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
                                     placeholder="120"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Diastolic</label>
+                                <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">Diastolic</label>
                                 <input
                                     type="number"
                                     value={editVitals.diastolic}
                                     onChange={(e) => setEditVitals({ ...editVitals, diastolic: e.target.value })}
-                                    className="w-full px-2 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
                                     placeholder="80"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Heart Rate</label>
+                                <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">Heart Rate</label>
                                 <input
                                     type="number"
                                     value={editVitals.heartRate}
                                     onChange={(e) => setEditVitals({ ...editVitals, heartRate: e.target.value })}
-                                    className="w-full px-2 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
                                     placeholder="72"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">SpO2</label>
+                                <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">SpO2</label>
                                 <input
                                     type="number"
                                     value={editVitals.spo2}
                                     onChange={(e) => setEditVitals({ ...editVitals, spo2: e.target.value })}
-                                    className="w-full px-2 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
                                     placeholder="98"
                                 />
                             </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-4">
                             <button
                                 onClick={handleSaveVitals}
-                                className="flex-1 px-3 py-1.5 bg-secondary-700 hover:bg-secondary-800 text-white text-sm font-medium rounded-lg transition-colors"
+                                className="px-6 py-2.5 bg-[#222222] dark:bg-white text-white dark:text-[#222222] font-semibold rounded-full hover:opacity-90 transition-opacity"
                             >
-                                Save
+                                Save Readings
                             </button>
                             <button
                                 onClick={() => setIsEditingVitals(false)}
-                                className="flex-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
+                                className="px-6 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#222222] dark:text-white font-semibold rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                             >
                                 Cancel
                             </button>
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {/* Blood Pressure Card */}
-                        <div className={`p-3 rounded-xl border ${vitals.bloodPressure ? getStatusColor(getBPStatus(vitals.bloodPressure.systolic, vitals.bloodPressure.diastolic)) : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'}`}>
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                </svg>
-                                <span className="text-xs font-medium opacity-80">BP</span>
-                            </div>
-                            <p className="text-xl font-bold">
-                                {vitals.bloodPressure
-                                    ? `${vitals.bloodPressure.systolic}/${vitals.bloodPressure.diastolic}`
-                                    : '—'}
-                            </p>
-                            <p className="text-xs opacity-60">mmHg</p>
+                    <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-lg font-bold text-[#222222] dark:text-white">Vital Signs</h3>
+                            <button
+                                onClick={() => setIsEditingVitals(true)}
+                                className="px-4 py-2 text-xs font-bold bg-[#8AC43C] text-white rounded-full hover:bg-[#7ab332] transition-colors"
+                            >
+                                Update
+                            </button>
                         </div>
 
-                        {/* Heart Rate Card */}
-                        <div className={`p-3 rounded-xl border ${vitals.heartRate ? getStatusColor(getHRStatus(vitals.heartRate)) : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'}`}>
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                                <span className="text-xs font-medium opacity-80">Heart Rate</span>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {/* Blood Pressure Card */}
+                            <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-2xl border border-red-100 dark:border-red-900/20 transition-all hover:scale-[1.02]">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                                        <BloodPressureIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                    </div>
+                                    <span className="text-xs font-bold text-red-600 dark:text-red-300 uppercase tracking-wider">BP</span>
+                                </div>
+                                <div>
+                                    <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                        {vitals.bloodPressure
+                                            ? `${vitals.bloodPressure.systolic}/${vitals.bloodPressure.diastolic}`
+                                            : '—'}
+                                    </span>
+                                    <span className="text-xs font-semibold text-red-600/70 dark:text-red-400/70 ml-1">mmHg</span>
+                                </div>
                             </div>
-                            <p className="text-xl font-bold">
-                                {vitals.heartRate ?? '—'}
-                            </p>
-                            <p className="text-xs opacity-60">bpm</p>
-                        </div>
 
-                        {/* SpO2 Card */}
-                        <div className={`p-3 rounded-xl border ${vitals.spo2 ? getStatusColor(getSpO2Status(vitals.spo2)) : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'}`}>
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                </svg>
-                                <span className="text-xs font-medium opacity-80">SpO2</span>
+                            {/* Heart Rate Card */}
+                            <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/20 transition-all hover:scale-[1.02]">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
+                                        <HeartIcon className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                                    </div>
+                                    <span className="text-xs font-bold text-rose-600 dark:text-rose-300 uppercase tracking-wider">Heart Rate</span>
+                                </div>
+                                <div>
+                                    <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                        {vitals.heartRate ?? '—'}
+                                    </span>
+                                    <span className="text-xs font-semibold text-rose-600/70 dark:text-rose-400/70 ml-1">bpm</span>
+                                </div>
                             </div>
-                            <p className="text-xl font-bold">
-                                {vitals.spo2 ?? '—'}
-                            </p>
-                            <p className="text-xs opacity-60">%</p>
-                        </div>
 
-                        {/* Temperature Card */}
-                        <div className="p-3 rounded-xl border bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                                <span className="text-xs font-medium opacity-80">Temp</span>
+                            {/* SpO2 Card */}
+                            <div className="bg-sky-50 dark:bg-sky-900/10 p-4 rounded-2xl border border-sky-100 dark:border-sky-900/20 transition-all hover:scale-[1.02]">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 bg-sky-100 dark:bg-sky-900/30 rounded-lg">
+                                        <FeatureVitalsIcon className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                                    </div>
+                                    <span className="text-xs font-bold text-sky-600 dark:text-sky-300 uppercase tracking-wider">SpO2</span>
+                                </div>
+                                <div>
+                                    <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                        {vitals.spo2 ?? '—'}
+                                    </span>
+                                    <span className="text-xs font-semibold text-sky-600/70 dark:text-sky-400/70 ml-1">%</span>
+                                </div>
                             </div>
-                            <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                                {vitals.temperature ?? '—'}
-                            </p>
-                            <p className="text-xs opacity-60">°F</p>
+
+                            {/* Temperature Card */}
+                            <div className="bg-orange-50 dark:bg-orange-900/10 p-4 rounded-2xl border border-orange-100 dark:border-orange-900/20 transition-all hover:scale-[1.02]">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                                        <TemperatureIcon className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                                    </div>
+                                    <span className="text-xs font-bold text-orange-600 dark:text-orange-300 uppercase tracking-wider">Temp</span>
+                                </div>
+                                <div>
+                                    <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                        {vitals.temperature ?? '—'}
+                                    </span>
+                                    <span className="text-xs font-semibold text-orange-600/70 dark:text-orange-400/70 ml-1">°F</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Patient Information */}
-            <PatientInfoCard
-                patientId={patient.id}
-                age={(patient as any).age}
-                ckdStage={(patient as any).ckdStage || (patient as any).ckd_stage}
-                comorbidities={(patient as any).comorbidities || []}
-                baselineWeight={(patient as any).baselineWeight || (patient as any).baseline_weight}
-                onUpdate={handleUpdatePatientInfo}
-            />
+            {/* Dashboard Grid - Main Layout */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {/* Left Column (Primary Info) */}
+                <div className="xl:col-span-2 space-y-6">
+                    {/* Patient Information */}
+                    <PatientInfoCard
+                        patientId={patient.id}
+                        age={(patient as any).age}
+                        ckdStage={(patient as any).ckdStage || (patient as any).ckd_stage}
+                        comorbidities={(patient as any).comorbidities || []}
+                        baselineWeight={(patient as any).baselineWeight || (patient as any).baseline_weight}
+                        onUpdate={handleUpdatePatientInfo}
+                    />
 
-            {/* Case Details */}
-            <CaseDetailsCard patientId={patient.id} />
+                    {/* Case Details */}
+                    <CaseDetailsCard patientId={patient.id} />
 
-            {/* Enhanced Medications with Adherence Tracking */}
-            <EnhancedMedicationCard patientId={patient.id} />
+                    {/* Lab Results */}
+                    <LabResultsCard patientId={patient.id} />
+                </div>
 
-            {/* Fluid Intake Tracking */}
-            <FluidIntakeTracker
-                patientId={patient.id}
-                dailyTarget={(patient as any).dailyFluidTarget || (patient as any).daily_fluid_target}
-                ckdStage={(patient as any).ckdStage || (patient as any).ckd_stage}
-            />
+                {/* Right Column (Management & Tracking) */}
+                <div className="space-y-6">
+                    {/* Enhanced Medications with Adherence Tracking */}
+                    <EnhancedMedicationCard patientId={patient.id} />
 
-            {/* Lab Results */}
-            <LabResultsCard patientId={patient.id} />
+                    {/* Fluid Intake Tracking */}
+                    <FluidIntakeTracker
+                        patientId={patient.id}
+                        dailyTarget={(patient as any).dailyFluidTarget || (patient as any).daily_fluid_target}
+                        ckdStage={(patient as any).ckdStage || (patient as any).ckd_stage}
+                    />
 
-            {/* Upcoming Tests */}
-            <UpcomingTestsCard patientId={patient.id} />
+                    {/* Upcoming Tests */}
+                    <UpcomingTestsCard patientId={patient.id} />
+                </div>
+            </div>
         </div>
     );
 };

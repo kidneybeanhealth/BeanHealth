@@ -34,8 +34,8 @@ const Doctors: React.FC<DoctorsProps> = ({ doctors, onSelectDoctor, messagingEna
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {doctors.map(doctor => (
                         <div key={doctor.id} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm text-center flex flex-col items-center">
-                            <div className={`w-24 h-24 ${getInitialsColor(doctor.name, doctor.email)} rounded-full mb-4 ring-4 ring-secondary-200 dark:ring-secondary-800 flex items-center justify-center`}>
-                                <span className="text-white text-2xl font-bold">
+                            <div className={`w-24 h-24 bg-[#222222] dark:bg-white rounded-full mb-4 ring-4 ring-secondary-200 dark:ring-secondary-800 flex items-center justify-center`}>
+                                <span className="text-white dark:text-[#222222] text-2xl font-bold">
                                     {getInitials(doctor.name, doctor.email)}
                                 </span>
                             </div>

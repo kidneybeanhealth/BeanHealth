@@ -55,6 +55,37 @@ export class ChatService {
   }
 
   static async sendMessage(senderId: string, recipientId: string, text: string, isUrgent: boolean = false) {
+    // If urgent, deduct one credit from sender
+    if (isUrgent) {
+      // First check current credits
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('urgent_credits, role')
+        .eq('id', senderId)
+        .single();
+
+      if (userError) throw new Error('Failed to verify urgent credits');
+      if (!userData) throw new Error('User not found');
+
+      // Only patients use urgent credits
+      if ((userData as any).role === 'patient') {
+        const credits = (userData as any).urgent_credits || 0;
+        if (credits <= 0) {
+          throw new Error('No urgent credits remaining');
+        }
+
+        // Deduct one credit
+        const { error: deductError } = await supabase
+          .from('users')
+          .update({ urgent_credits: credits - 1 } as any)
+          .eq('id', senderId);
+
+        if (deductError) throw new Error('Failed to deduct urgent credit');
+
+        console.log(`[ChatService] Deducted 1 urgent credit. Remaining: ${credits - 1}`);
+      }
+    }
+
     const { data, error } = await supabase
       .from('chat_messages')
       .insert({
@@ -87,8 +118,8 @@ export class ChatService {
   }
 
   static async sendFileMessage(
-    senderId: string, 
-    recipientId: string, 
+    senderId: string,
+    recipientId: string,
     fileUrl: string,
     fileName: string,
     fileType: 'pdf' | 'image' | 'audio',
@@ -167,7 +198,7 @@ export class ChatService {
   static subscribeToMessages(userId: string, callback: (message: ChatMessage) => void) {
     const channelName = `chat_messages_${userId}_${Date.now()}`;
     console.log(`[ChatService] Creating subscription channel: ${channelName}`);
-    
+
     const transformMessage = (msg: any): ChatMessage => ({
       id: msg.id,
       senderId: msg.sender_id,
@@ -183,7 +214,7 @@ export class ChatService {
       fileSize: msg.file_size || undefined,
       mimeType: msg.mime_type || undefined
     });
-    
+
     const channel = supabase
       .channel(channelName, {
         config: {
@@ -245,7 +276,7 @@ export class ChatService {
       )
       .subscribe((status, err) => {
         console.log(`[ChatService] Subscription status for ${channelName}:`, status);
-        
+
         if (status === 'SUBSCRIBED') {
           console.log('[ChatService] ✅ Successfully subscribed to real-time messages');
         } else if (status === 'TIMED_OUT') {
@@ -256,7 +287,7 @@ export class ChatService {
           console.warn('[ChatService] 🔒 Channel closed');
         }
       });
-    
+
     return channel;
   }
 

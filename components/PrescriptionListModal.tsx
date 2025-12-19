@@ -41,7 +41,7 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
     setIsLoading(true);
     try {
       let result;
-      
+
       if (isDoctor) {
         // Doctor viewing prescriptions for this patient
         result = await PrescriptionService.getPrescriptionsForPatient(currentUserId, contactId);
@@ -113,41 +113,36 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
             onClick={onClose}
           ></div>
 
-          <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all w-full max-w-4xl border border-gray-200 dark:border-gray-700">
+          <div className="inline-block align-bottom bg-white dark:bg-[#1e1e1e] rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all w-full max-w-4xl animate-scaleIn">
             {/* Header */}
-            <div className="bg-gradient-to-r from-rose-500 to-rose-900 px-3 sm:px-6 py-3 sm:py-4">
+            <div className="bg-white dark:bg-[#1e1e1e] px-8 py-6 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-                  <div className="bg-white/20 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
-                    <DocumentIcon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white truncate">E-Prescriptions</h3>
-                    <p className="text-sky-100 text-xs sm:text-sm mt-0.5 truncate">
-                      {isDoctor ? 'Sent to patient' : 'From doctor'}
-                    </p>
-                  </div>
+                <div className="flex-1">
+                  <h3 className="text-3xl font-extrabold text-[#222222] dark:text-white truncate">E-Prescriptions</h3>
+                  <p className="text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">
+                    {isDoctor ? 'Sent to patient' : 'From doctor'}
+                  </p>
                 </div>
-                <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+                <div className="flex items-center space-x-3">
                   <button
                     onClick={loadPrescriptions}
-                    className="p-1.5 sm:p-2 text-white hover:bg-white/20 rounded-lg transition-colors"
+                    className="p-2 bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                     aria-label="Refresh prescriptions"
                   >
-                    <RefreshIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <RefreshIcon className="h-5 w-5 text-[#222222] dark:text-white" />
                   </button>
                   <button
                     onClick={onClose}
-                    className="p-1.5 sm:p-2 text-white hover:bg-white/20 rounded-lg transition-colors"
+                    className="p-2 bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                   >
-                    <XIcon className="h-4 w-4 sm:h-6 sm:w-6" />
+                    <XIcon className="h-5 w-5 text-[#222222] dark:text-white" />
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Body */}
-            <div className="px-3 sm:px-6 py-4 sm:py-6 max-h-[70vh] overflow-y-auto">
+            <div className="px-8 py-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-900"></div>
@@ -167,7 +162,7 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
                   {prescriptions.map((prescription) => (
                     <div
                       key={prescription.id}
-                      className="bg-white dark:bg-gray-700/30 border border-gray-200 dark:border-gray-700 rounded-lg sm:rounded-xl p-3 sm:p-4 hover:shadow-lg hover:border-rose-300 dark:hover:border-rose-700 transition-all duration-200 cursor-pointer"
+                      className="bg-white dark:bg-[#2a2a2a] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-xl transition-all duration-300 cursor-pointer border border-transparent dark:border-gray-800"
                       onClick={() => setSelectedPrescription(prescription)}
                     >
                       <div className="flex items-start gap-2 sm:gap-3">
@@ -186,17 +181,16 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
                                 </p>
                               )}
                             </div>
-                            <span className={`text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-medium whitespace-nowrap flex-shrink-0 ${
-                              prescription.status === 'active' 
+                            <span className={`text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-medium whitespace-nowrap flex-shrink-0 ${prescription.status === 'active'
                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                 : prescription.status === 'completed'
-                                ? 'bg-secondary-100 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400'
-                                : 'bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400'
-                            }`}>
+                                  ? 'bg-secondary-100 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400'
+                                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400'
+                              }`}>
                               {prescription.status}
                             </span>
                           </div>
-                          
+
                           <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 flex items-center">
                             <svg className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -252,27 +246,27 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
               onClick={() => setSelectedPrescription(null)}
             ></div>
 
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+            <div className="inline-block align-bottom bg-white dark:bg-[#1e1e1e] rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full animate-scaleIn">
               {/* Header */}
-              <div className="bg-gradient-to-r from-rose-500 to-rose-900 px-3 sm:px-6 py-3 sm:py-4">
+              <div className="bg-white dark:bg-[#1e1e1e] px-8 py-6 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white truncate">Prescription Details</h3>
-                    <p className="text-sky-100 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">
-                      {formatDate(selectedPrescription.createdAt)}
+                    <h3 className="text-2xl font-extrabold text-[#222222] dark:text-white truncate">Prescription Details</h3>
+                    <p className="text-[#717171] dark:text-[#a0a0a0] text-sm font-medium mt-1 truncate">
+                      Issued {formatDate(selectedPrescription.createdAt)}
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedPrescription(null)}
-                    className="text-white hover:text-sky-100 transition-colors p-1.5 sm:p-2 hover:bg-white/20 rounded-lg flex-shrink-0"
+                    className="p-2 bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors flex-shrink-0"
                   >
-                    <XIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <XIcon className="h-5 w-5 text-[#222222] dark:text-white" />
                   </button>
                 </div>
               </div>
 
               {/* Body */}
-              <div className="px-3 sm:px-6 py-3 sm:py-6 max-h-[70vh] overflow-y-auto">
+              <div className="px-8 py-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 {/* Doctor and Patient Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-6">
                   <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 sm:p-4">
@@ -355,16 +349,16 @@ const PrescriptionListModal: React.FC<PrescriptionListModalProps> = ({
               </div>
 
               {/* Footer */}
-              <div className="bg-gray-50 dark:bg-gray-800/50 px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="bg-gray-50 dark:bg-[#2a2a2a] px-8 py-6 flex flex-col sm:flex-row justify-end gap-4 border-t border-gray-100 dark:border-gray-800">
                 <button
                   onClick={() => handlePreviewPrescription(selectedPrescription)}
-                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                  className="px-6 py-3 text-sm font-bold text-[#222222] dark:text-white bg-white dark:bg-[#333] border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
                 >
                   Preview PDF
                 </button>
                 <button
                   onClick={() => handleDownloadPrescription(selectedPrescription)}
-                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-900 rounded-lg hover:from-secondary-600 hover:to-secondary-800 transition-all shadow-lg hover:shadow-xl"
+                  className="px-6 py-3 text-sm font-bold text-white bg-[#222222] dark:bg-white dark:text-[#222222] rounded-full hover:opacity-90 transition-all shadow-lg"
                 >
                   Download PDF
                 </button>

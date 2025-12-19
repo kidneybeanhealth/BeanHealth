@@ -30,7 +30,6 @@ interface DashboardProps {
 
 const VitalCard: React.FC<{
   icon: React.ReactNode;
-  iconBgColor: string;
   label: string;
   value: string;
   unit: string;
@@ -38,29 +37,25 @@ const VitalCard: React.FC<{
   onSave: (newValue: string) => void;
   lastUpdatedFromRecord?: string;
   isBloodPressure?: boolean;
-}> = ({ icon, iconBgColor, label, value, unit, trend, onSave, lastUpdatedFromRecord, isBloodPressure = false }) => {
+  colorClass?: string;
+}> = ({ icon, label, value, unit, trend, onSave, lastUpdatedFromRecord, isBloodPressure = false, colorClass = "text-gray-900" }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
-
-  // For blood pressure
   const [systolic, setSystolic] = useState('120');
   const [diastolic, setDiastolic] = useState('80');
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const systolicRef = useRef<HTMLInputElement>(null);
 
   const trendArrow = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
-  const trendColor = trend === 'up' ? 'text-red-500' : trend === 'down' ? 'text-blue-500' : 'text-gray-500';
+  const trendColor = trend === 'up' ? 'text-rose-500' : trend === 'down' ? 'text-emerald-500' : 'text-gray-400';
 
   useEffect(() => {
     if (isEditing) {
       if (isBloodPressure) {
-        // Parse blood pressure value (e.g., "120/80" or "120")
         const parts = value.split('/');
         setSystolic(parts[0] || '120');
         setDiastolic(parts[1] || '80');
       } else {
-        // For non-BP vitals, extract only numbers from value
         const numericValue = value.replace(/[^0-9.]/g, '');
         setCurrentValue(numericValue);
         setTimeout(() => inputRef.current?.focus(), 0);
@@ -90,26 +85,13 @@ const VitalCard: React.FC<{
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      if (isBloodPressure) {
-        const parts = value.split('/');
-        setSystolic(parts[0] || '120');
-        setDiastolic(parts[1] || '80');
-      } else {
-        setCurrentValue(value.replace(/[^0-9.]/g, ''));
-      }
-      setIsEditing(false);
-    }
+    if (e.key === 'Enter') handleSave();
+    else if (e.key === 'Escape') setIsEditing(false);
   };
 
   const handleNumberInput = (e: React.ChangeEvent<HTMLInputElement>, setValue: (val: string) => void) => {
     const value = e.target.value;
-    // Strictly allow only numbers and one decimal point
     const numericValue = value.replace(/[^\d.]/g, '');
-
-    // Prevent multiple decimal points
     const decimalCount = (numericValue.match(/\./g) || []).length;
     if (decimalCount > 1) {
       const parts = numericValue.split('.');
@@ -119,62 +101,17 @@ const VitalCard: React.FC<{
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Prevent non-numeric characters (except decimal point)
-    const char = e.key;
-
-    // Allow: numbers (0-9), decimal point (.), backspace, delete, arrow keys, tab, enter, escape
-    const allowedKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Escape'];
-
-    if (!allowedKeys.includes(char)) {
-      e.preventDefault();
-      return;
-    }
-
-    // Prevent multiple decimal points
-    const input = e.currentTarget;
-    if (char === '.' && input.value.includes('.')) {
-      e.preventDefault();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    // Prevent pasting non-numeric content
-    e.preventDefault();
-    const pastedText = e.clipboardData.getData('text');
-    const numericValue = pastedText.replace(/[^\d.]/g, '');
-
-    // Prevent multiple decimal points
-    const decimalCount = (numericValue.match(/\./g) || []).length;
-    if (decimalCount <= 1) {
-      const input = e.currentTarget;
-      const start = input.selectionStart || 0;
-      const end = input.selectionEnd || 0;
-      const currentValue = input.value;
-      const newValue = currentValue.substring(0, start) + numericValue + currentValue.substring(end);
-      setCurrentValue(newValue);
-    }
-  };
-
   return (
-    <div className="group relative bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-200/40 dark:border-gray-700/40 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-lg transition-all duration-300 animate-fade-in">
-      <div className="relative flex flex-col">
-        <div className="flex items-start justify-between mb-6">
-          <div className={`p-4 rounded-2xl ${iconBgColor} transition-transform duration-300 group-hover:scale-110`}>
+    <div className="group relative bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300 border border-transparent dark:border-gray-800">
+      <div className="flex flex-col h-full justify-between gap-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">{label}</h3>
+          <div className={`p-2 rounded-full bg-gray-50 dark:bg-gray-800 ${colorClass}`}>
             {icon}
           </div>
-          {!isEditing && (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="opacity-0 group-hover:opacity-100 p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
-            >
-              <EditIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-            </button>
-          )}
         </div>
 
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 tracking-wide">{label}</p>
+        <div>
           {isEditing ? (
             isBloodPressure ? (
               <BloodPressurePicker
@@ -189,45 +126,34 @@ const VitalCard: React.FC<{
                 ref={inputRef}
                 type="text"
                 inputMode="decimal"
-                pattern="[0-9]*\.?[0-9]*"
                 value={currentValue}
                 onChange={(e) => handleNumberInput(e, setCurrentValue)}
-                onKeyPress={handleKeyPress}
-                onPaste={handlePaste}
                 onBlur={handleSave}
                 onKeyDown={handleKeyDown}
-                placeholder="Enter value"
-                autoComplete="off"
-                className="w-full bg-gray-50 dark:bg-gray-700 text-3xl font-semibold text-gray-900 dark:text-gray-100 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-400"
+                className="w-full bg-gray-50 dark:bg-gray-800 text-3xl font-bold text-[#222222] dark:text-[#f7f7f7] px-2 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#222222] transition-all"
               />
             )
           ) : (
-            <div className="flex items-baseline gap-2">
-              <p className="text-4xl font-semibold text-gray-900 dark:text-gray-100">{value || '—'}</p>
-              <span className="text-lg font-medium text-gray-400 dark:text-gray-500">{unit}</span>
+            <div className="flex items-baseline gap-1 group/value cursor-pointer" onClick={() => setIsEditing(true)}>
+              <span className="text-4xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{value || '—'}</span>
+              <span className="text-sm font-medium text-[#717171] dark:text-[#888888]">{unit}</span>
+              <EditIcon className="h-4 w-4 text-gray-300 opacity-0 group-hover/value:opacity-100 transition-opacity ml-2" />
             </div>
           )}
+        </div>
 
-          <div className="flex items-center gap-3 pt-2">
-            {trend && trend !== 'stable' && (
-              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                trendColor === 'text-red-500'
-                  ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                  : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-              }`}>
-                <span className="text-sm">{trendArrow}</span>
-                <span>{trend === 'up' ? 'Increasing' : 'Decreasing'}</span>
-              </span>
-            )}
-            {lastUpdatedFromRecord && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-50 dark:bg-cyan-900/20 rounded-full text-xs font-medium text-cyan-600 dark:text-cyan-400">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                </svg>
-                Auto-synced
-              </span>
-            )}
-          </div>
+        <div className="flex items-center justify-between min-h-[24px]">
+          {trend && trend !== 'stable' && (
+            <div className={`flex items-center gap-1 text-sm font-medium ${trendColor}`}>
+              <span>{trendArrow}</span>
+              <span>{trend === 'up' ? 'Increase' : 'Decrease'}</span>
+            </div>
+          )}
+          {lastUpdatedFromRecord && (
+            <span className="text-[10px] font-bold text-[#717171] bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+              AUTOSYNC
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -235,75 +161,82 @@ const VitalCard: React.FC<{
 };
 
 const Dashboard: React.FC<DashboardProps> = ({
-    patient,
-    onVitalsChange,
-    onMedicationAdd,
-    onMedicationChange,
-    onMedicationRemove,
-    vitalsLastUpdatedFromRecord
+  patient,
+  onVitalsChange,
+  onMedicationAdd,
+  onMedicationChange,
+  onMedicationRemove,
+  vitalsLastUpdatedFromRecord
 }) => {
+
   return (
-    <div className="space-y-12 animate-fade-in max-w-[1400px] mx-auto">
-      {/* Welcome Banner - Minimalist */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-12 border border-gray-200/50 dark:border-gray-700/50">
-        <div className="relative z-10">
-          <h2 className="text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">Health Dashboard</h2>
-          <p className="text-gray-600 dark:text-gray-400 text-lg max-w-2xl leading-relaxed">Track your vitals, medications, and wellness journey</p>
+    <div className="space-y-10 pb-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-[#222222] dark:text-white tracking-tight leading-tight">
+            Hello, <br />
+            <span className="text-[#3A2524] dark:text-[#e6b8a3]">{patient.name}</span>
+          </h1>
         </div>
-        {/* Subtle decorative element */}
-        <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-gradient-to-br from-cyan-100/30 to-blue-100/30 dark:from-cyan-900/10 dark:to-blue-900/10 rounded-full blur-3xl"></div>
-      </div>
-
-      {/* Vitals Section - Ultra Clean Grid */}
-      <div>
-        <div className="flex items-center justify-between mb-8">
-          <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Your Vitals</h3>
-          <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Updated today</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <VitalCard
-            label="Blood Pressure"
-            value={patient.vitals.bloodPressure.value}
-            unit={patient.vitals.bloodPressure.unit}
-            trend={patient.vitals.bloodPressure.trend}
-            onSave={(newValue) => onVitalsChange('bloodPressure', newValue)}
-            icon={<BloodPressureIcon className="h-7 w-7 text-red-600 dark:text-red-400" />}
-            iconBgColor="bg-red-50 dark:bg-red-900/20"
-            lastUpdatedFromRecord={vitalsLastUpdatedFromRecord?.bloodPressure}
-            isBloodPressure={true}
-          />
-          <VitalCard
-            label="Heart Rate"
-            value={patient.vitals.heartRate.value}
-            unit={patient.vitals.heartRate.unit}
-            trend={patient.vitals.heartRate.trend}
-            onSave={(newValue) => onVitalsChange('heartRate', newValue)}
-            icon={<FeatureVitalsIcon className="h-7 w-7 text-cyan-600 dark:text-cyan-400" />}
-            iconBgColor="bg-cyan-50 dark:bg-cyan-900/20"
-            lastUpdatedFromRecord={vitalsLastUpdatedFromRecord?.heartRate}
-          />
-          <VitalCard
-            label="Temperature"
-            value={patient.vitals.temperature.value}
-            unit={patient.vitals.temperature.unit}
-            trend={patient.vitals.temperature.trend}
-            onSave={(newValue) => onVitalsChange('temperature', newValue)}
-            icon={<TemperatureIcon className="h-7 w-7 text-orange-600 dark:text-orange-400" />}
-            iconBgColor="bg-orange-50 dark:bg-orange-900/20"
-            lastUpdatedFromRecord={vitalsLastUpdatedFromRecord?.temperature}
-          />
+        <div className="flex items-center">
+          <div className="bg-white dark:bg-[#1e1e1e] px-5 py-2.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-none border border-gray-100 dark:border-gray-800">
+            <span className="text-sm font-semibold text-[#222222] dark:text-[#e0e0e0]">
+              Today is {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Medication Section - Clean Layout */}
+      {/* Vitals Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <VitalCard
+          label="Blood Pressure"
+          value={patient.vitals.bloodPressure.value}
+          unit={patient.vitals.bloodPressure.unit}
+          trend={patient.vitals.bloodPressure.trend}
+          onSave={(newValue) => onVitalsChange('bloodPressure', newValue)}
+          icon={<BloodPressureIcon className="w-5 h-5" />}
+          colorClass="text-rose-500"
+          lastUpdatedFromRecord={vitalsLastUpdatedFromRecord?.bloodPressure}
+          isBloodPressure={true}
+        />
+        <VitalCard
+          label="Heart Rate"
+          value={patient.vitals.heartRate.value}
+          unit={patient.vitals.heartRate.unit}
+          trend={patient.vitals.heartRate.trend}
+          onSave={(newValue) => onVitalsChange('heartRate', newValue)}
+          icon={<FeatureVitalsIcon className="w-5 h-5" />}
+          colorClass="text-cyan-500"
+          lastUpdatedFromRecord={vitalsLastUpdatedFromRecord?.heartRate}
+        />
+        <VitalCard
+          label="Temperature"
+          value={patient.vitals.temperature.value}
+          unit={patient.vitals.temperature.unit}
+          trend={patient.vitals.temperature.trend}
+          onSave={(newValue) => onVitalsChange('temperature', newValue)}
+          icon={<TemperatureIcon className="w-5 h-5" />}
+          colorClass="text-orange-500"
+          lastUpdatedFromRecord={vitalsLastUpdatedFromRecord?.temperature}
+        />
+      </div>
+
+      {/* Medications Section */}
       <div>
-        <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-8 tracking-tight">Medications</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="flex items-center justify-between mb-6 px-1">
+          <h2 className="text-2xl font-bold text-[#222222] dark:text-white">Active Medications</h2>
+          <button className="text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-[#3A2524] transition-colors">
+            View History
+          </button>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <MedicationCard
-              medications={patient.medications}
-              onAdd={onMedicationAdd}
-              onChange={onMedicationChange}
-              onRemove={onMedicationRemove}
+            medications={patient.medications}
+            onAdd={onMedicationAdd}
+            onChange={onMedicationChange}
+            onRemove={onMedicationRemove}
           />
           <MedicationTimeline medications={patient.medications} />
         </div>

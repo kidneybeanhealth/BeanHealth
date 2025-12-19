@@ -139,12 +139,12 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
     const secondaryTests = availableLabTypes.slice(4).map(lt => lt.code);
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-200/40 dark:border-gray-700/40 hover:shadow-lg transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Lab Results & Trends</h3>
+        <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all duration-300 border border-transparent dark:border-gray-800">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xl font-bold text-[#222222] dark:text-white">Lab Results</h3>
                 <button
                     onClick={() => setIsAddingResult(true)}
-                    className="px-4 py-2 text-sm font-medium text-white bg-secondary-700 rounded-xl hover:bg-secondary-800 transition-colors"
+                    className="px-5 py-2.5 text-sm font-bold text-white bg-[#8AC43C] rounded-full hover:opacity-90 transition-all shadow-sm transform active:scale-95"
                 >
                     + Add Result
                 </button>
@@ -152,15 +152,15 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
 
             {/* Add Result Modal */}
             {isAddingResult && (
-                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
-                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Add New Lab Result</h4>
+                <div className="mb-8 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-none">
+                    <h4 className="text-lg font-bold text-[#222222] dark:text-white mb-6">Add New Lab Result</h4>
                     <div className="grid grid-cols-3 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Type</label>
                             <select
                                 value={newResult.testType}
                                 onChange={(e) => setNewResult({ ...newResult, testType: e.target.value as LabTestType })}
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
+                                className="w-full px-4 py-3 bg-white dark:bg-[#1e1e1e] border-none rounded-xl text-base font-semibold text-[#222222] dark:text-white shadow-sm focus:ring-2 focus:ring-[#222222] transition-all"
                             >
                                 {Object.keys(latestResults).map((testType) => (
                                     <option key={testType} value={testType}>
@@ -177,7 +177,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                 value={newResult.value}
                                 onChange={(e) => setNewResult({ ...newResult, value: e.target.value })}
                                 placeholder="Enter value"
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
+                                className="w-full px-4 py-3 bg-white dark:bg-[#1e1e1e] border-none rounded-xl text-base font-semibold text-[#222222] dark:text-white shadow-sm focus:ring-2 focus:ring-[#222222] transition-all"
                             />
                         </div>
                         <div>
@@ -186,7 +186,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                                 type="date"
                                 value={newResult.testDate}
                                 onChange={(e) => setNewResult({ ...newResult, testDate: e.target.value })}
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-700 text-gray-900 dark:text-gray-100"
+                                className="w-full px-4 py-3 bg-white dark:bg-[#1e1e1e] border-none rounded-xl text-base font-semibold text-[#222222] dark:text-white shadow-sm focus:ring-2 focus:ring-[#222222] transition-all"
                             />
                         </div>
                     </div>
@@ -217,12 +217,12 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                     return (
                         <div
                             key={testType}
-                            className={`p-4 rounded-xl border ${colors.border} ${colors.bg} cursor-pointer hover:scale-105 transition-transform`}
+                            className={`group p-5 rounded-2xl border-none ${colors.bg} cursor-pointer hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden`}
                             onClick={() => result && handleViewTrend(testType)}
                         >
-                            <div className="flex items-start justify-between mb-2">
-                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{getTestName(testType)}</h4>
-                                <span className="text-lg">{icon}</span>
+                            <div className="flex items-start justify-between mb-3">
+                                <h4 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">{getTestName(testType)}</h4>
+                                <span className="text-lg transform group-hover:scale-110 transition-transform">{icon}</span>
                             </div>
                             {result ? (
                                 <>
