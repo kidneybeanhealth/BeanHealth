@@ -509,7 +509,7 @@ const DoctorDashboardMain: React.FC = () => {
   );
 
   return (
-    <NotificationProvider userId={user?.id || ''} activeView={activeView}>
+    <NotificationProvider userId={user?.id || ''} activeView={activeView} userRole="doctor">
       <div className="min-h-screen bg-[#F7F7F7] dark:bg-black font-sans text-[#222222] selection:bg-[#FF385C] selection:text-white">
 
         {/* Sticky Header */}

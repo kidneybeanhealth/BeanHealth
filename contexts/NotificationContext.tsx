@@ -29,12 +29,14 @@ interface NotificationProviderProps {
     userId: string;
     children: React.ReactNode;
     activeView?: string;
+    userRole?: 'doctor' | 'patient' | 'admin';
 }
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     userId,
     children,
-    activeView
+    activeView,
+    userRole
 }) => {
     const [unreadMessageCount, setUnreadMessageCount] = useState(0);
     const [hasUrgentMessages, setHasUrgentMessages] = useState(false);
@@ -93,6 +95,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
         // Don't show notification if already in messages view
         if (activeView === 'messages') {
+            return;
+        }
+
+        // For doctors, only show popup and sound for urgent messages
+        if (userRole === 'doctor' && !isUrgent) {
             return;
         }
 
@@ -187,7 +194,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
                 position: 'top-right',
             });
         }
-    }, [activeView, playNotificationSound]);
+    }, [activeView, playNotificationSound, userRole]);
 
     // Fetch unread count
     const refreshUnreadCount = useCallback(async () => {
