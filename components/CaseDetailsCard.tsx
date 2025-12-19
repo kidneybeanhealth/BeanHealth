@@ -110,7 +110,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
     }
 
     return (
-        <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all duration-300 border border-transparent dark:border-gray-800">
+        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -131,7 +131,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                 {!readOnly && !isEditing && (
                     <button
                         onClick={handleStartEdit}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
                     >
                         <EditIcon className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Add</span>

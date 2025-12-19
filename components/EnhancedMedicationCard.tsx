@@ -249,7 +249,7 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
     }
 
     return (
-        <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all duration-300 border border-transparent dark:border-gray-800">
+        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -263,7 +263,7 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                 </div>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#8AC43C] text-white text-xs font-bold rounded-full hover:opacity-90 transition-all shadow-sm transform active:scale-95 whitespace-nowrap shrink-0 ml-3"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#8AC43C] text-white dark:text-[#222222] text-xs font-bold rounded-full hover:opacity-90 transition-all shadow-sm transform active:scale-95 whitespace-nowrap shrink-0 ml-3"
                 >
                     <PlusCircleIcon className="h-4 w-4" />
                     <span>Add</span>

@@ -139,12 +139,12 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
     const secondaryTests = availableLabTypes.slice(4).map(lt => lt.code);
 
     return (
-        <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all duration-300 border border-transparent dark:border-gray-800">
+        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xl font-bold text-[#222222] dark:text-white">Lab Results</h3>
                 <button
                     onClick={() => setIsAddingResult(true)}
-                    className="px-5 py-2.5 text-sm font-bold text-white bg-[#8AC43C] rounded-full hover:opacity-90 transition-all shadow-sm transform active:scale-95"
+                    className="px-5 py-2.5 text-sm font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:opacity-90 transition-all shadow-sm transform active:scale-95"
                 >
                     + Add Result
                 </button>
@@ -211,7 +211,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
             <div className="grid grid-cols-2 gap-4 mb-6">
                 {keyTests.map((testType) => {
                     const result = latestResults[testType];
-                    const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-600' };
+                    const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-100 dark:bg-[#8AC43C]/20', text: 'text-gray-500 dark:text-[#a0a0a0]', border: 'border-gray-200 dark:border-[#8AC43C]/10' };
                     const icon = result ? getStatusIcon(result.status) : '⚪';
 
                     return (
@@ -246,7 +246,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                 <div className="grid grid-cols-3 gap-3">
                     {secondaryTests.map((testType) => {
                         const result = latestResults[testType];
-                        const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-600' };
+                        const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-50 dark:bg-[#8AC43C]/20', text: 'text-gray-500 dark:text-[#a0a0a0]', border: 'border-gray-200 dark:border-[#8AC43C]/10' };
                         const icon = result ? getStatusIcon(result.status) : '⚪';
 
                         return (

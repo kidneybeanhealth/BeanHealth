@@ -196,7 +196,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
 
 
                 {isEditingVitals ? (
-                    <div className="bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] animate-fade-in">
+                    <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-6 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20 animate-fade-in">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                             <div>
                                 <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">Systolic</label>
@@ -255,12 +255,12 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+                    <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-lg font-bold text-[#222222] dark:text-white">Vital Signs</h3>
                             <button
                                 onClick={() => setIsEditingVitals(true)}
-                                className="px-4 py-2 text-xs font-bold bg-[#8AC43C] text-white rounded-full hover:bg-[#7ab332] transition-colors"
+                                className="px-4 py-2 text-xs font-bold bg-[#8AC43C] text-white dark:text-[#222222] rounded-full hover:bg-[#7ab332] transition-colors"
                             >
                                 Update
                             </button>

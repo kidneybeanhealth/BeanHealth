@@ -15,7 +15,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick }) => {
   const initials = getInitials(user.name, user.email);
 
   return (
-    <header className="flex-shrink-0 mx-4 mt-4 h-20 bg-white/80 dark:bg-black/90 backdrop-blur-2xl rounded-3xl border border-gray-100 dark:border-white/10 shadow-lg flex items-center transition-all duration-300 z-40">
+    <header className="flex-shrink-0 mx-4 mt-4 h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-2xl rounded-3xl border border-gray-100 dark:border-[#8AC43C]/15 shadow-lg dark:shadow-[0_0_20px_rgba(138,196,60,0.1)] flex items-center transition-all duration-300 z-40">
       <div className="w-full flex items-center justify-between px-6 lg:px-8">
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <button

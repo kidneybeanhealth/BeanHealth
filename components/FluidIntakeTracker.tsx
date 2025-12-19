@@ -122,7 +122,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
     };
 
     return (
-        <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all duration-300 border border-transparent dark:border-gray-800">
+        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xl font-bold text-[#222222] dark:text-white">Fluid Intake</h3>
                 <span className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">Today</span>
@@ -142,11 +142,11 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                                     type="number"
                                     value={editTargetValue}
                                     onChange={(e) => setEditTargetValue(e.target.value)}
-                                    className="w-20 px-2 py-1 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8AC43C]"
+                                    className="w-20 px-2 py-1 text-sm bg-gray-50 dark:bg-[#8AC43C]/20 border border-gray-200 dark:border-[#8AC43C]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8AC43C]"
                                 />
                                 <button
                                     onClick={handleSaveTarget}
-                                    className="px-2 py-1 text-xs bg-[#8AC43C] text-white rounded-lg hover:bg-[#7ab332]"
+                                    className="px-2 py-1 text-xs bg-[#8AC43C] text-white dark:text-[#222222] rounded-lg hover:bg-[#7ab332]"
                                 >
                                     Save
                                 </button>
@@ -155,7 +155,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                                         setEditTargetValue(dailyTarget.toString());
                                         setIsEditingTarget(false);
                                     }}
-                                    className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg"
+                                    className="px-2 py-1 text-xs bg-gray-200 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 rounded-lg"
                                 >
                                     Cancel
                                 </button>
@@ -170,7 +170,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                         )}
                     </div>
                 </div>
-                <div className="relative w-full h-4 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div className="relative w-full h-4 bg-gray-100 dark:bg-[#8AC43C]/10 rounded-full overflow-hidden">
                     <div
                         className={`h-full ${getProgressColor()} transition-all duration-500 rounded-full`}
                         style={{ width: `${progressPercent}%` }}
@@ -192,7 +192,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                             onClick={() => setSelectedType(type)}
                             className={`px-3 py-1.5 text-xs font-bold rounded-full transition-colors uppercase tracking-wide ${selectedType === type
                                 ? 'bg-[#8AC43C] text-white'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                : 'bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#8AC43C]/30'
                                 }`}
                         >
                             {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -206,21 +206,21 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                 <button
                     onClick={() => handleQuickAdd(250)}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-white transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-[#222222] transition-colors disabled:opacity-50"
                 >
                     + 250 ml
                 </button>
                 <button
                     onClick={() => handleQuickAdd(500)}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-white transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-[#222222] transition-colors disabled:opacity-50"
                 >
                     + 500 ml
                 </button>
                 <button
                     onClick={() => handleQuickAdd(1000)}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-white transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-[#222222] transition-colors disabled:opacity-50"
                 >
                     + 1 L
                 </button>
@@ -234,12 +234,12 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                     onChange={(e) => setCustomAmount(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleCustomAdd()}
                     placeholder="Custom amount (ml)"
-                    className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8AC43C] text-gray-900 dark:text-gray-100"
+                    className="flex-1 px-4 py-2 bg-gray-50 dark:bg-[#8AC43C]/20 border border-gray-200 dark:border-[#8AC43C]/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8AC43C] text-gray-900 dark:text-gray-100"
                 />
                 <button
                     onClick={handleCustomAdd}
                     disabled={isLoading || !customAmount}
-                    className="px-6 py-2 bg-[#8AC43C] hover:bg-[#7ab332] text-white font-bold rounded-xl transition-colors disabled:opacity-50"
+                    className="px-6 py-2 bg-[#8AC43C] hover:bg-[#7ab332] text-white dark:text-[#222222] font-bold rounded-xl transition-colors disabled:opacity-50"
                 >
                     Add
                 </button>
@@ -253,7 +253,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                         {todayEntries.map((entry) => (
                             <div
                                 key={entry.id}
-                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#8AC43C]/20 rounded-lg"
                             >
                                 <div className="flex items-center gap-3">
                                     <span className="text-lg font-bold text-gray-900 dark:text-gray-100">

@@ -175,13 +175,13 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
     const recommendedFluidTarget = ckdStage ? getFluidTargetByStage(ckdStage) : 1500;
 
     return (
-        <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all duration-300 border border-transparent dark:border-gray-800">
+        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xl font-bold text-[#222222] dark:text-white">Patient Information</h3>
                 {!isEditing && (
                     <button
                         onClick={handleStartEdit}
-                        className="px-4 py-2 text-sm font-semibold text-white bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
+                        className="px-4 py-2 text-sm font-semibold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
                     >
                         Edit Details
                     </button>
