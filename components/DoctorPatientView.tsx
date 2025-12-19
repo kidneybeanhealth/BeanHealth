@@ -301,55 +301,89 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
     ? medicalRecords
     : recordsByCategory[selectedCategory] || [];
 
-  const getCategoryColor = (category: string) => {
+  /* Helper to get theme styles for different record categories */
+  const getCategoryStyles = (category: string) => {
     switch (category.toLowerCase()) {
-      case 'lab report': return 'bg-blue-500';
-      case 'prescription': return 'bg-purple-500';
-      case 'medical image': return 'bg-amber-500';
-      case 'doctor\'s note': return 'bg-emerald-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getCategoryBadgeColor = (category: string) => {
-    switch (category.toLowerCase()) {
-      case 'lab report': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
-      case 'prescription': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
-      case 'medical image': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-      case 'doctor\'s note': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
-      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300';
+      case 'lab report':
+        return {
+          bg: 'bg-sky-50 dark:bg-sky-900/10',
+          border: 'border-sky-100 dark:border-sky-900/20',
+          text: 'text-sky-700 dark:text-sky-300',
+          badge: 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300',
+          iconBg: 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'
+        };
+      case 'prescription':
+        return {
+          bg: 'bg-purple-50 dark:bg-purple-900/10',
+          border: 'border-purple-100 dark:border-purple-900/20',
+          text: 'text-purple-700 dark:text-purple-300',
+          badge: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+          iconBg: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+        };
+      case 'medical image':
+        return {
+          bg: 'bg-amber-50 dark:bg-amber-900/10',
+          border: 'border-amber-100 dark:border-amber-900/20',
+          text: 'text-amber-700 dark:text-amber-300',
+          badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+          iconBg: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+        };
+      case 'doctor\'s note':
+        return {
+          bg: 'bg-emerald-50 dark:bg-emerald-900/10',
+          border: 'border-emerald-100 dark:border-emerald-900/20',
+          text: 'text-emerald-700 dark:text-emerald-300',
+          badge: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+          iconBg: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+        };
+      default:
+        return {
+          bg: 'bg-gray-50 dark:bg-gray-800/50',
+          border: 'border-gray-100 dark:border-gray-700/50',
+          text: 'text-gray-700 dark:text-gray-300',
+          badge: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
+          iconBg: 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+        };
     }
   };
 
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 lg:p-8 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-6 w-full sm:w-auto">
+      {/* Header */}
+      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-8 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
             <button
               onClick={onBack}
-              className="p-3 rounded-full bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 flex-shrink-0"
+              className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 group"
             >
-              <ArrowLeftIcon className="h-5 w-5 text-[#222222] dark:text-white" />
+              <ArrowLeftIcon className="h-5 w-5 text-[#222222] dark:text-gray-200 group-hover:text-black dark:group-hover:text-white" />
             </button>
             <div className="flex items-center gap-4">
-              <div className={`h-16 w-16 bg-[#222222] dark:bg-white rounded-full flex items-center justify-center shadow-md`}>
+              <div className="h-16 w-16 bg-[#222222] dark:bg-white rounded-full flex items-center justify-center shadow-lg ring-4 ring-gray-50 dark:ring-gray-800">
                 <span className="text-white dark:text-[#222222] text-xl font-bold">
                   {getInitials(patient.name, patient.email)}
                 </span>
               </div>
-              <div className="flex-1">
-                <h1 className="text-3xl font-extrabold text-[#222222] dark:text-white truncate tracking-tight">{patient.name}</h1>
-                <p className="text-[#717171] dark:text-[#a0a0a0] text-sm font-medium mt-1">{patient.email}</p>
+              <div>
+                <h1 className="text-3xl font-extrabold text-[#222222] dark:text-white tracking-tight leading-tight">
+                  {patient.name}
+                </h1>
+                <p className="text-[#717171] dark:text-[#a0a0a0] text-sm font-medium mt-1">
+                  {patient.email}
+                </p>
               </div>
             </div>
           </div>
-          <div className="bg-gray-50 dark:bg-[#2a2a2a] px-6 py-3 rounded-2xl w-full sm:w-auto border border-gray-100 dark:border-gray-800">
-            <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Patient ID</p>
-            <p className="text-[#222222] dark:text-white font-mono font-bold text-base truncate">
-              {patient.patientId || patient.patient_id || `${patient.id.slice(0, 8)}...`}
-            </p>
+
+          <div className="flex items-center gap-4 pl-14 md:pl-0">
+            <div className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800 px-5 py-2.5 rounded-full flex flex-col items-start">
+              <span className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-widest">Patient ID</span>
+              <span className="text-sm font-bold text-[#222222] dark:text-white font-mono mt-0.5">
+                {patient.patientId || patient.patient_id || `${patient.id.slice(0, 8)}...`}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -377,67 +411,58 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
             </div>
           </div>
 
-          {/* Health Vitals Card */}
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[#222222] dark:text-white">Health Vitals</h3>
-              <span className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0] bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">Live</span>
+          {/* Health Vitals Card - Redesigned */}
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 md:p-8 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-extrabold text-[#222222] dark:text-white">Health Vitals</h3>
             </div>
-            <div className="space-y-2">
-              {/* Blood Pressure */}
-              <div className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <BloodPressureIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-                  <span className="text-xs text-gray-600 dark:text-gray-400">BP</span>
+
+            <div className="grid grid-cols-3 gap-4">
+              {/* Blood Pressure Card */}
+              <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-2xl border border-red-100 dark:border-red-900/20 transition-all hover:scale-[1.02] group">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                    <BloodPressureIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  </div>
+                  <span className="text-xs font-bold text-red-600 dark:text-red-300 uppercase tracking-wider">BP</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-base font-bold text-gray-900 dark:text-gray-100">
-                    {vitals?.bloodPressure?.value || 'N/A'}
+                <div>
+                  <span className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+                    {vitals?.bloodPressure?.value || '--'}
                   </span>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400">mmHg</span>
-                  {vitals?.bloodPressure?.trend && vitals.bloodPressure.trend !== 'stable' && (
-                    <span className="text-xs font-semibold text-red-600 dark:text-red-400">
-                      {vitals.bloodPressure.trend === 'up' ? '↑' : '↓'}
-                    </span>
-                  )}
+                  <span className="text-xs font-semibold text-red-600/70 dark:text-red-400/70 ml-1">mmHg</span>
                 </div>
               </div>
 
-              {/* Heart Rate */}
-              <div className="flex items-center justify-between p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <FeatureVitalsIcon className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                  <span className="text-xs text-gray-600 dark:text-gray-400">HR</span>
+              {/* Heart Rate Card */}
+              <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/20 transition-all hover:scale-[1.02] group">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
+                    <FeatureVitalsIcon className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                  </div>
+                  <span className="text-xs font-bold text-rose-600 dark:text-rose-300 uppercase tracking-wider">Heart Rate</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-base font-bold text-gray-900 dark:text-gray-100">
-                    {vitals?.heartRate?.value || 'N/A'}
+                <div>
+                  <span className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+                    {vitals?.heartRate?.value || '--'}
                   </span>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400">bpm</span>
-                  {vitals?.heartRate?.trend && vitals.heartRate.trend !== 'stable' && (
-                    <span className="text-xs font-semibold text-sky-600 dark:text-sky-400">
-                      {vitals.heartRate.trend === 'up' ? '↑' : '↓'}
-                    </span>
-                  )}
+                  <span className="text-xs font-semibold text-rose-600/70 dark:text-rose-400/70 ml-1">bpm</span>
                 </div>
               </div>
 
-              {/* Temperature */}
-              <div className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <TemperatureIcon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                  <span className="text-xs text-gray-600 dark:text-gray-400">Temp</span>
+              {/* Temperature Card */}
+              <div className="bg-orange-50 dark:bg-orange-900/10 p-4 rounded-2xl border border-orange-100 dark:border-orange-900/20 transition-all hover:scale-[1.02] group">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                    <TemperatureIcon className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <span className="text-xs font-bold text-orange-600 dark:text-orange-300 uppercase tracking-wider">Temp</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-base font-bold text-gray-900 dark:text-gray-100">
-                    {vitals?.temperature?.value || 'N/A'}
+                <div>
+                  <span className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+                    {vitals?.temperature?.value || '--'}
                   </span>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400">°F</span>
-                  {vitals?.temperature?.trend && vitals.temperature.trend !== 'stable' && (
-                    <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                      {vitals.temperature.trend === 'up' ? '↑' : '↓'}
-                    </span>
-                  )}
+                  <span className="text-xs font-semibold text-orange-600/70 dark:text-orange-400/70 ml-1">°F</span>
                 </div>
               </div>
             </div>
@@ -612,81 +637,84 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
               </div>
             ) : (
               <>
-                {/* Prescription Medications */}
+                {/* Prescription Medications - Clean List */}
                 {prescriptionMedications.length > 0 && (
-                  <div className="mb-3">
-                    <div className="flex items-center mb-2">
-                      <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
-                      <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 px-2 uppercase tracking-wider">Prescribed</span>
-                      <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+                  <div className="mb-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-[10px] font-bold text-[#8AC43C] uppercase tracking-widest">Prescribed</span>
+                      <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800"></div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {prescriptionMedications.map((med, index) => (
-                        <div key={`rx-${index}`} className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-2 border border-purple-200 dark:border-purple-700">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-gray-900 dark:text-white text-sm truncate">{med.name}</span>
-                                <span className="text-[9px] bg-purple-200 dark:bg-purple-700 text-purple-900 dark:text-purple-200 px-1.5 py-0.5 rounded font-semibold shrink-0">Rx</span>
-                              </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
-                                {med.dosage} • {med.frequency}{med.timing ? ` • ${med.timing}` : ''}
-                              </p>
+                        <div key={`rx-${index}`} className="flex items-start justify-between group py-1">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[#222222] dark:text-white text-sm">{med.name}</span>
+                              {med.instructions && (
+                                <span className="text-[10px] text-[#717171] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded truncate max-w-[150px]">
+                                  {med.instructions}
+                                </span>
+                              )}
                             </div>
+                            <p className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0] mt-0.5">
+                              {med.dosage} • {med.frequency}
+                            </p>
                           </div>
-                          {med.instructions && (
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 italic truncate">{med.instructions}</p>
-                          )}
+                          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-[#f0f9e8] text-[#8AC43C] dark:bg-[#8AC43C]/20 shrink-0">
+                            <PillIcon className="w-4 h-4" />
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Patient Self-Managed Medications (Enhanced) */}
+                {/* Patient Self-Managed Medications (Enhanced) - Clean List */}
                 {patientMedications.length > 0 && (
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 flex-1">
-                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
-                        <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 px-2 uppercase tracking-wider">Patient Tracked</span>
-                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
-                      </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-[10px] font-bold text-[#717171] uppercase tracking-widest">Self-Reported</span>
+                      <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800"></div>
                       {adherenceStats && (
-                        <span className={`text-xs font-bold ml-2 ${adherenceStats.adherencePercentage >= 80 ? 'text-green-600 dark:text-green-400' :
-                          adherenceStats.adherencePercentage >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                            'text-red-600 dark:text-red-400'
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${adherenceStats.adherencePercentage >= 80 ? 'bg-green-100 text-green-700' :
+                          adherenceStats.adherencePercentage >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
                           }`}>
-                          {adherenceStats.adherencePercentage}%
+                          {adherenceStats.adherencePercentage}% Adherence
                         </span>
                       )}
                     </div>
-                    <div className="space-y-2">
+
+                    <div className="space-y-3">
                       {patientMedications.slice(0, 4).map((med) => (
-                        <div key={med.id} className="bg-rose-50 dark:bg-rose-900/20 rounded-lg p-2 border border-rose-200 dark:border-rose-800">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-gray-900 dark:text-white text-sm truncate">{med.name}</span>
-                                {med.category && (
-                                  <span className="text-[9px] bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded shrink-0">{med.category}</span>
-                                )}
-                              </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
-                                {med.dosage} {med.dosageUnit} • {med.scheduledTimes?.join(', ') || 'As needed'}
-                              </p>
+                        <div key={med.id} className="flex items-start justify-between group py-1">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[#222222] dark:text-white text-sm">{med.name}</span>
+                              {med.category && (
+                                <span className="text-[9px] font-bold text-[#717171] border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded-md">
+                                  {med.category}
+                                </span>
+                              )}
                             </div>
+                            <p className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0] mt-0.5">
+                              {med.dosage} {med.dosageUnit} • {med.scheduledTimes?.join(', ') || 'As needed'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
                             {med.reminderEnabled && (
-                              <span className="text-sm ml-2 shrink-0">🔔</span>
+                              <span className="text-xs text-[#8AC43C]">
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" /></svg>
+                              </span>
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
+
                     {patientMedications.length > 4 && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1.5">
-                        +{patientMedications.length - 4} more
-                      </p>
+                      <button className="w-full mt-4 text-xs font-bold text-[#717171] hover:text-[#222222] transition-colors py-2 border-t border-gray-100 dark:border-gray-800">
+                        View {patientMedications.length - 4} more
+                      </button>
                     )}
                   </div>
                 )}
@@ -758,7 +786,7 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                     {caseDetails.medicalHistory.map((item, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center px-2.5 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs rounded-full"
+                        className="inline-flex items-center px-2.5 py-1 bg-gray-100 dark:bg-white/10 text-[#717171] dark:text-gray-300 text-xs font-medium rounded-full border border-gray-200 dark:border-gray-700"
                       >
                         {item}
                       </span>
@@ -773,9 +801,9 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
               {medicalRecords.length > 0 && (
                 <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold mb-2">Latest Record</p>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs font-semibold text-blue-900 dark:text-blue-300">{medicalRecords[0].type}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                    <p className="text-xs font-bold text-[#8AC43C] uppercase tracking-wider mb-1">{medicalRecords[0].type}</p>
+                    <p className="text-sm font-medium text-[#222222] dark:text-white">
                       {new Date(medicalRecords[0].date).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
@@ -822,37 +850,36 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
           </div>
         </div>
 
-        {/* Records List */}
+        {/* Records List - Redesigned to HUD style */}
         {filteredRecords.length > 0 ? (
           <div className="space-y-4">
             {filteredRecords.map((record, index) => {
               const isExpanded = expandedRecords.has(record.id);
+              const styles = getCategoryStyles(record.category);
+
               return (
                 <div
                   key={record.id}
-                  className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 overflow-hidden hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300 animate-slideUp"
+                  className={`${styles.bg} rounded-2xl border ${styles.border} overflow-hidden hover:shadow-md transition-all duration-300 group`}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className={`${getCategoryColor(record.category)} p-4 rounded-2xl shadow-lg`}>
-                        <DocumentIcon className="h-6 w-6 text-white" />
+                    <div className="flex items-start gap-5">
+                      <div className={`p-3 rounded-xl ${styles.iconBg} transition-colors shadow-sm`}>
+                        <DocumentIcon className="h-6 w-6" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 gap-3">
                           <div className="flex-1">
-                            <div className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${getCategoryBadgeColor(record.category)} mb-2`}>
-                              <TagIcon className="h-3.5 w-3.5 mr-1.5" />
-                              {record.category}
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${styles.badge}`}>
+                                {record.category}
+                              </span>
+                              <span className={`text-xs font-medium ${styles.text} opacity-70`}>
+                                {new Date(record.date).toLocaleDateString()}
+                              </span>
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">{record.type}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                              {new Date(record.date).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </p>
+                            <h3 className={`text-lg font-bold ${styles.text.split(' ')[0]} dark:text-white mb-1`}>{record.type}</h3>
                           </div>
                           <div className="flex items-center space-x-2">
                             {record.fileUrl && (
@@ -860,7 +887,7 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                                 href={record.fileUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-3 rounded-xl bg-secondary-700 dark:bg-secondary-600 text-white dark:text-white hover:bg-secondary-800 dark:hover:bg-secondary-700 transition-all duration-200"
+                                className={`p-2.5 rounded-full ${styles.badge} hover:opacity-80 transition-all duration-200`}
                                 aria-label="Preview record"
                               >
                                 <EyeIcon className="h-5 w-5" />
@@ -869,35 +896,24 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                           </div>
                         </div>
 
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                              <span className="font-semibold text-gray-800 dark:text-gray-200">Doctor:</span> {record.doctor}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between pt-2">
+                            <p className={`text-sm ${styles.text} opacity-90`}>
+                              <span className="font-bold opacity-100">Doctor:</span> {record.doctor}
                             </p>
                             <button
                               onClick={() => toggleRecord(record.id)}
-                              className="text-sm font-semibold text-rose-900 dark:text-rose-400 hover:text-rose-900 dark:hover:text-sky-300 transition-colors flex items-center gap-1"
+                              className={`text-sm font-bold ${styles.text} hover:opacity-80 transition-colors flex items-center gap-1.5`}
                             >
-                              {isExpanded ? (
-                                <>
-                                  <span>Hide Details</span>
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                                  </svg>
-                                </>
-                              ) : (
-                                <>
-                                  <span>View Details</span>
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                  </svg>
-                                </>
-                              )}
+                              {isExpanded ? 'Hide Details' : 'View Details'}
+                              <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
                             </button>
                           </div>
 
                           {isExpanded && (
-                            <div className="mt-4 pt-4 border-t-2 border-gray-200 dark:border-gray-600 animate-fade-in">
+                            <div className={`pt-4 border-t ${styles.border} animate-slide-down`}>
                               <RichSummaryDisplay summary={record.summary} />
                             </div>
                           )}

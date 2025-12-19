@@ -615,7 +615,7 @@ const DoctorDashboardMain: React.FC = () => {
             )}
 
             {activeView === 'patient-detail' && selectedPatient && (
-              <div className="animate-slide-up bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] min-h-[80vh]">
+              <div className="animate-slide-up min-h-[80vh]">
                 <DoctorPatientView
                   patient={selectedPatient}
                   onBack={handleBackToDashboard}
