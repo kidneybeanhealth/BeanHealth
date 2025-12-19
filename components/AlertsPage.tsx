@@ -238,7 +238,7 @@ const AlertsPage: React.FC<AlertsPageProps> = ({ doctorId, onBack, onViewPatient
 
                                                 <button
                                                     onClick={() => onViewPatient?.(alert.patient_id)}
-                                                    className="text-[#222222] dark:text-white hover:text-[#FF385C] dark:hover:text-[#FF385C] font-bold text-sm mb-4 transition-colors underline decoration-2 underline-offset-4"
+                                                    className="text-[#222222] dark:text-white hover:text-[#8AC43C] dark:hover:text-[#8AC43C] font-bold text-sm mb-4 transition-colors underline decoration-2 underline-offset-4"
                                                 >
                                                     {alert.patient_name} →
                                                 </button>

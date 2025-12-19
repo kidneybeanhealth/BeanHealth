@@ -164,7 +164,7 @@ const DoctorDashboardMain: React.FC = () => {
 
     return (
       <>
-        <span className={`text-white text-[10px] px-1.5 py-0.5 rounded-full ${hasUrgentMessages ? 'bg-red-500 animate-pulse' : 'bg-[#FF385C]'}`}>
+        <span className={`text-white text-[10px] px-1.5 py-0.5 rounded-full ${hasUrgentMessages ? 'bg-red-500 animate-pulse' : 'bg-[#8AC43C]'}`}>
           {count}
         </span>
         {hasUrgentMessages && (
@@ -188,7 +188,7 @@ const DoctorDashboardMain: React.FC = () => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">Messages</h3>
-              <MessagesIcon className="w-6 h-6 text-[#FF385C]" />
+              <MessagesIcon className="w-6 h-6 text-[#8AC43C]" />
             </div>
             <span className="text-4xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{count}</span>
           </div>
@@ -220,7 +220,7 @@ const DoctorDashboardMain: React.FC = () => {
         <div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-[#222222] dark:text-white tracking-tight leading-tight">
             Welcome back, <br />
-            <span className="text-[#FF385C]">Dr. {profile?.name || user?.email?.split('@')[0] || ''}</span>
+            <span className="text-[#8AC43C]">Dr. {profile?.name || user?.email?.split('@')[0] || ''}</span>
           </h1>
         </div>
         <div className="flex items-center">
@@ -239,7 +239,7 @@ const DoctorDashboardMain: React.FC = () => {
           value={loading ? '...' : patients.length}
           subtext="Currently active"
           icon={UserGroupIcon}
-          colorClass="text-[#FF385C]"
+          colorClass="text-[#8AC43C]"
         />
         <MessagesStatCard localCount={localUnreadCount} />
         <StatCard
@@ -247,7 +247,7 @@ const DoctorDashboardMain: React.FC = () => {
           value="0"
           subtext="Pending tasks"
           icon={DocumentIcon}
-          colorClass="text-[#FF385C]"
+          colorClass="text-[#8AC43C]"
         />
       </div>
 
@@ -256,7 +256,7 @@ const DoctorDashboardMain: React.FC = () => {
         <div className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-2xl font-bold text-[#222222] dark:text-white">Recent Patients</h2>
-            <button className="text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-[#FF385C] dark:hover:text-[#FF385C] transition-colors">
+            <button className="text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-[#8AC43C] dark:hover:text-[#8AC43C] transition-colors">
               View all
             </button>
           </div>
@@ -264,7 +264,7 @@ const DoctorDashboardMain: React.FC = () => {
           <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800 overflow-hidden">
             {loading ? (
               <div className="p-12 text-center">
-                <div className="w-8 h-8 border-2 border-[#FF385C] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <div className="w-8 h-8 border-2 border-[#8AC43C] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-[#717171]">Loading library...</p>
               </div>
             ) : patients.length === 0 ? (
@@ -289,7 +289,7 @@ const DoctorDashboardMain: React.FC = () => {
                         {getInitials(patient.name, patient.email)}
                       </div>
                       <div>
-                        <h4 className="font-bold text-[#222222] dark:text-white text-base group-hover:text-[#FF385C] transition-colors">
+                        <h4 className="font-bold text-[#222222] dark:text-white text-base group-hover:text-[#8AC43C] transition-colors">
                           {patient.name || patient.email}
                         </h4>
                         <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium">
@@ -453,7 +453,7 @@ const DoctorDashboardMain: React.FC = () => {
               <div key={patient.id} className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 <div className="flex items-center gap-4">
                   {/* Avatar */}
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${getInitialsColor(patient.name || '', patient.email)}`}>
+                  <div className="h-12 w-12 rounded-full bg-[#222222] dark:bg-white flex items-center justify-center text-white dark:text-[#222222] font-bold text-sm shadow-sm">
                     {getInitials(patient.name || '', patient.email)}
                   </div>
                   {/* Info */}
@@ -510,7 +510,7 @@ const DoctorDashboardMain: React.FC = () => {
 
   return (
     <NotificationProvider userId={user?.id || ''} activeView={activeView} userRole="doctor">
-      <div className="min-h-screen bg-[#F7F7F7] dark:bg-black font-sans text-[#222222] selection:bg-[#FF385C] selection:text-white">
+      <div className="min-h-screen bg-[#F7F7F7] dark:bg-black font-sans text-[#222222] selection:bg-[#8AC43C] selection:text-white">
 
         {/* Sticky Header */}
         <div className={`sticky top-0 z-30 transition-all duration-300 bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
@@ -588,7 +588,7 @@ const DoctorDashboardMain: React.FC = () => {
                 <div className="hidden md:block">
                   <button
                     onClick={signOut}
-                    className="p-2.5 text-[#717171] hover:text-[#FF385C] hover:bg-red-50 dark:hover:bg-red-900/10 rounded-full transition-colors"
+                    className="p-2.5 text-[#717171] hover:text-[#8AC43C] hover:bg-green-50 dark:hover:bg-green-900/10 rounded-full transition-colors"
                     title="Sign Out"
                   >
                     <LogoutIcon className="w-5 h-5" />

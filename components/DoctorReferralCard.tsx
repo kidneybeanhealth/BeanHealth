@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getInitials } from '../utils/avatarUtils';
+
+interface Patient {
+    id: string;
+    name: string;
+    email: string;
+}
 
 interface DoctorReferralCardProps {
     doctorId: string;
@@ -10,6 +17,7 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
     const [doctorName, setDoctorName] = useState<string>('');
     const [specialty, setSpecialty] = useState<string>('');
     const [linkedPatientsCount, setLinkedPatientsCount] = useState(0);
+    const [recentPatients, setRecentPatients] = useState<Patient[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [copied, setCopied] = useState(false);
 
@@ -24,21 +32,37 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
                 .from('users')
                 .select('name, specialty, referral_code')
                 .eq('id', doctorId)
-                .single();
+                .single() as { data: { name: string; specialty: string; referral_code: string } | null; error: any };
 
             if (doctorError) throw doctorError;
+            if (!doctorData) throw new Error('Doctor not found');
 
-            setDoctorName(doctorData?.name || '');
-            setSpecialty(doctorData?.specialty || 'General Practice');
-            setReferralCode(doctorData?.referral_code || null);
+            setDoctorName(doctorData.name || '');
+            setSpecialty(doctorData.specialty || 'General Practice');
+            setReferralCode(doctorData.referral_code || null);
 
-            const { count, error: countError } = await supabase
+            // Fetch patient relationships with patient data
+            const { data: relationships, error: relError } = await supabase
                 .from('patient_doctor_relationships')
-                .select('id', { count: 'exact', head: true })
-                .eq('doctor_id', doctorId);
+                .select('patient_id, created_at')
+                .eq('doctor_id', doctorId)
+                .order('created_at', { ascending: false });
 
-            if (!countError) {
-                setLinkedPatientsCount(count || 0);
+            if (!relError && relationships) {
+                setLinkedPatientsCount(relationships.length);
+
+                // Fetch the 3 most recent patients' details
+                if (relationships.length > 0) {
+                    const recentPatientIds = relationships.slice(0, 3).map((r: { patient_id: string }) => r.patient_id);
+                    const { data: patientsData, error: patientsError } = await supabase
+                        .from('users')
+                        .select('id, name, email')
+                        .in('id', recentPatientIds);
+
+                    if (!patientsError && patientsData) {
+                        setRecentPatients(patientsData as Patient[]);
+                    }
+                }
             }
         } catch (error) {
             console.error('Error loading doctor data:', error);
@@ -109,78 +133,79 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
     }
 
     return (
-        <div className="bg-white dark:bg-[#1e1e1e] p-6 md:p-8 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800 transition-all hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-            <div className="flex items-center justify-between mb-6">
+        <div className="bg-white dark:bg-[#1e1e1e] p-7 md:p-8 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800 transition-all duration-500 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+            <div className="flex items-start justify-between mb-8">
                 <div>
-                    <h3 className="text-xl font-extrabold text-[#222222] dark:text-white">Refer Patients</h3>
-                    <p className="text-sm font-medium text-[#717171] dark:text-[#a0a0a0] mt-1">
-                        Share your unique code
+                    <h3 className="text-xl font-extrabold text-[#222222] dark:text-white tracking-tight">Refer Patients</h3>
+                    <p className="text-xs font-bold text-[#8AC43C] uppercase tracking-widest mt-1">
+                        {specialty}
                     </p>
                 </div>
-                <span className="px-3 py-1 bg-[#F7F7F7] dark:bg-[#2c2c2c] text-[#222222] dark:text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-gray-100 dark:border-gray-700">
-                    {specialty}
-                </span>
-            </div>
-
-            {/* Referral Code Display */}
-            <div className="bg-[#F7F7F7] dark:bg-[#2c2c2c] p-6 rounded-xl mb-6 flex flex-col items-center justify-center border border-dashed border-gray-300 dark:border-gray-700 relative group cursor-pointer" onClick={handleCopyCode}>
-                <p className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-[0.2em] mb-2">CODE</p>
-                <p className="text-3xl font-mono font-bold text-[#222222] dark:text-white tracking-widest selection:bg-[#FF385C] selection:text-white">
-                    {referralCode}
-                </p>
-                <div className="absolute inset-0 flex items-center justify-center bg-black/5 dark:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
-                    <span className="text-xs font-bold text-[#222222] dark:text-white">Click to copy</span>
+                <div className="flex -space-x-1.5 p-1 bg-gray-50 dark:bg-white/5 rounded-full">
+                    {recentPatients.length > 0 ? (
+                        recentPatients.slice(0, 3).map((patient) => (
+                            <div
+                                key={patient.id}
+                                className="h-7 w-7 rounded-full bg-[#222222] dark:bg-white flex items-center justify-center text-white dark:text-[#222222] text-[10px] font-bold border-2 border-white dark:border-[#1e1e1e] shadow-sm transform transition-transform hover:scale-110 hover:z-10 cursor-pointer"
+                                title={patient.name || patient.email}
+                            >
+                                {getInitials(patient.name || '', patient.email)}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="h-7 w-7 rounded-full bg-gray-100 dark:bg-gray-800 border-2 border-white dark:border-[#1e1e1e]"></div>
+                    )}
                 </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
-                <button
+            {/* Referral Code Display - Modern Integrated Look */}
+            <div className="relative group mb-8">
+                <div
                     onClick={handleCopyCode}
-                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all border ${copied
-                        ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
-                        : 'bg-white border-gray-200 text-[#222222] hover:border-black dark:bg-transparent dark:border-gray-700 dark:text-white dark:hover:border-white'
-                        }`}
+                    className="w-full bg-[#F9F9F9] dark:bg-white/5 rounded-2xl p-6 flex flex-col items-center justify-center transition-all duration-500 group-hover:bg-[#8AC43C]/5 group-hover:scale-[1.02] cursor-pointer"
                 >
-                    {copied ? 'Copied!' : 'Copy'}
-                </button>
+                    <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-[0.3em] mb-3 opacity-50">Unique Code</p>
+                    <p className="text-2xl font-mono font-black text-[#222222] dark:text-white tracking-[0.15em] selection:bg-[#8AC43C] selection:text-white transition-colors group-hover:text-[#8AC43C]">
+                        {referralCode}
+                    </p>
+                </div>
+
+                {/* Floating Action Hint */}
+                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                    <span className="flex items-center gap-1.5 px-4 py-1.5 bg-[#222222] dark:bg-white shadow-xl rounded-full text-[10px] font-bold text-white dark:text-[#222222] uppercase tracking-wider">
+                        {copied ? 'Copied' : 'Click to copy'}
+                    </span>
+                </div>
+            </div>
+
+            {/* Actions & Sharing */}
+            <div className="flex items-center gap-3">
                 <button
                     onClick={handleShareCode}
-                    className="flex items-center justify-center gap-2 py-3 px-4 bg-[#FF385C] hover:bg-[#d90b3e] text-white rounded-xl font-bold text-sm transition-all shadow-sm transform active:scale-95"
+                    className="flex-1 flex items-center justify-center gap-2.5 py-3.5 px-6 bg-[#8AC43C] hover:bg-[#7ab332] text-white rounded-2xl font-bold text-xs transition-all shadow-lg shadow-[#8AC43C]/20 transform active:scale-95 group"
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                     </svg>
-                    Share
+                    Send to Patient
                 </button>
             </div>
 
-            {/* Use Instructions as Footer */}
-            <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-[#2c2c2c] flex items-center justify-center text-[#717171] dark:text-[#a0a0a0]">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <p className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0] leading-relaxed">
-                        Patients enter this code during signup to instantly link their profile to your dashboard.
-                    </p>
-                </div>
-
-                <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-[#222222] dark:text-[#e0e0e0]">
-                        {linkedPatientsCount} Active Patients
-                    </p>
-                    <div className="flex -space-x-2">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700 border-2 border-white dark:border-[#1e1e1e]"></div>
-                        ))}
-                    </div>
-                </div>
+            {/* Minimal Footer Info */}
+            <div className="mt-8 flex items-center gap-4 text-center">
+                <div className="flex-1 h-[1px] bg-gray-100 dark:bg-white/5"></div>
+                <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-widest whitespace-nowrap">
+                    {linkedPatientsCount} Total Patients
+                </p>
+                <div className="flex-1 h-[1px] bg-gray-100 dark:bg-white/5"></div>
             </div>
+
+            <p className="mt-6 text-[10px] font-medium text-[#717171] dark:text-[#a0a0a0] text-center leading-relaxed max-w-[180px] mx-auto opacity-70">
+                Patient signs up using this code to link their account
+            </p>
         </div>
     );
 };
 
 export default DoctorReferralCard;
+
