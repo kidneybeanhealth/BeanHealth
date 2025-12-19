@@ -425,8 +425,15 @@ const Messages: React.FC<MessagesProps> = ({
     const colorClass = getInitialsColor(contact.name, contact.email);
     const sizeClasses = getInitialsAvatarClasses(size);
 
+    // Build size classes without the text-white from base (we'll set our own text color)
+    const baseSizeClasses = {
+      sm: 'h-8 w-8 text-sm',
+      md: 'h-10 w-10 text-sm',
+      lg: 'h-12 w-12 text-base'
+    };
+
     return (
-      <div className={`${sizeClasses} ${inverted
+      <div className={`${baseSizeClasses[size]} rounded-full flex items-center justify-center font-medium ${inverted
         ? 'bg-white dark:bg-[#222] text-[#222] dark:text-white'
         : 'bg-[#222222] dark:bg-white text-white dark:text-[#222222]'
         }`}>
