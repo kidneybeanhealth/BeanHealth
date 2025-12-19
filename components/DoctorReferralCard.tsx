@@ -136,7 +136,7 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
         <div className="bg-white dark:bg-[#1e1e1e] p-7 md:p-8 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800 transition-all duration-500 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
             <div className="flex items-start justify-between mb-8">
                 <div>
-                    <h3 className="text-xl font-extrabold text-[#222222] dark:text-white tracking-tight">Refer Patients</h3>
+                    <h3 className="text-2xl font-extrabold text-[#222222] dark:text-white tracking-tight">Refer Patients</h3>
                     <p className="text-xs font-bold text-[#8AC43C] uppercase tracking-widest mt-1">
                         {specialty}
                     </p>
@@ -162,7 +162,7 @@ const DoctorReferralCard: React.FC<DoctorReferralCardProps> = ({ doctorId }) => 
             <div className="relative group mb-8">
                 <div
                     onClick={handleCopyCode}
-                    className="w-full bg-[#F9F9F9] dark:bg-white/5 rounded-2xl p-6 flex flex-col items-center justify-center transition-all duration-500 group-hover:bg-[#8AC43C]/5 group-hover:scale-[1.02] cursor-pointer"
+                    className="w-full bg-[#F9F9F9] dark:bg-white/5 rounded-2xl p-4 flex flex-col items-center justify-center transition-all duration-500 group-hover:bg-[#8AC43C]/5 group-hover:scale-[1.02] cursor-pointer"
                 >
                     <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-[0.3em] mb-3 opacity-50">Unique Code</p>
                     <p className="text-2xl font-mono font-black text-[#222222] dark:text-white tracking-[0.15em] selection:bg-[#8AC43C] selection:text-white transition-colors group-hover:text-[#8AC43C]">

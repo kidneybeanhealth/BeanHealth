@@ -216,7 +216,7 @@ const DoctorDashboardMain: React.FC = () => {
   const renderDashboard = () => (
     <div className="space-y-10 pb-12 animate-fade-in">
       {/* Welcome & Date */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-[#222222] dark:text-white tracking-tight leading-tight">
             Welcome back, <br />
@@ -233,7 +233,7 @@ const DoctorDashboardMain: React.FC = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xl:gap-8">
         <StatCard
           title="Patients"
           value={loading ? '...' : patients.length}
@@ -254,7 +254,7 @@ const DoctorDashboardMain: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Content: Recent Patients */}
         <div className="lg:col-span-8 space-y-6">
-          <div className="flex items-center justify-between px-1">
+          <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-[#222222] dark:text-white">Recent Patients</h2>
             <button className="text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-[#8AC43C] dark:hover:text-[#8AC43C] transition-colors">
               View all
@@ -514,7 +514,7 @@ const DoctorDashboardMain: React.FC = () => {
 
         {/* Sticky Header */}
         <div className={`sticky top-0 z-30 transition-all duration-300 bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12">
             <div className="flex items-center justify-between h-20">
               {/* Logo / Brand Area */}
               <div className="flex items-center gap-4">
@@ -601,7 +601,7 @@ const DoctorDashboardMain: React.FC = () => {
 
         {/* Main Content Area */}
         <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)]' : 'py-10'}`}>
-          <div className={`${activeView === 'messages' ? 'h-full' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'}`}>
+          <div className={`${activeView === 'messages' ? 'h-full' : 'max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12'}`}>
             {activeView === 'dashboard' && renderDashboard()}
 
             {activeView === 'monitoring' && renderMonitoring()}
