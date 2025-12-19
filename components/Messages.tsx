@@ -449,10 +449,10 @@ const Messages: React.FC<MessagesProps> = ({
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
 
   return (
-    <div className="flex flex-col h-full md:flex-row bg-white dark:bg-[#1a1a1a] md:rounded-3xl overflow-hidden shadow-[0_6px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_6px_20px_rgba(0,0,0,0.3)] border-0 md:border border-gray-200/60 dark:border-gray-700/60">
+    <div className="flex flex-col h-full md:flex-row bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md md:rounded-3xl overflow-hidden shadow-[0_6px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_0_20px_rgba(138,196,60,0.1)] border-0 md:border border-gray-200/60 dark:border-[#8AC43C]/20">
       {/* Mobile-only Header */}
       {!selectedContactId && onMenuClick && (
-        <div className="md:hidden sticky top-0 z-20 px-4 py-3 border-b border-gray-50 dark:border-gray-800/50 flex items-center bg-white dark:bg-[#1a1a1a]">
+        <div className="md:hidden sticky top-0 z-20 px-4 py-3 border-b border-gray-50 dark:border-gray-800/50 flex items-center bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md">
           <button
             onClick={onMenuClick}
             className="p-2 -ml-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -465,9 +465,9 @@ const Messages: React.FC<MessagesProps> = ({
       )}
 
       {/* Contact List Panel */}
-      <div className={`w-full md:w-72 lg:w-80 border-r border-gray-100 dark:border-gray-800/50 flex flex-col ${selectedContactId ? 'hidden md:flex' : 'flex'} min-h-0 bg-gray-50/30 dark:bg-[#151515]`}>
+      <div className={`w-full md:w-72 lg:w-80 border-r border-gray-200 dark:border-[#8AC43C]/25 flex flex-col ${selectedContactId ? 'hidden md:flex' : 'flex'} min-h-0 bg-white dark:bg-[#8AC43C]/[0.02]`}>
         {/* Sidebar Header */}
-        <div className="hidden md:block px-5 py-5 border-b border-gray-100 dark:border-gray-800/50 flex-shrink-0 bg-white dark:bg-[#1a1a1a]">
+        <div className="hidden md:flex px-5 py-3.5 border-b border-gray-200 dark:border-[#8AC43C]/25 flex-shrink-0 bg-white dark:bg-transparent h-[73px] flex-col justify-center">
           <h3 className="text-xl font-bold text-[#222] dark:text-white tracking-tight">Messages</h3>
           <p className="text-[10px] text-[#717171] dark:text-[#888] font-medium uppercase tracking-wider mt-0.5">{sortedContacts.length} {sortedContacts.length === 1 ? 'conversation' : 'conversations'}</p>
         </div>
@@ -512,7 +512,7 @@ const Messages: React.FC<MessagesProps> = ({
                     ? 'bg-[#222] dark:bg-white shadow-md'
                     : hasUnread
                       ? 'bg-[#8AC43C]/5 dark:bg-[#8AC43C]/10 hover:bg-[#8AC43C]/10 dark:hover:bg-[#8AC43C]/15 border border-[#8AC43C]/20'
-                      : 'bg-white dark:bg-[#1e1e1e] hover:bg-gray-100 dark:hover:bg-gray-800 shadow-sm'
+                      : 'bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-[#8AC43C]/20 shadow-sm'
                     }`}
                 >
                   <div className="relative flex-shrink-0">
@@ -580,11 +580,11 @@ const Messages: React.FC<MessagesProps> = ({
       </div>
 
       {/* Chat Panel */}
-      <div className={`w-full md:flex-1 flex flex-col ${selectedContactId ? 'flex' : 'hidden md:flex'} min-h-0 bg-white dark:bg-[#1a1a1a]`}>
+      <div className={`w-full md:flex-1 flex flex-col ${selectedContactId ? 'flex' : 'hidden md:flex'} min-h-0 bg-white dark:bg-transparent`}>
         {selectedContact ? (
           <>
             {/* Chat Header */}
-            <div className="sticky top-0 z-10 px-5 py-3.5 border-b border-gray-100 dark:border-gray-800/50 flex items-center flex-shrink-0 bg-white dark:bg-[#1a1a1a]">
+            <div className="sticky top-0 z-10 px-5 py-3.5 border-b border-gray-200 dark:border-[#8AC43C]/25 flex items-center flex-shrink-0 bg-white dark:bg-[#8AC43C]/[0.02] h-[73px]">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <button
                   onClick={() => setSelectedContactId(null)}
@@ -637,7 +637,7 @@ const Messages: React.FC<MessagesProps> = ({
             <div
               ref={messagesContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto min-h-0 bg-gray-50/50 dark:bg-[#141414] flex flex-col"
+              className="flex-1 overflow-y-auto min-h-0 bg-gray-50 dark:bg-transparent flex flex-col"
             >
               <div className="flex-1"></div>
               <div className="px-3 py-4">
@@ -672,7 +672,7 @@ const Messages: React.FC<MessagesProps> = ({
                           {/* Message Content */}
                           <div className={`max-w-[75%] sm:max-w-[65%]`}>
                             <div className={`px-4 py-2.5 rounded-2xl text-sm break-words ${isCurrentUser
-                              ? 'bg-[#222] dark:bg-white text-white dark:text-[#222] rounded-br-sm'
+                              ? 'bg-[#8AC43C] text-white rounded-br-sm shadow-sm'
                               : 'bg-gray-100 dark:bg-[#2a2a2a] text-[#222] dark:text-white rounded-bl-sm'
                               } ${msg.isUrgent ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-[#141414]' : ''} ${pendingMessages.has(msg.id) ? 'opacity-60' : ''
                               }`}>
@@ -720,7 +720,7 @@ const Messages: React.FC<MessagesProps> = ({
                     setShouldAutoScroll(true);
                     scrollToBottom(true);
                   }}
-                  className="fixed bottom-28 right-4 p-2.5 bg-[#222] dark:bg-white text-white dark:text-[#222] rounded-full shadow-lg hover:scale-105 active:scale-95 transition-transform z-10"
+                  className="fixed bottom-28 right-4 p-2.5 bg-[#8AC43C] text-white rounded-full shadow-lg hover:scale-105 active:scale-95 transition-transform z-10"
                   aria-label="Scroll to bottom"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -731,7 +731,7 @@ const Messages: React.FC<MessagesProps> = ({
             </div>
 
             {/* Message Input Area */}
-            <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800/50 bg-white dark:bg-[#1a1a1a] flex-shrink-0">
+            <div className="px-4 py-2 border-t border-gray-200 dark:border-[#8AC43C]/25 bg-white dark:bg-[#8AC43C]/[0.02] flex-shrink-0">
               {showCreditWarning && (
                 <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-xs rounded-xl border border-amber-200 dark:border-amber-800/50 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -872,7 +872,7 @@ const Messages: React.FC<MessagesProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsRecordingAudio(true)}
-                      className="p-2.5 rounded-full bg-[#222] dark:bg-white text-white dark:text-[#222] hover:opacity-90 active:scale-95 transition-all"
+                      className="p-2.5 rounded-full bg-[#8AC43C] text-white hover:opacity-90 active:scale-95 transition-all"
                       aria-label="Record voice"
                     >
                       <MicrophoneIcon className="h-5 w-5" />

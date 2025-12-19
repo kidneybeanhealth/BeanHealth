@@ -216,117 +216,130 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           ></div>
 
           {/* Modal panel */}
-          <div className="inline-block align-bottom bg-white dark:bg-[#1e1e1e] rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full animate-scaleIn">
+          <div className="inline-block align-bottom bg-white dark:bg-[#1a1a1a] rounded-[32px] text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full animate-scaleIn border border-gray-100 dark:border-[#8AC43C]/20">
             {/* Header */}
-            <div className="bg-white dark:bg-[#1e1e1e] px-8 py-6 border-b border-gray-100 dark:border-gray-800">
+            <div className="bg-white dark:bg-[#1a1a1a] px-8 py-7 border-b border-gray-100 dark:border-[#8AC43C]/10">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-3xl font-extrabold text-[#222222] dark:text-white">Prescription Ready!</h3>
-                  <p className="text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">
-                    Review and send to {patient.name}
+                  <h3 className="text-2xl font-bold text-[#222222] dark:text-white">Prescription Ready!</h3>
+                  <p className="text-sm text-[#717171] dark:text-[#888] font-medium mt-1">
+                    Review and send to <span className="text-[#222222] dark:text-white font-bold">{patient.name}</span>
                   </p>
                 </div>
                 <button
                   onClick={handleClose}
-                  className="p-2 bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                  className="p-2 text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
                 >
-                  <XIcon className="h-6 w-6 text-[#222222] dark:text-white" />
+                  <XIcon className="h-6 w-6" />
                 </button>
               </div>
             </div>
 
             {/* Body */}
-            <div className="px-8 py-8">
-              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-6 mb-6">
-                <div className="flex items-center space-x-4 mb-4">
-                  <svg className="h-12 w-12 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+            <div className="px-8 py-8 space-y-6">
+              <div className="bg-[#8AC43C]/5 dark:bg-[#8AC43C]/10 border border-[#8AC43C]/20 dark:border-[#8AC43C]/30 rounded-3xl p-6">
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="p-3 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 rounded-2xl">
+                    <svg className="h-8 w-8 text-[#8AC43C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
                   <div>
-                    <h4 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-                      Prescription Ready
+                    <h4 className="text-lg font-bold text-[#222222] dark:text-white">
+                      Prescription Finalized
                     </h4>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {createdPrescription.medications.length} medication{createdPrescription.medications.length > 1 ? 's' : ''} prescribed
+                    <p className="text-xs text-[#717171] dark:text-[#888] font-medium">
+                      {createdPrescription.medications.length} items included
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm">
+                <div className="space-y-3">
                   {createdPrescription.medications.map((med, index) => (
-                    <div key={index} className="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
-                      <span className="font-semibold">{index + 1}.</span>
-                      <span className="font-medium">{med.name}</span>
-                      <span className="text-gray-500">•</span>
-                      <span>{med.dosage}</span>
-                      <span className="text-gray-500">•</span>
-                      <span>{med.frequency}</span>
+                    <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-[#252525] border border-gray-100 dark:border-[#8AC43C]/10 rounded-2xl">
+                      <span className="w-6 h-6 flex items-center justify-center bg-[#8AC43C]/10 text-[#8AC43C] text-[10px] font-bold rounded-full">{index + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-[#222222] dark:text-white truncate">{med.name}</p>
+                        <p className="text-[10px] text-[#717171] font-medium uppercase tracking-wider mt-0.5">{med.dosage} • {med.frequency}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="text-center mb-6">
+              <div className="text-center">
                 <button
                   onClick={handlePreviewPDF}
-                  className="text-rose-900 dark:text-rose-400 hover:text-rose-900 dark:hover:text-sky-300 font-medium underline"
+                  className="inline-flex items-center gap-2 text-sm font-bold text-[#8AC43C] hover:underline"
                 >
-                  👁️ Preview PDF in new tab
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Preview Document
                 </button>
               </div>
 
-              <div className="bg-rose-50 dark:bg-rose-900/20 border border-sky-200 dark:border-sky-800 rounded-xl p-4 mb-6">
-                <h4 className="font-semibold text-sky-900 dark:text-sky-100 mb-2">
-                  What would you like to do?
+              <div className="bg-gray-50/50 dark:bg-gray-800/20 border border-gray-100 dark:border-gray-800 rounded-3xl p-5">
+                <h4 className="text-xs font-bold text-[#222222] dark:text-white uppercase tracking-wider mb-3">
+                  Next Steps
                 </h4>
-                <ul className="text-sm text-sky-800 dark:text-sky-200 space-y-1">
-                  <li>• <strong>Send to Patient:</strong> Upload PDF and send directly in chat</li>
-                  <li>• <strong>Download Only:</strong> Save PDF to your device</li>
-                </ul>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#8AC43C] mt-1.5 shrink-0"></div>
+                    <p className="text-xs text-[#717171] dark:text-[#888] leading-relaxed"><span className="text-[#222222] dark:text-white font-bold">Send to Patient:</span> Instantly shares the prescription in your chat conversation.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 mt-1.5 shrink-0"></div>
+                    <p className="text-xs text-[#717171] dark:text-[#888] leading-relaxed"><span className="text-[#222222] dark:text-white font-bold">Download Only:</span> Saves the PDF to your device for printing or external sharing.</p>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="bg-gray-50 dark:bg-[#2a2a2a] px-8 py-6 flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="bg-white dark:bg-[#1a1a1a] px-8 py-6 flex items-center gap-3 border-t border-gray-100 dark:border-[#8AC43C]/10">
               <button
                 onClick={handleBackToEdit}
                 disabled={isSubmitting}
-                className="px-6 py-3 text-sm font-bold text-[#717171] dark:text-[#a0a0a0] bg-white dark:bg-[#333] border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                className="flex-1 px-6 py-3.5 text-sm font-bold text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl transition-all disabled:opacity-50"
               >
-                ← Back to Edit
+                Back to Edit
               </button>
 
-              <div className="flex space-x-4">
-                <button
-                  onClick={handleDownloadOnly}
-                  disabled={isSubmitting}
-                  className="flex-1 sm:flex-none px-6 py-3 text-sm font-bold text-[#717171] dark:text-[#a0a0a0] bg-white dark:bg-[#333] border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-                >
-                  💾 Download Only
-                </button>
-                <button
-                  onClick={handleSendToPatient}
-                  disabled={isSubmitting}
-                  className="flex-1 sm:flex-none px-8 py-3 text-sm font-bold text-white bg-[#222222] dark:bg-white dark:text-[#222222] rounded-full hover:opacity-90 transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Sending...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                      <span>Send to Patient</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                onClick={handleDownloadOnly}
+                disabled={isSubmitting}
+                className="p-3.5 text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl transition-all disabled:opacity-50"
+                title="Download Only"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+
+              <button
+                onClick={handleSendToPatient}
+                disabled={isSubmitting}
+                className="flex-[2] px-8 py-3.5 text-sm font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-[#8AC43C]/20 active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    <span>Send to Patient</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -344,21 +357,21 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         ></div>
 
         {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white dark:bg-[#1e1e1e] rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full animate-scaleIn">
+        <div className="inline-block align-bottom bg-white dark:bg-[#1a1a1a] rounded-[32px] text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full animate-scaleIn border border-gray-100 dark:border-[#8AC43C]/20">
           {/* Header */}
-          <div className="bg-white dark:bg-[#1e1e1e] px-8 py-6 border-b border-gray-100 dark:border-gray-800">
+          <div className="bg-white dark:bg-[#1a1a1a] px-8 py-7 border-b border-gray-100 dark:border-[#8AC43C]/10">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-3xl font-extrabold text-[#222222] dark:text-white">Create Prescription</h3>
-                <p className="text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">
-                  Patient: <span className="font-bold text-[#222222] dark:text-white">{patient.name}</span>
+                <h3 className="text-3xl font-bold text-[#222222] dark:text-white tracking-tight">Create Prescription</h3>
+                <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">
+                  For: <span className="font-bold text-[#222222] dark:text-white">{patient.name}</span>
                 </p>
               </div>
               <button
                 onClick={handleClose}
-                className="p-2 bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                className="p-2 text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
               >
-                <XIcon className="h-6 w-6 text-[#222222] dark:text-white" />
+                <XIcon className="h-7 w-7" />
               </button>
             </div>
           </div>
@@ -366,123 +379,129 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           {/* Body */}
           <form onSubmit={handleSubmit} className="px-8 py-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
             {/* Medications Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between mb-6">
-                <h4 className="text-xl font-bold text-[#222222] dark:text-white">
-                  Medications
-                </h4>
+            <div className="space-y-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xl font-bold text-[#222222] dark:text-white">
+                    Medications
+                  </h4>
+                  <p className="text-xs text-[#717171] font-medium mt-0.5">List all medications to include in this prescription</p>
+                </div>
                 <button
                   type="button"
                   onClick={handleAddMedication}
-                  className="flex items-center space-x-2 px-6 py-2.5 text-sm font-bold text-white bg-[#222222] dark:bg-white dark:text-[#222222] rounded-full hover:opacity-90 transition-opacity shadow-md"
+                  className="flex items-center space-x-2 px-6 py-3 text-sm font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-2xl hover:opacity-90 transition-all shadow-md shadow-[#8AC43C]/20"
                 >
                   <PlusCircleIcon className="h-5 w-5" />
-                  <span>Add Medication</span>
+                  <span>Add Item</span>
                 </button>
               </div>
 
               {medications.map((medication, index) => (
                 <div
                   key={index}
-                  className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50 dark:bg-gray-800/50 space-y-3"
+                  className="relative group border border-gray-100 dark:border-[#8AC43C]/10 rounded-[24px] p-6 bg-gray-50/50 dark:bg-[#8AC43C]/5"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Medication {index + 1}
+                  <div className="flex items-center gap-3 mb-6">
+                    <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-[#8AC43C]/20 text-xs font-bold text-[#8AC43C] shadow-sm">
+                      {index + 1}
+                    </span>
+                    <span className="text-sm font-bold text-[#222222] dark:text-white uppercase tracking-wider">
+                      Medication Details
                     </span>
                     {medications.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveMedication(index)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        className="ml-auto text-gray-400 hover:text-rose-500 hover:bg-white dark:hover:bg-[#1a1a1a] p-2 rounded-xl transition-all"
                       >
                         <TrashIcon className="h-5 w-5" />
                       </button>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {/* Medication Name */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Medication Name *
+                      <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                        Medication Name
                       </label>
                       <input
                         type="text"
                         value={medication.name}
                         onChange={(e) => handleMedicationChange(index, 'name', e.target.value)}
-                        placeholder="e.g., Amoxicillin"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-rose-900 dark:focus:ring-rose-400 focus:border-transparent transition-colors"
+                        placeholder="e.g. Amoxicillin"
+                        className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium"
                       />
                     </div>
 
                     {/* Dosage */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Dosage *
+                      <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                        Dosage
                       </label>
                       <input
                         type="text"
                         value={medication.dosage}
                         onChange={(e) => handleMedicationChange(index, 'dosage', e.target.value)}
-                        placeholder="e.g., 500mg"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-rose-900 dark:focus:ring-rose-400 focus:border-transparent transition-colors"
+                        placeholder="e.g. 500mg"
+                        className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium"
                       />
                     </div>
 
                     {/* Frequency */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Frequency *
+                      <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                        Frequency
                       </label>
                       <input
                         type="text"
                         value={medication.frequency}
                         onChange={(e) => handleMedicationChange(index, 'frequency', e.target.value)}
-                        placeholder="e.g., 3 times daily"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-rose-900 dark:focus:ring-rose-400 focus:border-transparent transition-colors"
+                        placeholder="e.g. 3 times daily"
+                        className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium"
                       />
                     </div>
 
                     {/* Duration */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Duration *
+                      <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                        Duration
                       </label>
                       <input
                         type="text"
                         value={medication.duration}
                         onChange={(e) => handleMedicationChange(index, 'duration', e.target.value)}
-                        placeholder="e.g., 7 days"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-rose-900 dark:focus:ring-rose-400 focus:border-transparent transition-colors"
+                        placeholder="e.g. 7 days"
+                        className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium"
                       />
                     </div>
 
                     {/* Timing */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
                         Timing
                       </label>
                       <input
                         type="text"
                         value={medication.timing}
                         onChange={(e) => handleMedicationChange(index, 'timing', e.target.value)}
-                        placeholder="e.g., After meals"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-rose-900 dark:focus:ring-rose-400 focus:border-transparent transition-colors"
+                        placeholder="e.g. After meals"
+                        className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium"
                       />
                     </div>
 
                     {/* Instructions */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
                         Instructions
                       </label>
                       <input
                         type="text"
                         value={medication.instructions}
                         onChange={(e) => handleMedicationChange(index, 'instructions', e.target.value)}
-                        placeholder="e.g., Take with water"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-rose-900 dark:focus:ring-rose-400 focus:border-transparent transition-colors"
+                        placeholder="e.g. Take with water"
+                        className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium"
                       />
                     </div>
                   </div>
@@ -491,27 +510,27 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             </div>
 
             {/* Additional Notes */}
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Additional Notes (Optional)
+            <div className="mt-8">
+              <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-2.5 ml-1">
+                Clinical Notes (Optional)
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                placeholder="Add any additional instructions or notes for the patient..."
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-rose-900 dark:focus:ring-rose-400 focus:border-transparent transition-colors resize-none"
+                rows={4}
+                placeholder="Include any specific advice, warnings, or follow-up instructions..."
+                className="w-full px-5 py-4 bg-gray-50/50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#8AC43C]/20 rounded-3xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium resize-none shadow-inner"
               ></textarea>
             </div>
           </form>
 
           {/* Footer */}
-          <div className="bg-gray-50 dark:bg-[#2a2a2a] px-8 py-6 flex justify-end space-x-4 border-t border-gray-100 dark:border-gray-800">
+          <div className="bg-white dark:bg-[#1a1a1a] px-8 py-7 flex justify-end items-center gap-4 border-t border-gray-100 dark:border-[#8AC43C]/10">
             <button
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-6 py-3 text-sm font-bold text-[#717171] dark:text-[#a0a0a0] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
+              className="px-8 py-3.5 text-sm font-bold text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl transition-all disabled:opacity-50"
             >
               Cancel
             </button>
@@ -519,7 +538,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               type="submit"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-8 py-3 text-sm font-bold text-white bg-[#222222] dark:bg-white dark:text-[#222222] rounded-full hover:opacity-90 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              className="px-10 py-3.5 text-sm font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-[#8AC43C]/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               {isSubmitting ? (
                 <>
@@ -527,10 +546,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Creating...</span>
+                  <span>Generating...</span>
                 </>
               ) : (
-                <span>Create & Download Prescription</span>
+                <>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Finalize Prescription</span>
+                </>
               )}
             </button>
           </div>

@@ -29,7 +29,7 @@ const Records: React.FC<RecordsProps> = ({ records, onRemoveRecord }) => {
 
   if (records.length === 0) {
     return (
-      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] border-none text-center py-24 animate-fadeIn">
+      <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border-none dark:border border-transparent dark:border-[#8AC43C]/20 text-center py-24 animate-fadeIn">
         <div className="bg-gray-100 dark:bg-gray-700 p-8 rounded-3xl inline-block mb-6">
           <EmptyRecordsIcon className="h-32 w-32 text-gray-600 dark:text-gray-400" />
         </div>
@@ -70,7 +70,7 @@ const Records: React.FC<RecordsProps> = ({ records, onRemoveRecord }) => {
         {records.map((record, index) => {
           const isExpanded = expandedRecords.has(record.id);
           return (
-            <div key={record.id} className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition-all duration-300 group border border-transparent dark:border-gray-800" style={{ animationDelay: `${index * 50}ms` }}>
+            <div key={record.id} className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition-all duration-300 group border border-transparent dark:border-[#8AC43C]/20" style={{ animationDelay: `${index * 50}ms` }}>
               <div className="flex items-start gap-4 p-4 sm:p-5">
                 <div className="bg-gray-100 dark:bg-gray-800 p-3.5 rounded-2xl transition-transform duration-300 group-hover:scale-105 flex-shrink-0">
                   <DocumentIcon className="h-6 w-6 text-[#222222] dark:text-white" />

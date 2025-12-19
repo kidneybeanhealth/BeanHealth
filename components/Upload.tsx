@@ -61,7 +61,7 @@ const Upload: React.FC<UploadProps> = ({ onUpload, isLoading }) => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#1e1e1e] p-8 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] transition-all">
+        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-8 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all border border-transparent dark:border-[#8AC43C]/20">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div>
               <label className="block text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-6">

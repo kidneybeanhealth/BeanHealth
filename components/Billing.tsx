@@ -83,13 +83,13 @@ const Billing: React.FC<BillingProps> = ({ patient, onPurchaseCredits, onUpgrade
 
             {/* Current Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-[#1e1e1e] p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800">
+                <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20">
                     <h3 className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Current Plan</h3>
                     <p className="text-2xl font-bold text-[#222222] dark:text-white mb-1">{currentPlanName}</p>
                     {isTrialActive && <p className="text-xs text-[#717171] dark:text-[#a0a0a0]">You have <span className="font-bold text-emerald-600 dark:text-emerald-400">{trialDaysLeft} days</span> left.</p>}
                     {isTrialExpired && <p className="text-xs text-red-500 dark:text-red-400 font-bold">Free trial expired.</p>}
                 </div>
-                <div className="bg-white dark:bg-[#1e1e1e] p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800">
+                <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20">
                     <h3 className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-1">Urgent Credits</h3>
                     <UrgentCreditsDisplay fallback={patient.urgentCredits} />
                     <p className="text-xs text-[#717171] dark:text-[#a0a0a0]">Credits for priority messages.</p>
@@ -110,7 +110,7 @@ const Billing: React.FC<BillingProps> = ({ patient, onPurchaseCredits, onUpgrade
                 )}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
                     {/* Free Trial Plan */}
-                    <div className={`p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-all ${patient.subscriptionTier === 'FreeTrial' ? 'border-2 border-[#222222] dark:border-white bg-white dark:bg-[#1e1e1e]' : 'bg-white dark:bg-[#1e1e1e] border border-transparent dark:border-gray-800'}`}>
+                    <div className={`p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] backdrop-blur-md transition-all ${patient.subscriptionTier === 'FreeTrial' ? 'border-2 border-[#222222] dark:border-white bg-white dark:bg-[#8AC43C]/[0.08]' : 'bg-white dark:bg-[#8AC43C]/[0.08] border border-transparent dark:border-[#8AC43C]/20'}`}>
                         <h4 className="text-lg font-bold text-gray-900 dark:text-white">Free Trial</h4>
                         <p className="text-gray-500 dark:text-gray-400 mb-3 text-xs leading-relaxed">Basic healthcare tracking.</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Free</p>
@@ -124,7 +124,7 @@ const Billing: React.FC<BillingProps> = ({ patient, onPurchaseCredits, onUpgrade
                         </button>
                     </div>
                     {/* Paid Plan */}
-                    <div className={`p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-all ${patient.subscriptionTier === 'Paid' ? 'border-2 border-[#222222] dark:border-white bg-white dark:bg-[#1e1e1e]' : 'bg-white dark:bg-[#1e1e1e] border border-transparent dark:border-gray-800'}`}>
+                    <div className={`p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] backdrop-blur-md transition-all ${patient.subscriptionTier === 'Paid' ? 'border-2 border-[#222222] dark:border-white bg-white dark:bg-[#8AC43C]/[0.08]' : 'bg-white dark:bg-[#8AC43C]/[0.08] border border-transparent dark:border-[#8AC43C]/20'}`}>
                         <h4 className="text-lg font-bold text-gray-900 dark:text-white">Paid Plan</h4>
                         <p className="text-gray-500 dark:text-gray-400 mb-3 text-xs leading-relaxed">Full medical support package.</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white mb-4">₹2000<span className="text-sm font-medium text-gray-400">/mo</span></p>
@@ -149,33 +149,7 @@ const Billing: React.FC<BillingProps> = ({ patient, onPurchaseCredits, onUpgrade
                 </div>
             </div>
 
-            {/* Purchase Credits */}
-            <div>
-                <h3 className="text-xl font-bold text-[#222222] dark:text-white mb-4 mt-2">Add Urgent Credits</h3>
-                {patient.subscriptionTier === 'FreeTrial' ? (
-                    <div className="text-center p-8 bg-gray-50 dark:bg-[#2a2a2a] rounded-2xl border border-gray-100 dark:border-gray-800">
-                        <p className="text-sm text-[#717171] dark:text-[#a0a0a0]">Upgrade to use urgent credits.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {creditPacks.map(pack => (
-                            <div key={pack.amount} className="bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800 text-center transition-all hover:scale-[1.01]">
-                                <p className="text-3xl font-bold text-[#222222] dark:text-white flex items-center justify-center mb-1">
-                                    <SparklesIcon className="mr-2 h-6 w-6 text-[#FF385C]" /> {pack.amount}
-                                </p>
-                                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Credits Pack</p>
-                                <button
-                                    onClick={() => handlePurchase(pack.amount)}
-                                    disabled={!!isProcessing}
-                                    className="w-full text-center py-2.5 px-6 rounded-full font-bold bg-[#222222] dark:bg-white text-white dark:text-[#222222] hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs uppercase tracking-wide"
-                                >
-                                    {isProcessing === pack.amount ? '...' : `₹${pack.price}`}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+
         </div>
     );
 };

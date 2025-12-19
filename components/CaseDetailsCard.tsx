@@ -144,7 +144,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                 <div className="space-y-4">
                     {/* Primary Condition */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-2 uppercase tracking-wider">
                             Primary Condition
                         </label>
                         <input
@@ -152,13 +152,13 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                             value={editData.primaryCondition}
                             onChange={(e) => setEditData(prev => ({ ...prev, primaryCondition: e.target.value }))}
                             placeholder="e.g., Chronic Kidney Disease Stage 3b"
-                            className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 bg-white dark:bg-[#8AC43C]/5 border border-gray-200 dark:border-[#8AC43C]/20 rounded-xl text-sm font-semibold text-[#222222] dark:text-white focus:outline-none focus:border-[#8AC43C] focus:ring-1 focus:ring-[#8AC43C] transition-all placeholder:text-gray-300 dark:placeholder:text-white/20"
                         />
                     </div>
 
                     {/* Latest Complaint */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-2 uppercase tracking-wider">
                             Latest Complaint / Chief Issue
                         </label>
                         <textarea
@@ -166,13 +166,13 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                             onChange={(e) => setEditData(prev => ({ ...prev, latestComplaint: e.target.value }))}
                             placeholder="Describe your current symptoms or concerns..."
                             rows={3}
-                            className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            className="w-full px-4 py-3 bg-white dark:bg-[#8AC43C]/5 border border-gray-200 dark:border-[#8AC43C]/20 rounded-xl text-sm font-medium text-[#222222] dark:text-white focus:outline-none focus:border-[#8AC43C] focus:ring-1 focus:ring-[#8AC43C] transition-all resize-none placeholder:text-gray-300 dark:placeholder:text-white/20"
                         />
                     </div>
 
                     {/* Medical History */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-2 uppercase tracking-wider">
                             Medical History
                         </label>
 
@@ -181,12 +181,12 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                             {editData.medicalHistory.map((item, index) => (
                                 <div
                                     key={index}
-                                    className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                                    className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-[#8AC43C]/5 rounded-xl border border-gray-100 dark:border-[#8AC43C]/10"
                                 >
-                                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">{item}</span>
+                                    <span className="flex-1 text-sm font-medium text-[#222222] dark:text-white">{item}</span>
                                     <button
                                         onClick={() => handleRemoveHistoryItem(index)}
-                                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                                     >
                                         <TrashIcon className="h-4 w-4" />
                                     </button>
@@ -202,12 +202,12 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                                 onChange={(e) => setNewHistoryItem(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleAddHistoryItem()}
                                 placeholder="Add medical history item..."
-                                className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="flex-1 px-4 py-2.5 bg-white dark:bg-[#8AC43C]/5 border border-gray-200 dark:border-[#8AC43C]/20 rounded-xl text-sm font-medium focus:outline-none focus:border-[#8AC43C] focus:ring-1 focus:ring-[#8AC43C] transition-all placeholder:text-gray-300 dark:placeholder:text-white/20"
                             />
                             <button
                                 onClick={handleAddHistoryItem}
                                 disabled={!newHistoryItem.trim()}
-                                className="px-3 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-4 py-2.5 bg-[#8AC43C] text-white rounded-xl hover:bg-[#7ab332] shadow-sm transform active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                             >
                                 <PlusCircleIcon className="h-5 w-5" />
                             </button>
@@ -227,7 +227,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                                         }
                                     }}
                                     disabled={editData.medicalHistory.includes(suggestion)}
-                                    className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="px-3 py-1.5 text-xs font-bold bg-gray-50 dark:bg-[#8AC43C]/5 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#8AC43C]/10 rounded-lg hover:border-[#8AC43C] hover:text-[#8AC43C] dark:hover:text-white dark:hover:border-[#8AC43C]/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 >
                                     + {suggestion}
                                 </button>
@@ -236,17 +236,17 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3 pt-2">
+                    <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-[#8AC43C]/10">
                         <button
                             onClick={handleCancelEdit}
-                            className="flex-1 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            className="px-6 py-2.5 text-sm font-bold text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                            className="px-6 py-2.5 text-sm font-bold text-white dark:text-[#222222] bg-[#8AC43C] hover:bg-[#7ab332] rounded-full transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none ml-auto"
                         >
                             {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>

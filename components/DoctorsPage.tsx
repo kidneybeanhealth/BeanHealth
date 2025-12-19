@@ -221,7 +221,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             </div>
 
             {/* Add Doctor Section */}
-            <div className="bg-white dark:bg-[#1e1e1e] p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800 transition-all">
+            <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20 transition-all">
                 <h2 className="text-xl font-bold text-[#222222] dark:text-white mb-1">Add a Doctor</h2>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
                     Enter your doctor's referral code to connect.
@@ -237,7 +237,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                             setLinkSuccess('');
                         }}
                         placeholder="DR-XXXX-XXXX"
-                        className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl font-mono text-base text-center tracking-wider focus:outline-none focus:ring-1 focus:ring-[#8AC43C] text-[#222222] dark:text-white placeholder-gray-400"
+                        className="flex-1 px-4 py-3 bg-gray-50 dark:bg-[#8AC43C]/20 border-none rounded-xl font-mono text-base text-center tracking-wider focus:outline-none focus:ring-1 focus:ring-[#8AC43C] text-[#222222] dark:text-gray-100 placeholder-gray-400"
                     />
                     <button
                         onClick={handleLinkDoctor}
@@ -257,7 +257,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             </div>
 
             {/* Linked Doctors List */}
-            <div className="bg-white dark:bg-[#1e1e1e] p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] border border-transparent dark:border-gray-800 transition-all">
+            <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20 transition-all">
                 <h2 className="text-xl font-bold text-[#222222] dark:text-white mb-4">Linked Doctors</h2>
 
                 {isLoading ? (
@@ -273,7 +273,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                         {linkedDoctors.map((doctor) => (
                             <div
                                 key={doctor.id}
-                                className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700 transition-all"
+                                className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-[#8AC43C]/20 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-[#8AC43C]/30 transition-all"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-black dark:bg-white rounded-full flex items-center justify-center shadow-sm">

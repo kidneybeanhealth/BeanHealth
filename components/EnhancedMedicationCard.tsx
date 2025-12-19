@@ -253,12 +253,12 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="p-3 bg-rose-50 dark:bg-rose-900/20 rounded-full shrink-0">
-                        <PillIcon className="h-6 w-6 text-[#222222] dark:text-white" />
+                    <div className="p-3 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 rounded-2xl shrink-0">
+                        <PillIcon className="h-6 w-6 text-[#8AC43C]" />
                     </div>
                     <div className="min-w-0">
                         <h3 className="text-xl font-bold text-[#222222] dark:text-white truncate">Medications</h3>
-                        <p className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0] mt-1 uppercase tracking-wider truncate">{medications.length} active</p>
+                        <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] mt-0.5 uppercase tracking-wider truncate">{medications.length} active</p>
                     </div>
                 </div>
                 <button
@@ -272,21 +272,21 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
 
             {/* Adherence Summary */}
             {todaysSchedule.length > 0 && (
-                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                <div className="mb-4 p-4 bg-gray-50/50 dark:bg-[#8AC43C]/5 border border-gray-100 dark:border-[#8AC43C]/10 rounded-2xl">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Today's Progress</span>
-                        <span className={`text-lg font-bold ${adherencePercentage >= 80 ? 'text-green-600 dark:text-green-400' :
-                            adherencePercentage >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                                'text-red-600 dark:text-red-400'
+                        <span className="text-sm font-bold text-[#222222] dark:text-white">Daily Progress</span>
+                        <span className={`text-lg font-bold ${adherencePercentage >= 80 ? 'text-[#8AC43C]' :
+                            adherencePercentage >= 50 ? 'text-amber-500' :
+                                'text-rose-500'
                             }`}>
                             {adherencePercentage}%
                         </span>
                     </div>
-                    <div className="mt-2 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                    <div className="mt-2.5 h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div
-                            className={`h-full transition-all duration-500 ${adherencePercentage >= 80 ? 'bg-green-500' :
-                                adherencePercentage >= 50 ? 'bg-yellow-500' :
-                                    'bg-red-500'
+                            className={`h-full transition-all duration-500 ${adherencePercentage >= 80 ? 'bg-[#8AC43C]' :
+                                adherencePercentage >= 50 ? 'bg-amber-500' :
+                                    'bg-rose-500'
                                 }`}
                             style={{ width: `${adherencePercentage}%` }}
                         />
@@ -295,24 +295,24 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
             )}
 
             {/* Tabs */}
-            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6">
+            <div className="flex p-1.5 bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl mb-6">
                 <button
                     onClick={() => setActiveTab('schedule')}
-                    className={`flex-1 py-2.5 px-4 text-sm font-bold rounded-lg transition-all ${activeTab === 'schedule'
-                        ? 'bg-white dark:bg-[#1e1e1e] text-[#222222] dark:text-white shadow-sm'
+                    className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all duration-200 ${activeTab === 'schedule'
+                        ? 'bg-white dark:bg-[#1a1a1a] text-[#222222] dark:text-white shadow-sm'
                         : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#222222] dark:hover:text-white'
                         }`}
                 >
-                    Today's Schedule
+                    Today
                 </button>
                 <button
                     onClick={() => setActiveTab('medications')}
-                    className={`flex-1 py-2.5 px-4 text-sm font-bold rounded-lg transition-all ${activeTab === 'medications'
-                        ? 'bg-white dark:bg-[#1e1e1e] text-[#222222] dark:text-white shadow-sm'
+                    className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all duration-200 ${activeTab === 'medications'
+                        ? 'bg-white dark:bg-[#1a1a1a] text-[#222222] dark:text-white shadow-sm'
                         : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#222222] dark:hover:text-white'
                         }`}
                 >
-                    All Medications
+                    Active
                 </button>
             </div>
 
@@ -338,21 +338,21 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                             return (
                                 <div
                                     key={`${item.medication.id}-${item.scheduledTime}-${index}`}
-                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isTaken
-                                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                                    className={`flex items-center gap-4 p-4 rounded-[20px] border transition-all duration-200 ${isTaken
+                                        ? 'bg-gray-50/50 dark:bg-gray-800/30 border-gray-100 dark:border-gray-800 opacity-70'
                                         : status === 'current'
-                                            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                                            ? 'bg-[#8AC43C]/5 dark:bg-[#8AC43C]/10 border-[#8AC43C]/30 dark:border-[#8AC43C]/40 ring-1 ring-[#8AC43C]/20 shadow-sm shadow-[#8AC43C]/10'
                                             : status === 'past'
-                                                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                                                : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'
+                                                ? 'bg-rose-50/50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-900/40 opacity-90'
+                                                : 'bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-[#8AC43C]/10 opacity-100 shadow-sm'
                                         }`}
                                 >
                                     {/* Time */}
-                                    <div className="w-16 text-center">
-                                        <span className={`text-sm font-bold ${isTaken ? 'text-green-700 dark:text-green-400' :
-                                            status === 'current' ? 'text-yellow-700 dark:text-yellow-400' :
-                                                status === 'past' ? 'text-red-700 dark:text-red-400' :
-                                                    'text-gray-700 dark:text-gray-300'
+                                    <div className="flex flex-col items-center justify-center w-14 py-1 border-r border-gray-100 dark:border-[#8AC43C]/10 pr-4">
+                                        <span className={`text-[11px] font-bold tracking-tight ${isTaken ? 'text-gray-400' :
+                                            status === 'current' ? 'text-[#8AC43C]' :
+                                                status === 'past' ? 'text-rose-500' :
+                                                    'text-[#717171] dark:text-gray-400'
                                             }`}>
                                             {item.scheduledTime}
                                         </span>
@@ -361,36 +361,32 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                     {/* Checkbox */}
                                     <button
                                         onClick={() => handleToggleAdherence(item)}
-                                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isTaken
-                                            ? 'bg-green-500 border-green-500'
-                                            : 'border-gray-300 dark:border-gray-600 hover:border-rose-500'
+                                        className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isTaken
+                                            ? 'bg-[#8AC43C] border-[#8AC43C] scale-95 shadow-lg shadow-[#8AC43C]/20'
+                                            : status === 'current'
+                                                ? 'border-[#8AC43C] bg-white dark:bg-[#1a1a1a] hover:scale-110 active:scale-95'
+                                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] hover:border-[#8AC43C] active:scale-95'
                                             }`}
                                     >
-                                        {isTaken && <CheckIcon className="h-4 w-4 text-white" />}
+                                        {isTaken ? (
+                                            <CheckIcon className="h-4 w-4 text-white stroke-[3px]" />
+                                        ) : status === 'current' && (
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#8AC43C] animate-pulse"></div>
+                                        )}
                                     </button>
 
                                     {/* Medication Info */}
                                     <div className="flex-1 min-w-0">
-                                        <p className={`text-base font-bold truncate ${isTaken ? 'text-[#717171] line-through' : 'text-[#222222] dark:text-white'
+                                        <p className={`text-[15px] font-bold truncate tracking-tight transition-all ${isTaken ? 'text-[#999] dark:text-[#666] line-through' : 'text-[#222222] dark:text-white'
                                             }`}>
                                             {item.medication.name}
                                         </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                                            {item.medication.dosage} {item.medication.dosageUnit}
-                                        </p>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="text-[11px] font-bold text-[#717171] dark:text-[#888]">{item.medication.dosage}{item.medication.dosageUnit}</span>
+                                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                            <span className={`text-[11px] font-bold uppercase tracking-wider ${isTaken ? 'text-gray-400' : status === 'current' ? 'text-[#8AC43C]' : 'text-amber-500'}`}>{status}</span>
+                                        </div>
                                     </div>
-
-                                    {/* Status Badge */}
-                                    {!isTaken && status === 'current' && (
-                                        <span className="px-2 py-1 text-xs font-medium bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded-full">
-                                            Due now
-                                        </span>
-                                    )}
-                                    {!isTaken && status === 'past' && (
-                                        <span className="px-2 py-1 text-xs font-medium bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 rounded-full">
-                                            Missed
-                                        </span>
-                                    )}
                                 </div>
                             );
                         })
@@ -407,25 +403,27 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                         medications.map(med => (
                             <div
                                 key={med.id}
-                                className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
+                                className="flex items-center gap-4 p-4 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-[#8AC43C]/5 rounded-2xl border border-gray-100 dark:border-[#8AC43C]/10 transition-all shadow-sm hover:shadow-md group"
                             >
-                                <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
-                                    <PillIcon className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                                <div className="p-3 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 rounded-xl group-hover:bg-[#8AC43C]/20 transition-colors">
+                                    <PillIcon className="h-5 w-5 text-[#8AC43C]" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{med.name}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        {med.dosage} {med.dosageUnit} • {MEDICATION_FREQUENCIES.find(f => f.value === med.frequency)?.label}
-                                    </p>
-                                    {med.category && (
-                                        <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full">
+                                    <p className="text-[15px] font-bold text-[#222222] dark:text-white truncate tracking-tight">{med.name}</p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                                        <span className="text-[11px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider">{med.dosage}{med.dosageUnit}</span>
+                                        <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                        <span className="text-[11px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider">{MEDICATION_FREQUENCIES.find(f => f.value === med.frequency)?.label}</span>
+                                    </div>
+                                    {med.category && med.category !== 'Custom' && (
+                                        <div className="mt-2 text-[10px] font-bold text-[#8AC43C] bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 px-2 py-0.5 rounded-full inline-block uppercase tracking-widest">
                                             {med.category}
-                                        </span>
+                                        </div>
                                     )}
                                 </div>
                                 <button
                                     onClick={() => handleDeleteMedication(med.id)}
-                                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                    className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                                 >
                                     <TrashIcon className="h-4 w-4" />
                                 </button>
@@ -437,42 +435,47 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
 
             {/* Add Medication Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-[#1a1a1a] rounded-[32px] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden border border-gray-100 dark:border-[#8AC43C]/20">
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Add Medication</h3>
+                        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-[#8AC43C]/10">
+                            <div>
+                                <h3 className="text-xl font-bold text-[#222222] dark:text-white">Add Medication</h3>
+                                <p className="text-xs text-[#717171] dark:text-[#888] font-medium mt-0.5">Choose from list or add custom</p>
+                            </div>
                             <button
                                 onClick={() => { setShowAddModal(false); resetForm(); }}
-                                className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg"
+                                className="p-2 text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
                             >
                                 <XIcon className="h-5 w-5" />
                             </button>
                         </div>
 
                         {/* Modal Body */}
-                        <div className="p-4 overflow-y-auto max-h-[60vh]">
+                        <div className="p-6 overflow-y-auto max-h-[60vh] custom-scrollbar">
                             {/* Step 1: Select or Search Medication */}
                             {!selectedPreset && !isCustom && (
                                 <>
                                     {/* Search */}
-                                    <div className="mb-4">
-                                        <input
-                                            type="text"
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            placeholder="Search medications..."
-                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                                        />
+                                    <div className="mb-6">
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                placeholder="Search medications (e.g. Amlodipine)"
+                                                className="w-full px-5 py-3.5 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white placeholder-[#999] focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 focus:border-[#8AC43C] transition-all"
+                                            />
+                                        </div>
                                     </div>
 
                                     {/* Category Filter */}
-                                    <div className="flex flex-wrap gap-2 mb-4">
+                                    <div className="flex flex-wrap gap-2 mb-6">
                                         <button
                                             onClick={() => setSelectedCategory('all')}
-                                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${selectedCategory === 'all'
-                                                ? 'bg-rose-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                            className={`px-4 py-2 text-xs font-bold rounded-full transition-all ${selectedCategory === 'all'
+                                                ? 'bg-[#222222] dark:bg-white text-white dark:text-[#222222]'
+                                                : 'bg-gray-100 dark:bg-gray-800 text-[#717171] hover:bg-gray-200 dark:hover:bg-gray-700'
                                                 }`}
                                         >
                                             All
@@ -481,9 +484,9 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                             <button
                                                 key={cat.id}
                                                 onClick={() => setSelectedCategory(cat.id)}
-                                                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${selectedCategory === cat.id
-                                                    ? 'bg-rose-600 text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                                className={`px-4 py-2 text-xs font-bold rounded-full transition-all ${selectedCategory === cat.id
+                                                    ? 'bg-[#222222] dark:bg-white text-white dark:text-[#222222]'
+                                                    : 'bg-gray-100 dark:bg-gray-800 text-[#717171] hover:bg-gray-200 dark:hover:bg-gray-700'
                                                     }`}
                                             >
                                                 {cat.label}
@@ -492,22 +495,23 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                     </div>
 
                                     {/* Preset List */}
-                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                    <div className="space-y-2 mb-4">
                                         {filteredPresets.slice(0, 20).map((preset, index) => (
                                             <button
                                                 key={`${preset.name}-${index}`}
                                                 onClick={() => handleSelectPreset(preset)}
-                                                className="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-left transition-colors"
+                                                className="w-full flex items-center gap-4 p-4 bg-white dark:bg-[#252525] hover:bg-gray-50 dark:hover:bg-[#8AC43C]/5 border border-gray-100 dark:border-[#8AC43C]/10 rounded-2xl text-left transition-all group"
                                             >
-                                                <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
-                                                    <PillIcon className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                                                <div className="p-3 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 rounded-xl group-hover:bg-[#8AC43C]/20 transition-colors">
+                                                    <PillIcon className="h-5 w-5 text-[#8AC43C]" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="font-medium text-gray-900 dark:text-gray-100">{preset.name}</p>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                    <p className="font-bold text-[#222222] dark:text-white">{preset.name}</p>
+                                                    <p className="text-[11px] text-[#717171] dark:text-[#888] font-medium mt-0.5">
                                                         {preset.category} • {preset.defaultDosage}{preset.defaultUnit}
                                                     </p>
                                                 </div>
+                                                <PlusCircleIcon className="h-5 w-5 text-gray-300 group-hover:text-[#8AC43C] transition-colors" />
                                             </button>
                                         ))}
                                     </div>
@@ -515,153 +519,168 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                     {/* Custom Option */}
                                     <button
                                         onClick={handleCustomMedication}
-                                        className="w-full mt-4 flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-400 hover:border-rose-500 hover:text-rose-600 transition-colors"
+                                        className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm font-bold text-[#717171] hover:border-[#8AC43C] hover:text-[#8AC43C] hover:bg-[#8AC43C]/5 transition-all"
                                     >
                                         <PlusCircleIcon className="h-5 w-5" />
-                                        {searchQuery ? `Add "${searchQuery}" as custom medication` : 'Add custom medication'}
+                                        {searchQuery ? `Add "${searchQuery}" manually` : 'Add medication manually'}
                                     </button>
                                 </>
                             )}
 
                             {/* Step 2: Configure Medication */}
                             {(selectedPreset || isCustom) && (
-                                <div className="space-y-4">
+                                <div className="space-y-5 animate-fade-in">
                                     {/* Back Button */}
                                     <button
                                         onClick={() => { setSelectedPreset(null); setIsCustom(false); }}
-                                        className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
+                                        className="text-xs font-bold text-[#8AC43C] hover:underline flex items-center gap-1.5"
                                     >
-                                        ← Back to medication list
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                        Back to Search
                                     </button>
 
-                                    {/* Name */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Medication Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.name}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                            className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                                        />
-                                    </div>
-
-                                    {/* Dosage */}
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-4">
+                                        {/* Name */}
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                Dosage
+                                            <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                                                Medication Name
                                             </label>
                                             <input
                                                 type="text"
-                                                value={formData.dosage}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, dosage: e.target.value }))}
-                                                placeholder="e.g., 500"
-                                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                                value={formData.name}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                                className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium"
                                             />
                                         </div>
+
+                                        {/* Dosage */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                                                    Dosage
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.dosage}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, dosage: e.target.value }))}
+                                                    placeholder="e.g. 500"
+                                                    className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                                                    Unit
+                                                </label>
+                                                <select
+                                                    value={formData.dosageUnit}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, dosageUnit: e.target.value }))}
+                                                    className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium appearance-none"
+                                                >
+                                                    {DOSAGE_UNITS.map(unit => (
+                                                        <option key={unit.value} value={unit.value}>{unit.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Frequency */}
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                Unit
+                                            <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                                                Frequency
                                             </label>
                                             <select
-                                                value={formData.dosageUnit}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, dosageUnit: e.target.value }))}
-                                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                                value={formData.frequency}
+                                                onChange={(e) => handleFrequencyChange(e.target.value as MedicationFrequency)}
+                                                className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium appearance-none"
                                             >
-                                                {DOSAGE_UNITS.map(unit => (
-                                                    <option key={unit.value} value={unit.value}>{unit.label}</option>
+                                                {MEDICATION_FREQUENCIES.map(freq => (
+                                                    <option key={freq.value} value={freq.value}>{freq.label}</option>
                                                 ))}
                                             </select>
                                         </div>
-                                    </div>
 
-                                    {/* Frequency */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Frequency
-                                        </label>
-                                        <select
-                                            value={formData.frequency}
-                                            onChange={(e) => handleFrequencyChange(e.target.value as MedicationFrequency)}
-                                            className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                                        >
-                                            {MEDICATION_FREQUENCIES.map(freq => (
-                                                <option key={freq.value} value={freq.value}>{freq.label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Scheduled Times */}
-                                    {formData.frequency !== 'as_needed' && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                Scheduled Times
-                                            </label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {formData.scheduledTimes.map((time, index) => (
-                                                    <input
-                                                        key={index}
-                                                        type="time"
-                                                        value={time}
-                                                        onChange={(e) => handleTimeChange(index, e.target.value)}
-                                                        className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                                                    />
-                                                ))}
+                                        {/* Scheduled Times */}
+                                        {formData.frequency !== 'as_needed' && (
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                                                    Scheduled Times
+                                                </label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {formData.scheduledTimes.map((time, index) => (
+                                                        <input
+                                                            key={index}
+                                                            type="time"
+                                                            value={time}
+                                                            onChange={(e) => handleTimeChange(index, e.target.value)}
+                                                            className="px-4 py-2.5 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all"
+                                                        />
+                                                    ))}
+                                                </div>
                                             </div>
+                                        )}
+
+                                        {/* Instructions */}
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider mb-1.5 ml-1">
+                                                Instructions
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.instructions}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, instructions: e.target.value }))}
+                                                placeholder="e.g. Take after meal"
+                                                className="w-full px-4 py-3 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#8AC43C]/20 rounded-2xl text-sm text-[#222222] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8AC43C]/50 transition-all font-medium"
+                                            />
                                         </div>
-                                    )}
 
-                                    {/* Instructions */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Instructions (optional)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.instructions}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, instructions: e.target.value }))}
-                                            placeholder="e.g., Take with food"
-                                            className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                                        />
-                                    </div>
-
-                                    {/* Reminders */}
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="checkbox"
-                                            id="reminderEnabled"
-                                            checked={formData.reminderEnabled}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, reminderEnabled: e.target.checked }))}
-                                            className="w-5 h-5 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
-                                        />
-                                        <label htmlFor="reminderEnabled" className="text-sm text-gray-700 dark:text-gray-300">
-                                            Enable reminders/notifications
-                                        </label>
+                                        {/* Reminders Toggle */}
+                                        <div className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-[#8AC43C]/5 rounded-2xl border border-gray-100 dark:border-[#8AC43C]/10">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-[#8AC43C]/10 rounded-lg">
+                                                    <svg className="w-4 h-4 text-[#8AC43C]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-[#222222] dark:text-white">Reminders</p>
+                                                    <p className="text-[10px] text-[#717171] font-medium">Get notified when it's time</p>
+                                                </div>
+                                            </div>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.reminderEnabled}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, reminderEnabled: e.target.checked }))}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#8AC43C]"></div>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             )}
                         </div>
 
                         {/* Modal Footer */}
-                        {(selectedPreset || isCustom) && (
-                            <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-700">
-                                <button
-                                    onClick={() => { setShowAddModal(false); resetForm(); }}
-                                    className="flex-1 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                >
-                                    Cancel
-                                </button>
+                        <div className="p-6 border-t border-gray-100 dark:border-[#8AC43C]/10 flex items-center gap-3">
+                            <button
+                                onClick={() => { setShowAddModal(false); resetForm(); }}
+                                className="flex-1 px-6 py-3.5 text-sm font-bold text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl transition-all"
+                            >
+                                Cancel
+                            </button>
+                            {(selectedPreset || isCustom) ? (
                                 <button
                                     onClick={handleSaveMedication}
                                     disabled={!formData.name || !formData.dosage || isSaving}
-                                    className="flex-1 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-2 px-6 py-3.5 bg-[#8AC43C] text-white dark:text-[#222222] rounded-2xl font-bold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-[#8AC43C]/20"
                                 >
                                     {isSaving ? 'Saving...' : 'Add Medication'}
                                 </button>
-                            </div>
-                        )}
+                            ) : null}
+                        </div>
                     </div>
                 </div>
             )}

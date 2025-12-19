@@ -199,7 +199,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
+                            className="w-full px-4 py-3 bg-white dark:bg-[#8AC43C]/5 border border-gray-200 dark:border-[#8AC43C]/20 rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:outline-none focus:border-[#8AC43C] focus:ring-1 focus:ring-[#8AC43C] transition-all placeholder:text-gray-300 dark:placeholder:text-white/20"
                             placeholder="Enter full name"
                         />
                     </div>
@@ -214,7 +214,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                                 type="number"
                                 value={editAge}
                                 onChange={(e) => setEditAge(e.target.value)}
-                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
+                                className="w-full px-4 py-3 bg-white dark:bg-[#8AC43C]/5 border border-gray-200 dark:border-[#8AC43C]/20 rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:outline-none focus:border-[#8AC43C] focus:ring-1 focus:ring-[#8AC43C] transition-all placeholder:text-gray-300 dark:placeholder:text-white/20"
                                 placeholder="Enter age"
                             />
                         </div>
@@ -224,17 +224,22 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                             <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-2 uppercase tracking-wider">
                                 Gender
                             </label>
-                            <select
-                                value={editGender}
-                                onChange={(e) => setEditGender(e.target.value)}
-                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
-                            >
-                                <option value="">Select gender</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                                <option value="other">Other</option>
-                                <option value="prefer_not_to_say">Prefer not to say</option>
-                            </select>
+                            <div className="relative">
+                                <select
+                                    value={editGender}
+                                    onChange={(e) => setEditGender(e.target.value)}
+                                    className="w-full px-4 py-3 bg-white dark:bg-[#8AC43C]/5 border border-gray-200 dark:border-[#8AC43C]/20 rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:outline-none focus:border-[#8AC43C] focus:ring-1 focus:ring-[#8AC43C] transition-all appearance-none"
+                                >
+                                    <option value="">Select gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                    <option value="prefer_not_to_say">Prefer not to say</option>
+                                </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -248,7 +253,7 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                             step="0.1"
                             value={editWeight}
                             onChange={(e) => setEditWeight(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
+                            className="w-full px-4 py-3 bg-white dark:bg-[#8AC43C]/5 border border-gray-200 dark:border-[#8AC43C]/20 rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:outline-none focus:border-[#8AC43C] focus:ring-1 focus:ring-[#8AC43C] transition-all placeholder:text-gray-300 dark:placeholder:text-white/20"
                             placeholder="Enter baseline weight"
                         />
                     </div>
@@ -258,17 +263,17 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                             Comorbidities
                         </label>
-                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                        <div className="p-4 bg-gray-50 dark:bg-[#8AC43C]/5 rounded-xl border border-gray-100 dark:border-[#8AC43C]/10 space-y-4 max-h-64 overflow-y-auto custom-scrollbar">
                             <div>
-                                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">High Priority</p>
+                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-wider">High Priority</p>
                                 <div className="flex flex-wrap gap-2">
                                     {HIGH_PRIORITY_COMORBIDITIES.map(condition => (
                                         <button
                                             key={condition}
                                             onClick={() => toggleComorbidity(condition)}
-                                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${selectedComorbidities.includes(condition)
-                                                ? 'bg-secondary-700 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all transform active:scale-95 ${selectedComorbidities.includes(condition)
+                                                ? 'bg-[#8AC43C] text-white shadow-md shadow-[#8AC43C]/20'
+                                                : 'bg-white dark:bg-[#8AC43C]/10 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#8AC43C]/10 hover:border-[#8AC43C] dark:hover:border-[#8AC43C]/50'
                                                 }`}
                                         >
                                             {condition}
@@ -277,15 +282,15 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                                 </div>
                             </div>
                             <div>
-                                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Medication Related</p>
+                                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-wider">Medication Related</p>
                                 <div className="flex flex-wrap gap-2">
                                     {MEDICATION_RELATED_COMORBIDITIES.map(condition => (
                                         <button
                                             key={condition}
                                             onClick={() => toggleComorbidity(condition)}
-                                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${selectedComorbidities.includes(condition)
-                                                ? 'bg-secondary-700 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all transform active:scale-95 ${selectedComorbidities.includes(condition)
+                                                ? 'bg-[#8AC43C] text-white shadow-md shadow-[#8AC43C]/20'
+                                                : 'bg-white dark:bg-[#8AC43C]/10 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#8AC43C]/10 hover:border-[#8AC43C] dark:hover:border-[#8AC43C]/50'
                                                 }`}
                                         >
                                             {condition}
@@ -297,20 +302,20 @@ const PatientInfoCard: React.FC<PatientInfoCardProps> = ({
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3 pt-4">
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="flex-1 px-4 py-2 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
-                        >
-                            {isSaving ? 'Saving...' : 'Save Changes'}
-                        </button>
+                    <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-[#8AC43C]/10">
                         <button
                             onClick={() => setIsEditing(false)}
                             disabled={isSaving}
-                            className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors"
+                            className="px-6 py-2.5 text-sm font-bold text-[#222222] dark:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                         >
                             Cancel
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="px-6 py-2.5 text-sm font-bold text-white dark:text-[#222222] bg-[#8AC43C] hover:bg-[#7ab332] rounded-full transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none ml-auto"
+                        >
+                            {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 </div>

@@ -181,7 +181,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onNavigateToDoctors}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#222222] dark:bg-white text-white dark:text-[#222222] text-sm font-bold rounded-full transition-all shadow-md hover:shadow-lg active:scale-95"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#222222] dark:bg-white text-white dark:text-[#222222] text-sm font-bold rounded-full transition-all active:scale-95"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -242,7 +242,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                         <div className="flex gap-4">
                             <button
                                 onClick={handleSaveVitals}
-                                className="px-6 py-2.5 bg-[#222222] dark:bg-white text-white dark:text-[#222222] font-semibold rounded-full hover:opacity-90 transition-opacity"
+                                className="px-6 py-2.5 bg-[#8AC43C] text-white dark:text-[#222222] font-semibold rounded-full hover:bg-[#7ab332] transition-colors"
                             >
                                 Save Readings
                             </button>
