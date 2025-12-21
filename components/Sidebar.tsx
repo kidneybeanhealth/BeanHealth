@@ -47,21 +47,21 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-xl flex-shrink-0 flex flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] md:sticky md:top-4 md:m-4 md:h-[calc(100vh-2rem)] md:rounded-3xl md:translate-x-0 md:z-10 md:border md:border-gray-200 md:dark:border-[#8AC43C]/15 md:shadow-2xl dark:shadow-[0_0_20px_rgba(138,196,60,0.1)] border-r border-gray-100 dark:border-[#8AC43C]/15 md:border-r-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Header - Spacious & Clean */}
-        <div className="h-24 flex items-center relative pl-8 pr-6">
+        <div className="h-24 flex items-center justify-between pl-5 sm:pl-8 pr-4 sm:pr-6">
           <button
             onClick={() => setActiveView('dashboard')}
-            className="flex items-center gap-3.5 focus:outline-none rounded-xl transition-transform active:scale-95 duration-200 group"
+            className="flex items-center gap-2.5 sm:gap-3.5 focus:outline-none rounded-xl transition-transform active:scale-95 duration-200 group"
           >
             <div className="rounded-2xl overflow-hidden transition-transform group-hover:scale-110 duration-300 drop-shadow-sm">
-              <LogoIcon className="h-10 w-10 md:h-11 md:w-11" />
+              <LogoIcon className="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#3A2524] dark:text-[#e6b8a3]">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#3A2524] dark:text-[#e6b8a3]">
               Bean<span className="text-[#8AC43C]">Health</span>
             </h1>
           </button>
           <button
             onClick={onClose}
-            className="absolute right-6 md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="md:hidden p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0 ml-2"
           >
             <XIcon className="h-5 w-5 text-gray-500" />
           </button>

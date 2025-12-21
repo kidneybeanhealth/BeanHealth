@@ -21,6 +21,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [isEditingTarget, setIsEditingTarget] = useState(false);
     const [editTargetValue, setEditTargetValue] = useState(dailyTarget.toString());
+    const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
 
     // Load today's data
     useEffect(() => {
@@ -87,12 +88,17 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
     const handleDeleteEntry = async (entryId: string) => {
         if (!confirm('Delete this fluid intake entry?')) return;
 
+        setDeletingEntryId(entryId);
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         try {
             await FluidIntakeService.deleteFluidIntake(entryId);
             await loadTodayData();
         } catch (error) {
             console.error('Error deleting entry:', error);
             alert('Failed to delete entry. Please try again.');
+        } finally {
+            setDeletingEntryId(null);
         }
     };
 
@@ -253,7 +259,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                         {todayEntries.map((entry) => (
                             <div
                                 key={entry.id}
-                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#8AC43C]/20 rounded-lg"
+                                className={`flex items-center justify-between p-3 bg-gray-50 dark:bg-[#8AC43C]/20 rounded-lg transition-all ${deletingEntryId === entry.id ? 'animate-trash-out' : ''}`}
                             >
                                 <div className="flex items-center gap-3">
                                     <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
@@ -268,7 +274,8 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                                 </div>
                                 <button
                                     onClick={() => handleDeleteEntry(entry.id)}
-                                    className="text-red-500 hover:text-red-700 text-sm font-medium"
+                                    disabled={deletingEntryId === entry.id}
+                                    className={`text-sm font-medium transition-all ${deletingEntryId === entry.id ? 'text-red-600 animate-wiggle' : 'text-red-500 hover:text-red-700'}`}
                                 >
                                     Delete
                                 </button>

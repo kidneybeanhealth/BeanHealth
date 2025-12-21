@@ -17,6 +17,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [deletingHistoryIndex, setDeletingHistoryIndex] = useState<number | null>(null);
 
     // Edit form state
     const [editData, setEditData] = useState({
@@ -92,11 +93,14 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
         }
     };
 
-    const handleRemoveHistoryItem = (index: number) => {
+    const handleRemoveHistoryItem = async (index: number) => {
+        setDeletingHistoryIndex(index);
+        await new Promise(resolve => setTimeout(resolve, 400));
         setEditData(prev => ({
             ...prev,
             medicalHistory: prev.medicalHistory.filter((_, i) => i !== index),
         }));
+        setDeletingHistoryIndex(null);
     };
 
     if (isLoading) {
@@ -181,14 +185,15 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                             {editData.medicalHistory.map((item, index) => (
                                 <div
                                     key={index}
-                                    className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-[#8AC43C]/5 rounded-xl border border-gray-100 dark:border-[#8AC43C]/10"
+                                    className={`flex items-center gap-2 p-3 bg-gray-50 dark:bg-[#8AC43C]/5 rounded-xl border border-gray-100 dark:border-[#8AC43C]/10 transition-all ${deletingHistoryIndex === index ? 'animate-trash-out' : ''}`}
                                 >
                                     <span className="flex-1 text-sm font-medium text-[#222222] dark:text-white">{item}</span>
                                     <button
                                         onClick={() => handleRemoveHistoryItem(index)}
-                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                        disabled={deletingHistoryIndex === index}
+                                        className={`p-1.5 rounded-lg transition-all ${deletingHistoryIndex === index ? 'text-red-500' : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
                                     >
-                                        <TrashIcon className="h-4 w-4" />
+                                        <TrashIcon className={`h-4 w-4 ${deletingHistoryIndex === index ? 'animate-wiggle' : ''}`} />
                                     </button>
                                 </div>
                             ))}

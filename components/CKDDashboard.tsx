@@ -6,6 +6,7 @@ import EnhancedMedicationCard from './EnhancedMedicationCard';
 import FluidIntakeTracker from './FluidIntakeTracker';
 import LabResultsCard from './LabResultsCard';
 import UpcomingTestsCard from './UpcomingTestsCard';
+import VerticalScrollPicker from './VerticalScrollPicker';
 import { UserService } from '../services/authService';
 import { supabase } from '../lib/supabase';
 import { BloodPressureIcon } from './icons/BloodPressureIcon';
@@ -195,50 +196,84 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
 
 
                 {isEditingVitals ? (
-                    <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-6 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20 animate-fade-in">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-                            <div>
-                                <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">Systolic</label>
-                                <input
-                                    type="number"
-                                    value={editVitals.systolic}
-                                    onChange={(e) => setEditVitals({ ...editVitals, systolic: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
-                                    placeholder="120"
-                                />
+                    <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 sm:p-6 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20 animate-fade-in">
+                        {/* Row 1: Blood Pressure (Systolic / Diastolic) */}
+                        <div className="flex items-start justify-center gap-3 sm:gap-6 mb-4 sm:mb-6">
+                            {/* Systolic Picker */}
+                            <VerticalScrollPicker
+                                value={parseInt(editVitals.systolic) || 120}
+                                min={70}
+                                max={220}
+                                onChange={(val) => setEditVitals({ ...editVitals, systolic: val.toString() })}
+                                label="Systolic"
+                                unit="mmHg"
+                            />
+
+                            {/* Visual Separator */}
+                            <div className="flex items-center pt-6 sm:pt-8">
+                                <div className="text-2xl sm:text-3xl font-bold text-gray-400 dark:text-gray-600">/</div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">Diastolic</label>
-                                <input
-                                    type="number"
-                                    value={editVitals.diastolic}
-                                    onChange={(e) => setEditVitals({ ...editVitals, diastolic: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
-                                    placeholder="80"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">Heart Rate</label>
-                                <input
-                                    type="number"
-                                    value={editVitals.heartRate}
-                                    onChange={(e) => setEditVitals({ ...editVitals, heartRate: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
-                                    placeholder="72"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider mb-2">SpO2</label>
-                                <input
-                                    type="number"
-                                    value={editVitals.spo2}
-                                    onChange={(e) => setEditVitals({ ...editVitals, spo2: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-lg font-semibold text-[#222222] dark:text-white focus:ring-2 focus:ring-[#222222] transition-all"
-                                    placeholder="98"
-                                />
+
+                            {/* Diastolic Picker */}
+                            <VerticalScrollPicker
+                                value={parseInt(editVitals.diastolic) || 80}
+                                min={40}
+                                max={140}
+                                onChange={(val) => setEditVitals({ ...editVitals, diastolic: val.toString() })}
+                                label="Diastolic"
+                                unit="mmHg"
+                            />
+                        </div>
+
+                        {/* Row 2: Heart Rate & SpO2 */}
+                        <div className="flex items-start justify-center gap-6 sm:gap-10 md:gap-16 mb-4 sm:mb-6">
+                            {/* Heart Rate Picker */}
+                            <VerticalScrollPicker
+                                value={parseInt(editVitals.heartRate) || 72}
+                                min={40}
+                                max={200}
+                                onChange={(val) => setEditVitals({ ...editVitals, heartRate: val.toString() })}
+                                label="Heart Rate"
+                                unit="bpm"
+                            />
+
+                            {/* SpO2 Picker */}
+                            <VerticalScrollPicker
+                                value={parseInt(editVitals.spo2) || 98}
+                                min={70}
+                                max={100}
+                                onChange={(val) => setEditVitals({ ...editVitals, spo2: val.toString() })}
+                                label="SpO2"
+                                unit="%"
+                            />
+                        </div>
+
+                        {/* Current Reading Display */}
+                        <div className="text-center py-4 mb-4 border-t border-b border-gray-200 dark:border-gray-700">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Current Readings</p>
+                            <div className="flex items-center justify-center gap-6 flex-wrap">
+                                <div>
+                                    <span className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {editVitals.systolic || '—'}/{editVitals.diastolic || '—'}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-1">mmHg</span>
+                                </div>
+                                <div>
+                                    <span className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+                                        {editVitals.heartRate || '—'}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-1">bpm</span>
+                                </div>
+                                <div>
+                                    <span className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+                                        {editVitals.spo2 || '—'}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-1">%</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex gap-4">
+
+                        <div className="flex gap-4 justify-center">
                             <button
                                 onClick={handleSaveVitals}
                                 className="min-w-[100px] px-4 py-2.5 bg-[#8AC43C] text-white dark:text-[#222222] text-xs font-bold rounded-full hover:bg-[#7ab332] transition-colors"
@@ -259,7 +294,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                             <h3 className="text-lg font-bold text-[#222222] dark:text-white">Vital Signs</h3>
                             <button
                                 onClick={() => setIsEditingVitals(true)}
-                                className="min-w-[80px] px-4 py-2 text-xs font-bold bg-[#8AC43C] text-white dark:text-[#222222] rounded-full hover:bg-[#7ab332] transition-colors"
+                                className="min-w-[80px] px-4 py-2 text-xs font-bold bg-[#8AC43C] text-white dark:text-[#222222] rounded-full hover:bg-[#7ab332] transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-[#8AC43C]/30 active:scale-95 active:shadow-none"
                             >
                                 Update
                             </button>

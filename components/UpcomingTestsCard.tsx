@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { UpcomingTest } from '../types';
 import { UpcomingTestsService } from '../services/upcomingTestsService';
+import { CalendarIcon } from './icons/CalendarIcon';
+import { LocationIcon } from './icons/LocationIcon';
+import { DoctorIcon } from './icons/DoctorIcon';
+import { BeakerIcon } from './icons/BeakerIcon';
+import { ChatIcon } from './icons/ChatIcon';
+import { AlertIcon } from './icons/AlertIcon';
+import { TrashIcon } from './icons/TrashIcon';
 
 interface UpcomingTestsCardProps {
     patientId: string;
@@ -10,6 +17,7 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
     const [upcomingTests, setUpcomingTests] = useState<UpcomingTest[]>([]);
     const [overdueTests, setOverdueTests] = useState<UpcomingTest[]>([]);
     const [isAddingTest, setIsAddingTest] = useState(false);
+    const [deletingTestId, setDeletingTestId] = useState<string | null>(null);
     const [newTest, setNewTest] = useState({
         testName: '',
         scheduledDate: '',
@@ -83,12 +91,20 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
     const handleDeleteTest = async (testId: string) => {
         if (!confirm('Delete this test?')) return;
 
+        // Start the trashing animation
+        setDeletingTestId(testId);
+        
+        // Wait for animation to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         try {
             await UpcomingTestsService.deleteUpcomingTest(testId);
             await loadTests();
         } catch (error) {
             console.error('Error deleting test:', error);
             alert('Failed to delete test. Please try again.');
+        } finally {
+            setDeletingTestId(null);
         }
     };
 
@@ -211,77 +227,143 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
 
             {/* Overdue Alert */}
             {overdueTests.length > 0 && (
-                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-                    <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                        ⚠️ {overdueTests.length} overdue test{overdueTests.length > 1 ? 's' : ''}
+                <div className="mb-4 p-4 bg-gradient-to-r from-red-500/10 to-rose-500/10 dark:from-red-500/20 dark:to-rose-500/20 border border-red-200 dark:border-red-500/30 rounded-2xl flex items-center gap-3">
+                    <div className="p-2 bg-red-500 rounded-xl">
+                        <AlertIcon className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-sm font-bold text-red-700 dark:text-red-400 tracking-tight">
+                        {overdueTests.length} overdue test{overdueTests.length > 1 ? 's' : ''} need{overdueTests.length === 1 ? 's' : ''} attention
                     </p>
                 </div>
             )}
 
             {/* Tests List */}
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-hide">
                 {allTests.length > 0 ? (
                     allTests.map((test) => {
                         const daysUntil = getDaysUntil(test.scheduledDate);
                         const isOverdue = daysUntil < 0;
+                        const isToday = daysUntil === 0;
+                        const isThisWeek = daysUntil > 0 && daysUntil <= 7;
 
                         return (
                             <div
                                 key={test.id}
-                                className={`p-5 rounded-2xl border-none transition-all ${isOverdue
-                                    ? 'bg-red-50 dark:bg-red-900/10'
-                                    : 'bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                    }`}
+                                className={`group p-4 rounded-2xl border transition-all duration-300 hover:scale-[1.01] ${
+                                    deletingTestId === test.id
+                                        ? 'animate-trash-out opacity-0 scale-95 -translate-x-4 rotate-[-2deg]'
+                                        : ''
+                                } ${
+                                    isOverdue
+                                        ? 'bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-500/10 dark:to-rose-600/5 border-red-200/50 dark:border-red-500/20 hover:shadow-lg hover:shadow-red-500/10'
+                                        : isToday
+                                        ? 'bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-500/10 dark:to-orange-600/5 border-amber-200/50 dark:border-amber-500/20 hover:shadow-lg hover:shadow-amber-500/10'
+                                        : isThisWeek
+                                        ? 'bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-500/10 dark:to-indigo-600/5 border-blue-200/50 dark:border-blue-500/20 hover:shadow-lg hover:shadow-blue-500/10'
+                                        : 'bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-500/10 dark:to-slate-600/5 border-gray-200/50 dark:border-gray-500/20 hover:shadow-lg hover:shadow-gray-500/10'
+                                }`}
+                                style={{
+                                    transition: deletingTestId === test.id 
+                                        ? 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' 
+                                        : 'all 0.2s ease'
+                                }}
                             >
                                 <div className="flex items-start gap-3">
-                                    <input
-                                        type="checkbox"
-                                        checked={test.completed}
-                                        onChange={() => handleToggleComplete(test.id, test.completed)}
-                                        className="mt-1 w-5 h-5 text-secondary-700 rounded focus:ring-2 focus:ring-secondary-700"
-                                    />
-                                    <div className="flex-1">
-                                        <h4 className={`font-semibold text-gray-900 dark:text-gray-100 ${test.completed ? 'line-through opacity-50' : ''}`}>
-                                            {test.testName}
-                                        </h4>
-                                        <div className="flex items-center gap-4 mt-1 text-sm">
-                                            <span className={`font-medium ${getDateColor(daysUntil)}`}>
-                                                📅 {new Date(test.scheduledDate).toLocaleDateString()}
-                                                {isOverdue && ' (Overdue)'}
-                                                {!isOverdue && daysUntil === 0 && ' (Today)'}
-                                                {!isOverdue && daysUntil > 0 && ` (in ${daysUntil} days)`}
-                                            </span>
-                                            {test.location && (
-                                                <span className="text-gray-600 dark:text-gray-400">
-                                                    📍 {test.location}
+                                    {/* Custom Checkbox */}
+                                    <button
+                                        onClick={() => handleToggleComplete(test.id, test.completed)}
+                                        className={`mt-0.5 w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all duration-200 ${
+                                            test.completed
+                                                ? 'bg-[#8AC43C] border-[#8AC43C] text-white'
+                                                : 'border-gray-300 dark:border-gray-600 hover:border-[#8AC43C] dark:hover:border-[#8AC43C]'
+                                        }`}
+                                    >
+                                        {test.completed && (
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                    
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className={`text-base font-bold text-[#222222] dark:text-white tracking-tight ${test.completed ? 'line-through opacity-50' : ''}`}>
+                                                {test.testName}
+                                            </h4>
+                                            {isOverdue && (
+                                                <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-red-500 text-white rounded-full">
+                                                    Overdue
+                                                </span>
+                                            )}
+                                            {isToday && !isOverdue && (
+                                                <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white rounded-full">
+                                                    Today
                                                 </span>
                                             )}
                                         </div>
+                                        
+                                        <div className="flex flex-wrap items-center gap-4 mt-2">
+                                            <div className={`flex items-center gap-1.5 text-xs font-semibold tracking-tight ${
+                                                isOverdue ? 'text-red-600 dark:text-red-400' :
+                                                isToday ? 'text-amber-600 dark:text-amber-400' :
+                                                isThisWeek ? 'text-blue-600 dark:text-blue-400' :
+                                                'text-[#717171] dark:text-[#a0a0a0]'
+                                            }`}>
+                                                <CalendarIcon className="w-3.5 h-3.5" />
+                                                <span>{new Date(test.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                {!isOverdue && daysUntil > 0 && (
+                                                    <span className="text-[#717171] dark:text-[#a0a0a0] font-medium">• in {daysUntil} day{daysUntil !== 1 ? 's' : ''}</span>
+                                                )}
+                                            </div>
+                                            
+                                            {test.location && (
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-[#717171] dark:text-[#a0a0a0] tracking-tight">
+                                                    <LocationIcon className="w-3.5 h-3.5" />
+                                                    <span>{test.location}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
                                         {test.doctorName && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                Dr. {test.doctorName}
-                                            </p>
+                                            <div className="text-xs text-[#717171] dark:text-[#a0a0a0] mt-2 flex items-center gap-1.5 font-medium tracking-tight">
+                                                <DoctorIcon className="w-3.5 h-3.5" />
+                                                <span>Dr. {test.doctorName}</span>
+                                            </div>
                                         )}
+                                        
                                         {test.notes && (
-                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic">
-                                                {test.notes}
-                                            </p>
+                                            <div className="text-xs text-[#717171] dark:text-[#a0a0a0] mt-2 flex items-center gap-1.5 bg-white/50 dark:bg-black/20 px-2.5 py-1.5 rounded-xl font-medium">
+                                                <ChatIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                                <span className="italic">{test.notes}</span>
+                                            </div>
                                         )}
                                     </div>
+                                    
+                                    {/* Delete Button */}
                                     <button
                                         onClick={() => handleDeleteTest(test.id)}
-                                        className="text-red-500 hover:text-red-700 text-sm font-medium"
+                                        disabled={deletingTestId === test.id}
+                                        className={`p-2 rounded-xl transition-all duration-200 ${
+                                            deletingTestId === test.id
+                                                ? 'opacity-100 text-red-600 animate-bounce'
+                                                : 'opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                        }`}
+                                        title="Delete test"
                                     >
-                                        Delete
+                                        <TrashIcon className={`w-4 h-4 ${deletingTestId === test.id ? 'animate-wiggle' : ''}`} />
                                     </button>
                                 </div>
                             </div>
                         );
                     })
                 ) : (
-                    <p className="text-center text-gray-500 dark:text-gray-400 py-8 italic">
-                        No upcoming tests scheduled
-                    </p>
+                    <div className="text-center py-12">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-4">
+                            <BeakerIcon className="w-8 h-8 text-[#717171] dark:text-[#a0a0a0]" />
+                        </div>
+                        <p className="text-[#717171] dark:text-[#a0a0a0] font-bold tracking-tight">No upcoming tests scheduled</p>
+                        <p className="text-xs text-[#717171] dark:text-[#a0a0a0] mt-1 font-medium">Click "Schedule Test" to add one</p>
+                    </div>
                 )}
             </div>
         </div>

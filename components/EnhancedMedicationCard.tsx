@@ -36,6 +36,7 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
     const [showAddModal, setShowAddModal] = useState(false);
     const [activeTab, setActiveTab] = useState<'schedule' | 'medications'>('schedule');
     const [adherencePercentage, setAdherencePercentage] = useState(0);
+    const [deletingMedId, setDeletingMedId] = useState<string | null>(null);
 
     // Add medication form state
     const [searchQuery, setSearchQuery] = useState('');
@@ -217,11 +218,17 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
     const handleDeleteMedication = async (medicationId: string) => {
         if (!confirm('Are you sure you want to remove this medication?')) return;
 
+        // Start animation
+        setDeletingMedId(medicationId);
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         try {
             await MedicationService.deleteMedication(medicationId);
             await loadData();
         } catch (error) {
             console.error('Error deleting medication:', error);
+        } finally {
+            setDeletingMedId(null);
         }
     };
 
@@ -405,7 +412,7 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                             medications.map(med => (
                                 <div
                                     key={med.id}
-                                    className="flex items-center gap-4 p-4 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-[#8AC43C]/5 rounded-2xl border border-gray-100 dark:border-[#8AC43C]/10 transition-all shadow-sm hover:shadow-md group"
+                                    className={`flex items-center gap-4 p-4 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-[#8AC43C]/5 rounded-2xl border border-gray-100 dark:border-[#8AC43C]/10 transition-all shadow-sm hover:shadow-md group ${deletingMedId === med.id ? 'animate-trash-out' : ''}`}
                                 >
                                     <div className="p-3 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 rounded-xl group-hover:bg-[#8AC43C]/20 transition-colors">
                                         <PillIcon className="h-5 w-5 text-[#8AC43C]" />
@@ -425,9 +432,10 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                     </div>
                                     <button
                                         onClick={() => handleDeleteMedication(med.id)}
-                                        className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                        disabled={deletingMedId === med.id}
+                                        className={`p-2 rounded-xl transition-all ${deletingMedId === med.id ? 'opacity-100 text-rose-500' : 'text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100'}`}
                                     >
-                                        <TrashIcon className="h-4 w-4" />
+                                        <TrashIcon className={`h-4 w-4 ${deletingMedId === med.id ? 'animate-wiggle' : ''}`} />
                                     </button>
                                 </div>
                             ))
