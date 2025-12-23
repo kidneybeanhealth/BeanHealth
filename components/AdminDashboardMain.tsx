@@ -167,24 +167,38 @@ const AdminDashboardMain: React.FC = () => {
     };
 
     // Handle user deletion
+    // Handle user deletion
     const handleDeleteUser = async (targetUser: User) => {
         if (!confirm(`Are you sure you want to delete ${targetUser.name}?\n\nThis action cannot be undone.`)) {
             return;
         }
 
         try {
-            const { error } = await supabase
-                .from('users')
-                .delete()
-                .eq('id', targetUser.id);
+            // Attempt to use the secure RPC function
+            const { error: rpcError } = await (supabase as any).rpc('admin_delete_user_completely', {
+                target_user_id: targetUser.id
+            });
 
-            if (error) throw error;
+            if (rpcError) {
+                console.warn('RPC deletion failed, checking fallback:', rpcError);
+                // Fallback
+                const { error: deleteError } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', targetUser.id);
 
-            alert(`User ${targetUser.name} has been deleted.`);
-            fetchUsers(); // Refresh the list
-        } catch (error) {
+                if (deleteError) throw deleteError;
+
+                alert(`User profile deleted (fallback). Run 'admin_full_delete_setup.sql' for full auth cleanup.`);
+            } else {
+                alert(`User ${targetUser.name} has been completely deleted.`);
+            }
+
+            setSelectedUser(null);
+            fetchUsers();
+        } catch (error: any) {
             console.error('Error deleting user:', error);
-            alert('Failed to delete user. Please try again.');
+            alert(`Failed to delete user: ${error.message || 'Unknown error'}`);
         }
     };
 
