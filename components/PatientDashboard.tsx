@@ -4,6 +4,7 @@ import { NotificationProvider, useNotifications } from "../contexts/Notification
 import { UrgentCreditsProvider, useUrgentCredits } from "../contexts/UrgentCreditsContext";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
+import MobileBottomNav from "./MobileBottomNav";
 import Dashboard from "./Dashboard";
 import CKDDashboard from "./CKDDashboard";
 import Records from "./Records";
@@ -743,11 +744,18 @@ const PatientDashboard: React.FC = () => {
             <NotificationProvider userId={user?.id || ''} activeView={activeView} userRole="patient">
                 <div className="h-screen bg-[#F7F7F7] dark:bg-black flex flex-col md:flex-row overflow-hidden">
                     {/* Sidebar */}
+
                     <SidebarWithNotifications
                         activeView={activeView}
                         setActiveView={setActiveView}
                         isOpen={sidebarOpen}
                         onClose={() => setSidebarOpen(false)}
+                    />
+
+                    {/* Mobile Bottom Nav */}
+                    <MobileBottomNavWithNotifications
+                        activeView={activeView}
+                        setActiveView={setActiveView}
                     />
 
                     {/* Main content wrapper */}
@@ -758,10 +766,11 @@ const PatientDashboard: React.FC = () => {
                                 user={appUser}
                                 onLogout={signOut}
                                 onMenuClick={() => setSidebarOpen(true)}
+                                showMenu={false}
                             />
                         </div>
 
-                        <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-4 pt-4 pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-5 lg:px-6 pt-6 pb-8'}`}>{renderContent()}</main>
+                        <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-4 pt-4 pb-24 md:pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-5 lg:px-6 pt-6 pb-28 md:pb-8'}`}>{renderContent()}</main>
                     </div>
 
                     {/* Onboarding Modal */}
@@ -812,6 +821,23 @@ const SidebarWithNotifications: React.FC<{
             setActiveView={setActiveView}
             isOpen={isOpen}
             onClose={onClose}
+            unreadMessageCount={unreadMessageCount}
+            hasUrgentMessages={hasUrgentMessages}
+        />
+    );
+};
+
+// Mobile Bottom Nav wrapper that uses notification context
+const MobileBottomNavWithNotifications: React.FC<{
+    activeView: View;
+    setActiveView: (view: View) => void;
+}> = ({ activeView, setActiveView }) => {
+    const { unreadMessageCount, hasUrgentMessages } = useNotifications();
+
+    return (
+        <MobileBottomNav
+            activeView={activeView}
+            setActiveView={setActiveView}
             unreadMessageCount={unreadMessageCount}
             hasUrgentMessages={hasUrgentMessages}
         />
