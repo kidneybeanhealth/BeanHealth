@@ -1,25 +1,49 @@
-# Android Deep Link Setup for OAuth
+# Android Deep Link Setup for OAuth - UPDATED
 
-## Steps to Configure Deep Links in Android
+## CRITICAL: Supabase Dashboard Configuration
 
-### 1. Update AndroidManifest.xml
+### Step 1: Configure Supabase Redirect URLs
 
-Navigate to: `android/app/src/main/AndroidManifest.xml`
+1. Go to: https://supabase.com/dashboard
+2. Select your BeanHealth project
+3. Navigate to: **Authentication** → **URL Configuration**
+4. Add these **EXACT URLs** to **Redirect URLs**:
+   ```
+   com.beanhealth.app://oauth-callback
+   http://localhost:5173
+   ```
 
-Add this `<intent-filter>` inside the `<activity>` tag (under the existing intent-filters):
+5. **IMPORTANT**: Make sure the redirect URL matches EXACTLY: `com.beanhealth.app://oauth-callback`
+   - No trailing slash
+   - Scheme is `com.beanhealth.app`
+   - Host is `oauth-callback`
+
+### Step 2: Verify Google OAuth Provider Settings
+
+1. In Supabase Dashboard: **Authentication** → **Providers** → **Google**
+2. Make sure **Skip nonce check** is **DISABLED** (or leave default)
+3. Verify your Google Client ID and Secret are correct
+
+## Android Configuration
+
+### AndroidManifest.xml Setup
+
+Your `android/app/src/main/AndroidManifest.xml` should have these intent filters in the MainActivity:
 
 ```xml
 <activity
     android:name=".MainActivity"
+    android:launchMode="singleTask"
+    android:exported="true"
     ...>
     
-    <!-- Existing intent filters -->
+    <!-- Default launcher -->
     <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
     </intent-filter>
     
-    <!-- ADD THIS: Deep link for OAuth callback -->
+    <!-- Deep Link for OAuth Callback (with host) -->
     <intent-filter android:autoVerify="true">
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
@@ -28,60 +52,104 @@ Add this `<intent-filter>` inside the `<activity>` tag (under the existing inten
               android:host="oauth-callback" />
     </intent-filter>
     
+    <!-- Fallback for scheme-only deep links -->
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="com.beanhealth.app" />
+    </intent-filter>
+    
 </activity>
 ```
 
-### 2. Configure Supabase Dashboard
+### Capacitor Config
 
-1. Go to: https://supabase.com/dashboard
-2. Select your BeanHealth project
-3. Navigate to: **Authentication** → **URL Configuration**
-4. Add these to **Redirect URLs**:
-   ```
-   com.beanhealth.app://oauth-callback
-   http://localhost:5173
-   https://yourdomain.com (your production URL)
-   ```
+Your `capacitor.config.ts` should have:
+- `appId: 'com.beanhealth.app'`
+- `webDir: 'dist'`
 
-### 3. Sync Capacitor
+## Building the App
 
-After making changes, run:
-```powershell
+After any changes, run:
+
+```bash
+# Build the web app
 npm run build
-npx cap sync
+
+# Sync with Capacitor
+npx cap sync android
+
+# Open Android Studio
+npx cap open android
 ```
 
-### 4. Test the Flow
+Then in Android Studio: **Build** → **Build Bundle(s) / APK(s)** → **Build APK(s)**
 
-1. Build and install the app on your Android device
-2. Click "Sign in with Google"
-3. Browser opens for authentication
-4. After login, browser should close automatically
-5. App should reopen with authenticated session
+## How OAuth Flow Works
 
-### 5. Debugging
+1. User taps "Sign in with Google"
+2. App opens browser with Supabase OAuth URL
+3. User authenticates with Google
+4. Google redirects to Supabase
+5. Supabase redirects to `com.beanhealth.app://oauth-callback?code=XXX`
+6. Android catches this deep link and opens the app
+7. App's `handleDeepLink` function extracts the `code` parameter
+8. App calls `supabase.auth.exchangeCodeForSession(code)`
+9. Session is established and app reloads
 
-To debug deep links:
-```powershell
-# Check if deep link is registered
-adb shell dumpsys package com.beanhealth.app | findstr /i "scheme"
+## Debugging
 
-# Monitor logs when deep link triggers
-adb logcat | findstr /i "deeplink\|oauth\|intent"
+### Check if deep link is working:
+
+```bash
+# Test deep link manually
+adb shell am start -W -a android.intent.action.VIEW -d "com.beanhealth.app://oauth-callback?code=test" com.beanhealth.app
+
+# Watch logs
+adb logcat | grep -E "(App|AuthService|AuthContext|Supabase)"
 ```
 
 ### Common Issues:
 
-**Issue**: Browser opens but doesn't return to app
-- **Fix**: Make sure `android:autoVerify="true"` is set and the scheme matches exactly
+1. **"Both access_token and code_verifier are required"**
+   - This means the PKCE flow is broken
+   - Check that storage is persisting the code_verifier
+   - Make sure app isn't restarting between OAuth start and callback
 
-**Issue**: Deep link not recognized
-- **Fix**: Run `npx cap sync` after any AndroidManifest.xml changes
+2. **Deep link not received**
+   - Check AndroidManifest intent-filters
+   - Make sure launchMode is "singleTask"
+   - Run `npx cap sync android` after manifest changes
 
-**Issue**: Session not persisting
-- **Fix**: Check that Supabase redirect URL matches `com.beanhealth.app://oauth-callback`
+3. **Login loops back to login page**
+   - Session not being persisted
+   - Check CapacitorStorage is working
+   - Check supabase.ts has correct storage config
 
-### Notes:
-- The deep link scheme `com.beanhealth.app://` must match your `appId` in capacitor.config.ts
-- Make sure to test on a real device (emulators may have issues with browser intents)
-- The Browser plugin automatically closes after redirect on successful auth
+4. **"Invalid nonce" or similar errors**
+   - PKCE code_verifier not matching
+   - Try clearing app data and re-testing
+
+## Supabase Client Configuration
+
+Make sure your `lib/supabase.ts` has:
+
+```typescript
+auth: {
+  autoRefreshToken: true,
+  persistSession: true,
+  detectSessionInUrl: true,
+  storage: Capacitor.isNativePlatform() ? CapacitorStorage : window.localStorage,
+  storageKey: 'supabase.auth.token',
+  flowType: 'pkce',
+}
+```
+
+## Test Checklist
+
+- [ ] Supabase has `com.beanhealth.app://oauth-callback` in redirect URLs
+- [ ] AndroidManifest has intent-filter with correct scheme and host
+- [ ] `launchMode="singleTask"` is set on MainActivity
+- [ ] `npx cap sync android` was run after any changes
+- [ ] App is tested on real device (emulators may have issues)

@@ -19,6 +19,7 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { AuthService } from '../services/authService'
 import { TermsService } from '../services/termsService'
+import { OnboardingService } from '../services/onboardingService'
 import { User as AppUser } from '../types'
 import { showErrorToast, showSuccessToast } from '../utils/toastUtils'
 
@@ -39,10 +40,12 @@ interface AuthContextType {
   }) => Promise<void>
   signOut: () => Promise<void>
   needsProfileSetup: boolean
+  needsOnboarding: boolean
   refreshProfile: () => Promise<void>
   // Terms and Conditions
   needsTermsAcceptance: boolean
   acceptTerms: () => Promise<void>
+  checkAuth: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -62,6 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true)
   const [isInitialized, setIsInitialized] = useState(false)
   const [needsProfileSetup, setNeedsProfileSetup] = useState(false)
+  const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [needsTermsAcceptance, setNeedsTermsAcceptance] = useState(false)
 
   // Use ref to track if component is mounted
@@ -157,6 +161,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(userProfile);
         setNeedsProfileSetup(!userProfile || !userProfile.role);
 
+        // Check if user needs onboarding (has profile but hasn't completed onboarding)
+        if (userProfile && userProfile.role) {
+          const isOnboarded = await OnboardingService.checkOnboardingStatus(currentSession.user.id);
+          if (isMountedRef.current) {
+            setNeedsOnboarding(!isOnboarded);
+            console.log('[AuthContext] User needs onboarding:', !isOnboarded);
+          }
+        } else {
+          setNeedsOnboarding(false);
+        }
+
         // Check if patient needs to accept terms
         if (userProfile && userProfile.role === 'patient') {
           const needsTerms = await TermsService.needsToAcceptNewTerms(currentSession.user.id);
@@ -175,6 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
+        setNeedsOnboarding(false);
         setNeedsTermsAcceptance(false);
       }
     } catch (error) {
@@ -187,6 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
+        setNeedsOnboarding(false);
         setNeedsTermsAcceptance(false);
       }
     } finally {
@@ -218,6 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
+        setNeedsOnboarding(false);
         setNeedsTermsAcceptance(false);
       }
       return;
@@ -235,6 +253,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setProfile(userProfile);
             setNeedsProfileSetup(!userProfile || !userProfile.role);
 
+            // Check if user needs onboarding
+            if (userProfile && userProfile.role) {
+              const isOnboarded = await OnboardingService.checkOnboardingStatus(newSession.user.id);
+              if (isMountedRef.current) {
+                setNeedsOnboarding(!isOnboarded);
+              }
+            } else {
+              setNeedsOnboarding(false);
+            }
+
             // Check if patient needs to accept terms
             if (userProfile && userProfile.role === 'patient') {
               const needsTerms = await TermsService.needsToAcceptNewTerms(newSession.user.id);
@@ -250,6 +278,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (isMountedRef.current) {
             setProfile(null);
             setNeedsProfileSetup(true);
+            setNeedsOnboarding(false);
             setNeedsTermsAcceptance(false);
           }
         });
@@ -260,6 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
+        setNeedsOnboarding(false);
       }
     }
   }, [fetchUserProfile]); // Removed isInitialized from deps - using ref instead
@@ -333,8 +363,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = useCallback(async () => {
     setLoading(true);
     try {
-      await AuthService.signInWithGoogle();
-      // Success toast will show after redirect
+      const result = await AuthService.signInWithGoogle();
+
+      if (result.success) {
+        // On native platforms, the deep link handler will handle the session exchange and reload
+        // On web, the OAuth redirect will happen automatically and we'll pick up the session
+        console.log('[AuthContext] OAuth initiated successfully');
+        // Don't reload here - let the deep link handler or OAuth flow complete naturally
+      } else if (result.error) {
+        showErrorToast(result.error);
+      }
     } catch (error) {
       console.error('[AuthContext] Google sign in error:', error);
       showErrorToast('Failed to sign in with Google. Please try again.');
@@ -430,6 +468,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(userProfile);
         setNeedsProfileSetup(!userProfile || !userProfile.role);
 
+        // Check if user needs onboarding
+        if (userProfile && userProfile.role) {
+          const isOnboarded = await OnboardingService.checkOnboardingStatus(user.id);
+          if (isMountedRef.current) {
+            setNeedsOnboarding(!isOnboarded);
+          }
+        } else {
+          setNeedsOnboarding(false);
+        }
+
         // Check if patient needs to accept terms
         if (userProfile && userProfile.role === 'patient') {
           const needsTerms = await TermsService.needsToAcceptNewTerms(user.id);
@@ -484,9 +532,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signOut,
     needsProfileSetup,
+    needsOnboarding,
     refreshProfile,
     needsTermsAcceptance,
     acceptTerms,
+    checkAuth: initializeAuth,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

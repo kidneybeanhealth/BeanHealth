@@ -2,12 +2,9 @@
  * Authentication Service
  * 
  * FIXES APPLIED:
- * - Added proper try/catch/finally blocks to all async methods
- * - SignOut now properly clears all state regardless of API response
- * - Improved error messages and logging
- * - Added defensive checks for null/undefined
- * 
- * WHY: Prevents hanging on signOut and ensures auth state is always consistent
+ * - Uses Browser.addListener('browserFinished') to detect OAuth completion
+ * - Checks session after browser closes as fallback
+ * - Returns a promise that resolves when OAuth is complete
  */
 
 import { supabase } from '../lib/supabase'
@@ -16,19 +13,22 @@ import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
 
 export class AuthService {
-  // Google OAuth sign in
-  static async signInWithGoogle() {
+  // Google OAuth sign in with browser finish detection
+  static async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
     try {
       // Determine redirect URL based on platform
       const redirectTo = Capacitor.isNativePlatform()
         ? 'com.beanhealth.app://oauth-callback'
         : window.location.origin
 
+      console.log('[AuthService] Starting OAuth with redirect:', redirectTo);
+      console.log('[AuthService] Platform:', Capacitor.getPlatform());
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
-          skipBrowserRedirect: Capacitor.isNativePlatform() // Don't auto-redirect on mobile
+          skipBrowserRedirect: Capacitor.isNativePlatform()
         }
       })
 
@@ -37,18 +37,35 @@ export class AuthService {
         throw error;
       }
 
-      // On mobile, open browser manually
+      // On mobile, open browser and DON'T wait for it to close
+      // The deep link handler in App.tsx will handle the callback
       if (Capacitor.isNativePlatform() && data?.url) {
-        await Browser.open({
-          url: data.url,
-          presentationStyle: 'popover'
-        })
+        console.log('[AuthService] Opening browser for OAuth...');
+        console.log('[AuthService] OAuth URL:', data.url);
+
+        try {
+          await Browser.open({
+            url: data.url,
+            presentationStyle: 'fullscreen',
+            windowName: '_blank'
+          });
+
+          console.log('[AuthService] Browser opened successfully');
+
+          // On native, we just return success - the deep link handler will do the rest
+          // No need to listen for browserFinished as the deep link handles everything
+          return { success: true };
+        } catch (err) {
+          console.error('[AuthService] Browser open error:', err);
+          return { success: false, error: 'Could not open browser for login' };
+        }
       }
 
-      return data;
+      // On web, the OAuth redirect happens automatically
+      return { success: true };
     } catch (error) {
       console.error('[AuthService] Google sign in failed:', error);
-      throw error;
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 

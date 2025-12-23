@@ -12,7 +12,6 @@ import Upload from "./Upload";
 import Messages from "./Messages";
 import Billing from "./Billing";
 import DoctorsPage from "./DoctorsPage";
-import OnboardingModal, { OnboardingData } from "./OnboardingModal";
 import ExtractedMedicationsModal from "./ExtractedMedicationsModal";
 import { View, Patient, Vitals, Medication, MedicalRecord, User, Doctor, ChatMessage, ExtractedMedication } from "../types";
 import { MedicalRecordsService } from "../services/medicalRecordsService";
@@ -23,7 +22,6 @@ import { UserService } from "../services/authService";
 import { PatientAdditionService } from "../services/patientInvitationService";
 import { ChatService } from "../services/chatService";
 import { VitalsService } from "../services/dataService";
-import { OnboardingService } from "../services/onboardingService";
 import { CaseDetailsService } from "../services/caseDetailsService";
 
 
@@ -31,7 +29,6 @@ const PatientDashboard: React.FC = () => {
     const { user, profile, signOut } = useAuth();
     const [activeView, setActiveView] = useState<View>("dashboard");
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [showOnboarding, setShowOnboarding] = useState(false);
 
     // State management
     const [vitals, setVitals] = useState<Vitals>({
@@ -75,13 +72,6 @@ const PatientDashboard: React.FC = () => {
                 try {
                     // Initialize storage
                     await testStorageConnection();
-
-                    // Check if user needs onboarding
-                    const isOnboarded = await OnboardingService.checkOnboardingStatus(user.id);
-                    if (!isOnboarded) {
-                        setShowOnboarding(true);
-                        return; // Don't load other data until onboarding is complete
-                    }
 
                     // Load existing vitals from database
                     const latestVitals = await VitalsService.getLatestVitals(user.id);
@@ -236,30 +226,6 @@ const PatientDashboard: React.FC = () => {
         }),
         [appUser, vitals, medications, medicalRecords, doctors, chatMessages, summaryNote, profile]
     );
-
-    // Event handlers
-    const handleOnboardingComplete = async (data: OnboardingData) => {
-        if (!user?.id) return;
-
-        try {
-            const result = await OnboardingService.completeOnboarding(user.id, data);
-            console.log('✅ Onboarding complete:', result);
-
-            // Update the modal to show patient ID
-            // The modal will handle the success screen display
-
-            // Close modal after short delay
-            setTimeout(() => {
-                setShowOnboarding(false);
-            }, 100);
-
-            // Return the result to the modal
-            return result;
-        } catch (error) {
-            console.error('Onboarding error:', error);
-            throw error; // Modal will handle error display
-        }
-    };
 
     // Original event handlers
     const handleVitalsChange = async (vitalKey: keyof Vitals, newValue: string) => {
@@ -777,12 +743,6 @@ const PatientDashboard: React.FC = () => {
 
                         <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-4 pt-4 pb-24 md:pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-5 lg:px-6 pt-6 pb-28 md:pb-8'}`}>{renderContent()}</main>
                     </div>
-
-                    {/* Onboarding Modal */}
-                    <OnboardingModal
-                        isOpen={showOnboarding}
-                        onComplete={handleOnboardingComplete}
-                    />
 
                     {/* Extracted Medications Modal */}
                     {extractedMedsData && (

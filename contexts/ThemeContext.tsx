@@ -16,9 +16,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (storedTheme === 'light' || storedTheme === 'dark') {
         return storedTheme;
       }
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        return 'dark';
-      }
+      // Previously checked matchMedia for dark mode
+      // Now defaults to light as requested
     }
     return 'light';
   });
@@ -36,7 +35,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const toggleTheme = () => {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
-  
+
   const value = useMemo(() => ({ theme, toggleTheme }), [theme]);
 
   return (

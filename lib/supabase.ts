@@ -12,6 +12,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Capacitor } from '@capacitor/core'
+import { CapacitorStorage } from './CapacitorStorage'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -55,7 +56,7 @@ export function getSupabaseClient(): SupabaseClient<Database> {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
-        storage: window.localStorage,
+        storage: Capacitor.isNativePlatform() ? CapacitorStorage : window.localStorage,
         storageKey: 'supabase.auth.token',
         flowType: 'pkce',
       },
