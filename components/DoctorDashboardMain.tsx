@@ -19,6 +19,7 @@ import { UserGroupIcon } from './icons/UserGroupIcon';
 import { MessagesIcon } from './icons/MessagesIcon';
 import { DocumentIcon } from './icons/DocumentIcon';
 import DoctorReferralCard from './DoctorReferralCard';
+import DoctorMobileBottomNav, { DoctorView } from './DoctorMobileBottomNav';
 import type { AlertCounts } from '../types/alerts';
 
 const DoctorDashboardMain: React.FC = () => {
@@ -27,7 +28,7 @@ const DoctorDashboardMain: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'dashboard' | 'messages' | 'patient-detail' | 'monitoring' | 'alerts'>('dashboard');
+  const [activeView, setActiveView] = useState<DoctorView>('dashboard');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [alertCounts, setAlertCounts] = useState<AlertCounts>({ total: 0, urgent: 0, review: 0, info: 0, unacknowledged: 0 });
 
@@ -517,21 +518,22 @@ const DoctorDashboardMain: React.FC = () => {
           <div className="max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12">
             <div className="flex items-center justify-between h-20">
               {/* Logo / Brand Area */}
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
-                  <LogoIcon className="w-10 h-10" />
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
+                  <LogoIcon className="w-9 h-9 md:w-10 md:h-10" />
                 </div>
-                <div className="hidden md:block">
-                  <h2 className="text-xl font-bold leading-none tracking-tight">
+                <div className="flex flex-col justify-center">
+                  <h2 className="text-lg md:text-xl font-bold leading-none tracking-tight">
                     <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
                     <span className="text-[#8AC43C]">Health</span>
                   </h2>
-                  <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-1">DOCTOR PORTAL</p>
+                  <p className="text-[9px] md:text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-0.5">DOCTOR PORTAL</p>
                 </div>
               </div>
 
               {/* Center Tabs */}
-              <nav className="absolute left-1/2 transform -translate-x-1/2 flex p-1 bg-gray-100 dark:bg-[#2c2c2c] rounded-full">
+              {/* Center Tabs - Desktop Only */}
+              <nav className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 p-1 bg-gray-100 dark:bg-[#2c2c2c] rounded-full">
                 <button
                   onClick={() => setActiveView('dashboard')}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'dashboard'
@@ -571,8 +573,15 @@ const DoctorDashboardMain: React.FC = () => {
               <div className="flex items-center gap-5">
                 <ThemeToggle />
 
-                <div className="hidden md:flex items-center gap-3 pl-3 border-l border-gray-200 dark:border-gray-700">
-                  <div className="text-right">
+                <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-1 sm:mx-2"></div>
+
+                <button
+                  onClick={signOut}
+                  className="group flex items-center p-1 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-500 ease-out"
+                  aria-label="Log out"
+                >
+                  {/* Info Text (Hidden on Mobile) */}
+                  <div className="hidden md:block text-right pr-3 group-hover:opacity-50 transition-opacity">
                     <p className="text-sm font-bold text-[#222222] dark:text-white leading-none">
                       {profile?.name || user?.email?.split('@')[0] || 'Doctor'}
                     </p>
@@ -580,27 +589,29 @@ const DoctorDashboardMain: React.FC = () => {
                       {profile?.specialty || 'MD'}
                     </p>
                   </div>
-                  <div className="h-10 w-10 bg-gradient-to-br from-gray-800 to-black dark:from-white dark:to-gray-200 rounded-full flex items-center justify-center text-white dark:text-black font-bold text-sm shadow-md">
-                    {getInitials(profile?.name || user?.email || 'Dr', user?.email || '')}
-                  </div>
-                </div>
 
-                <div className="hidden md:block">
-                  <button
-                    onClick={signOut}
-                    className="p-2.5 text-[#717171] hover:text-[#8AC43C] hover:bg-green-50 dark:hover:bg-green-900/10 rounded-full transition-colors"
-                    title="Sign Out"
-                  >
-                    <LogoutIcon className="w-5 h-5" />
-                  </button>
-                </div>
+                  <div className="relative z-10">
+                    <div className="h-9 w-9 md:h-10 md:w-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black font-bold text-xs md:text-sm shadow-md ring-2 ring-white dark:ring-black transition-colors duration-300">
+                      {getInitials(profile?.name || user?.email || 'Dr', user?.email || '')}
+                    </div>
+                    {/* Online indicator */}
+                    <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-black bg-green-500"></span>
+                  </div>
+
+                  <div className="max-w-0 group-hover:max-w-[100px] overflow-hidden transition-all duration-500 ease-out opacity-0 group-hover:opacity-100">
+                    <div className="flex items-center gap-2 pl-3 pr-2 whitespace-nowrap text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      <span className="md:hidden">Log out</span>
+                      <LogoutIcon className="h-4 w-4 text-red-500" />
+                    </div>
+                  </div>
+                </button>
               </div>
             </div>
           </div>
         </div>
 
         {/* Main Content Area */}
-        <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)]' : 'py-10'}`}>
+        <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)] pb-24 md:pb-0' : 'py-10 pb-28 md:pb-10'}`}>
           <div className={`${activeView === 'messages' ? 'h-full' : 'max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12'}`}>
             {activeView === 'dashboard' && renderDashboard()}
 
@@ -624,8 +635,25 @@ const DoctorDashboardMain: React.FC = () => {
             )}
           </div>
         </main>
+        <DoctorMobileNavWrapper activeView={activeView} setActiveView={setActiveView} />
       </div>
     </NotificationProvider>
+  );
+};
+
+// Wrapper to use notification context
+const DoctorMobileNavWrapper: React.FC<{
+  activeView: DoctorView;
+  setActiveView: (view: DoctorView) => void;
+}> = ({ activeView, setActiveView }) => {
+  const { unreadMessageCount, hasUrgentMessages } = useNotifications();
+  return (
+    <DoctorMobileBottomNav
+      activeView={activeView}
+      setActiveView={setActiveView}
+      unreadMessageCount={unreadMessageCount}
+      hasUrgentMessages={hasUrgentMessages}
+    />
   );
 };
 
