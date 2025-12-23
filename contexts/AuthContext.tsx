@@ -18,6 +18,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { AuthService } from '../services/authService'
+import { TermsService } from '../services/termsService'
 import { User as AppUser } from '../types'
 import { showErrorToast, showSuccessToast } from '../utils/toastUtils'
 
@@ -39,6 +40,9 @@ interface AuthContextType {
   signOut: () => Promise<void>
   needsProfileSetup: boolean
   refreshProfile: () => Promise<void>
+  // Terms and Conditions
+  needsTermsAcceptance: boolean
+  acceptTerms: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -58,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true)
   const [isInitialized, setIsInitialized] = useState(false)
   const [needsProfileSetup, setNeedsProfileSetup] = useState(false)
+  const [needsTermsAcceptance, setNeedsTermsAcceptance] = useState(false)
 
   // Use ref to track if component is mounted
   const isMountedRef = useRef(true)
@@ -152,6 +157,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(userProfile);
         setNeedsProfileSetup(!userProfile || !userProfile.role);
 
+        // Check if patient needs to accept terms
+        if (userProfile && userProfile.role === 'patient') {
+          const needsTerms = await TermsService.needsToAcceptNewTerms(currentSession.user.id);
+          if (isMountedRef.current) {
+            setNeedsTermsAcceptance(needsTerms);
+            console.log('[AuthContext] Patient needs terms acceptance:', needsTerms);
+          }
+        } else {
+          setNeedsTermsAcceptance(false);
+        }
+
         console.log('[AuthContext] Auth initialized with user');
       } else {
         console.log('[AuthContext] No session found');
@@ -159,6 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
+        setNeedsTermsAcceptance(false);
       }
     } catch (error) {
       console.error('[AuthContext] Error initializing auth:', error);
@@ -170,6 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
+        setNeedsTermsAcceptance(false);
       }
     } finally {
       if (isMountedRef.current) {
@@ -200,6 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
+        setNeedsTermsAcceptance(false);
       }
       return;
     }
@@ -211,16 +230,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(newSession);
 
         // Fetch profile in background
-        fetchUserProfile(newSession.user.id, newSession).then(userProfile => {
+        fetchUserProfile(newSession.user.id, newSession).then(async userProfile => {
           if (isMountedRef.current) {
             setProfile(userProfile);
             setNeedsProfileSetup(!userProfile || !userProfile.role);
+
+            // Check if patient needs to accept terms
+            if (userProfile && userProfile.role === 'patient') {
+              const needsTerms = await TermsService.needsToAcceptNewTerms(newSession.user.id);
+              if (isMountedRef.current) {
+                setNeedsTermsAcceptance(needsTerms);
+              }
+            } else {
+              setNeedsTermsAcceptance(false);
+            }
           }
         }).catch(error => {
           console.error('[AuthContext] Error fetching profile on auth change:', error);
           if (isMountedRef.current) {
             setProfile(null);
             setNeedsProfileSetup(true);
+            setNeedsTermsAcceptance(false);
           }
         });
       }
@@ -399,6 +429,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isMountedRef.current) {
         setProfile(userProfile);
         setNeedsProfileSetup(!userProfile || !userProfile.role);
+
+        // Check if patient needs to accept terms
+        if (userProfile && userProfile.role === 'patient') {
+          const needsTerms = await TermsService.needsToAcceptNewTerms(user.id);
+          if (isMountedRef.current) {
+            setNeedsTermsAcceptance(needsTerms);
+          }
+        }
       }
 
       console.log('[AuthContext] Profile refreshed');
@@ -407,6 +445,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
   }, [user, session, fetchUserProfile]);
+
+  /**
+   * Accept terms and conditions
+   */
+  const acceptTerms = useCallback(async () => {
+    if (!user) {
+      console.warn('[AuthContext] Cannot accept terms - no user');
+      return;
+    }
+
+    try {
+      console.log('[AuthContext] Accepting terms for user:', user.id);
+
+      await TermsService.acceptTerms(user.id);
+
+      if (isMountedRef.current) {
+        setNeedsTermsAcceptance(false);
+        showSuccessToast('Terms and conditions accepted');
+      }
+
+      console.log('[AuthContext] Terms accepted successfully');
+    } catch (error) {
+      console.error('[AuthContext] Error accepting terms:', error);
+      showErrorToast('Failed to accept terms. Please try again.');
+      throw error;
+    }
+  }, [user]);
 
   const value: AuthContextType = {
     user,
@@ -420,6 +485,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     needsProfileSetup,
     refreshProfile,
+    needsTermsAcceptance,
+    acceptTerms,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

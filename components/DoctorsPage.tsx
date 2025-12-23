@@ -242,7 +242,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                     <button
                         onClick={handleLinkDoctor}
                         disabled={isLinking || !referralCode.trim()}
-                        className="px-6 py-3 bg-[#222222] dark:bg-white text-white dark:text-[#222222] font-bold text-sm rounded-full hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-6 py-3 bg-[#8AC43C] text-white font-bold text-sm rounded-full hover:bg-[#7ab332] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isLinking ? 'Linking...' : 'Link Doctor'}
                     </button>
@@ -273,26 +273,26 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                         {linkedDoctors.map((doctor) => (
                             <div
                                 key={doctor.id}
-                                className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-[#8AC43C]/20 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-[#8AC43C]/30 transition-all"
+                                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 gap-3 bg-gray-50/50 dark:bg-[#8AC43C]/20 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-[#8AC43C]/30 transition-all"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-black dark:bg-white rounded-full flex items-center justify-center shadow-sm">
-                                        <span className="text-xs font-bold text-white dark:text-black">
+                                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-black dark:bg-white rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+                                        <span className="text-[10px] sm:text-xs font-bold text-white dark:text-black">
                                             {getInitials(doctor.name, doctor.email)}
                                         </span>
                                     </div>
-                                    <div>
-                                        <p className="font-bold text-[#222222] dark:text-white text-base">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-bold text-[#222222] dark:text-white text-sm sm:text-base truncate">
                                             Dr. {doctor.name}
                                         </p>
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-xs font-medium text-[#717171] dark:text-[#a0a0a0]">
+                                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                            <p className="text-[10px] sm:text-xs font-medium text-[#717171] dark:text-[#a0a0a0] truncate">
                                                 {doctor.specialty || 'General Practice'}
                                             </p>
                                             {doctor.linkedSince && (
                                                 <>
-                                                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>
-                                                    <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700 hidden sm:block"></span>
+                                                    <p className="text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-500 hidden sm:block">
                                                         Since {new Date(doctor.linkedSince).toLocaleDateString()}
                                                     </p>
                                                 </>
@@ -300,16 +300,16 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-1.5">
+                                <div className="flex gap-1.5 flex-shrink-0 self-end sm:self-center">
                                     <button
                                         onClick={() => onNavigateToChat(doctor.id)}
-                                        className="px-4 py-2 bg-[#222222] dark:bg-white text-white dark:text-[#222222] text-xs font-bold rounded-full hover:opacity-90 transition-all shadow-sm active:scale-95"
+                                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#8AC43C] text-white text-[10px] sm:text-xs font-bold rounded-full hover:bg-[#7ab332] transition-all shadow-sm active:scale-95"
                                     >
                                         Message
                                     </button>
                                     <button
                                         onClick={() => handleUnlinkDoctor(doctor.id)}
-                                        className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-gray-400 text-xs font-bold rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors active:scale-95"
+                                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-gray-400 text-[10px] sm:text-xs font-bold rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors active:scale-95"
                                     >
                                         Unlink
                                     </button>

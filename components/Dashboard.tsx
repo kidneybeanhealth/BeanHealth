@@ -41,25 +41,31 @@ const VitalCard: React.FC<{
 }> = ({ icon, label, value, unit, trend, onSave, lastUpdatedFromRecord, isBloodPressure = false, colorClass = "text-gray-900" }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
-  const [systolic, setSystolic] = useState('120');
-  const [diastolic, setDiastolic] = useState('80');
+  
+  // Initialize blood pressure values from the value prop
+  const bpParts = value.split('/');
+  const [systolic, setSystolic] = useState(bpParts[0] || '120');
+  const [diastolic, setDiastolic] = useState(bpParts[1] || '80');
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const trendArrow = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
   const trendColor = trend === 'up' ? 'text-rose-500' : trend === 'down' ? 'text-emerald-500' : 'text-gray-400';
 
+  // Sync blood pressure values when value prop changes
   useEffect(() => {
-    if (isEditing) {
-      if (isBloodPressure) {
-        const parts = value.split('/');
-        setSystolic(parts[0] || '120');
-        setDiastolic(parts[1] || '80');
-      } else {
-        const numericValue = value.replace(/[^0-9.]/g, '');
-        setCurrentValue(numericValue);
-        setTimeout(() => inputRef.current?.focus(), 0);
-      }
+    if (isBloodPressure) {
+      const parts = value.split('/');
+      setSystolic(parts[0] || '120');
+      setDiastolic(parts[1] || '80');
+    }
+  }, [value, isBloodPressure]);
+
+  useEffect(() => {
+    if (isEditing && !isBloodPressure) {
+      const numericValue = value.replace(/[^0-9.]/g, '');
+      setCurrentValue(numericValue);
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [isEditing, value, isBloodPressure]);
 
@@ -112,27 +118,26 @@ const VitalCard: React.FC<{
         </div>
 
         <div>
-          {isEditing ? (
-            isBloodPressure ? (
-              <BloodPressurePicker
-                systolic={systolic}
-                diastolic={diastolic}
-                onSystolicChange={setSystolic}
-                onDiastolicChange={setDiastolic}
-                onSave={handleSave}
-              />
-            ) : (
-              <input
-                ref={inputRef}
-                type="text"
-                inputMode="decimal"
-                value={currentValue}
-                onChange={(e) => handleNumberInput(e, setCurrentValue)}
-                onBlur={handleSave}
-                onKeyDown={handleKeyDown}
-                className="w-full bg-gray-50 dark:bg-gray-800 text-3xl font-bold text-[#222222] dark:text-[#f7f7f7] px-2 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#222222] transition-all"
-              />
-            )
+          {isBloodPressure ? (
+            /* Blood Pressure always shows the scroll picker */
+            <BloodPressurePicker
+              systolic={systolic}
+              diastolic={diastolic}
+              onSystolicChange={setSystolic}
+              onDiastolicChange={setDiastolic}
+              onSave={handleSave}
+            />
+          ) : isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              inputMode="decimal"
+              value={currentValue}
+              onChange={(e) => handleNumberInput(e, setCurrentValue)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-gray-50 dark:bg-gray-800 text-3xl font-bold text-[#222222] dark:text-[#f7f7f7] px-2 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#222222] transition-all"
+            />
           ) : (
             <div className="flex items-baseline gap-1 group/value cursor-pointer" onClick={() => setIsEditing(true)}>
               <span className="text-4xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{value || '—'}</span>

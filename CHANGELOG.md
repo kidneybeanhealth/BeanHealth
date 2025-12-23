@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.6.0] - 2024-12-22
+
+### Added
+
+#### Terms and Conditions System
+- **TermsAndConditionsModal** - Professional, healthcare-compliant T&C modal
+  - Scrollable terms content with industry-standard sections
+  - Medical disclaimer with prominent warning styling
+  - Must scroll to bottom before accepting (scroll tracking)
+  - Checkbox confirmation required before proceeding
+  - Matches app's dark/light theme styling
+- **TermsService** - Backend service for managing terms acceptance
+  - Check if user has accepted current terms version
+  - Store acceptance timestamp and version
+  - Support for future terms version updates
+- **Database Schema** - New fields for terms tracking
+  - `terms_accepted` - Boolean flag for acceptance status
+  - `terms_accepted_at` - Timestamp of acceptance
+  - `terms_version` - Version string for tracking updates
+- **Integration with Auth Flow**
+  - New patients must accept terms after profile creation
+  - Existing patients prompted on first login after feature deployment
+  - Once accepted, never shown again (unless new version is released)
+  - Terms check integrated into AuthContext
+
+### Files Added
+- `components/TermsAndConditionsModal.tsx` - Modal component
+- `services/termsService.ts` - Terms acceptance service
+- `terms_conditions_schema.sql` - Database migration
+
+### Changed
+- Updated `AuthContext.tsx` - Added needsTermsAcceptance state and acceptTerms function
+- Updated `App.tsx` - Added terms modal gate before PatientDashboard
+- Updated `types.ts` - Added terms fields to User interface
+
+---
+
 ## [2.5.0] - 2024-12-19
 
 ### Added

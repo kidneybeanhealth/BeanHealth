@@ -32,6 +32,13 @@ export interface User {
   updated_at?: string;
   referralCode?: string;
   referral_code?: string; // Database field name
+  // Terms and Conditions acceptance fields
+  termsAccepted?: boolean;
+  terms_accepted?: boolean; // Database field name
+  termsAcceptedAt?: string;
+  terms_accepted_at?: string; // Database field name
+  termsVersion?: string;
+  terms_version?: string; // Database field name
 }
 
 export interface Vital {

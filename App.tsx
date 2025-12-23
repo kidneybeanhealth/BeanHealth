@@ -17,6 +17,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import TermsAndConditionsModal from './components/TermsAndConditionsModal';
 import Auth from './components/auth/Auth';
 import ProfileSetup from './components/auth/ProfileSetup';
 import PatientDashboard from './components/PatientDashboard';
@@ -29,7 +30,7 @@ import { Browser } from '@capacitor/browser';
 import { supabase } from './lib/supabase';
 
 const AppContent: React.FC = () => {
-  const { user, profile, loading, needsProfileSetup, isInitialized } = useAuth();
+  const { user, profile, loading, needsProfileSetup, isInitialized, needsTermsAcceptance, acceptTerms } = useAuth();
   const [loadingTimeout, setLoadingTimeout] = React.useState(false);
 
   // Handle deep link for OAuth callback on mobile
@@ -99,9 +100,10 @@ const AppContent: React.FC = () => {
     console.log('Loading:', loading);
     console.log('Initialized:', isInitialized);
     console.log('Needs Profile Setup:', needsProfileSetup);
+    console.log('Needs Terms Acceptance:', needsTermsAcceptance);
     console.log('Loading Timeout:', loadingTimeout);
     console.log('==================');
-  }, [user, profile, loading, isInitialized, needsProfileSetup, loadingTimeout]);
+  }, [user, profile, loading, isInitialized, needsProfileSetup, needsTermsAcceptance, loadingTimeout]);
 
   // Show loading screen while authentication is being determined
   // But only if we haven't timed out and aren't initialized yet
@@ -146,6 +148,17 @@ const AppContent: React.FC = () => {
     return <AdminDashboardMain />;
   } else if (profile?.role === 'patient') {
     console.log('[App] Rendering PatientDashboard');
+    // Check if patient needs to accept terms and conditions
+    if (needsTermsAcceptance) {
+      console.log('[App] Patient needs to accept terms and conditions');
+      return (
+        <TermsAndConditionsModal
+          isOpen={true}
+          onAccept={acceptTerms}
+          userName={profile.name}
+        />
+      );
+    }
     return <PatientDashboard />;
   } else {
     console.log('[App] Profile exists but no valid role, showing ProfileSetup');

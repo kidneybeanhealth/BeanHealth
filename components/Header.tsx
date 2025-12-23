@@ -16,35 +16,33 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, showMenu =
   const initials = getInitials(user.name, user.email);
 
   return (
-    <header className="flex-shrink-0 mx-4 mt-4 h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-2xl rounded-3xl border border-gray-100 dark:border-[#8AC43C]/15 shadow-lg dark:shadow-[0_0_20px_rgba(138,196,60,0.1)] flex items-center transition-all duration-300 z-40">
-      <div className="w-full flex items-center justify-between px-6 lg:px-8">
-        <div className="flex items-center gap-4 flex-1 min-w-0">
+    <header className="flex-shrink-0 mx-2 sm:mx-4 mt-4 h-16 sm:h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-gray-100 dark:border-[#8AC43C]/15 shadow-lg dark:shadow-[0_0_20px_rgba(138,196,60,0.1)] flex items-center transition-all duration-300 z-40">
+      <div className="w-full flex items-center justify-between px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
           {showMenu && (
             <button
               onClick={onMenuClick}
-              className="md:hidden p-2 -ml-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="md:hidden p-1.5 sm:p-2 -ml-1 sm:-ml-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
               aria-label="Toggle menu"
             >
-              <MenuIcon className="h-6 w-6" />
+              <MenuIcon className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
           )}
 
           <div className="animate-fade-in min-w-0 flex-1 flex flex-col justify-center">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">
-              Welcome back, <span className="text-[#8AC43C]">{user.name}</span>
+            <h2 className="text-sm sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">
+              Welcome, <span className="text-[#8AC43C]">{user.name}</span>
             </h2>
-            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 mt-0.5 truncate tracking-wide uppercase opacity-90">
+            <p className="text-[9px] sm:text-xs font-semibold text-gray-400 dark:text-gray-500 truncate tracking-wide uppercase opacity-90">
               {user.role === 'patient' ? "Your Health Dashboard" : "Manage Patients"}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="hidden sm:block">
-            <ThemeToggle />
-          </div>
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <ThemeToggle />
 
-          <div className="hidden sm:block h-8 w-px bg-gray-200 dark:bg-white/10 mx-2"></div>
+          <div className="hidden sm:block h-8 w-px bg-gray-200 dark:bg-white/10 mx-1 sm:mx-2"></div>
 
           <button
             onClick={onLogout}
