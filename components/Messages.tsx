@@ -453,14 +453,7 @@ const Messages: React.FC<MessagesProps> = ({
       {/* Mobile-only Header */}
       {!selectedContactId && onMenuClick && (
         <div className="md:hidden sticky top-0 z-20 px-4 py-3 border-b border-gray-50 dark:border-gray-800/50 flex items-center bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md">
-          <button
-            onClick={onMenuClick}
-            className="p-2 -ml-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            aria-label="Open menu"
-          >
-            <MenuIcon className="h-5 w-5 text-[#222] dark:text-white" />
-          </button>
-          <h1 className="ml-3 text-lg font-bold text-[#222] dark:text-white">Messages</h1>
+          <h1 className="text-lg font-bold text-[#222] dark:text-white">Messages</h1>
         </div>
       )}
 

@@ -770,6 +770,7 @@ const PatientDashboard: React.FC = () => {
                                 user={appUser}
                                 onLogout={signOut}
                                 onMenuClick={() => setSidebarOpen(true)}
+                                onTitleClick={() => setActiveView('dashboard')}
                                 showMenu={false}
                             />
                         </div>

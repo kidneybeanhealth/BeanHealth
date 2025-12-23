@@ -520,8 +520,11 @@ const DoctorDashboardMain: React.FC = () => {
           <div className="max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12">
             <div className="flex items-center justify-between h-20">
               {/* Logo / Brand Area */}
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
+              <div
+                onClick={() => setActiveView('dashboard')}
+                className="flex items-center gap-3 cursor-pointer group active:scale-95 transition-transform"
+              >
+                <div className="h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0 group-hover:shadow-md transition-shadow">
                   <LogoIcon className="w-9 h-9 md:w-10 md:h-10" />
                 </div>
                 <div className="flex flex-col justify-center">

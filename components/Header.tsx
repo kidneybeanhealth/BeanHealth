@@ -11,10 +11,11 @@ interface HeaderProps {
   user: User;
   onLogout: () => void;
   onMenuClick: () => void;
+  onTitleClick?: () => void;
   showMenu?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, showMenu = true }) => {
+const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onTitleClick, showMenu = true }) => {
   const initials = getInitials(user.name, user.email);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
 
@@ -33,7 +34,10 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, showMenu =
           )}
 
           {/* Logo / Brand Area - Mobile Only */}
-          <div className="flex md:hidden items-center gap-2.5">
+          <div
+            onClick={onTitleClick}
+            className="flex md:hidden items-center gap-2.5 cursor-pointer active:scale-95 transition-transform"
+          >
             <div className="h-9 w-9 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
               <LogoIcon className="w-9 h-9" />
             </div>
@@ -47,7 +51,10 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, showMenu =
           </div>
 
           {/* Welcome Section - Tablet/Desktop */}
-          <div className="hidden md:flex animate-fade-in min-w-0 flex-1 flex flex-col justify-center">
+          <div
+            onClick={onTitleClick}
+            className="hidden md:flex animate-fade-in min-w-0 flex-1 flex flex-col justify-center cursor-pointer hover:opacity-80 transition-opacity"
+          >
             <h2 className="text-sm sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">
               Welcome, <span className="text-[#8AC43C]">{user.name}</span>
             </h2>
