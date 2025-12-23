@@ -3,7 +3,9 @@ import { User } from '../types';
 import { LogoutIcon } from './icons/LogoutIcon';
 import ThemeToggle from './ThemeToggle';
 import { MenuIcon } from './icons/MenuIcon';
+import { LogoIcon } from './icons/LogoIcon';
 import { getInitials } from '../utils/avatarUtils';
+import ProfileModal from './ProfileModal';
 
 interface HeaderProps {
   user: User;
@@ -14,6 +16,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, showMenu = true }) => {
   const initials = getInitials(user.name, user.email);
+  const [isProfileOpen, setIsProfileOpen] = React.useState(false);
 
   return (
     <header className="flex-shrink-0 mx-2 sm:mx-4 mt-4 h-16 sm:h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-gray-100 dark:border-[#8AC43C]/15 shadow-lg dark:shadow-[0_0_20px_rgba(138,196,60,0.1)] flex items-center transition-all duration-300 z-40">
@@ -29,7 +32,22 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, showMenu =
             </button>
           )}
 
-          <div className="animate-fade-in min-w-0 flex-1 flex flex-col justify-center">
+          {/* Logo / Brand Area - Mobile Only */}
+          <div className="flex md:hidden items-center gap-2.5">
+            <div className="h-9 w-9 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
+              <LogoIcon className="w-9 h-9" />
+            </div>
+            <div className="flex flex-col justify-center">
+              <h2 className="text-base font-bold leading-none tracking-tight">
+                <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
+                <span className="text-[#8AC43C]">Health</span>
+              </h2>
+              <p className="text-[8px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-0.5 uppercase">Patient Portal</p>
+            </div>
+          </div>
+
+          {/* Welcome Section - Tablet/Desktop */}
+          <div className="hidden md:flex animate-fade-in min-w-0 flex-1 flex flex-col justify-center">
             <h2 className="text-sm sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">
               Welcome, <span className="text-[#8AC43C]">{user.name}</span>
             </h2>
@@ -42,37 +60,36 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, showMenu =
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <ThemeToggle />
 
-          <div className="hidden sm:block h-8 w-px bg-gray-200 dark:bg-white/10 mx-1 sm:mx-2"></div>
+          <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-1 sm:mx-2"></div>
 
           <button
-            onClick={onLogout}
+            onClick={() => setIsProfileOpen(true)}
             className="group flex items-center p-1 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-500 ease-out"
-            aria-label="Log out"
+            aria-label="View Profile"
           >
             <div className="relative z-10">
-              {user.avatarUrl || user.avatar_url ? (
-                <img
-                  src={user.avatarUrl || user.avatar_url}
-                  alt={user.name}
-                  className="h-10 w-10 rounded-full object-cover ring-2 ring-white dark:ring-black shadow-md transition-all duration-300"
-                />
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center ring-2 ring-white dark:ring-black shadow-md font-bold text-sm transition-colors duration-300">
-                  {initials}
-                </div>
-              )}
+              <div className="h-10 w-10 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center ring-2 ring-white dark:ring-black shadow-md font-bold text-sm transition-colors duration-300 group-hover:ring-[#8AC43C]">
+                {initials}
+              </div>
               <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white dark:ring-black bg-green-500"></span>
             </div>
 
+            {/* Profile Label */}
             <div className="max-w-0 group-hover:max-w-[120px] overflow-hidden transition-all duration-500 ease-out opacity-0 group-hover:opacity-100">
-              <div className="flex items-center gap-2 pl-3 pr-2 whitespace-nowrap text-sm font-semibold text-gray-700 dark:text-gray-200">
-                <span>Log out</span>
-                <LogoutIcon className="h-4 w-4 text-red-500" />
-              </div>
+              <span className="pl-3 pr-2 whitespace-nowrap text-sm font-semibold text-gray-700 dark:text-gray-200">
+                My Profile
+              </span>
             </div>
           </button>
         </div>
       </div>
+
+      <ProfileModal
+        user={user}
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        onLogout={onLogout}
+      />
     </header>
   );
 };

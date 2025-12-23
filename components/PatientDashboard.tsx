@@ -190,12 +190,16 @@ const PatientDashboard: React.FC = () => {
 
     // Convert auth user to app user format
     const appUser = {
+        ...profile,
         id: user?.id || profile?.id || "",
         name: profile?.name || user?.user_metadata?.full_name || user?.email || "User",
         email: user?.email || "",
         role: "patient" as const,
-        avatarUrl: "", // No longer sync Google photos or random pics - use initials only
+        avatarUrl: profile?.avatarUrl || profile?.avatar_url || "",
         urgentCredits: profile?.urgent_credits ?? 5, // Include urgent credits for messaging
+        // Ensure patient ID is passed
+        patientId: profile?.patientId || profile?.patient_id,
+        patient_id: profile?.patientId || profile?.patient_id,
     };
 
     // Remove debug logging for avatar sources since we no longer use external sources

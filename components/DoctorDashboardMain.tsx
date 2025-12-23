@@ -21,6 +21,7 @@ import { DocumentIcon } from './icons/DocumentIcon';
 import DoctorReferralCard from './DoctorReferralCard';
 import DoctorMobileBottomNav, { DoctorView } from './DoctorMobileBottomNav';
 import type { AlertCounts } from '../types/alerts';
+import ProfileModal from './ProfileModal';
 
 const DoctorDashboardMain: React.FC = () => {
   const { user, profile, signOut } = useAuth();
@@ -31,6 +32,7 @@ const DoctorDashboardMain: React.FC = () => {
   const [activeView, setActiveView] = useState<DoctorView>('dashboard');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [alertCounts, setAlertCounts] = useState<AlertCounts>({ total: 0, urgent: 0, review: 0, info: 0, unacknowledged: 0 });
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Fetch alert counts
   const fetchAlertCounts = async () => {
@@ -575,23 +577,23 @@ const DoctorDashboardMain: React.FC = () => {
 
                 <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-1 sm:mx-2"></div>
 
-                <button
-                  onClick={signOut}
-                  className="group flex items-center p-1 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-500 ease-out"
-                  aria-label="Log out"
-                >
-                  {/* Info Text (Hidden on Mobile) */}
-                  <div className="hidden md:block text-right pr-3 group-hover:opacity-50 transition-opacity">
-                    <p className="text-sm font-bold text-[#222222] dark:text-white leading-none">
-                      {profile?.name || user?.email?.split('@')[0] || 'Doctor'}
-                    </p>
-                    <p className="text-xs text-[#717171] dark:text-[#a0a0a0] font-medium mt-0.5">
-                      {profile?.specialty || 'MD'}
-                    </p>
-                  </div>
+                {/* Doctor's Name & Specialty (Plain text, not part of the interactive capsule) */}
+                <div className="hidden md:block text-right pr-1">
+                  <p className="text-sm font-bold text-[#222222] dark:text-white leading-none">
+                    {profile?.name || user?.email?.split('@')[0] || 'Doctor'}
+                  </p>
+                  <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-wide mt-1 uppercase">
+                    {profile?.specialty || 'MD'}
+                  </p>
+                </div>
 
+                <button
+                  onClick={() => setIsProfileOpen(true)}
+                  className="group flex items-center p-1 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-500 ease-out"
+                  aria-label="View Profile"
+                >
                   <div className="relative z-10">
-                    <div className="h-9 w-9 md:h-10 md:w-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black font-bold text-xs md:text-sm shadow-md ring-2 ring-white dark:ring-black transition-colors duration-300">
+                    <div className="h-9 w-9 md:h-10 md:w-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black font-bold text-xs md:text-sm shadow-md ring-2 ring-white dark:ring-black transition-colors duration-300 group-hover:ring-[#8AC43C]">
                       {getInitials(profile?.name || user?.email || 'Dr', user?.email || '')}
                     </div>
                     {/* Online indicator */}
@@ -600,8 +602,7 @@ const DoctorDashboardMain: React.FC = () => {
 
                   <div className="max-w-0 group-hover:max-w-[100px] overflow-hidden transition-all duration-500 ease-out opacity-0 group-hover:opacity-100">
                     <div className="flex items-center gap-2 pl-3 pr-2 whitespace-nowrap text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      <span className="md:hidden">Log out</span>
-                      <LogoutIcon className="h-4 w-4 text-red-500" />
+                      <span>My Profile</span>
                     </div>
                   </div>
                 </button>
@@ -609,6 +610,18 @@ const DoctorDashboardMain: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <ProfileModal
+          user={{
+            ...user!,
+            name: profile?.name || user?.email?.split('@')[0] || 'Doctor',
+            role: 'doctor',
+            specialty: profile?.specialty || 'General Practice'
+          } as any}
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+          onLogout={signOut}
+        />
 
         {/* Main Content Area */}
         <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)] pb-24 md:pb-0' : 'py-10 pb-28 md:pb-10'}`}>

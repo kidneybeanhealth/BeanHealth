@@ -135,10 +135,10 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ patientId, readOnly =
                 {!readOnly && !isEditing && (
                     <button
                         onClick={handleStartEdit}
-                        className="flex items-center gap-1.5 min-w-[80px] px-4 py-2 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-colors"
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 sm:px-5 sm:min-w-[110px] h-9 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:bg-[#7ab332] transition-all duration-300 shadow-sm active:scale-95"
                     >
                         <EditIcon className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Add</span>
+                        <span className="sm:inline whitespace-nowrap">Edit Details</span>
                     </button>
                 )}
             </div>
