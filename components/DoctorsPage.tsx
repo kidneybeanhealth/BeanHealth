@@ -276,16 +276,16 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-1.5 flex-shrink-0 self-end sm:self-center">
+                                <div className="flex gap-2 flex-shrink-0 self-end sm:self-center">
                                     <button
                                         onClick={() => onNavigateToChat(doctor.id)}
-                                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#8AC43C] text-white text-[10px] sm:text-xs font-bold rounded-full hover:bg-[#7ab332] transition-all shadow-sm active:scale-95"
+                                        className="px-4 py-2 bg-[#8AC43C] dark:bg-white text-white dark:text-[#222222] text-xs font-bold rounded-full hover:bg-[#7ab332] dark:hover:bg-gray-100 transition-all shadow-sm hover:shadow-md active:scale-95"
                                     >
                                         Message
                                     </button>
                                     <button
                                         onClick={() => handleUnlinkDoctor(doctor.id, doctor.name)}
-                                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-gray-400 text-[10px] sm:text-xs font-bold rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors active:scale-95"
+                                        className="px-4 py-2 bg-gray-100 dark:bg-black/20 text-gray-600 dark:text-white/60 text-xs font-bold rounded-full hover:bg-gray-200 dark:hover:bg-black/40 dark:hover:text-white transition-all active:scale-95"
                                     >
                                         Unlink
                                     </button>
@@ -297,7 +297,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             </div>
 
             {/* Help Section */}
-            <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
+            <div className="bg-gray-50 dark:bg-[#8AC43C]/[0.04] backdrop-blur-md p-6 rounded-2xl border border-transparent dark:border-[#8AC43C]/10 transition-all">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">How it works</h3>
                 <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                     <li>1. Ask your doctor for their referral code (format: DR-XXXX-XXXX)</li>
