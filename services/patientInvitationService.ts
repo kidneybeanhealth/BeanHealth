@@ -67,17 +67,11 @@ export class PatientAdditionService {
       throw relError;
     }
 
-    // Filter out inactive/archived relationships
-    const activeRelationships = ((relationships as any[]) || []).filter(rel => {
-      const status = rel.status || 'active'; // Default to active if null (legacy records)
-      return status !== 'inactive' && status !== 'archived';
-    });
-
-    if (activeRelationships.length === 0) {
+    if (!relationships || relationships.length === 0) {
       return [];
     }
 
-    const doctorIds = activeRelationships.map(rel => rel.doctor_id);
+    const doctorIds = (relationships as any[]).map(rel => rel.doctor_id);
 
     // Step 2: Get doctor details
     const { data: doctorsData, error: docError } = await supabase

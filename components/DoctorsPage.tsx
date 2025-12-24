@@ -49,7 +49,6 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
         setIsLoading(true);
         try {
             // Step 1: Get all patient-doctor relationships for this patient
-            // Use select('*') to be safe against missing columns and filter in memory
             const { data: relationships, error: relError } = await supabase
                 .from('patient_doctor_relationships')
                 .select('*')
@@ -59,38 +58,17 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             if (relError) {
                 console.error('Error fetching relationships:', relError);
                 setIsLoading(false);
-                return; // Stop here if error
-            }
-
-            console.log('Relationships found:', relationships);
-
-            if (!relationships || relationships.length === 0) {
-                console.log('No relationships found for patient:', patientId);
-                setLinkedDoctors([]);
-                setIsLoading(false);
                 return;
             }
 
-            // Filter to only active or null status (backward compatible)
-            // Filter out only explicitly inactive relationships
-            const activeRelationships = (relationships || [])
-                .map(rel => ({
-                    ...rel,
-                    status: rel.status || 'active' // Default to active if status is null/missing (legacy records)
-                }))
-                .filter(rel => rel.status !== 'inactive' && rel.status !== 'archived');
-
-            console.log('Active relationships:', activeRelationships);
-
-            if (activeRelationships.length === 0) {
-                console.log('No active relationships');
+            if (!relationships || relationships.length === 0) {
                 setLinkedDoctors([]);
                 setIsLoading(false);
                 return;
             }
 
             // Step 2: Get doctor details for each relationship
-            const doctorIds = activeRelationships.map(rel => rel.doctor_id);
+            const doctorIds = relationships.map(rel => rel.doctor_id);
 
             const { data: doctors, error: docError } = await supabase
                 .from('users')
@@ -104,18 +82,15 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                 throw docError;
             }
 
-            console.log('Doctors found:', doctors);
-
             // Combine doctor data with relationship data
             const linkedDocs = (doctors || []).map(doctor => {
-                const rel = activeRelationships.find(r => r.doctor_id === doctor.id);
+                const rel = relationships.find(r => r.doctor_id === doctor.id);
                 return {
                     ...doctor,
                     linkedSince: rel?.created_at
                 };
             });
 
-            console.log('Final linked doctors:', linkedDocs);
             setLinkedDoctors(linkedDocs);
         } catch (error) {
             console.error('Error loading doctors:', error);
@@ -163,7 +138,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                 return;
             }
 
-            // Create relationship - only use columns that exist
+            // Create relationship
             const { error: linkError } = await (supabase
                 .from('patient_doctor_relationships') as any)
                 .insert({
@@ -179,32 +154,33 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             onDoctorLinked?.();  // Notify parent to refresh contacts
         } catch (error: any) {
             console.error('Error linking doctor:', error);
-            console.error('Error details:', JSON.stringify(error, null, 2));
-            // Show more specific error
-            const errorMsg = error?.message || error?.details || error?.hint || 'Failed to link doctor. Please try again.';
+            const errorMsg = error?.message || 'Failed to link doctor. Please try again.';
             setLinkError(errorMsg);
         } finally {
             setIsLinking(false);
         }
     };
 
-    const handleUnlinkDoctor = async (doctorId: string) => {
-        if (!confirm('Are you sure you want to unlink this doctor?')) return;
+    const handleUnlinkDoctor = async (doctorId: string, doctorName: string) => {
+        if (!confirm(`Are you sure you want to unlink from Dr. ${doctorName}? This will remove their access to your health records.`)) return;
 
         try {
-            const { error } = await (supabase
-                .from('patient_doctor_relationships') as any)
-                .update({ status: 'inactive' })
+            const { error } = await supabase
+                .from('patient_doctor_relationships')
+                .delete()
                 .eq('patient_id', patientId)
                 .eq('doctor_id', doctorId);
 
             if (error) throw error;
 
-            loadLinkedDoctors();
-            onDoctorLinked?.();  // Notify parent to refresh contacts
+            // Optimistic update
+            setLinkedDoctors(prev => prev.filter(d => d.id !== doctorId));
+
+            // Notify parent
+            onDoctorLinked?.();
         } catch (error) {
             console.error('Error unlinking doctor:', error);
-            alert('Failed to unlink doctor');
+            alert('Failed to unlink doctor. Please try again.');
         }
     };
 
@@ -308,7 +284,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                                         Message
                                     </button>
                                     <button
-                                        onClick={() => handleUnlinkDoctor(doctor.id)}
+                                        onClick={() => handleUnlinkDoctor(doctor.id, doctor.name)}
                                         className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-gray-400 text-[10px] sm:text-xs font-bold rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors active:scale-95"
                                     >
                                         Unlink
