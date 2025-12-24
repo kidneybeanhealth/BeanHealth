@@ -9,6 +9,7 @@ import { LogoIcon } from './icons/LogoIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { getInitials, getInitialsColor } from '../utils/avatarUtils';
 import AdminLabTypesPanel from './AdminLabTypesPanel';
+import RuleEngineAdmin from './RuleEngineAdmin';
 
 // Mock data for initial development - will be replaced with real service calls
 const MOCK_USERS: User[] = [
@@ -18,7 +19,7 @@ const MOCK_USERS: User[] = [
     { id: '4', name: 'Dr. Michael Chen', email: 'michael@clinic.com', role: 'doctor', specialty: 'Cardiology' },
 ];
 
-type AdminView = 'dashboard' | 'users' | 'relationships' | 'alerts' | 'labtypes';
+type AdminView = 'dashboard' | 'users' | 'relationships' | 'labtypes' | 'ruleengine';
 
 const AdminDashboardMain: React.FC = () => {
     const { user, profile, signOut } = useAuth();
@@ -288,9 +289,6 @@ const AdminDashboardMain: React.FC = () => {
     useEffect(() => {
         if (activeView === 'relationships') {
             fetchRelationships();
-        }
-        if (activeView === 'alerts') {
-            fetchAlertDefinitions();
         }
     }, [activeView]);
 
@@ -1341,7 +1339,7 @@ const AdminDashboardMain: React.FC = () => {
 
                         {/* Nav Tabs */}
                         <nav className="hidden md:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
-                            {(['dashboard', 'users', 'relationships', 'alerts', 'labtypes'] as AdminView[]).map((view) => (
+                            {(['dashboard', 'users', 'relationships', 'labtypes', 'ruleengine'] as AdminView[]).map((view) => (
                                 <button
                                     key={view}
                                     onClick={() => setActiveView(view)}
@@ -1350,7 +1348,7 @@ const AdminDashboardMain: React.FC = () => {
                                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                                         }`}
                                 >
-                                    {view === 'labtypes' ? 'Lab Types' : view.charAt(0).toUpperCase() + view.slice(1)}
+                                    {view === 'labtypes' ? 'Lab Types' : view === 'ruleengine' ? 'Rule Engine' : view.charAt(0).toUpperCase() + view.slice(1)}
                                 </button>
                             ))}
                         </nav>
@@ -1384,8 +1382,8 @@ const AdminDashboardMain: React.FC = () => {
                 {activeView === 'dashboard' && renderDashboard()}
                 {activeView === 'users' && renderUsers()}
                 {activeView === 'relationships' && renderRelationships()}
-                {activeView === 'alerts' && renderAlerts()}
                 {activeView === 'labtypes' && <AdminLabTypesPanel adminId={profile?.id || user?.id || ''} />}
+                {activeView === 'ruleengine' && <RuleEngineAdmin />}
             </main>
 
             {/* User Detail Modal */}
