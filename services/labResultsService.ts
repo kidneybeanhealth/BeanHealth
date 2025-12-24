@@ -108,7 +108,7 @@ export class LabResultsService {
                     .eq('test_type', testType)
                     .order('test_date', { ascending: false })
                     .limit(1)
-                    .single();
+                    .maybeSingle();
 
                 if (!error && data) {
                     results[testType] = this.mapToLabResult(data);

@@ -334,6 +334,117 @@ export interface Database {
           timestamp?: string
         }
       }
+      lab_results: {
+        Row: {
+          id: string
+          patient_id: string
+          test_type: 'creatinine' | 'egfr' | 'bun' | 'potassium' | 'hemoglobin' | 'bicarbonate' | 'acr'
+          value: number
+          unit: string
+          reference_range_min?: number
+          reference_range_max?: number
+          status?: 'normal' | 'borderline' | 'abnormal' | 'critical'
+          test_date: string
+          lab_name?: string
+          notes?: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          test_type: 'creatinine' | 'egfr' | 'bun' | 'potassium' | 'hemoglobin' | 'bicarbonate' | 'acr'
+          value: number
+          unit: string
+          reference_range_min?: number
+          reference_range_max?: number
+          status?: 'normal' | 'borderline' | 'abnormal' | 'critical'
+          test_date: string
+          lab_name?: string
+          notes?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          test_type?: 'creatinine' | 'egfr' | 'bun' | 'potassium' | 'hemoglobin' | 'bicarbonate' | 'acr'
+          value?: number
+          unit?: string
+          reference_range_min?: number
+          reference_range_max?: number
+          status?: 'normal' | 'borderline' | 'abnormal' | 'critical'
+          test_date?: string
+          lab_name?: string
+          notes?: string
+          created_at?: string
+        }
+      }
+      fluid_intake: {
+        Row: {
+          id: string
+          patient_id: string
+          amount_ml: number
+          fluid_type?: string
+          recorded_at: string
+          notes?: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          amount_ml: number
+          fluid_type?: string
+          recorded_at?: string
+          notes?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          amount_ml?: number
+          fluid_type?: string
+          recorded_at?: string
+          notes?: string
+        }
+      }
+      upcoming_tests: {
+        Row: {
+          id: string
+          patient_id: string
+          test_name: string
+          scheduled_date: string
+          location?: string
+          doctor_name?: string
+          notes?: string
+          completed: boolean
+          completed_at?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          test_name: string
+          scheduled_date: string
+          location?: string
+          doctor_name?: string
+          notes?: string
+          completed?: boolean
+          completed_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          test_name?: string
+          scheduled_date?: string
+          location?: string
+          doctor_name?: string
+          notes?: string
+          completed?: boolean
+          completed_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
