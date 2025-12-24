@@ -197,55 +197,60 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
 
                 {isEditingVitals ? (
                     <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 sm:p-6 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20 animate-fade-in">
-                        {/* Row 1: Blood Pressure (Systolic / Diastolic) */}
-                        <div className="flex items-start justify-center gap-3 sm:gap-6 mb-4 sm:mb-6">
-                            {/* Systolic Picker */}
-                            <VerticalScrollPicker
-                                value={parseInt(editVitals.systolic) || 120}
-                                min={70}
-                                max={220}
-                                onChange={(val) => setEditVitals({ ...editVitals, systolic: val.toString() })}
-                                label="Systolic"
-                                unit="mmHg"
-                            />
+                        {/* Unified Vitals Grid - Auto-adjusts layout */}
+                        <div className="flex flex-col lg:flex-row items-center justify-between xl:justify-around gap-8 py-6 px-4 md:px-12 w-full max-w-5xl mx-auto">
 
-                            {/* Visual Separator */}
-                            <div className="flex items-center pt-6 sm:pt-8">
-                                <div className="text-2xl sm:text-3xl font-bold text-gray-400 dark:text-gray-600">/</div>
+                            {/* Group 1: Blood Pressure */}
+                            <div className="flex items-start gap-4 sm:gap-6 relative group">
+                                <div className="absolute -inset-4 bg-gray-50 dark:bg-white/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+                                <VerticalScrollPicker
+                                    value={parseInt(editVitals.systolic) || 120}
+                                    min={70}
+                                    max={220}
+                                    onChange={(val) => setEditVitals({ ...editVitals, systolic: val.toString() })}
+                                    label="Systolic"
+                                    unit="mmHg"
+                                />
+
+                                {/* Visual Separator */}
+                                <div className="flex items-center pt-8 sm:pt-10">
+                                    <div className="text-3xl font-bold text-gray-300 dark:text-gray-600">/</div>
+                                </div>
+
+                                <VerticalScrollPicker
+                                    value={parseInt(editVitals.diastolic) || 80}
+                                    min={40}
+                                    max={140}
+                                    onChange={(val) => setEditVitals({ ...editVitals, diastolic: val.toString() })}
+                                    label="Diastolic"
+                                    unit="mmHg"
+                                />
                             </div>
 
-                            {/* Diastolic Picker */}
-                            <VerticalScrollPicker
-                                value={parseInt(editVitals.diastolic) || 80}
-                                min={40}
-                                max={140}
-                                onChange={(val) => setEditVitals({ ...editVitals, diastolic: val.toString() })}
-                                label="Diastolic"
-                                unit="mmHg"
-                            />
-                        </div>
+                            {/* Divider for Desktop */}
+                            <div className="hidden lg:block w-px h-32 bg-gray-200 dark:bg-white/10" />
 
-                        {/* Row 2: Heart Rate & SpO2 */}
-                        <div className="flex items-start justify-center gap-6 sm:gap-10 md:gap-16 mb-4 sm:mb-6">
-                            {/* Heart Rate Picker */}
-                            <VerticalScrollPicker
-                                value={parseInt(editVitals.heartRate) || 72}
-                                min={40}
-                                max={200}
-                                onChange={(val) => setEditVitals({ ...editVitals, heartRate: val.toString() })}
-                                label="Heart Rate"
-                                unit="bpm"
-                            />
+                            {/* Group 2: Heart Rate & SpO2 */}
+                            <div className="flex items-start gap-8 sm:gap-12 md:gap-16 relative group">
+                                <div className="absolute -inset-4 bg-gray-50 dark:bg-white/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+                                <VerticalScrollPicker
+                                    value={parseInt(editVitals.heartRate) || 72}
+                                    min={40}
+                                    max={200}
+                                    onChange={(val) => setEditVitals({ ...editVitals, heartRate: val.toString() })}
+                                    label="Heart Rate"
+                                    unit="bpm"
+                                />
 
-                            {/* SpO2 Picker */}
-                            <VerticalScrollPicker
-                                value={parseInt(editVitals.spo2) || 98}
-                                min={70}
-                                max={100}
-                                onChange={(val) => setEditVitals({ ...editVitals, spo2: val.toString() })}
-                                label="SpO2"
-                                unit="%"
-                            />
+                                <VerticalScrollPicker
+                                    value={parseInt(editVitals.spo2) || 98}
+                                    min={70}
+                                    max={100}
+                                    onChange={(val) => setEditVitals({ ...editVitals, spo2: val.toString() })}
+                                    label="SpO2"
+                                    unit="%"
+                                />
+                            </div>
                         </div>
 
                         {/* Current Reading Display */}
