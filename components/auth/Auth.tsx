@@ -3,11 +3,23 @@ import Login from './Login';
 import AdminLogin from './AdminLogin';
 import AuthChooser from './AuthChooser';
 import TermsAndConditionsModal from '../TermsAndConditionsModal';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 
 const Auth: React.FC = () => {
   const [view, setView] = useState<'chooser' | 'login' | 'admin-login'>('chooser');
   const [showTerms, setShowTerms] = useState(false);
+
+  // Dynamic document title based on view
+  const getTitle = () => {
+    switch (view) {
+      case 'login': return 'Sign In';
+      case 'admin-login': return 'Admin Portal';
+      case 'chooser': default: return 'Get Started';
+    }
+  };
+
+  useDocumentTitle(getTitle());
 
   const renderView = () => {
     switch (view) {

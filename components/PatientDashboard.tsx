@@ -23,11 +23,27 @@ import { PatientAdditionService } from "../services/patientInvitationService";
 import { ChatService } from "../services/chatService";
 import { VitalsService } from "../services/dataService";
 import { CaseDetailsService } from "../services/caseDetailsService";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 
 const PatientDashboard: React.FC = () => {
     const { user, profile, signOut } = useAuth();
     const [activeView, setActiveView] = useState<View>("dashboard");
+
+    // Dynamic document title based on view
+    const getViewTitle = () => {
+        switch (activeView) {
+            case "dashboard": return "Patient Portal";
+            case "records": return "Medical Records";
+            case "upload": return "Upload Record";
+            case "messages": return "Messages";
+            case "billing": return "Billing & Plan";
+            case "doctors": return "My Doctors";
+            default: return "Patient Portal";
+        }
+    };
+
+    useDocumentTitle(getViewTitle());
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // State management

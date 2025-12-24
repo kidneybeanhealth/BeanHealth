@@ -24,10 +24,27 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { supabase } from './lib/supabase';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 const AppContent: React.FC = () => {
   const { user, profile, loading, needsProfileSetup, needsOnboarding, isInitialized, needsTermsAcceptance, acceptTerms, checkAuth } = useAuth();
   const [loadingTimeout, setLoadingTimeout] = React.useState(false);
+
+  // Dynamic document title based on app state
+  const getAppTitle = () => {
+    if (loading || !isInitialized) return 'Loading...';
+    if (!user) return 'Get Started'; // Default for Auth view
+    if (needsProfileSetup) return 'Set Up Your Profile';
+    if (needsOnboarding) return 'Welcome to BeanHealth';
+
+    if (profile?.role === 'doctor') return 'Doctor Portal';
+    if (profile?.role === 'admin') return 'Admin Dashboard';
+    if (profile?.role === 'patient') return 'Patient Portal';
+
+    return 'Healthcare Management';
+  };
+
+  useDocumentTitle(getAppTitle());
 
   // Check for launch URL on mount (handles cold start deep links)
   React.useEffect(() => {

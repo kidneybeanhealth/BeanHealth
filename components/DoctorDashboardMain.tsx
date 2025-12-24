@@ -22,6 +22,7 @@ import DoctorReferralCard from './DoctorReferralCard';
 import DoctorMobileBottomNav, { DoctorView } from './DoctorMobileBottomNav';
 import type { AlertCounts } from '../types/alerts';
 import ProfileModal from './ProfileModal';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const DoctorDashboardMain: React.FC = () => {
   const { user, profile, signOut } = useAuth();
@@ -31,6 +32,21 @@ const DoctorDashboardMain: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<DoctorView>('dashboard');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  // Dynamic document title based on view
+  const getViewTitle = () => {
+    switch (activeView) {
+      case 'dashboard': return 'Doctor Portal';
+      case 'monitoring': return 'Patient Monitoring';
+      case 'alerts': return 'Clinical Alerts';
+      case 'messages': return 'Messages';
+      case 'patient-detail': return selectedPatient ? `Monitoring: ${selectedPatient.name}` : 'Patient Detail';
+      default: return 'Doctor Portal';
+    }
+  };
+
+  useDocumentTitle(getViewTitle());
+
   const [alertCounts, setAlertCounts] = useState<AlertCounts>({ total: 0, urgent: 0, review: 0, info: 0, unacknowledged: 0 });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
