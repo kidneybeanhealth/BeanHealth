@@ -21,13 +21,10 @@ const Login: React.FC<LoginProps> = ({ onSwitchToChooser }) => {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 
-          className="text-2xl font-semibold mb-1"
-          style={{ color: '#1a1a1a' }}
-        >
+        <h2 className="text-2xl font-semibold mb-1 !text-gray-900">
           Sign In
         </h2>
-        <p style={{ color: '#6b7280', fontSize: '14px' }}>
+        <p className="text-sm !text-gray-500">
           Use your Google account to continue
         </p>
       </div>
@@ -36,11 +33,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToChooser }) => {
       <button
         onClick={handleGoogleSignIn}
         disabled={loading}
-        className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 disabled:opacity-60"
-        style={{ 
-          borderColor: '#e5e7eb',
-          backgroundColor: '#fafafa'
-        }}
+        className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 disabled:opacity-60 border-gray-200 bg-gray-50 hover:bg-white"
       >
         {loading ? (
           <>
@@ -48,7 +41,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToChooser }) => {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span style={{ color: '#6b7280', fontWeight: 500 }}>Signing in...</span>
+            <span className="!text-gray-500 font-medium">Signing in...</span>
           </>
         ) : (
           <>
@@ -58,41 +51,37 @@ const Login: React.FC<LoginProps> = ({ onSwitchToChooser }) => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
-            <span style={{ color: '#1a1a1a', fontWeight: 500 }}>Continue with Google</span>
+            <span className="!text-gray-900 font-medium">Continue with Google</span>
           </>
         )}
       </button>
 
       {/* Security Badges */}
-      <div 
-        className="flex items-center justify-center gap-6 py-4 rounded-xl"
-        style={{ backgroundColor: '#f8faf6' }}
-      >
+      <div className="flex items-center justify-center gap-6 py-4 rounded-xl bg-secondary-50 border border-secondary-100">
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4" style={{ color: '#8AC43C' }} fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-4 h-4 text-secondary-500" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
-          <span style={{ color: '#5a6550', fontSize: '12px', fontWeight: 500 }}>Encrypted</span>
+          <span className="text-secondary-800 text-xs font-medium">Encrypted</span>
         </div>
-        <div className="w-px h-4" style={{ backgroundColor: '#d1d5db' }}></div>
+        <div className="w-px h-4 bg-secondary-200"></div>
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4" style={{ color: '#8AC43C' }} fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-4 h-4 text-secondary-500" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
           </svg>
-          <span style={{ color: '#5a6550', fontSize: '12px', fontWeight: 500 }}>HIPAA Compliant</span>
+          <span className="text-secondary-800 text-xs font-medium">HIPAA Compliant</span>
         </div>
       </div>
 
       {/* Back Button */}
       <button
         onClick={onSwitchToChooser}
-        className="w-full flex items-center justify-center gap-2 py-3 transition-colors"
-        style={{ color: '#6b7280' }}
+        className="w-full flex items-center justify-center gap-2 py-3 transition-colors !text-gray-500 hover:text-secondary-500"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        <span style={{ fontSize: '14px' }}>Back to role selection</span>
+        <span className="text-sm">Back to role selection</span>
       </button>
     </div>
   );

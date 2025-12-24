@@ -712,7 +712,7 @@ const PatientDashboard: React.FC = () => {
     return (
         <UrgentCreditsProvider userId={user?.id || ''} initialCredits={profile?.urgent_credits ?? 5}>
             <NotificationProvider userId={user?.id || ''} activeView={activeView} userRole="patient">
-                <div className="h-screen bg-[#F7F7F7] dark:bg-black flex flex-col md:flex-row overflow-hidden">
+                <div className="h-screen bg-gray-100 dark:bg-black flex flex-col md:flex-row overflow-hidden">
                     {/* Sidebar */}
 
                     <SidebarWithNotifications
