@@ -31,14 +31,14 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     ];
 
     return (
-        <div className="fixed bottom-6 left-0 right-0 z-50 px-4 md:hidden pointer-events-none flex justify-center">
+        <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pt-2 md:hidden pointer-events-none flex justify-center bg-gradient-to-t from-gray-100 via-gray-100/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent">
             {/* 
         Ultra-refined Glassmorphism Container
         - Increased blur to backdrop-blur-3xl for "liquid" feel
         - Subtle saturation boost (saturate-150)
         - Softer shadows and borders 
       */}
-            <nav className="pointer-events-auto bg-white/80 dark:bg-[#121212]/80 backdrop-blur-3xl saturate-150 border border-white/20 dark:border-white/10 rounded-[32px] shadow-[0_20px_40px_-5px_rgba(0,0,0,0.15),0_10px_20px_-5px_rgba(0,0,0,0.1)] p-1.5 flex items-center w-full max-w-[380px] mx-auto transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ring-1 ring-white/20 dark:ring-white/5">
+            <nav className="pointer-events-auto bg-white/80 dark:bg-[#121212]/80 backdrop-blur-3xl saturate-150 border border-white/20 dark:border-white/10 rounded-[24px] shadow-[0_20px_40px_-5px_rgba(0,0,0,0.15),0_10px_20px_-5px_rgba(0,0,0,0.1)] p-1 flex items-center w-full max-w-[340px] mx-auto transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ring-1 ring-white/20 dark:ring-white/5">
 
                 {navItems.map((item) => {
                     const isActive = activeView === item.view;
@@ -47,7 +47,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                             key={item.view}
                             onClick={() => setActiveView(item.view)}
                             className={`
-                group relative flex items-center justify-center h-12 rounded-[24px] 
+                group relative flex items-center justify-center h-10 rounded-[20px] 
                 transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color]
                 ${isActive
                                     ? 'flex-[2.5] bg-black dark:bg-white text-white dark:text-black shadow-[0_4px_12px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_12px_rgba(255,255,255,0.2)]'
@@ -66,7 +66,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 relative flex items-center justify-center transition-transform duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]
                 ${isActive ? 'scale-95' : 'scale-100'}
               `}>
-                                <item.icon className="w-[22px] h-[22px] stroke-[2px]" />
+                                <item.icon className="w-[18px] h-[18px] stroke-[2px]" />
 
                                 {/* Notification Dot - Fluid Pulse */}
                                 {item.view === 'messages' && unreadMessageCount > 0 && !isActive && (
@@ -81,16 +81,16 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                             <div className={`
                 overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]
                 flex items-center
-                ${isActive ? 'max-w-[100px] opacity-100 ml-2.5 translate-x-0' : 'max-w-0 opacity-0 ml-0 -translate-x-2'}
+                ${isActive ? 'max-w-[80px] opacity-100 ml-2 translate-x-0' : 'max-w-0 opacity-0 ml-0 -translate-x-2'}
               `}>
-                                <span className="text-[13px] font-bold tracking-tight leading-none">
+                                <span className="text-[11px] font-bold tracking-tight leading-none">
                                     {item.label}
                                 </span>
                             </div>
 
                             {/* Active State Background Glow (Optional subtle internal glow) */}
                             {isActive && (
-                                <div className="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                                <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
                             )}
                         </button>
                     );

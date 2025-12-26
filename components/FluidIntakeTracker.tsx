@@ -128,18 +128,18 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
     };
 
     return (
-        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xl font-bold text-[#222222] dark:text-white">Fluid Intake</h3>
-                <span className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">Today</span>
+        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <h3 className="text-base sm:text-lg md:text-xl font-bold text-[#222222] dark:text-white">Fluid Intake</h3>
+                <span className="text-[10px] sm:text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider bg-gray-100 dark:bg-gray-800 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">Today</span>
             </div>
 
             {/* Progress Bar */}
-            <div className="mb-6">
-                <div className="flex justify-between items-baseline mb-2">
+            <div className="mb-4 sm:mb-6">
+                <div className="flex justify-between items-baseline mb-1.5 sm:mb-2">
                     <div>
-                        <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">{todayTotal}</span>
-                        <span className="text-lg text-gray-500 dark:text-gray-400 ml-1">ml</span>
+                        <span className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">{todayTotal}</span>
+                        <span className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-gray-400 ml-0.5 sm:ml-1">ml</span>
                     </div>
                     <div className="text-right">
                         {isEditingTarget ? (
@@ -189,14 +189,14 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
             </div>
 
             {/* Fluid Type Selector */}
-            <div className="mb-6">
-                <label className="block text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-3 uppercase tracking-wider">Fluid Type</label>
-                <div className="flex gap-2 flex-wrap">
+            <div className="mb-4 sm:mb-6">
+                <label className="block text-[10px] sm:text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-2 sm:mb-3 uppercase tracking-wider">Fluid Type</label>
+                <div className="flex gap-1.5 sm:gap-2 flex-wrap">
                     {['water', 'juice', 'tea', 'coffee', 'milk', 'other'].map((type) => (
                         <button
                             key={type}
                             onClick={() => setSelectedType(type)}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-full transition-colors uppercase tracking-wide ${selectedType === type
+                            className={`px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-colors uppercase tracking-wide ${selectedType === type
                                 ? 'bg-[#8AC43C] text-white'
                                 : 'bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#8AC43C]/30'
                                 }`}
@@ -208,44 +208,44 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
             </div>
 
             {/* Quick Add Buttons */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
                 <button
                     onClick={() => handleQuickAdd(250)}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-[#222222] transition-colors disabled:opacity-50"
+                    className="px-2 sm:px-4 py-1.5 sm:py-2 bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-[#222222] transition-colors disabled:opacity-50"
                 >
                     + 250 ml
                 </button>
                 <button
                     onClick={() => handleQuickAdd(500)}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-[#222222] transition-colors disabled:opacity-50"
+                    className="px-2 sm:px-4 py-1.5 sm:py-2 bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-[#222222] transition-colors disabled:opacity-50"
                 >
                     + 500 ml
                 </button>
                 <button
                     onClick={() => handleQuickAdd(1000)}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-[#222222] transition-colors disabled:opacity-50"
+                    className="px-2 sm:px-4 py-1.5 sm:py-2 bg-gray-100 dark:bg-[#8AC43C]/20 text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl hover:bg-[#8AC43C] hover:text-white dark:hover:bg-[#8AC43C] dark:hover:text-[#222222] transition-colors disabled:opacity-50"
                 >
                     + 1 L
                 </button>
             </div>
 
             {/* Custom Amount Input */}
-            <div className="flex gap-3 mb-8">
+            <div className="flex gap-2 sm:gap-3 mb-6 sm:mb-8">
                 <input
                     type="number"
                     value={customAmount}
                     onChange={(e) => setCustomAmount(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleCustomAdd()}
-                    placeholder="Custom amount (ml)"
-                    className="flex-1 px-4 py-2 bg-gray-50 dark:bg-[#8AC43C]/20 border border-gray-200 dark:border-[#8AC43C]/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8AC43C] text-gray-900 dark:text-gray-100"
+                    placeholder="Custom (ml)"
+                    className="flex-1 min-w-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-50 dark:bg-[#8AC43C]/20 border border-gray-200 dark:border-[#8AC43C]/10 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8AC43C] text-sm sm:text-base text-gray-900 dark:text-gray-100"
                 />
                 <button
                     onClick={handleCustomAdd}
                     disabled={isLoading || !customAmount}
-                    className="px-6 py-2 bg-[#8AC43C] hover:bg-[#7ab332] text-white dark:text-[#222222] font-bold rounded-xl transition-colors disabled:opacity-50"
+                    className="px-4 sm:px-6 py-1.5 sm:py-2 bg-[#8AC43C] hover:bg-[#7ab332] text-white dark:text-[#222222] text-sm sm:text-base font-bold rounded-lg sm:rounded-xl transition-colors disabled:opacity-50 flex-shrink-0"
                 >
                     Add
                 </button>
@@ -253,29 +253,29 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
 
             {/* Today's Log */}
             <div>
-                <h4 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-4 uppercase tracking-wider">Today's Log</h4>
+                <h4 className="text-[10px] sm:text-xs font-bold text-[#717171] dark:text-[#a0a0a0] mb-3 sm:mb-4 uppercase tracking-wider">Today's Log</h4>
                 {todayEntries.length > 0 ? (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-1.5 sm:space-y-2 max-h-40 sm:max-h-48 overflow-y-auto">
                         {todayEntries.map((entry) => (
                             <div
                                 key={entry.id}
-                                className={`flex items-center justify-between p-3 bg-gray-50 dark:bg-[#8AC43C]/20 rounded-lg transition-all ${deletingEntryId === entry.id ? 'animate-trash-out' : ''}`}
+                                className={`flex items-center justify-between p-2 sm:p-3 bg-gray-50 dark:bg-[#8AC43C]/20 rounded-lg transition-all ${deletingEntryId === entry.id ? 'animate-trash-out' : ''}`}
                             >
-                                <div className="flex items-center gap-3">
-                                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                    <span className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">
                                         {entry.amountMl} ml
                                     </span>
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                                    <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                                         {entry.fluidType}
                                     </span>
-                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                    <span className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500">
                                         {new Date(entry.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
                                 <button
                                     onClick={() => handleDeleteEntry(entry.id)}
                                     disabled={deletingEntryId === entry.id}
-                                    className={`text-sm font-medium transition-all ${deletingEntryId === entry.id ? 'text-red-600 animate-wiggle' : 'text-red-500 hover:text-red-700'}`}
+                                    className={`text-xs sm:text-sm font-medium transition-all flex-shrink-0 ${deletingEntryId === entry.id ? 'text-red-600 animate-wiggle' : 'text-red-500 hover:text-red-700'}`}
                                 >
                                     Delete
                                 </button>
@@ -283,7 +283,7 @@ const FluidIntakeTracker: React.FC<FluidIntakeTrackerProps> = ({
                         ))}
                     </div>
                 ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-4">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic text-center py-3 sm:py-4">
                         No fluid intake recorded today
                     </p>
                 )}

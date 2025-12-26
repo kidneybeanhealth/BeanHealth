@@ -171,22 +171,22 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
     const firstName = patient.name.split(' ')[0];
 
     return (
-        <div className="space-y-6 pb-8 animate-fade-in max-w-[1440px] mx-auto pt-0">
+        <div className="space-y-4 sm:space-y-5 md:space-y-6 pb-6 sm:pb-8 animate-fade-in max-w-[1440px] mx-auto pt-0">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-[#222222] dark:text-white tracking-tight">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#222222] dark:text-white tracking-tight">
                         Dashboard
                     </h1>
-                    <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">Managing your kidney health journey</p>
+                    <p className="text-xs sm:text-sm text-[#717171] dark:text-[#a0a0a0] font-medium mt-0.5 sm:mt-1">Managing your kidney health journey</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                     <button
                         onClick={onNavigateToDoctors}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#222222] dark:bg-white text-white dark:text-[#222222] text-sm font-bold rounded-full transition-all duration-300 active:scale-95 hover:shadow-lg hover:shadow-black/20 dark:hover:shadow-white/20 hover:-translate-y-0.5"
+                        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 bg-[#222222] dark:bg-white text-white dark:text-[#222222] text-xs sm:text-sm font-bold rounded-full transition-all duration-300 active:scale-95 hover:shadow-lg hover:shadow-black/20 dark:hover:shadow-white/20 hover:-translate-y-0.5"
                     >
-                        <DoctorIcon className="w-4 h-4" />
-                        Connect with Doctor
+                        <DoctorIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span className="hidden xs:inline">Connect with</span> Doctor
                     </button>
                 </div>
             </div>
@@ -294,81 +294,81 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-lg font-bold text-[#222222] dark:text-white">Vital Signs</h3>
+                    <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] border border-transparent dark:border-[#8AC43C]/20">
+                        <div className="flex items-center justify-between mb-2 sm:mb-3">
+                            <h3 className="text-base sm:text-lg font-bold text-[#222222] dark:text-white">Vital Signs</h3>
                             <button
                                 onClick={() => setIsEditingVitals(true)}
-                                className="min-w-[80px] px-4 py-2 text-xs font-bold bg-[#8AC43C] text-white dark:text-[#222222] rounded-full hover:bg-[#7ab332] transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-[#8AC43C]/30 active:scale-95 active:shadow-none"
+                                className="min-w-[70px] sm:min-w-[80px] px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold bg-[#8AC43C] text-white dark:text-[#222222] rounded-full hover:bg-[#7ab332] transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-[#8AC43C]/30 active:scale-95 active:shadow-none"
                             >
                                 Update
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                             {/* Blood Pressure Card - Crimson/Deep Red */}
-                            <div className="bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-500/20 dark:to-rose-600/10 p-4 rounded-2xl border border-red-200/50 dark:border-red-500/30 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/10">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="p-1.5 bg-red-500/20 dark:bg-red-500/30 rounded-lg">
-                                        <BloodPressureIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
+                            <div className="bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-500/20 dark:to-rose-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-red-200/50 dark:border-red-500/30 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/10">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                                    <div className="p-1 sm:p-1.5 bg-red-500/20 dark:bg-red-500/30 rounded-md sm:rounded-lg">
+                                        <BloodPressureIcon className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 dark:text-red-400" />
                                     </div>
-                                    <span className="text-xs font-bold text-red-700 dark:text-red-300 uppercase tracking-wider">BP</span>
+                                    <span className="text-[10px] sm:text-xs font-bold text-red-700 dark:text-red-300 uppercase tracking-wider">BP</span>
                                 </div>
                                 <div>
-                                    <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                    <span className="text-base sm:text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                                         {vitals.bloodPressure
                                             ? `${vitals.bloodPressure.systolic}/${vitals.bloodPressure.diastolic}`
                                             : '—'}
                                     </span>
-                                    <span className="text-xs font-semibold text-red-500 dark:text-red-400 ml-1">mmHg</span>
+                                    <span className="text-[10px] sm:text-xs font-semibold text-red-500 dark:text-red-400 ml-0.5 sm:ml-1">mmHg</span>
                                 </div>
                             </div>
 
                             {/* Heart Rate Card - Vibrant Pink/Magenta */}
-                            <div className="bg-gradient-to-br from-pink-50 to-fuchsia-100 dark:from-pink-500/20 dark:to-fuchsia-600/10 p-4 rounded-2xl border border-pink-200/50 dark:border-pink-500/30 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-pink-500/10">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="p-1.5 bg-pink-500/20 dark:bg-pink-500/30 rounded-lg">
-                                        <HeartIcon className="w-4 h-4 text-pink-600 dark:text-pink-400" />
+                            <div className="bg-gradient-to-br from-pink-50 to-fuchsia-100 dark:from-pink-500/20 dark:to-fuchsia-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-pink-200/50 dark:border-pink-500/30 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-pink-500/10">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                                    <div className="p-1 sm:p-1.5 bg-pink-500/20 dark:bg-pink-500/30 rounded-md sm:rounded-lg">
+                                        <HeartIcon className="w-3 h-3 sm:w-4 sm:h-4 text-pink-600 dark:text-pink-400" />
                                     </div>
-                                    <span className="text-xs font-bold text-pink-700 dark:text-pink-300 uppercase tracking-wider">Heart Rate</span>
+                                    <span className="text-[10px] sm:text-xs font-bold text-pink-700 dark:text-pink-300 uppercase tracking-wider">HR</span>
                                 </div>
                                 <div>
-                                    <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                    <span className="text-base sm:text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                                         {vitals.heartRate ?? '—'}
                                     </span>
-                                    <span className="text-xs font-semibold text-pink-500 dark:text-pink-400 ml-1">bpm</span>
+                                    <span className="text-[10px] sm:text-xs font-semibold text-pink-500 dark:text-pink-400 ml-0.5 sm:ml-1">bpm</span>
                                 </div>
                             </div>
 
                             {/* SpO2 Card - Cyan/Teal for Oxygen */}
-                            <div className="bg-gradient-to-br from-cyan-50 to-teal-100 dark:from-cyan-500/20 dark:to-teal-600/10 p-4 rounded-2xl border border-cyan-200/50 dark:border-cyan-500/30 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/10">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="p-1.5 bg-cyan-500/20 dark:bg-cyan-500/30 rounded-lg">
-                                        <FeatureVitalsIcon className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                            <div className="bg-gradient-to-br from-cyan-50 to-teal-100 dark:from-cyan-500/20 dark:to-teal-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-cyan-200/50 dark:border-cyan-500/30 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/10">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                                    <div className="p-1 sm:p-1.5 bg-cyan-500/20 dark:bg-cyan-500/30 rounded-md sm:rounded-lg">
+                                        <FeatureVitalsIcon className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-600 dark:text-cyan-400" />
                                     </div>
-                                    <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">SpO2</span>
+                                    <span className="text-[10px] sm:text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">SpO2</span>
                                 </div>
                                 <div>
-                                    <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                    <span className="text-base sm:text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                                         {vitals.spo2 ?? '—'}
                                     </span>
-                                    <span className="text-xs font-semibold text-cyan-500 dark:text-cyan-400 ml-1">%</span>
+                                    <span className="text-[10px] sm:text-xs font-semibold text-cyan-500 dark:text-cyan-400 ml-0.5 sm:ml-1">%</span>
                                 </div>
                             </div>
 
                             {/* Temperature Card - Warm Amber/Orange */}
-                            <div className="bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-500/20 dark:to-orange-600/10 p-4 rounded-2xl border border-amber-200/50 dark:border-amber-500/30 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-amber-500/10">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="p-1.5 bg-amber-500/20 dark:bg-amber-500/30 rounded-lg">
-                                        <TemperatureIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            <div className="bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-500/20 dark:to-orange-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-amber-200/50 dark:border-amber-500/30 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-amber-500/10">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                                    <div className="p-1 sm:p-1.5 bg-amber-500/20 dark:bg-amber-500/30 rounded-md sm:rounded-lg">
+                                        <TemperatureIcon className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400" />
                                     </div>
-                                    <span className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Temp</span>
+                                    <span className="text-[10px] sm:text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Temp</span>
                                 </div>
                                 <div>
-                                    <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                    <span className="text-base sm:text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                                         {vitals.temperature ?? '—'}
                                     </span>
-                                    <span className="text-xs font-semibold text-amber-500 dark:text-amber-400 ml-1">°F</span>
+                                    <span className="text-[10px] sm:text-xs font-semibold text-amber-500 dark:text-amber-400 ml-0.5 sm:ml-1">°F</span>
                                 </div>
                             </div>
                         </div>
@@ -377,9 +377,9 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
             </div>
 
             {/* Dashboard Grid - Main Layout */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
                 {/* Left Column (Primary Info) */}
-                <div className="xl:col-span-2 space-y-6">
+                <div className="xl:col-span-2 space-y-4 sm:space-y-5 md:space-y-6">
                     {/* Patient Information */}
                     <PatientInfoCard
                         patientId={patient.id}
@@ -398,7 +398,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                 </div>
 
                 {/* Right Column (Management & Tracking) */}
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-5 md:space-y-6">
                     {/* Enhanced Medications with Adherence Tracking */}
                     <EnhancedMedicationCard patientId={patient.id} />
 

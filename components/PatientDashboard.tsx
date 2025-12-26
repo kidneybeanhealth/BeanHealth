@@ -757,7 +757,7 @@ const PatientDashboard: React.FC = () => {
                             />
                         </div>
 
-                        <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-4 pt-4 pb-24 md:pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-5 lg:px-6 pt-6 pb-28 md:pb-8'}`}>{renderContent()}</main>
+                        <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-2 sm:px-4 pt-2 sm:pt-4 pb-20 sm:pb-24 md:pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-2 sm:px-4 md:px-5 lg:px-6 pt-3 sm:pt-4 md:pt-6 pb-24 sm:pb-28 md:pb-8'}`}>{renderContent()}</main>
                     </div>
 
                     {/* Extracted Medications Modal */}
