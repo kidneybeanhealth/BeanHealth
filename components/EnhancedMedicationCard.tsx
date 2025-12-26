@@ -258,40 +258,40 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
 
     return (
         <>
-            <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
+            <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-3 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 rounded-2xl shrink-0">
-                            <PillIcon className="h-6 w-6 text-[#8AC43C]" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <div className="p-2 sm:p-3 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 rounded-xl sm:rounded-2xl shrink-0">
+                            <PillIcon className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-[#8AC43C]" />
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-xl font-bold text-[#222222] dark:text-white truncate">Medications</h3>
-                            <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] mt-0.5 uppercase tracking-wider truncate">{medications.length} active</p>
+                            <h3 className="text-base sm:text-lg md:text-xl font-bold text-[#222222] dark:text-white truncate">Medications</h3>
+                            <p className="text-[9px] sm:text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] mt-0.5 uppercase tracking-wider truncate">{medications.length} active</p>
                         </div>
                     </div>
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#8AC43C] text-white dark:text-[#222222] text-xs font-bold rounded-full hover:opacity-90 transition-all shadow-sm transform active:scale-95 whitespace-nowrap shrink-0 ml-3"
+                        className="flex items-center gap-1 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-[#8AC43C] text-white dark:text-[#222222] text-[10px] sm:text-xs font-bold rounded-full hover:opacity-90 transition-all shadow-sm transform active:scale-95 whitespace-nowrap shrink-0 ml-2 sm:ml-3"
                     >
-                        <PlusCircleIcon className="h-4 w-4" />
+                        <PlusCircleIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                         <span>Add</span>
                     </button>
                 </div>
 
                 {/* Adherence Summary */}
                 {todaysSchedule.length > 0 && (
-                    <div className="mb-4 p-4 bg-gray-50/50 dark:bg-[#8AC43C]/5 border border-gray-100 dark:border-[#8AC43C]/10 rounded-2xl">
+                    <div className="mb-3 sm:mb-4 p-2.5 sm:p-3 md:p-4 bg-gray-50/50 dark:bg-[#8AC43C]/5 border border-gray-100 dark:border-[#8AC43C]/10 rounded-xl sm:rounded-2xl">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-[#222222] dark:text-white">Daily Progress</span>
-                            <span className={`text-lg font-bold ${adherencePercentage >= 80 ? 'text-[#8AC43C]' :
+                            <span className="text-xs sm:text-sm font-bold text-[#222222] dark:text-white">Daily Progress</span>
+                            <span className={`text-sm sm:text-base md:text-lg font-bold ${adherencePercentage >= 80 ? 'text-[#8AC43C]' :
                                 adherencePercentage >= 50 ? 'text-amber-500' :
                                     'text-rose-500'
                                 }`}>
                                 {adherencePercentage}%
                             </span>
                         </div>
-                        <div className="mt-2.5 h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                        <div className="mt-2 sm:mt-2.5 h-1.5 sm:h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
                             <div
                                 className={`h-full transition-all duration-500 ${adherencePercentage >= 80 ? 'bg-[#8AC43C]' :
                                     adherencePercentage >= 50 ? 'bg-amber-500' :
@@ -304,10 +304,10 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                 )}
 
                 {/* Tabs */}
-                <div className="flex p-1.5 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/10 backdrop-blur-sm rounded-2xl mb-6 border border-[#8AC43C]/20 dark:border-[#8AC43C]/20">
+                <div className="flex p-1 sm:p-1.5 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/10 backdrop-blur-sm rounded-xl sm:rounded-2xl mb-3 sm:mb-4 md:mb-6 border border-[#8AC43C]/20 dark:border-[#8AC43C]/20">
                     <button
                         onClick={() => setActiveTab('schedule')}
-                        className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all duration-200 ${activeTab === 'schedule'
+                        className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 md:px-4 text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl transition-all duration-200 ${activeTab === 'schedule'
                             ? 'bg-white dark:bg-[#1a1a1a] text-[#8AC43C] shadow-sm'
                             : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#8AC43C] dark:hover:text-[#8AC43C]'
                             }`}
@@ -316,7 +316,7 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                     </button>
                     <button
                         onClick={() => setActiveTab('medications')}
-                        className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all duration-200 ${activeTab === 'medications'
+                        className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 md:px-4 text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl transition-all duration-200 ${activeTab === 'medications'
                             ? 'bg-white dark:bg-[#1a1a1a] text-[#8AC43C] shadow-sm'
                             : 'text-[#717171] dark:text-[#a0a0a0] hover:text-[#8AC43C] dark:hover:text-[#8AC43C]'
                             }`}
@@ -327,14 +327,14 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
 
                 {/* Content */}
                 {activeTab === 'schedule' ? (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                         {todaysSchedule.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                                <PillIcon className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                                <p>No medications scheduled for today</p>
+                            <div className="text-center py-4 sm:py-6 md:py-8 text-gray-500 dark:text-gray-400">
+                                <PillIcon className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-30" />
+                                <p className="text-xs sm:text-sm">No medications scheduled for today</p>
                                 <button
                                     onClick={() => setShowAddModal(true)}
-                                    className="mt-2 text-[#8AC43C] text-sm font-bold hover:underline"
+                                    className="mt-2 text-[#8AC43C] text-[10px] sm:text-xs md:text-sm font-bold hover:underline"
                                 >
                                     Add your first medication
                                 </button>
@@ -347,7 +347,7 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                 return (
                                     <div
                                         key={`${item.medication.id}-${item.scheduledTime}-${index}`}
-                                        className={`flex items-center gap-4 p-4 rounded-[20px] border transition-all duration-200 ${isTaken
+                                        className={`flex items-center gap-2 sm:gap-3 md:gap-4 p-2.5 sm:p-3 md:p-4 rounded-[16px] sm:rounded-[20px] border transition-all duration-200 ${isTaken
                                             ? 'bg-gray-50/50 dark:bg-gray-800/30 border-gray-100 dark:border-gray-800 opacity-70'
                                             : status === 'current'
                                                 ? 'bg-[#8AC43C]/5 dark:bg-[#8AC43C]/10 border-[#8AC43C]/30 dark:border-[#8AC43C]/40 ring-1 ring-[#8AC43C]/20 shadow-sm shadow-[#8AC43C]/10'
@@ -357,8 +357,8 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                             }`}
                                     >
                                         {/* Time */}
-                                        <div className="flex flex-col items-center justify-center w-14 py-1 border-r border-gray-100 dark:border-[#8AC43C]/10 pr-4">
-                                            <span className={`text-[11px] font-bold tracking-tight ${isTaken ? 'text-gray-400' :
+                                        <div className="flex flex-col items-center justify-center w-10 sm:w-12 md:w-14 py-0.5 sm:py-1 border-r border-gray-100 dark:border-[#8AC43C]/10 pr-2 sm:pr-3 md:pr-4">
+                                            <span className={`text-[9px] sm:text-[10px] md:text-[11px] font-bold tracking-tight ${isTaken ? 'text-gray-400' :
                                                 status === 'current' ? 'text-[#8AC43C]' :
                                                     status === 'past' ? 'text-rose-500' :
                                                         'text-[#717171] dark:text-gray-400'
@@ -370,7 +370,7 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                         {/* Checkbox */}
                                         <button
                                             onClick={() => handleToggleAdherence(item)}
-                                            className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isTaken
+                                            className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${isTaken
                                                 ? 'bg-[#8AC43C] border-[#8AC43C] scale-95 shadow-lg shadow-[#8AC43C]/20'
                                                 : status === 'current'
                                                     ? 'border-[#8AC43C] bg-white dark:bg-[#1a1a1a] hover:scale-110 active:scale-95'
@@ -378,22 +378,22 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                                 }`}
                                         >
                                             {isTaken ? (
-                                                <CheckIcon className="h-4 w-4 text-white stroke-[3px]" />
+                                                <CheckIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4 text-white stroke-[3px]" />
                                             ) : status === 'current' && (
-                                                <div className="w-2.5 h-2.5 rounded-full bg-[#8AC43C] animate-pulse"></div>
+                                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#8AC43C] animate-pulse"></div>
                                             )}
                                         </button>
 
                                         {/* Medication Info */}
                                         <div className="flex-1 min-w-0">
-                                            <p className={`text-[15px] font-bold truncate tracking-tight transition-all ${isTaken ? 'text-[#999] dark:text-[#666] line-through' : 'text-[#222222] dark:text-white'
+                                            <p className={`text-[11px] sm:text-[13px] md:text-[15px] font-bold truncate tracking-tight transition-all ${isTaken ? 'text-[#999] dark:text-[#666] line-through' : 'text-[#222222] dark:text-white'
                                                 }`}>
                                                 {item.medication.name}
                                             </p>
-                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                                <span className="text-[11px] font-bold text-[#717171] dark:text-[#888]">{item.medication.dosage}{item.medication.dosageUnit}</span>
-                                                <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
-                                                <span className={`text-[11px] font-bold uppercase tracking-wider ${isTaken ? 'text-gray-400' : status === 'current' ? 'text-[#8AC43C]' : 'text-amber-500'}`}>{status}</span>
+                                            <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
+                                                <span className="text-[9px] sm:text-[10px] md:text-[11px] font-bold text-[#717171] dark:text-[#888]">{item.medication.dosage}{item.medication.dosageUnit}</span>
+                                                <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                                <span className={`text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wider ${isTaken ? 'text-gray-400' : status === 'current' ? 'text-[#8AC43C]' : 'text-amber-500'}`}>{status}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -402,30 +402,30 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                         )}
                     </div>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                         {medications.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                                <PillIcon className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                                <p>No medications added yet</p>
+                            <div className="text-center py-4 sm:py-6 md:py-8 text-gray-500 dark:text-gray-400">
+                                <PillIcon className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-30" />
+                                <p className="text-xs sm:text-sm">No medications added yet</p>
                             </div>
                         ) : (
                             medications.map(med => (
                                 <div
                                     key={med.id}
-                                    className={`flex items-center gap-4 p-4 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-[#8AC43C]/5 rounded-2xl border border-gray-100 dark:border-[#8AC43C]/10 transition-all shadow-sm hover:shadow-md group ${deletingMedId === med.id ? 'animate-trash-out' : ''}`}
+                                    className={`flex items-center gap-2 sm:gap-3 md:gap-4 p-2.5 sm:p-3 md:p-4 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-[#8AC43C]/5 rounded-xl sm:rounded-2xl border border-gray-100 dark:border-[#8AC43C]/10 transition-all shadow-sm hover:shadow-md group ${deletingMedId === med.id ? 'animate-trash-out' : ''}`}
                                 >
-                                    <div className="p-3 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 rounded-xl group-hover:bg-[#8AC43C]/20 transition-colors">
-                                        <PillIcon className="h-5 w-5 text-[#8AC43C]" />
+                                    <div className="p-2 sm:p-2.5 md:p-3 bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 rounded-lg sm:rounded-xl group-hover:bg-[#8AC43C]/20 transition-colors flex-shrink-0">
+                                        <PillIcon className="h-4 w-4 sm:h-4 sm:w-4 md:h-5 md:w-5 text-[#8AC43C]" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[15px] font-bold text-[#222222] dark:text-white truncate tracking-tight">{med.name}</p>
-                                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                                            <span className="text-[11px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider">{med.dosage}{med.dosageUnit}</span>
-                                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
-                                            <span className="text-[11px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider">{MEDICATION_FREQUENCIES.find(f => f.value === med.frequency)?.label}</span>
+                                        <p className="text-[11px] sm:text-[13px] md:text-[15px] font-bold text-[#222222] dark:text-white truncate tracking-tight">{med.name}</p>
+                                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-0.5 sm:mt-1">
+                                            <span className="text-[9px] sm:text-[10px] md:text-[11px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider">{med.dosage}{med.dosageUnit}</span>
+                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                            <span className="text-[9px] sm:text-[10px] md:text-[11px] font-bold text-[#717171] dark:text-[#888] uppercase tracking-wider">{MEDICATION_FREQUENCIES.find(f => f.value === med.frequency)?.label}</span>
                                         </div>
                                         {med.category && med.category !== 'Custom' && (
-                                            <div className="mt-2 text-[10px] font-bold text-[#8AC43C] bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 px-2 py-0.5 rounded-full inline-block uppercase tracking-widest">
+                                            <div className="mt-1 sm:mt-2 text-[8px] sm:text-[9px] md:text-[10px] font-bold text-[#8AC43C] bg-[#8AC43C]/10 dark:bg-[#8AC43C]/20 px-1.5 sm:px-2 py-0.5 rounded-full inline-block uppercase tracking-widest">
                                                 {med.category}
                                             </div>
                                         )}
@@ -433,9 +433,9 @@ const EnhancedMedicationCard: React.FC<EnhancedMedicationCardProps> = ({ patient
                                     <button
                                         onClick={() => handleDeleteMedication(med.id)}
                                         disabled={deletingMedId === med.id}
-                                        className={`p-2 rounded-xl transition-all ${deletingMedId === med.id ? 'opacity-100 text-rose-500' : 'text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100'}`}
+                                        className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all flex-shrink-0 ${deletingMedId === med.id ? 'opacity-100 text-rose-500' : 'text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100'}`}
                                     >
-                                        <TrashIcon className={`h-4 w-4 ${deletingMedId === med.id ? 'animate-wiggle' : ''}`} />
+                                        <TrashIcon className={`h-3 w-3 sm:h-4 sm:w-4 ${deletingMedId === med.id ? 'animate-wiggle' : ''}`} />
                                     </button>
                                 </div>
                             ))
