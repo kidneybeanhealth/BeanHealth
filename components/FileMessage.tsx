@@ -151,49 +151,49 @@ export const FileMessage: React.FC<FileMessageProps> = ({
         }
 
         return (
-          <div className="space-y-2">
+          <div className="space-y-2 w-full">
             <img
               src={message.fileUrl}
               alt={message.fileName || 'Shared image'}
-              className="max-w-xs max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+              className="max-w-full sm:max-w-xs max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
               onError={() => setImageError(true)}
               onClick={() => window.open(message.fileUrl, '_blank')}
             />
-            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-              <span>{message.fileName}</span>
-              {message.fileSize && <span>{formatFileSize(message.fileSize)}</span>}
+            <div className="flex items-center justify-between text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 gap-2">
+              <span className="truncate">{message.fileName}</span>
+              {message.fileSize && <span className="flex-shrink-0">{formatFileSize(message.fileSize)}</span>}
             </div>
           </div>
         );
 
       case 'audio':
         return (
-          <div className="flex items-center space-x-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-100 dark:bg-gray-700 rounded-lg min-w-0 w-full">
             <button
               onClick={handleAudioPlayPause}
-              className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+              className="p-1.5 sm:p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors flex-shrink-0"
             >
               {isPlaying ? (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
                 </svg>
               ) : (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>
               )}
             </button>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
                 {message.fileName || 'Voice message'}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                 {message.fileSize ? formatFileSize(message.fileSize) : 'Audio file'}
               </div>
             </div>
             <button
               onClick={handleDownload}
-              className="text-blue-500 hover:text-blue-600 text-xs font-medium"
+              className="text-blue-500 hover:text-blue-600 text-[10px] sm:text-xs font-medium flex-shrink-0 whitespace-nowrap"
             >
               Download
             </button>
@@ -209,14 +209,16 @@ export const FileMessage: React.FC<FileMessageProps> = ({
       case 'pdf':
       default:
         return (
-          <div className="flex items-center space-x-3 p-3 relative z-10">
-            {getFileIcon()}
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">
-                {message.fileName}
-              </div>
-              <div className="text-xs opacity-70">
-                {message.fileSize ? formatFileSize(message.fileSize) : 'Document'}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 p-2 sm:p-3 relative z-10 w-full">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 w-full">
+              <div className="flex-shrink-0">{getFileIcon()}</div>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="text-xs sm:text-sm font-medium truncate">
+                  {message.fileName}
+                </div>
+                <div className="text-[10px] sm:text-xs opacity-70">
+                  {message.fileSize ? formatFileSize(message.fileSize) : 'Document'}
+                </div>
               </div>
             </div>
             <button
@@ -228,13 +230,13 @@ export const FileMessage: React.FC<FileMessageProps> = ({
                 handleDownload();
               }}
               disabled={isDownloading}
-              className="flex items-center space-x-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer relative z-20"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer relative z-20 flex-shrink-0 w-full sm:w-auto justify-center"
               title={isDownloading ? "Downloading..." : "Download prescription"}
               style={{ pointerEvents: 'auto' }}
             >
               {isDownloading ? (
                 <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -242,7 +244,7 @@ export const FileMessage: React.FC<FileMessageProps> = ({
                 </>
               ) : (
                 <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                   <span>Download</span>

@@ -271,7 +271,10 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                 <div className="flex items-start gap-2 sm:gap-3">
                                     {/* Custom Checkbox */}
                                     <button
-                                        onClick={() => handleToggleComplete(test.id, test.completed)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleComplete(test.id, test.completed);
+                                        }}
                                         className={`mt-0.5 w-4 h-4 sm:w-5 sm:h-5 rounded-md sm:rounded-lg border-2 flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
                                             test.completed
                                                 ? 'bg-[#8AC43C] border-[#8AC43C] text-white'
@@ -341,12 +344,15 @@ const UpcomingTestsCard: React.FC<UpcomingTestsCardProps> = ({ patientId }) => {
                                     
                                     {/* Delete Button */}
                                     <button
-                                        onClick={() => handleDeleteTest(test.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteTest(test.id);
+                                        }}
                                         disabled={deletingTestId === test.id}
                                         className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all duration-200 flex-shrink-0 ${
                                             deletingTestId === test.id
                                                 ? 'opacity-100 text-red-600 animate-bounce'
-                                                : 'opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                                : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
                                         }`}
                                         title="Delete test"
                                     >

@@ -12,6 +12,7 @@ import ThemeToggle from './ThemeToggle';
 import { LogoutIcon } from './icons/LogoutIcon';
 import { LogoIcon } from './icons/LogoIcon';
 import Messages from './Messages';
+import WhatsAppChatWindow from './WhatsAppChatWindow';
 import DoctorPatientView from './DoctorPatientView';
 import AlertSummaryWidget from './AlertSummaryWidget';
 import AlertsPage from './AlertsPage';
@@ -32,6 +33,9 @@ const DoctorDashboardMain: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<DoctorView>('dashboard');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  // State for fullscreen WhatsApp chat
+  const [showFullScreenChat, setShowFullScreenChat] = useState(false);
 
   // Dynamic document title based on view
   const getViewTitle = () => {
@@ -651,11 +655,7 @@ const DoctorDashboardMain: React.FC = () => {
 
             {activeView === 'alerts' && renderAlerts()}
 
-            {activeView === 'messages' && (
-              <div className="h-full px-4 pt-4">
-                {renderMessages()}
-              </div>
-            )}
+            {activeView === 'messages' && !showFullScreenChat && setShowFullScreenChat(true)}
 
             {activeView === 'patient-detail' && selectedPatient && (
               <div className="animate-slide-up min-h-[80vh]">
@@ -668,6 +668,68 @@ const DoctorDashboardMain: React.FC = () => {
           </div>
         </main>
         <DoctorMobileNavWrapper activeView={activeView} setActiveView={setActiveView} />
+
+        {/* WhatsApp-style Full Screen Chat */}
+        {showFullScreenChat && (() => {
+          const patientContacts = patients.map(patient => ({
+            ...patient,
+            role: 'patient' as const,
+            dateOfBirth: patient.dateOfBirth || patient.date_of_birth || '1990-01-01',
+            condition: patient.condition || 'General Health',
+            subscriptionTier: (patient.subscriptionTier || patient.subscription_tier || 'FreeTrial') as 'FreeTrial' | 'Paid',
+            urgentCredits: patient.urgentCredits || patient.urgent_credits || 0,
+            vitals: {
+              bloodPressure: { value: '', unit: 'mmHg', trend: 'stable' as const },
+              heartRate: { value: '', unit: 'bpm', trend: 'stable' as const },
+              temperature: { value: '', unit: '°F', trend: 'stable' as const }
+            },
+            vitalsHistory: [],
+            medications: [],
+            records: [],
+            doctors: [],
+            chatMessages: messages.filter(m =>
+              (m.senderId === patient.id && m.recipientId === user?.id) ||
+              (m.senderId === user?.id && m.recipientId === patient.id)
+            ),
+            aiSummary: ''
+          }));
+
+          const currentUserContact = user ? {
+            ...user,
+            name: profile?.name || user.email || 'Doctor',
+            email: user.email!,
+            role: 'doctor' as const,
+            avatarUrl: null, avatar_url: null,
+            specialty: profile?.specialty || null,
+            dateOfBirth: profile?.date_of_birth || null, date_of_birth: profile?.date_of_birth || null,
+            condition: null, subscriptionTier: null, subscription_tier: null,
+            urgentCredits: null, urgent_credits: null,
+            trialEndsAt: null, trial_ends_at: null,
+            notes: null,
+            created_at: profile?.created_at || null,
+            updated_at: profile?.updated_at || null
+          } : null;
+
+          if (!currentUserContact) return null;
+
+          return (
+            <WhatsAppChatWindow
+              currentUser={currentUserContact}
+              contacts={patientContacts}
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              onMarkMessagesAsRead={handleMarkMessagesAsRead}
+              preselectedContactId={null}
+              clearPreselectedContact={() => { }}
+              onNavigateToBilling={() => { }}
+              onClose={() => {
+                setShowFullScreenChat(false);
+                setActiveView('dashboard');
+              }}
+              isFullScreen={true}
+            />
+          );
+        })()}
       </div>
     </NotificationProvider>
   );

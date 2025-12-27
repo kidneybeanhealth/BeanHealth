@@ -10,6 +10,7 @@ import CKDDashboard from "./CKDDashboard";
 import Records from "./Records";
 import Upload from "./Upload";
 import Messages from "./Messages";
+import WhatsAppChatWindow from "./WhatsAppChatWindow";
 import Billing from "./Billing";
 import DoctorsPage from "./DoctorsPage";
 import ExtractedMedicationsModal from "./ExtractedMedicationsModal";
@@ -57,6 +58,10 @@ const PatientDashboard: React.FC = () => {
     const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
     const [doctors, setDoctors] = useState<User[]>([]);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+    // State for fullscreen WhatsApp chat
+    const [showFullScreenChat, setShowFullScreenChat] = useState(false);
+    const [preselectedChatContactId, setPreselectedChatContactId] = useState<string | null>(null);
 
     const [aiSummary, setAiSummary] = useState(
         "Upload your first medical record to get an AI-powered health summary."
@@ -639,37 +644,11 @@ const PatientDashboard: React.FC = () => {
                     </div>
                 );
             case "messages":
-                return (
-                    <Messages
-                        currentUser={appUser}
-                        contacts={patient.doctors}
-                        messages={patient.chatMessages}
-                        onSendMessage={async (message) => {
-                            try {
-                                await ChatService.sendMessage(
-                                    message.senderId,
-                                    message.recipientId,
-                                    message.text,
-                                    message.isUrgent
-                                );
-                                // Refresh messages after sending
-                                const updatedMessages = await ChatService.getAllConversations(user!.id);
-                                setChatMessages(updatedMessages);
-                            } catch (error) {
-                                console.error("Error sending message:", error);
-                                alert("Failed to send message. Please try again.");
-                            }
-                        }}
-                        onMarkMessagesAsRead={(contactId) => {
-                            console.log("Marking messages as read for:", contactId);
-                            // TODO: Implement mark as read functionality in ChatService
-                        }}
-                        preselectedContactId={null}
-                        clearPreselectedContact={() => { }}
-                        onNavigateToBilling={() => setActiveView("billing")}
-                        onMenuClick={() => setSidebarOpen(true)}
-                    />
-                );
+                // Open fullscreen chat automatically when messages view is selected
+                if (!showFullScreenChat) {
+                    setShowFullScreenChat(true);
+                }
+                return null;
             case "billing":
                 return (
                     <Billing
@@ -779,6 +758,44 @@ const PatientDashboard: React.FC = () => {
                                     alert(`${added.length} medication(s) added to your tracker!${skipped.length > 0 ? `\n${skipped.length} already existed and were skipped.` : ''}`);
                                 }
                             }}
+                        />
+                    )}
+
+                    {/* WhatsApp-style Full Screen Chat */}
+                    {showFullScreenChat && (
+                        <WhatsAppChatWindow
+                            currentUser={appUser}
+                            contacts={patient.doctors}
+                            messages={patient.chatMessages}
+                            onSendMessage={async (message) => {
+                                try {
+                                    await ChatService.sendMessage(
+                                        message.senderId,
+                                        message.recipientId,
+                                        message.text,
+                                        message.isUrgent
+                                    );
+                                    const updatedMessages = await ChatService.getAllConversations(user!.id);
+                                    setChatMessages(updatedMessages);
+                                } catch (error) {
+                                    console.error("Error sending message:", error);
+                                    alert("Failed to send message. Please try again.");
+                                }
+                            }}
+                            onMarkMessagesAsRead={(contactId) => {
+                                console.log("Marking messages as read for:", contactId);
+                            }}
+                            preselectedContactId={preselectedChatContactId}
+                            clearPreselectedContact={() => setPreselectedChatContactId(null)}
+                            onNavigateToBilling={() => {
+                                setShowFullScreenChat(false);
+                                setActiveView("billing");
+                            }}
+                            onClose={() => {
+                                setShowFullScreenChat(false);
+                                setActiveView("dashboard");
+                            }}
+                            isFullScreen={true}
                         />
                     )}
                 </div>

@@ -203,7 +203,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                     Enter your doctor's referral code to connect.
                 </p>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                     <input
                         type="text"
                         value={referralCode}
@@ -213,12 +213,12 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                             setLinkSuccess('');
                         }}
                         placeholder="DR-XXXX-XXXX"
-                        className="flex-1 px-4 py-3 bg-gray-50 dark:bg-[#8AC43C]/20 border-none rounded-xl font-mono text-base text-center tracking-wider focus:outline-none focus:ring-1 focus:ring-[#8AC43C] text-[#222222] dark:text-gray-100 placeholder-gray-400"
+                        className="flex-1 min-w-0 px-4 py-3 bg-gray-50 dark:bg-[#8AC43C]/20 border-none rounded-xl font-mono text-base text-center tracking-wider focus:outline-none focus:ring-1 focus:ring-[#8AC43C] text-[#222222] dark:text-gray-100 placeholder-gray-400"
                     />
                     <button
                         onClick={handleLinkDoctor}
                         disabled={isLinking || !referralCode.trim()}
-                        className="px-6 py-3 bg-[#8AC43C] text-white font-bold text-sm rounded-full hover:bg-[#7ab332] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-6 py-3 bg-[#8AC43C] text-white font-bold text-sm rounded-full hover:bg-[#7ab332] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
                     >
                         {isLinking ? 'Linking...' : 'Link Doctor'}
                     </button>
