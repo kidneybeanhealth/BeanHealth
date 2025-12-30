@@ -31,8 +31,10 @@ interface WhatsAppChatWindowProps {
   preselectedContactId: string | null;
   clearPreselectedContact: () => void;
   onNavigateToBilling: () => void;
+  onNavigateToDoctors?: () => void;
   onClose?: () => void;
   isFullScreen?: boolean;
+  linkedContactIds?: string[]; // IDs of contacts that are currently linked
 }
 
 const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
@@ -44,10 +46,13 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
   preselectedContactId,
   clearPreselectedContact,
   onNavigateToBilling,
+  onNavigateToDoctors,
   onClose,
-  isFullScreen = true
+  isFullScreen = true,
+  linkedContactIds
 }) => {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [input, setInput] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
   const [showCreditWarning, setShowCreditWarning] = useState(false);
@@ -100,11 +105,19 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
 
   // Store contacts in local state to ensure persistence
   const [localContacts, setLocalContacts] = useState<Contact[]>(contacts);
+  const [isContactsLoading, setIsContactsLoading] = useState(contacts.length === 0);
 
   // Update local contacts when prop changes
   useEffect(() => {
     if (contacts && contacts.length > 0) {
       setLocalContacts(contacts);
+      setIsContactsLoading(false);
+    } else if (contacts.length === 0) {
+      // Give it some time for contacts to load before showing empty state
+      const timeout = setTimeout(() => {
+        setIsContactsLoading(false);
+      }, 2000);
+      return () => clearTimeout(timeout);
     }
   }, [contacts]);
 
@@ -132,17 +145,37 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
     });
   }, [localContacts, contacts, messages, currentUser.id, currentUser.role]);
 
+  // Check if on mobile device - use state to handle initial render and window resize
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Check on mount
+    checkMobile();
+    
+    // Listen for resize
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   useEffect(() => {
     if (preselectedContactId) {
+      // User explicitly wants to chat with this contact
       setSelectedContactId(preselectedContactId);
       markConversationAsRead(preselectedContactId);
       clearPreselectedContact();
-    } else if (sortedContacts.length > 0 && !selectedContactId) {
+    } else if (!isMobile && sortedContacts.length > 0 && !selectedContactId) {
+      // Only auto-select first contact on desktop, not on mobile
+      // On mobile, we want to show the contact list first
       const firstContactId = sortedContacts[0].id;
       setSelectedContactId(firstContactId);
       markConversationAsRead(firstContactId);
     }
-  }, [preselectedContactId, clearPreselectedContact, sortedContacts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectedContactId, clearPreselectedContact, sortedContacts.length, isMobile]);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
@@ -438,6 +471,35 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
 
   const selectedContact = contacts.find(d => d.id === selectedContactId);
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
+  
+  // Check if the selected contact is linked (for patients viewing doctors)
+  const isSelectedContactLinked = useMemo(() => {
+    if (!selectedContactId || !isPatient) return true; // Doctors can always message
+    if (!linkedContactIds) return true; // If not provided, assume all are linked
+    return linkedContactIds.includes(selectedContactId);
+  }, [selectedContactId, linkedContactIds, isPatient]);
+
+  // Get referral code for the selected contact (doctors have referral codes)
+  const selectedContactReferralCode = useMemo(() => {
+    if (!selectedContact) return null;
+    // Access referral code - it's on Doctor type
+    const contact = selectedContact as any;
+    return contact.referralCode || contact.referral_code || null;
+  }, [selectedContact]);
+
+  // Handle copy referral code
+  const handleCopyReferralCode = async () => {
+    if (selectedContactReferralCode) {
+      try {
+        await navigator.clipboard.writeText(selectedContactReferralCode);
+        setCopiedCode(true);
+        showSuccessToast('Referral code copied!');
+        setTimeout(() => setCopiedCode(false), 2000);
+      } catch (err) {
+        showErrorToast('Failed to copy code');
+      }
+    }
+  };
 
   // Format time for messages
   const formatMessageTime = (timestamp: string) => {
@@ -553,10 +615,27 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
 
             {/* Contact List */}
             <div className="flex-1 overflow-y-auto">
-              {sortedContacts.map(contact => {
+              {isContactsLoading ? (
+                <div className="flex flex-col items-center justify-center h-full py-12">
+                  <div className="w-10 h-10 border-4 border-[#25D366] border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-sm text-[#667781] dark:text-[#8696A0]">Loading contacts...</p>
+                </div>
+              ) : sortedContacts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full py-12 px-4">
+                  <div className="w-16 h-16 bg-[#25D366]/10 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-[#25D366]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-base font-semibold text-[#111B21] dark:text-[#E9EDEF] mb-1 text-center">No Doctors Yet</h4>
+                  <p className="text-sm text-[#667781] dark:text-[#8696A0] text-center">Link with a doctor to start messaging</p>
+                </div>
+              ) : sortedContacts.map(contact => {
                 const unreadMessages = messages.filter(m => m.senderId === contact.id && m.recipientId === currentUser.id && !m.isRead);
                 const hasUnreadUrgent = unreadMessages.some(m => m.isUrgent);
                 const hasUnread = unreadMessages.length > 0;
+                // Check if this contact is linked (only for patients viewing doctors)
+                const isContactLinked = !isPatient || !linkedContactIds || linkedContactIds.includes(contact.id);
 
                 const contactMessages = messages.filter(m =>
                   (m.senderId === contact.id && m.recipientId === currentUser.id) ||
@@ -579,9 +658,16 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
 
                     <div className="flex-1 min-w-0 border-b border-gray-100 dark:border-[#2A3942] pb-2.5">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-[#111B21] dark:text-[#E9EDEF] truncate">
-                          {contact.name}
-                        </p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="text-sm font-medium text-[#111B21] dark:text-[#E9EDEF] truncate">
+                            {contact.name}
+                          </p>
+                          {!isContactLinked && (
+                            <span className="flex-shrink-0 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[9px] font-bold rounded uppercase tracking-wide">
+                              Unlinked
+                            </span>
+                          )}
+                        </div>
                         {lastMessage && (
                           <span className={`text-xs flex-shrink-0 ${hasUnread ? 'text-[#25D366] font-semibold' : 'text-[#667781] dark:text-[#8696A0]'
                             }`}>
@@ -629,9 +715,18 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
                   <InitialsAvatar contact={selectedContact} size="sm" showOnlineStatus />
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-[#111B21] dark:text-[#E9EDEF] truncate">{selectedContact.name}</h3>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-sm font-medium text-[#111B21] dark:text-[#E9EDEF] truncate">{selectedContact.name}</h3>
+                      {!isSelectedContactLinked && (
+                        <span className="flex-shrink-0 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[9px] font-bold rounded uppercase tracking-wide">
+                          Unlinked
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-[#667781] dark:text-[#8696A0]">
-                      {typingUsers.has(selectedContact.id) ? (
+                      {!isSelectedContactLinked ? (
+                        <span className="text-amber-600 dark:text-amber-400">Link to send messages</span>
+                      ) : typingUsers.has(selectedContact.id) ? (
                         <span className="text-[#25D366]">typing...</span>
                       ) : isConnected ? 'online' : 'offline'}
                     </p>
@@ -769,7 +864,8 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
                   )}
                 </div>
 
-                {/* Message Input - WhatsApp Style */}
+                {/* Message Input - WhatsApp Style OR Link Doctor Prompt */}
+                {isSelectedContactLinked ? (
                 <div className="px-3 sm:px-4 py-2 sm:py-3 bg-[#F0F2F5] dark:bg-[#202C33] border-t border-gray-100 dark:border-[#2A3942] flex-shrink-0">
                   {showCreditWarning && (
                     <div className="mb-2 sm:mb-3 p-2 sm:p-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-[11px] sm:text-xs rounded-lg border border-amber-200 dark:border-amber-800/50 flex items-center justify-between gap-2">
@@ -934,6 +1030,68 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
                     )}
                   </div>
                 </div>
+                ) : (
+                  /* Unlinked Doctor - Show Link Prompt */
+                  <div className="px-3 sm:px-4 py-3 sm:py-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-t border-amber-200 dark:border-amber-800/50 flex-shrink-0">
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      {/* Info Icon and Text */}
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                            Link with Dr. {selectedContact?.name?.split(' ').slice(0, 2).join(' ')}
+                          </p>
+                          <p className="text-xs text-amber-600 dark:text-amber-400 truncate">
+                            Connect to continue messaging
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Referral Code Display */}
+                      {selectedContactReferralCode ? (
+                        <div className="flex items-center gap-2">
+                          <div className="px-3 py-2 bg-white dark:bg-[#1a1a1a] rounded-lg border border-amber-200 dark:border-amber-700 flex items-center gap-2">
+                            <span className="font-mono text-sm font-bold text-amber-700 dark:text-amber-300 tracking-wider">
+                              {selectedContactReferralCode}
+                            </span>
+                            <button
+                              onClick={handleCopyReferralCode}
+                              className="p-1.5 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                              title="Copy code"
+                            >
+                              {copiedCode ? (
+                                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                          <button
+                            onClick={onNavigateToDoctors}
+                            className="px-4 py-2 bg-[#8AC43C] text-white text-sm font-bold rounded-full hover:bg-[#7ab332] active:scale-95 transition-all shadow-md whitespace-nowrap"
+                          >
+                            Link Doctor
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={onNavigateToDoctors}
+                          className="px-4 py-2 bg-[#8AC43C] text-white text-sm font-bold rounded-full hover:bg-[#7ab332] active:scale-95 transition-all shadow-md whitespace-nowrap"
+                        >
+                          Go to Doctors
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="hidden md:flex flex-col items-center justify-center h-full bg-[#F0F2F5] dark:bg-[#222E35]">

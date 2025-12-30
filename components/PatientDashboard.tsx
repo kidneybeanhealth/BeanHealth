@@ -58,6 +58,8 @@ const PatientDashboard: React.FC = () => {
     const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
     const [doctors, setDoctors] = useState<User[]>([]);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+    const [allChatContacts, setAllChatContacts] = useState<User[]>([]); // All contacts with chat history
+    const [linkedDoctorIds, setLinkedDoctorIds] = useState<string[]>([]); // IDs of currently linked doctors
 
     // State for fullscreen WhatsApp chat
     const [showFullScreenChat, setShowFullScreenChat] = useState(false);
@@ -176,6 +178,8 @@ const PatientDashboard: React.FC = () => {
             try {
                 const doctorsData = await PatientAdditionService.getPatientDoctors(user.id);
                 setDoctors(doctorsData);
+                // Track linked doctor IDs
+                setLinkedDoctorIds(doctorsData.map(d => d.id));
             } catch (error) {
                 console.error('Error fetching doctors:', error);
             }
@@ -184,20 +188,56 @@ const PatientDashboard: React.FC = () => {
         fetchDoctors();
     }, [user?.id]);
 
-    // Fetch chat messages
+    // Fetch chat messages and build chat contacts list (including unlinked doctors)
     useEffect(() => {
-        const fetchMessages = async () => {
+        const fetchMessagesAndContacts = async () => {
             if (!user?.id) return;
             try {
                 const messagesData = await ChatService.getAllConversations(user.id);
                 setChatMessages(messagesData);
+                
+                // Get unique contact IDs from chat messages (other than current user)
+                const contactIds = new Set<string>();
+                messagesData.forEach(msg => {
+                    if (msg.senderId !== user.id) contactIds.add(msg.senderId);
+                    if (msg.recipientId !== user.id) contactIds.add(msg.recipientId);
+                });
+                
+                // Fetch contact details for IDs not in the linked doctors list
+                const unlinkedIds = Array.from(contactIds).filter(id => !doctors.some(d => d.id === id));
+                
+                if (unlinkedIds.length > 0) {
+                    // Fetch user details for unlinked contacts
+                    const { supabase } = await import('../lib/supabase');
+                    const { data: unlinkedContacts } = await supabase
+                        .from('users')
+                        .select('id, name, email, specialty, referral_code, role')
+                        .in('id', unlinkedIds)
+                        .eq('role', 'doctor');
+                    
+                    if (unlinkedContacts && unlinkedContacts.length > 0) {
+                        // Combine linked doctors with unlinked contacts that have chat history
+                        const allContacts = [
+                            ...doctors,
+                            ...unlinkedContacts.map(c => ({
+                                ...c,
+                                referralCode: c.referral_code,
+                            } as User))
+                        ];
+                        setAllChatContacts(allContacts);
+                    } else {
+                        setAllChatContacts(doctors);
+                    }
+                } else {
+                    setAllChatContacts(doctors);
+                }
             } catch (error) {
                 console.error('Error fetching messages:', error);
             }
         };
 
-        fetchMessages();
-    }, [user?.id]);
+        fetchMessagesAndContacts();
+    }, [user?.id, doctors]);
 
     // Convert auth user to app user format
     const appUser = {
@@ -646,6 +686,8 @@ const PatientDashboard: React.FC = () => {
             case "messages":
                 // Open fullscreen chat automatically when messages view is selected
                 if (!showFullScreenChat) {
+                    // Clear preselected contact when opening from navbar to show contact list
+                    setPreselectedChatContactId(null);
                     setShowFullScreenChat(true);
                 }
                 return null;
@@ -764,9 +806,15 @@ const PatientDashboard: React.FC = () => {
                     {/* WhatsApp-style Full Screen Chat */}
                     {showFullScreenChat && (
                         <WhatsAppChatWindow
+                            key={preselectedChatContactId ? `chat-${preselectedChatContactId}` : 'chat-list'}
                             currentUser={appUser}
-                            contacts={patient.doctors}
+                            contacts={allChatContacts.length > 0 ? allChatContacts.map(d => ({
+                                ...d,
+                                role: 'doctor' as const,
+                                specialty: d.specialty || 'General Practice'
+                            })) : patient.doctors}
                             messages={patient.chatMessages}
+                            linkedContactIds={linkedDoctorIds}
                             onSendMessage={async (message) => {
                                 try {
                                     await ChatService.sendMessage(
@@ -790,6 +838,10 @@ const PatientDashboard: React.FC = () => {
                             onNavigateToBilling={() => {
                                 setShowFullScreenChat(false);
                                 setActiveView("billing");
+                            }}
+                            onNavigateToDoctors={() => {
+                                setShowFullScreenChat(false);
+                                setActiveView("doctors");
                             }}
                             onClose={() => {
                                 setShowFullScreenChat(false);
