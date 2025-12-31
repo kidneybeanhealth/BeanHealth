@@ -250,6 +250,15 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                                     label="SpO2"
                                     unit="%"
                                 />
+
+                                <VerticalScrollPicker
+                                    value={parseInt(editVitals.temperature) || 98}
+                                    min={94}
+                                    max={105}
+                                    onChange={(val) => setEditVitals({ ...editVitals, temperature: val.toString() })}
+                                    label="Temp"
+                                    unit="°F"
+                                />
                             </div>
                         </div>
 
@@ -275,6 +284,12 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                                     </span>
                                     <span className="text-xs text-gray-500 ml-1">%</span>
                                 </div>
+                                <div>
+                                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                                        {editVitals.temperature || '—'}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-1">°F</span>
+                                </div>
                             </div>
                         </div>
 
@@ -298,7 +313,16 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                         <div className="flex items-center justify-between mb-2 sm:mb-3">
                             <h3 className="text-base sm:text-lg font-bold text-[#222222] dark:text-white">Vital Signs</h3>
                             <button
-                                onClick={() => setIsEditingVitals(true)}
+                                onClick={() => {
+                                    setEditVitals({
+                                        systolic: vitals.bloodPressure?.systolic.toString() || '',
+                                        diastolic: vitals.bloodPressure?.diastolic.toString() || '',
+                                        heartRate: vitals.heartRate?.toString() || '',
+                                        spo2: vitals.spo2?.toString() || '',
+                                        temperature: vitals.temperature?.toString() || ''
+                                    });
+                                    setIsEditingVitals(true);
+                                }}
                                 className="min-w-[70px] sm:min-w-[80px] px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold bg-[#8AC43C] text-white dark:text-[#222222] rounded-full hover:bg-[#7ab332] transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-[#8AC43C]/30 active:scale-95 active:shadow-none"
                             >
                                 Update
