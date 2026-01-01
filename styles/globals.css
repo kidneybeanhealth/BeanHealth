@@ -638,3 +638,8 @@ a:hover .bg-gradient-to-r,
 a:hover .bg-gradient-to-br {
   background-image: none !important;
 }
+
+.mask-gradient-right {
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+}

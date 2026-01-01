@@ -13,7 +13,7 @@ import { LogoutIcon } from './icons/LogoutIcon';
 import { LogoIcon } from './icons/LogoIcon';
 import Messages from './Messages';
 import WhatsAppChatWindow from './WhatsAppChatWindow';
-import DoctorPatientView from './DoctorPatientView';
+import DoctorPatientView from './DoctorPatientViewRedesign';
 import AlertSummaryWidget from './AlertSummaryWidget';
 import AlertsPage from './AlertsPage';
 import { UserGroupIcon } from './icons/UserGroupIcon';
@@ -647,15 +647,15 @@ const DoctorDashboardMain: React.FC = () => {
         />
 
         {/* Main Content Area */}
-        <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)] pb-24 md:pb-0' : 'py-10 pb-28 md:pb-10'}`}>
-          <div className={`${activeView === 'messages' ? 'h-full' : 'max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12'}`}>
+        <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)] pb-24 md:pb-0' : activeView === 'alerts' ? 'pb-24 md:pb-0' : 'py-10 pb-28 md:pb-10'}`}>
+          <div className={`${activeView === 'messages' ? 'h-full' : activeView === 'alerts' ? 'w-full' : 'max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12'}`}>
             {activeView === 'dashboard' && renderDashboard()}
 
             {activeView === 'monitoring' && renderMonitoring()}
 
             {activeView === 'alerts' && renderAlerts()}
 
-            {activeView === 'messages' && !showFullScreenChat && setShowFullScreenChat(true)}
+            {activeView === 'messages' && !showFullScreenChat && (() => { setShowFullScreenChat(true); return null; })()}
 
             {activeView === 'patient-detail' && selectedPatient && (
               <div className="animate-slide-up min-h-[80vh]">
@@ -667,7 +667,7 @@ const DoctorDashboardMain: React.FC = () => {
             )}
           </div>
         </main>
-        <DoctorMobileNavWrapper activeView={activeView} setActiveView={setActiveView} />
+        <DoctorMobileNavWrapper activeView={activeView} setActiveView={setActiveView} alertCounts={alertCounts} />
 
         {/* WhatsApp-style Full Screen Chat */}
         {showFullScreenChat && (() => {
@@ -739,7 +739,8 @@ const DoctorDashboardMain: React.FC = () => {
 const DoctorMobileNavWrapper: React.FC<{
   activeView: DoctorView;
   setActiveView: (view: DoctorView) => void;
-}> = ({ activeView, setActiveView }) => {
+  alertCounts: { total: number; urgent: number };
+}> = ({ activeView, setActiveView, alertCounts }) => {
   const { unreadMessageCount, hasUrgentMessages } = useNotifications();
   return (
     <DoctorMobileBottomNav
@@ -747,6 +748,8 @@ const DoctorMobileNavWrapper: React.FC<{
       setActiveView={setActiveView}
       unreadMessageCount={unreadMessageCount}
       hasUrgentMessages={hasUrgentMessages}
+      alertCount={alertCounts.total}
+      hasUrgentAlerts={alertCounts.urgent > 0}
     />
   );
 };
