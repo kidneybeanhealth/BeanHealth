@@ -12,6 +12,7 @@ import ThemeToggle from './ThemeToggle';
 import { LogoutIcon } from './icons/LogoutIcon';
 import { LogoIcon } from './icons/LogoIcon';
 import Messages from './Messages';
+import WhatsAppChatWindow from './WhatsAppChatWindow';
 import DoctorPatientView from './DoctorPatientView';
 import AlertSummaryWidget from './AlertSummaryWidget';
 import AlertsPage from './AlertsPage';
@@ -22,6 +23,7 @@ import DoctorReferralCard from './DoctorReferralCard';
 import DoctorMobileBottomNav, { DoctorView } from './DoctorMobileBottomNav';
 import type { AlertCounts } from '../types/alerts';
 import ProfileModal from './ProfileModal';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const DoctorDashboardMain: React.FC = () => {
   const { user, profile, signOut } = useAuth();
@@ -31,6 +33,24 @@ const DoctorDashboardMain: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<DoctorView>('dashboard');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  // State for fullscreen WhatsApp chat
+  const [showFullScreenChat, setShowFullScreenChat] = useState(false);
+
+  // Dynamic document title based on view
+  const getViewTitle = () => {
+    switch (activeView) {
+      case 'dashboard': return 'Doctor Portal';
+      case 'monitoring': return 'Patient Monitoring';
+      case 'alerts': return 'Clinical Alerts';
+      case 'messages': return 'Messages';
+      case 'patient-detail': return selectedPatient ? `Monitoring: ${selectedPatient.name}` : 'Patient Detail';
+      default: return 'Doctor Portal';
+    }
+  };
+
+  useDocumentTitle(getViewTitle());
+
   const [alertCounts, setAlertCounts] = useState<AlertCounts>({ total: 0, urgent: 0, review: 0, info: 0, unacknowledged: 0 });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -167,7 +187,7 @@ const DoctorDashboardMain: React.FC = () => {
 
     return (
       <>
-        <span className={`text-white text-[10px] px-1.5 py-0.5 rounded-full ${hasUrgentMessages ? 'bg-red-500 animate-pulse' : 'bg-[#8AC43C]'}`}>
+        <span className={`text-white text-[10px] px-1.5 py-0.5 rounded-full ${hasUrgentMessages ? 'bg-red-500 animate-pulse' : 'bg-secondary-500'}`}>
           {count}
         </span>
         {hasUrgentMessages && (
@@ -191,7 +211,7 @@ const DoctorDashboardMain: React.FC = () => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">Messages</h3>
-              <MessagesIcon className="w-6 h-6 text-[#8AC43C]" />
+              <MessagesIcon className="w-6 h-6 text-secondary-500" />
             </div>
             <span className="text-4xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{count}</span>
           </div>
@@ -223,7 +243,7 @@ const DoctorDashboardMain: React.FC = () => {
         <div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-[#222222] dark:text-white tracking-tight leading-tight">
             Welcome back, <br />
-            <span className="text-[#8AC43C]">Dr. {profile?.name || user?.email?.split('@')[0] || ''}</span>
+            <span className="text-secondary-500">Dr. {profile?.name || user?.email?.split('@')[0] || ''}</span>
           </h1>
         </div>
         <div className="flex items-center">
@@ -242,7 +262,7 @@ const DoctorDashboardMain: React.FC = () => {
           value={loading ? '...' : patients.length}
           subtext="Currently active"
           icon={UserGroupIcon}
-          colorClass="text-[#8AC43C]"
+          colorClass="text-secondary-500"
         />
         <MessagesStatCard localCount={localUnreadCount} />
         <StatCard
@@ -250,7 +270,7 @@ const DoctorDashboardMain: React.FC = () => {
           value="0"
           subtext="Pending tasks"
           icon={DocumentIcon}
-          colorClass="text-[#8AC43C]"
+          colorClass="text-secondary-500"
         />
       </div>
 
@@ -259,7 +279,7 @@ const DoctorDashboardMain: React.FC = () => {
         <div className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-[#222222] dark:text-white">Recent Patients</h2>
-            <button className="text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-[#8AC43C] dark:hover:text-[#8AC43C] transition-colors">
+            <button className="text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-secondary-500 dark:hover:text-secondary-500 transition-colors">
               View all
             </button>
           </div>
@@ -267,7 +287,7 @@ const DoctorDashboardMain: React.FC = () => {
           <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800 overflow-hidden">
             {loading ? (
               <div className="p-12 text-center">
-                <div className="w-8 h-8 border-2 border-[#8AC43C] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <div className="w-8 h-8 border-2 border-secondary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-[#717171]">Loading library...</p>
               </div>
             ) : patients.length === 0 ? (
@@ -284,7 +304,7 @@ const DoctorDashboardMain: React.FC = () => {
                   <div
                     key={patient.id}
                     onClick={() => handleViewPatient(patient)}
-                    className={`group flex items-center justify-between p-5 cursor-pointer hover:bg-[#F7F7F7] dark:hover:bg-[#2c2c2c] transition-colors ${idx !== patients.length - 1 ? 'border-b border-gray-100 dark:border-gray-800' : ''
+                    className={`group flex items-center justify-between p-5 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#2c2c2c] transition-colors ${idx !== patients.length - 1 ? 'border-b border-gray-100 dark:border-gray-800' : ''
                       }`}
                   >
                     <div className="flex items-center gap-4">
@@ -292,7 +312,7 @@ const DoctorDashboardMain: React.FC = () => {
                         {getInitials(patient.name, patient.email)}
                       </div>
                       <div>
-                        <h4 className="font-bold text-[#222222] dark:text-white text-base group-hover:text-[#8AC43C] transition-colors">
+                        <h4 className="font-bold text-[#222222] dark:text-white text-base group-hover:text-secondary-500 transition-colors">
                           {patient.name || patient.email}
                         </h4>
                         <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium">
@@ -513,7 +533,7 @@ const DoctorDashboardMain: React.FC = () => {
 
   return (
     <NotificationProvider userId={user?.id || ''} activeView={activeView} userRole="doctor">
-      <div className="min-h-screen bg-[#F7F7F7] dark:bg-black font-sans text-[#222222] selection:bg-[#8AC43C] selection:text-white">
+      <div className="min-h-screen bg-gray-100 dark:bg-black font-sans text-[#222222] selection:bg-secondary-500 selection:text-white">
 
         {/* Sticky Header */}
         <div className={`sticky top-0 z-30 transition-all duration-300 bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
@@ -530,7 +550,7 @@ const DoctorDashboardMain: React.FC = () => {
                 <div className="flex flex-col justify-center">
                   <h2 className="text-lg md:text-xl font-bold leading-none tracking-tight">
                     <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
-                    <span className="text-[#8AC43C]">Health</span>
+                    <span className="text-secondary-500">Health</span>
                   </h2>
                   <p className="text-[9px] md:text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-0.5">DOCTOR PORTAL</p>
                 </div>
@@ -596,11 +616,11 @@ const DoctorDashboardMain: React.FC = () => {
                   aria-label="View Profile"
                 >
                   <div className="relative z-10">
-                    <div className="h-9 w-9 md:h-10 md:w-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black font-bold text-xs md:text-sm shadow-md ring-2 ring-white dark:ring-black transition-colors duration-300 group-hover:ring-[#8AC43C]">
+                    <div className="h-9 w-9 md:h-10 md:w-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black font-bold text-xs md:text-sm shadow-md ring-2 ring-white dark:ring-black transition-colors duration-300 group-hover:ring-secondary-500">
                       {getInitials(profile?.name || user?.email || 'Dr', user?.email || '')}
                     </div>
                     {/* Online indicator */}
-                    <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-black bg-green-500"></span>
+                    <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-black bg-secondary-500"></span>
                   </div>
 
                   <div className="max-w-0 group-hover:max-w-[100px] overflow-hidden transition-all duration-500 ease-out opacity-0 group-hover:opacity-100">
@@ -635,11 +655,7 @@ const DoctorDashboardMain: React.FC = () => {
 
             {activeView === 'alerts' && renderAlerts()}
 
-            {activeView === 'messages' && (
-              <div className="h-full px-4 pt-4">
-                {renderMessages()}
-              </div>
-            )}
+            {activeView === 'messages' && !showFullScreenChat && setShowFullScreenChat(true)}
 
             {activeView === 'patient-detail' && selectedPatient && (
               <div className="animate-slide-up min-h-[80vh]">
@@ -652,6 +668,68 @@ const DoctorDashboardMain: React.FC = () => {
           </div>
         </main>
         <DoctorMobileNavWrapper activeView={activeView} setActiveView={setActiveView} />
+
+        {/* WhatsApp-style Full Screen Chat */}
+        {showFullScreenChat && (() => {
+          const patientContacts = patients.map(patient => ({
+            ...patient,
+            role: 'patient' as const,
+            dateOfBirth: patient.dateOfBirth || patient.date_of_birth || '1990-01-01',
+            condition: patient.condition || 'General Health',
+            subscriptionTier: (patient.subscriptionTier || patient.subscription_tier || 'FreeTrial') as 'FreeTrial' | 'Paid',
+            urgentCredits: patient.urgentCredits || patient.urgent_credits || 0,
+            vitals: {
+              bloodPressure: { value: '', unit: 'mmHg', trend: 'stable' as const },
+              heartRate: { value: '', unit: 'bpm', trend: 'stable' as const },
+              temperature: { value: '', unit: '°F', trend: 'stable' as const }
+            },
+            vitalsHistory: [],
+            medications: [],
+            records: [],
+            doctors: [],
+            chatMessages: messages.filter(m =>
+              (m.senderId === patient.id && m.recipientId === user?.id) ||
+              (m.senderId === user?.id && m.recipientId === patient.id)
+            ),
+            aiSummary: ''
+          }));
+
+          const currentUserContact = user ? {
+            ...user,
+            name: profile?.name || user.email || 'Doctor',
+            email: user.email!,
+            role: 'doctor' as const,
+            avatarUrl: null, avatar_url: null,
+            specialty: profile?.specialty || null,
+            dateOfBirth: profile?.date_of_birth || null, date_of_birth: profile?.date_of_birth || null,
+            condition: null, subscriptionTier: null, subscription_tier: null,
+            urgentCredits: null, urgent_credits: null,
+            trialEndsAt: null, trial_ends_at: null,
+            notes: null,
+            created_at: profile?.created_at || null,
+            updated_at: profile?.updated_at || null
+          } : null;
+
+          if (!currentUserContact) return null;
+
+          return (
+            <WhatsAppChatWindow
+              currentUser={currentUserContact}
+              contacts={patientContacts}
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              onMarkMessagesAsRead={handleMarkMessagesAsRead}
+              preselectedContactId={null}
+              clearPreselectedContact={() => { }}
+              onNavigateToBilling={() => { }}
+              onClose={() => {
+                setShowFullScreenChat(false);
+                setActiveView('dashboard');
+              }}
+              isFullScreen={true}
+            />
+          );
+        })()}
       </div>
     </NotificationProvider>
   );

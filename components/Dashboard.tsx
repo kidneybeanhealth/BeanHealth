@@ -108,11 +108,11 @@ const VitalCard: React.FC<{
   };
 
   return (
-    <div className="group relative bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300 border border-transparent dark:border-gray-800">
-      <div className="flex flex-col h-full justify-between gap-4">
+    <div className="group relative bg-white dark:bg-[#1e1e1e] p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300 border border-transparent dark:border-gray-800">
+      <div className="flex flex-col h-full justify-between gap-3 sm:gap-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">{label}</h3>
-          <div className={`p-2 rounded-full bg-gray-50 dark:bg-gray-800 ${colorClass}`}>
+          <h3 className="text-[10px] sm:text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">{label}</h3>
+          <div className={`p-1.5 sm:p-2 rounded-full bg-gray-50 dark:bg-gray-800 ${colorClass}`}>
             {icon}
           </div>
         </div>
@@ -140,9 +140,9 @@ const VitalCard: React.FC<{
             />
           ) : (
             <div className="flex items-baseline gap-1 group/value cursor-pointer" onClick={() => setIsEditing(true)}>
-              <span className="text-4xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{value || '—'}</span>
-              <span className="text-sm font-medium text-[#717171] dark:text-[#888888]">{unit}</span>
-              <EditIcon className="h-4 w-4 text-gray-300 opacity-0 group-hover/value:opacity-100 transition-opacity ml-2" />
+              <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{value || '—'}</span>
+              <span className="text-xs sm:text-sm font-medium text-[#717171] dark:text-[#888888]">{unit}</span>
+              <EditIcon className="h-3 w-3 sm:h-4 sm:w-4 text-gray-300 opacity-0 group-hover/value:opacity-100 transition-opacity ml-1 sm:ml-2" />
             </div>
           )}
         </div>
@@ -175,18 +175,18 @@ const Dashboard: React.FC<DashboardProps> = ({
 }) => {
 
   return (
-    <div className="space-y-10 pb-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+    <div className="space-y-6 sm:space-y-8 md:space-y-10 pb-8 sm:pb-12 animate-fade-in max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-4 sm:pt-6">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
         <div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-[#222222] dark:text-white tracking-tight leading-tight">
-            Hello, <br />
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-[#222222] dark:text-white tracking-tight leading-tight">
+            Hello, <br className="sm:hidden" />
             <span className="text-[#3A2524] dark:text-[#e6b8a3]">{patient.name}</span>
           </h1>
         </div>
         <div className="flex items-center">
-          <div className="bg-white dark:bg-[#1e1e1e] px-5 py-2.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-none border border-gray-100 dark:border-gray-800">
-            <span className="text-sm font-semibold text-[#222222] dark:text-[#e0e0e0]">
+          <div className="bg-white dark:bg-[#1e1e1e] px-3 sm:px-5 py-2 sm:py-2.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-none border border-gray-100 dark:border-gray-800">
+            <span className="text-xs sm:text-sm font-semibold text-[#222222] dark:text-[#e0e0e0]">
               Today is {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </span>
           </div>
@@ -194,7 +194,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Vitals Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
         <VitalCard
           label="Blood Pressure"
           value={patient.vitals.bloodPressure.value}
@@ -230,13 +230,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Medications Section */}
       <div>
-        <div className="flex items-center justify-between mb-6 px-1">
-          <h2 className="text-2xl font-bold text-[#222222] dark:text-white">Active Medications</h2>
-          <button className="text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-[#3A2524] transition-colors">
+        <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[#222222] dark:text-white">Active Medications</h2>
+          <button className="text-xs sm:text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-[#3A2524] transition-colors">
             View History
           </button>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
           <MedicationCard
             medications={patient.medications}
             onAdd={onMedicationAdd}

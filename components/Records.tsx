@@ -43,9 +43,19 @@ const Records: React.FC<RecordsProps> = ({ records, onRemoveRecord }) => {
   const handleRemoveClick = async (recordId: string) => {
     if (window.confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
       setDeletingRecordId(recordId);
+      // Wait for animation
       await new Promise(resolve => setTimeout(resolve, 500));
-      onRemoveRecord(recordId);
-      setDeletingRecordId(null);
+
+      try {
+        // Await the removal from parent to ensure state updates before we reset local state
+        await onRemoveRecord(recordId);
+      } catch (error) {
+        console.error("Error removing record", error);
+        // Only reset if error, otherwise component unmounts
+        setDeletingRecordId(null);
+      }
+      // Note: We don't strictly need to setDeletingRecordId(null) on success 
+      // because the record will be removed from the 'records' prop, causing unmount.
     }
   };
 

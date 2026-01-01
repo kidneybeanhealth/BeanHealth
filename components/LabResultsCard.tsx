@@ -139,12 +139,12 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
     const secondaryTests = availableLabTypes.slice(4).map(lt => lt.code);
 
     return (
-        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xl font-bold text-[#222222] dark:text-white">Lab Results</h3>
+        <div className="bg-white dark:bg-[#8AC43C]/[0.08] backdrop-blur-md p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_0_15px_rgba(138,196,60,0.1)] transition-all duration-300 border border-transparent dark:border-[#8AC43C]/20">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <h3 className="text-base sm:text-lg md:text-xl font-bold text-[#222222] dark:text-white">Lab Results</h3>
                 <button
                     onClick={() => setIsAddingResult(true)}
-                    className="min-w-[100px] px-4 py-2 text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:opacity-90 transition-all shadow-sm active:scale-95"
+                    className="min-w-[80px] sm:min-w-[100px] px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold text-white dark:text-[#222222] bg-[#8AC43C] rounded-full hover:opacity-90 transition-all shadow-sm active:scale-95"
                 >
                     + Add Result
                 </button>
@@ -152,15 +152,15 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
 
             {/* Add Result Modal */}
             {isAddingResult && (
-                <div className="mb-8 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-none">
-                    <h4 className="text-lg font-bold text-[#222222] dark:text-white mb-6">Add New Lab Result</h4>
-                    <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="mb-4 sm:mb-6 md:mb-8 p-3 sm:p-4 md:p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl sm:rounded-2xl border-none">
+                    <h4 className="text-sm sm:text-base md:text-lg font-bold text-[#222222] dark:text-white mb-3 sm:mb-4 md:mb-6">Add New Lab Result</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Type</label>
+                            <label className="block text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">Test Type</label>
                             <select
                                 value={newResult.testType}
                                 onChange={(e) => setNewResult({ ...newResult, testType: e.target.value as LabTestType })}
-                                className="w-full px-4 py-3 bg-white dark:bg-[#1e1e1e] border-none rounded-xl text-base font-semibold text-[#222222] dark:text-white shadow-sm focus:ring-2 focus:ring-[#222222] transition-all"
+                                className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 bg-white dark:bg-[#1e1e1e] border-none rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base font-semibold text-[#222222] dark:text-white shadow-sm focus:ring-2 focus:ring-[#222222] transition-all"
                             >
                                 {Object.keys(latestResults).map((testType) => (
                                     <option key={testType} value={testType}>
@@ -170,36 +170,36 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Value</label>
+                            <label className="block text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">Value</label>
                             <input
                                 type="number"
                                 step="0.01"
                                 value={newResult.value}
                                 onChange={(e) => setNewResult({ ...newResult, value: e.target.value })}
                                 placeholder="Enter value"
-                                className="w-full px-4 py-3 bg-white dark:bg-[#1e1e1e] border-none rounded-xl text-base font-semibold text-[#222222] dark:text-white shadow-sm focus:ring-2 focus:ring-[#222222] transition-all"
+                                className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 bg-white dark:bg-[#1e1e1e] border-none rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base font-semibold text-[#222222] dark:text-white shadow-sm focus:ring-2 focus:ring-[#222222] transition-all"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Date</label>
+                            <label className="block text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">Test Date</label>
                             <input
                                 type="date"
                                 value={newResult.testDate}
                                 onChange={(e) => setNewResult({ ...newResult, testDate: e.target.value })}
-                                className="w-full px-4 py-3 bg-white dark:bg-[#1e1e1e] border-none rounded-xl text-base font-semibold text-[#222222] dark:text-white shadow-sm focus:ring-2 focus:ring-[#222222] transition-all"
+                                className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 bg-white dark:bg-[#1e1e1e] border-none rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base font-semibold text-[#222222] dark:text-white shadow-sm focus:ring-2 focus:ring-[#222222] transition-all"
                             />
                         </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 sm:gap-3">
                         <button
                             onClick={handleAddResult}
-                            className="flex-1 min-w-[100px] px-4 py-2.5 bg-[#8AC43C] hover:bg-[#7ab332] text-white dark:text-[#222222] text-xs font-bold rounded-full transition-colors"
+                            className="flex-1 min-w-[80px] sm:min-w-[100px] px-3 sm:px-4 py-2 sm:py-2.5 bg-[#8AC43C] hover:bg-[#7ab332] text-white dark:text-[#222222] text-[10px] sm:text-xs font-bold rounded-full transition-colors"
                         >
                             Add Result
                         </button>
                         <button
                             onClick={() => setIsAddingResult(false)}
-                            className="flex-1 min-w-[100px] px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-[#222222] dark:text-white text-xs font-bold rounded-full transition-colors"
+                            className="flex-1 min-w-[80px] sm:min-w-[100px] px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-[#222222] dark:text-white text-[10px] sm:text-xs font-bold rounded-full transition-colors"
                         >
                             Cancel
                         </button>
@@ -208,7 +208,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
             )}
 
             {/* Key Lab Results Grid */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6">
                 {keyTests.map((testType) => {
                     const result = latestResults[testType];
                     const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-100 dark:bg-[#8AC43C]/20', text: 'text-gray-500 dark:text-[#a0a0a0]', border: 'border-gray-200 dark:border-[#8AC43C]/10' };
@@ -217,24 +217,24 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                     return (
                         <div
                             key={testType}
-                            className={`group p-5 rounded-2xl border-none ${colors.bg} cursor-pointer hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden`}
+                            className={`group p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border-none ${colors.bg} cursor-pointer hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden`}
                             onClick={() => result && handleViewTrend(testType)}
                         >
-                            <div className="flex items-start justify-between mb-3">
-                                <h4 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">{getTestName(testType)}</h4>
-                                <span className="text-lg transform group-hover:scale-110 transition-transform">{icon}</span>
+                            <div className="flex items-start justify-between mb-1.5 sm:mb-2 md:mb-3">
+                                <h4 className="text-[10px] sm:text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">{getTestName(testType)}</h4>
+                                <span className="text-sm sm:text-base md:text-lg transform group-hover:scale-110 transition-transform flex-shrink-0">{icon}</span>
                             </div>
                             {result ? (
                                 <>
-                                    <p className={`text-2xl font-bold ${colors.text}`}>
-                                        {result.value} <span className="text-sm font-normal">{result.unit}</span>
+                                    <p className={`text-base sm:text-lg md:text-2xl font-bold ${colors.text}`}>
+                                        {result.value} <span className="text-[10px] sm:text-xs md:text-sm font-normal">{result.unit}</span>
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1">
                                         {new Date(result.testDate).toLocaleDateString()}
                                     </p>
                                 </>
                             ) : (
-                                <p className="text-sm text-gray-500 dark:text-gray-400 italic">No data</p>
+                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic">No data</p>
                             )}
                         </div>
                     );
@@ -243,7 +243,7 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
 
             {/* Secondary Labs */}
             {secondaryTests.length > 0 && (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                     {secondaryTests.map((testType) => {
                         const result = latestResults[testType];
                         const colors = result ? getStatusColorClasses(result.status) : { bg: 'bg-gray-50 dark:bg-[#8AC43C]/20', text: 'text-gray-500 dark:text-[#a0a0a0]', border: 'border-gray-200 dark:border-[#8AC43C]/10' };
@@ -252,19 +252,19 @@ const LabResultsCard: React.FC<LabResultsCardProps> = ({ patientId }) => {
                         return (
                             <div
                                 key={testType}
-                                className={`p-3 rounded-lg border ${colors.border} ${colors.bg} cursor-pointer hover:scale-105 transition-transform`}
+                                className={`p-2 sm:p-3 rounded-lg sm:rounded-xl border ${colors.border} ${colors.bg} cursor-pointer hover:scale-105 transition-transform`}
                                 onClick={() => result && handleViewTrend(testType as LabTestType)}
                             >
-                                <div className="flex items-center justify-between mb-1">
-                                    <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300">{getTestName(testType as LabTestType)}</h5>
-                                    <span className="text-sm">{icon}</span>
+                                <div className="flex items-center justify-between mb-0.5 sm:mb-1">
+                                    <h5 className="text-[10px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{getTestName(testType as LabTestType)}</h5>
+                                    <span className="text-xs sm:text-sm flex-shrink-0 ml-1">{icon}</span>
                                 </div>
                                 {result ? (
-                                    <p className={`text-lg font-bold ${colors.text}`}>
-                                        {result.value} <span className="text-xs">{result.unit}</span>
+                                    <p className={`text-sm sm:text-base md:text-lg font-bold ${colors.text}`}>
+                                        {result.value} <span className="text-[9px] sm:text-xs">{result.unit}</span>
                                     </p>
                                 ) : (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 italic">No data</p>
+                                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 italic">No data</p>
                                 )}
                             </div>
                         );

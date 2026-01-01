@@ -10,6 +10,7 @@ import CKDDashboard from "./CKDDashboard";
 import Records from "./Records";
 import Upload from "./Upload";
 import Messages from "./Messages";
+import WhatsAppChatWindow from "./WhatsAppChatWindow";
 import Billing from "./Billing";
 import DoctorsPage from "./DoctorsPage";
 import ExtractedMedicationsModal from "./ExtractedMedicationsModal";
@@ -23,11 +24,27 @@ import { PatientAdditionService } from "../services/patientInvitationService";
 import { ChatService } from "../services/chatService";
 import { VitalsService } from "../services/dataService";
 import { CaseDetailsService } from "../services/caseDetailsService";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 
 const PatientDashboard: React.FC = () => {
     const { user, profile, signOut } = useAuth();
     const [activeView, setActiveView] = useState<View>("dashboard");
+
+    // Dynamic document title based on view
+    const getViewTitle = () => {
+        switch (activeView) {
+            case "dashboard": return "Patient Portal";
+            case "records": return "Medical Records";
+            case "upload": return "Upload Record";
+            case "messages": return "Messages";
+            case "billing": return "Billing & Plan";
+            case "doctors": return "My Doctors";
+            default: return "Patient Portal";
+        }
+    };
+
+    useDocumentTitle(getViewTitle());
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // State management
@@ -41,6 +58,12 @@ const PatientDashboard: React.FC = () => {
     const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
     const [doctors, setDoctors] = useState<User[]>([]);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+    const [allChatContacts, setAllChatContacts] = useState<User[]>([]); // All contacts with chat history
+    const [linkedDoctorIds, setLinkedDoctorIds] = useState<string[]>([]); // IDs of currently linked doctors
+
+    // State for fullscreen WhatsApp chat
+    const [showFullScreenChat, setShowFullScreenChat] = useState(false);
+    const [preselectedChatContactId, setPreselectedChatContactId] = useState<string | null>(null);
 
     const [aiSummary, setAiSummary] = useState(
         "Upload your first medical record to get an AI-powered health summary."
@@ -155,6 +178,8 @@ const PatientDashboard: React.FC = () => {
             try {
                 const doctorsData = await PatientAdditionService.getPatientDoctors(user.id);
                 setDoctors(doctorsData);
+                // Track linked doctor IDs
+                setLinkedDoctorIds(doctorsData.map(d => d.id));
             } catch (error) {
                 console.error('Error fetching doctors:', error);
             }
@@ -163,20 +188,56 @@ const PatientDashboard: React.FC = () => {
         fetchDoctors();
     }, [user?.id]);
 
-    // Fetch chat messages
+    // Fetch chat messages and build chat contacts list (including unlinked doctors)
     useEffect(() => {
-        const fetchMessages = async () => {
+        const fetchMessagesAndContacts = async () => {
             if (!user?.id) return;
             try {
                 const messagesData = await ChatService.getAllConversations(user.id);
                 setChatMessages(messagesData);
+                
+                // Get unique contact IDs from chat messages (other than current user)
+                const contactIds = new Set<string>();
+                messagesData.forEach(msg => {
+                    if (msg.senderId !== user.id) contactIds.add(msg.senderId);
+                    if (msg.recipientId !== user.id) contactIds.add(msg.recipientId);
+                });
+                
+                // Fetch contact details for IDs not in the linked doctors list
+                const unlinkedIds = Array.from(contactIds).filter(id => !doctors.some(d => d.id === id));
+                
+                if (unlinkedIds.length > 0) {
+                    // Fetch user details for unlinked contacts
+                    const { supabase } = await import('../lib/supabase');
+                    const { data: unlinkedContacts } = await supabase
+                        .from('users')
+                        .select('id, name, email, specialty, referral_code, role')
+                        .in('id', unlinkedIds)
+                        .eq('role', 'doctor');
+                    
+                    if (unlinkedContacts && unlinkedContacts.length > 0) {
+                        // Combine linked doctors with unlinked contacts that have chat history
+                        const allContacts = [
+                            ...doctors,
+                            ...unlinkedContacts.map(c => ({
+                                ...c,
+                                referralCode: c.referral_code,
+                            } as User))
+                        ];
+                        setAllChatContacts(allContacts);
+                    } else {
+                        setAllChatContacts(doctors);
+                    }
+                } else {
+                    setAllChatContacts(doctors);
+                }
             } catch (error) {
                 console.error('Error fetching messages:', error);
             }
         };
 
-        fetchMessages();
-    }, [user?.id]);
+        fetchMessagesAndContacts();
+    }, [user?.id, doctors]);
 
     // Convert auth user to app user format
     const appUser = {
@@ -623,37 +684,13 @@ const PatientDashboard: React.FC = () => {
                     </div>
                 );
             case "messages":
-                return (
-                    <Messages
-                        currentUser={appUser}
-                        contacts={patient.doctors}
-                        messages={patient.chatMessages}
-                        onSendMessage={async (message) => {
-                            try {
-                                await ChatService.sendMessage(
-                                    message.senderId,
-                                    message.recipientId,
-                                    message.text,
-                                    message.isUrgent
-                                );
-                                // Refresh messages after sending
-                                const updatedMessages = await ChatService.getAllConversations(user!.id);
-                                setChatMessages(updatedMessages);
-                            } catch (error) {
-                                console.error("Error sending message:", error);
-                                alert("Failed to send message. Please try again.");
-                            }
-                        }}
-                        onMarkMessagesAsRead={(contactId) => {
-                            console.log("Marking messages as read for:", contactId);
-                            // TODO: Implement mark as read functionality in ChatService
-                        }}
-                        preselectedContactId={null}
-                        clearPreselectedContact={() => { }}
-                        onNavigateToBilling={() => setActiveView("billing")}
-                        onMenuClick={() => setSidebarOpen(true)}
-                    />
-                );
+                // Open fullscreen chat automatically when messages view is selected
+                if (!showFullScreenChat) {
+                    // Clear preselected contact when opening from navbar to show contact list
+                    setPreselectedChatContactId(null);
+                    setShowFullScreenChat(true);
+                }
+                return null;
             case "billing":
                 return (
                     <Billing
@@ -712,7 +749,7 @@ const PatientDashboard: React.FC = () => {
     return (
         <UrgentCreditsProvider userId={user?.id || ''} initialCredits={profile?.urgent_credits ?? 5}>
             <NotificationProvider userId={user?.id || ''} activeView={activeView} userRole="patient">
-                <div className="h-screen bg-[#F7F7F7] dark:bg-black flex flex-col md:flex-row overflow-hidden">
+                <div className="h-screen bg-gray-100 dark:bg-black flex flex-col md:flex-row overflow-hidden">
                     {/* Sidebar */}
 
                     <SidebarWithNotifications
@@ -741,7 +778,7 @@ const PatientDashboard: React.FC = () => {
                             />
                         </div>
 
-                        <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-4 pt-4 pb-24 md:pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-5 lg:px-6 pt-6 pb-28 md:pb-8'}`}>{renderContent()}</main>
+                        <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-2 sm:px-4 pt-2 sm:pt-4 pb-20 sm:pb-24 md:pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-2 sm:px-4 md:px-5 lg:px-6 pt-3 sm:pt-4 md:pt-6 pb-24 sm:pb-28 md:pb-8'}`}>{renderContent()}</main>
                     </div>
 
                     {/* Extracted Medications Modal */}
@@ -763,6 +800,54 @@ const PatientDashboard: React.FC = () => {
                                     alert(`${added.length} medication(s) added to your tracker!${skipped.length > 0 ? `\n${skipped.length} already existed and were skipped.` : ''}`);
                                 }
                             }}
+                        />
+                    )}
+
+                    {/* WhatsApp-style Full Screen Chat */}
+                    {showFullScreenChat && (
+                        <WhatsAppChatWindow
+                            key={preselectedChatContactId ? `chat-${preselectedChatContactId}` : 'chat-list'}
+                            currentUser={appUser}
+                            contacts={allChatContacts.length > 0 ? allChatContacts.map(d => ({
+                                ...d,
+                                role: 'doctor' as const,
+                                specialty: d.specialty || 'General Practice'
+                            })) : patient.doctors}
+                            messages={patient.chatMessages}
+                            linkedContactIds={linkedDoctorIds}
+                            onSendMessage={async (message) => {
+                                try {
+                                    await ChatService.sendMessage(
+                                        message.senderId,
+                                        message.recipientId,
+                                        message.text,
+                                        message.isUrgent
+                                    );
+                                    const updatedMessages = await ChatService.getAllConversations(user!.id);
+                                    setChatMessages(updatedMessages);
+                                } catch (error) {
+                                    console.error("Error sending message:", error);
+                                    alert("Failed to send message. Please try again.");
+                                }
+                            }}
+                            onMarkMessagesAsRead={(contactId) => {
+                                console.log("Marking messages as read for:", contactId);
+                            }}
+                            preselectedContactId={preselectedChatContactId}
+                            clearPreselectedContact={() => setPreselectedChatContactId(null)}
+                            onNavigateToBilling={() => {
+                                setShowFullScreenChat(false);
+                                setActiveView("billing");
+                            }}
+                            onNavigateToDoctors={() => {
+                                setShowFullScreenChat(false);
+                                setActiveView("doctors");
+                            }}
+                            onClose={() => {
+                                setShowFullScreenChat(false);
+                                setActiveView("dashboard");
+                            }}
+                            isFullScreen={true}
                         />
                     )}
                 </div>

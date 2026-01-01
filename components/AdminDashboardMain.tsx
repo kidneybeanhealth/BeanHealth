@@ -10,6 +10,7 @@ import { UserGroupIcon } from './icons/UserGroupIcon';
 import { getInitials, getInitialsColor } from '../utils/avatarUtils';
 import AdminLabTypesPanel from './AdminLabTypesPanel';
 import RuleEngineAdmin from './RuleEngineAdmin';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 // Mock data for initial development - will be replaced with real service calls
 const MOCK_USERS: User[] = [
@@ -19,11 +20,25 @@ const MOCK_USERS: User[] = [
     { id: '4', name: 'Dr. Michael Chen', email: 'michael@clinic.com', role: 'doctor', specialty: 'Cardiology' },
 ];
 
-type AdminView = 'dashboard' | 'users' | 'relationships' | 'labtypes' | 'ruleengine';
+type AdminView = 'dashboard' | 'users' | 'relationships' | 'labtypes' | 'ruleengine' | 'alerts';
 
 const AdminDashboardMain: React.FC = () => {
     const { user, profile, signOut } = useAuth();
     const [activeView, setActiveView] = useState<AdminView>('dashboard');
+
+    // Dynamic document title based on view
+    const getViewTitle = () => {
+        switch (activeView) {
+            case 'dashboard': return 'Admin Dashboard';
+            case 'users': return 'Manage Users';
+            case 'relationships': return 'Maintain Connections';
+            case 'alerts': return 'Clinical Alerts System';
+            case 'labtypes': return 'Lab Record Types';
+            default: return 'Admin Portal';
+        }
+    };
+
+    useDocumentTitle(getViewTitle());
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');

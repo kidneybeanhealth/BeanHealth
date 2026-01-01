@@ -20,7 +20,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onTitleCli
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
 
   return (
-    <header className="flex-shrink-0 mx-2 sm:mx-4 mt-4 h-16 sm:h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-gray-100 dark:border-[#8AC43C]/15 shadow-lg dark:shadow-[0_0_20px_rgba(138,196,60,0.1)] flex items-center transition-all duration-300 z-40">
+    <header className="flex-shrink-0 mx-2 sm:mx-4 mt-4 h-16 sm:h-20 bg-white/80 dark:bg-secondary-500/[0.08] backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-gray-100 dark:border-secondary-500/15 shadow-lg dark:shadow-[0_0_20px_rgba(138,196,60,0.1)] flex items-center transition-all duration-300 z-40">
       <div className="w-full flex items-center justify-between px-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
           {showMenu && (
@@ -43,8 +43,8 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onTitleCli
             </div>
             <div className="flex flex-col justify-center">
               <h2 className="text-base font-bold leading-none tracking-tight">
-                <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
-                <span className="text-[#8AC43C]">Health</span>
+                <span className="text-primary-500 dark:text-[#e6b8a3]">Bean</span>
+                <span className="text-secondary-500">Health</span>
               </h2>
               <p className="text-[8px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-0.5 uppercase">Patient Portal</p>
             </div>
@@ -56,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onTitleCli
             className="hidden md:flex animate-fade-in min-w-0 flex-1 flex flex-col justify-center cursor-pointer hover:opacity-80 transition-opacity"
           >
             <h2 className="text-sm sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">
-              Welcome, <span className="text-[#8AC43C]">{user.name}</span>
+              Welcome, <span className="text-secondary-500">{user.name}</span>
             </h2>
             <p className="text-[9px] sm:text-xs font-semibold text-gray-400 dark:text-gray-500 truncate tracking-wide uppercase opacity-90">
               {user.role === 'patient' ? "Your Health Dashboard" : "Manage Patients"}
@@ -75,7 +75,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onTitleCli
             aria-label="View Profile"
           >
             <div className="relative z-10">
-              <div className="h-10 w-10 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center ring-2 ring-white dark:ring-black shadow-md font-bold text-sm transition-colors duration-300 group-hover:ring-[#8AC43C]">
+              <div className="h-10 w-10 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center ring-2 ring-white dark:ring-black shadow-md font-bold text-sm transition-colors duration-300 group-hover:ring-secondary-500">
                 {initials}
               </div>
               <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white dark:ring-black bg-green-500"></span>

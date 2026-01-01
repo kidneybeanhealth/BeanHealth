@@ -49,7 +49,6 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
         setIsLoading(true);
         try {
             // Step 1: Get all patient-doctor relationships for this patient
-            // Use select('*') to be safe against missing columns and filter in memory
             const { data: relationships, error: relError } = await supabase
                 .from('patient_doctor_relationships')
                 .select('*')
@@ -59,38 +58,17 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             if (relError) {
                 console.error('Error fetching relationships:', relError);
                 setIsLoading(false);
-                return; // Stop here if error
-            }
-
-            console.log('Relationships found:', relationships);
-
-            if (!relationships || relationships.length === 0) {
-                console.log('No relationships found for patient:', patientId);
-                setLinkedDoctors([]);
-                setIsLoading(false);
                 return;
             }
 
-            // Filter to only active or null status (backward compatible)
-            // Filter out only explicitly inactive relationships
-            const activeRelationships = (relationships || [])
-                .map(rel => ({
-                    ...rel,
-                    status: rel.status || 'active' // Default to active if status is null/missing (legacy records)
-                }))
-                .filter(rel => rel.status !== 'inactive' && rel.status !== 'archived');
-
-            console.log('Active relationships:', activeRelationships);
-
-            if (activeRelationships.length === 0) {
-                console.log('No active relationships');
+            if (!relationships || relationships.length === 0) {
                 setLinkedDoctors([]);
                 setIsLoading(false);
                 return;
             }
 
             // Step 2: Get doctor details for each relationship
-            const doctorIds = activeRelationships.map(rel => rel.doctor_id);
+            const doctorIds = relationships.map(rel => rel.doctor_id);
 
             const { data: doctors, error: docError } = await supabase
                 .from('users')
@@ -104,18 +82,15 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                 throw docError;
             }
 
-            console.log('Doctors found:', doctors);
-
             // Combine doctor data with relationship data
             const linkedDocs = (doctors || []).map(doctor => {
-                const rel = activeRelationships.find(r => r.doctor_id === doctor.id);
+                const rel = relationships.find(r => r.doctor_id === doctor.id);
                 return {
                     ...doctor,
                     linkedSince: rel?.created_at
                 };
             });
 
-            console.log('Final linked doctors:', linkedDocs);
             setLinkedDoctors(linkedDocs);
         } catch (error) {
             console.error('Error loading doctors:', error);
@@ -163,7 +138,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                 return;
             }
 
-            // Create relationship - only use columns that exist
+            // Create relationship
             const { error: linkError } = await (supabase
                 .from('patient_doctor_relationships') as any)
                 .insert({
@@ -179,32 +154,33 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             onDoctorLinked?.();  // Notify parent to refresh contacts
         } catch (error: any) {
             console.error('Error linking doctor:', error);
-            console.error('Error details:', JSON.stringify(error, null, 2));
-            // Show more specific error
-            const errorMsg = error?.message || error?.details || error?.hint || 'Failed to link doctor. Please try again.';
+            const errorMsg = error?.message || 'Failed to link doctor. Please try again.';
             setLinkError(errorMsg);
         } finally {
             setIsLinking(false);
         }
     };
 
-    const handleUnlinkDoctor = async (doctorId: string) => {
-        if (!confirm('Are you sure you want to unlink this doctor?')) return;
+    const handleUnlinkDoctor = async (doctorId: string, doctorName: string) => {
+        if (!confirm(`Are you sure you want to unlink from Dr. ${doctorName}? This will remove their access to your health records.`)) return;
 
         try {
-            const { error } = await (supabase
-                .from('patient_doctor_relationships') as any)
-                .update({ status: 'inactive' })
+            const { error } = await supabase
+                .from('patient_doctor_relationships')
+                .delete()
                 .eq('patient_id', patientId)
                 .eq('doctor_id', doctorId);
 
             if (error) throw error;
 
-            loadLinkedDoctors();
-            onDoctorLinked?.();  // Notify parent to refresh contacts
+            // Optimistic update
+            setLinkedDoctors(prev => prev.filter(d => d.id !== doctorId));
+
+            // Notify parent
+            onDoctorLinked?.();
         } catch (error) {
             console.error('Error unlinking doctor:', error);
-            alert('Failed to unlink doctor');
+            alert('Failed to unlink doctor. Please try again.');
         }
     };
 
@@ -227,7 +203,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                     Enter your doctor's referral code to connect.
                 </p>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                     <input
                         type="text"
                         value={referralCode}
@@ -237,12 +213,12 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                             setLinkSuccess('');
                         }}
                         placeholder="DR-XXXX-XXXX"
-                        className="flex-1 px-4 py-3 bg-gray-50 dark:bg-[#8AC43C]/20 border-none rounded-xl font-mono text-base text-center tracking-wider focus:outline-none focus:ring-1 focus:ring-[#8AC43C] text-[#222222] dark:text-gray-100 placeholder-gray-400"
+                        className="flex-1 min-w-0 px-4 py-3 bg-gray-50 dark:bg-[#8AC43C]/20 border-none rounded-xl font-mono text-base text-center tracking-wider focus:outline-none focus:ring-1 focus:ring-[#8AC43C] text-[#222222] dark:text-gray-100 placeholder-gray-400"
                     />
                     <button
                         onClick={handleLinkDoctor}
                         disabled={isLinking || !referralCode.trim()}
-                        className="px-6 py-3 bg-[#8AC43C] text-white font-bold text-sm rounded-full hover:bg-[#7ab332] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-6 py-3 bg-[#8AC43C] text-white font-bold text-sm rounded-full hover:bg-[#7ab332] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
                     >
                         {isLinking ? 'Linking...' : 'Link Doctor'}
                     </button>
@@ -300,16 +276,16 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-1.5 flex-shrink-0 self-end sm:self-center">
+                                <div className="flex gap-2 flex-shrink-0 self-end sm:self-center">
                                     <button
                                         onClick={() => onNavigateToChat(doctor.id)}
-                                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#8AC43C] text-white text-[10px] sm:text-xs font-bold rounded-full hover:bg-[#7ab332] transition-all shadow-sm active:scale-95"
+                                        className="px-4 py-2 bg-[#8AC43C] dark:bg-white text-white dark:text-[#222222] text-xs font-bold rounded-full hover:bg-[#7ab332] dark:hover:bg-gray-100 transition-all shadow-sm hover:shadow-md active:scale-95"
                                     >
                                         Message
                                     </button>
                                     <button
-                                        onClick={() => handleUnlinkDoctor(doctor.id)}
-                                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-100 dark:bg-gray-800 text-[#717171] dark:text-gray-400 text-[10px] sm:text-xs font-bold rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors active:scale-95"
+                                        onClick={() => handleUnlinkDoctor(doctor.id, doctor.name)}
+                                        className="px-4 py-2 bg-gray-100 dark:bg-black/20 text-gray-600 dark:text-white/60 text-xs font-bold rounded-full hover:bg-gray-200 dark:hover:bg-black/40 dark:hover:text-white transition-all active:scale-95"
                                     >
                                         Unlink
                                     </button>
@@ -321,7 +297,7 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
             </div>
 
             {/* Help Section */}
-            <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
+            <div className="bg-gray-50 dark:bg-[#8AC43C]/[0.04] backdrop-blur-md p-6 rounded-2xl border border-transparent dark:border-[#8AC43C]/10 transition-all">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">How it works</h3>
                 <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                     <li>1. Ask your doctor for their referral code (format: DR-XXXX-XXXX)</li>
