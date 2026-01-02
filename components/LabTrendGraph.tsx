@@ -1,18 +1,18 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { LabTrendGraphProps, LabTrendData, VISIT_COLORS } from '../types/visitHistory';
 
 interface TooltipData {
-    x: number;
-    y: number;
     value: number;
     unit: string;
     testName: string;
     date: string;
     visitIndex: number;
     status: string;
+    x: number;
+    y: number;
 }
 
-// Enhanced CSS-based trend visualization with working tooltips
+// Bar graph visualization for lab trends
 const LabTrendGraph: React.FC<LabTrendGraphProps> = ({ trends, visits }) => {
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
@@ -30,35 +30,18 @@ const LabTrendGraph: React.FC<LabTrendGraphProps> = ({ trends, visits }) => {
         );
     }
 
-    // Get min/max for scaling
-    const getValueRange = (trend: LabTrendData) => {
-        if (!trend.dataPoints?.length) return { min: 0, max: 100 };
-        const values = trend.dataPoints.map(p => p.value);
-        const min = Math.min(...values, trend.referenceMin || 0);
-        const max = Math.max(...values, trend.referenceMax || 100);
-        const padding = (max - min) * 0.15 || 10;
-        return { min: Math.max(0, min - padding), max: max + padding };
-    };
-
-    // Calculate position as percentage
-    const getPosition = (value: number, min: number, max: number) => {
-        if (max === min) return 50;
-        return ((value - min) / (max - min)) * 100;
-    };
-
-    // Get status color and style
-    const getStatusStyle = (status: string) => {
+    // Get status color  
+    const getStatusColor = (status: string) => {
         switch (status) {
-            case 'normal': return { bg: 'bg-emerald-500', ring: 'ring-emerald-300', shadow: 'shadow-emerald-200' };
-            case 'borderline': return { bg: 'bg-amber-500', ring: 'ring-amber-300', shadow: 'shadow-amber-200' };
-            case 'abnormal': return { bg: 'bg-orange-500', ring: 'ring-orange-300', shadow: 'shadow-orange-200' };
-            case 'critical': return { bg: 'bg-red-500', ring: 'ring-red-300', shadow: 'shadow-red-200' };
-            default: return { bg: 'bg-gray-500', ring: 'ring-gray-300', shadow: 'shadow-gray-200' };
+            case 'normal': return 'bg-emerald-500';
+            case 'borderline': return 'bg-amber-500';
+            case 'abnormal': return 'bg-orange-500';
+            case 'critical': return 'bg-red-500';
+            default: return 'bg-gray-500';
         }
     };
 
-    // Handle mouse events for tooltip
-    const handlePointHover = (
+    const handleBarHover = (
         e: React.MouseEvent,
         trend: LabTrendData,
         point: { date: string; value: number; status: string },
@@ -66,8 +49,8 @@ const LabTrendGraph: React.FC<LabTrendGraphProps> = ({ trends, visits }) => {
     ) => {
         const rect = e.currentTarget.getBoundingClientRect();
         setTooltip({
-            x: e.clientX,
-            y: rect.top - 10,
+            x: rect.left + rect.width / 2,
+            y: rect.top,
             value: point.value,
             unit: trend.unit,
             testName: trend.displayName,
@@ -77,14 +60,10 @@ const LabTrendGraph: React.FC<LabTrendGraphProps> = ({ trends, visits }) => {
         });
     };
 
-    const handlePointLeave = () => {
-        setTooltip(null);
-    };
-
     return (
         <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800 relative">
             <h3 className="text-lg font-bold text-[#222222] dark:text-white mb-4 flex items-center gap-2">
-                📊 Lab Trends Across Visits
+                📊 Lab Trends Comparison
             </h3>
 
             {/* Visit Legend */}
@@ -92,7 +71,7 @@ const LabTrendGraph: React.FC<LabTrendGraphProps> = ({ trends, visits }) => {
                 {visits.map((visit, idx) => (
                     <div key={visit.id} className="flex items-center gap-2">
                         <div
-                            className="w-4 h-4 rounded-full shadow-md ring-2 ring-white dark:ring-gray-700"
+                            className="w-4 h-4 rounded shadow-md ring-2 ring-white dark:ring-gray-700"
                             style={{ backgroundColor: visit.color }}
                         />
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -105,132 +84,111 @@ const LabTrendGraph: React.FC<LabTrendGraphProps> = ({ trends, visits }) => {
                 ))}
             </div>
 
-            {/* Lab trends as horizontal bars */}
-            <div className="space-y-5">
+            {/* Bar Graph Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                 {trends.slice(0, 6).map((trend) => {
-                    const { min, max } = getValueRange(trend);
-                    const refMinPos = getPosition(trend.referenceMin, min, max);
-                    const refMaxPos = getPosition(trend.referenceMax, min, max);
+                    if (!trend.dataPoints?.length) return null;
+
+                    const values = trend.dataPoints.map(p => p.value);
+                    const dataMin = Math.min(...values);
+                    const dataMax = Math.max(...values);
+                    const dataRange = dataMax - dataMin;
+
+                    // SIMPLE SCALING: Use max value as 100%, but ensure differences are visible
+                    // Scale from 0 to (max * 1.2) to give headroom
+                    const scaleMax = dataMax * 1.2;
+
+                    // Calculate bar heights as percentage of scaleMax
+                    // But to make differences visible, we also show relative heights
+                    const useRelativeScale = dataRange < dataMax * 0.2; // If range is less than 20% of max, use relative
+
+                    let scaledMin: number, scaledMax: number;
+                    if (useRelativeScale && dataRange > 0) {
+                        // For small variations, zoom in: scale from (min - range) to (max + range)
+                        scaledMin = Math.max(0, dataMin - dataRange * 2);
+                        scaledMax = dataMax + dataRange * 2;
+                    } else {
+                        // Normal scale from 0 to max
+                        scaledMin = 0;
+                        scaledMax = scaleMax;
+                    }
 
                     return (
-                        <div key={trend.testType} className="group">
-                            {/* Label Row */}
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                    <div
-                                        className="w-3 h-3 rounded-full shadow-sm"
-                                        style={{ backgroundColor: trend.color }}
-                                    />
-                                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                                        {trend.displayName}
-                                    </span>
-                                </div>
-                                <span className="text-xs font-medium px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full">
-                                    Normal: {trend.referenceMin}-{trend.referenceMax} {trend.unit}
+                        <div key={trend.testType} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                            {/* Lab Name */}
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                    {trend.displayName}
+                                </span>
+                                <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                    {trend.unit}
                                 </span>
                             </div>
 
                             {/* Bar Chart Container */}
-                            <div className="relative h-12 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800/50 rounded-xl overflow-visible shadow-inner">
-                                {/* Reference range highlight with gradient */}
-                                <div
-                                    className="absolute top-0 h-full bg-gradient-to-r from-emerald-100 via-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:via-emerald-900/20 dark:to-emerald-900/30 border-x-2 border-emerald-200 dark:border-emerald-800"
-                                    style={{
-                                        left: `${refMinPos}%`,
-                                        width: `${refMaxPos - refMinPos}%`,
-                                    }}
-                                />
-
-                                {/* Reference range labels */}
-                                <div
-                                    className="absolute -top-5 text-[10px] text-emerald-600 dark:text-emerald-500 font-medium"
-                                    style={{ left: `${refMinPos}%`, transform: 'translateX(-50%)' }}
-                                >
-                                    {trend.referenceMin}
-                                </div>
-                                <div
-                                    className="absolute -top-5 text-[10px] text-emerald-600 dark:text-emerald-500 font-medium"
-                                    style={{ left: `${refMaxPos}%`, transform: 'translateX(-50%)' }}
-                                >
-                                    {trend.referenceMax}
+                            <div className="relative h-32 flex items-end justify-around gap-3 px-4 border-b-2 border-gray-300 dark:border-gray-600">
+                                {/* Y-axis scale labels */}
+                                <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[9px] text-gray-400 dark:text-gray-500 w-6">
+                                    <span>{scaledMax.toFixed(0)}</span>
+                                    <span>{((scaledMax + scaledMin) / 2).toFixed(0)}</span>
+                                    <span>{scaledMin.toFixed(0)}</span>
                                 </div>
 
-                                {/* Connecting line between points */}
-                                {trend.dataPoints && trend.dataPoints.length > 1 && (
-                                    <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                                        <defs>
-                                            <linearGradient id={`line-gradient-${trend.testType}`} x1="0%" y1="0%" x2="100%" y2="0%">
-                                                {trend.dataPoints.map((_, idx) => {
-                                                    const colorKeys = ['visit1', 'visit2', 'visit3'] as const;
-                                                    const color = idx < colorKeys.length ? VISIT_COLORS[colorKeys[idx]]?.primary : '#6B7280';
-                                                    return (
-                                                        <stop key={idx} offset={`${(idx / (trend.dataPoints!.length - 1)) * 100}%`} stopColor={color} />
-                                                    );
-                                                })}
-                                            </linearGradient>
-                                        </defs>
-                                        <polyline
-                                            fill="none"
-                                            stroke={`url(#line-gradient-${trend.testType})`}
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeDasharray="4 2"
-                                            points={trend.dataPoints.map((point, idx) => {
-                                                const x = (getPosition(point.value, min, max) / 100) * 100;
-                                                return `${x}%,50%`;
-                                            }).join(' ')}
-                                            style={{ opacity: 0.5 }}
-                                        />
-                                    </svg>
-                                )}
+                                {/* Bars for each visit */}
+                                {trend.dataPoints.map((point, idx) => {
+                                    // Calculate bar height as percentage
+                                    const heightPercent = scaledMax === scaledMin
+                                        ? 50
+                                        : ((point.value - scaledMin) / (scaledMax - scaledMin)) * 100;
 
-                                {/* Data points */}
-                                {trend.dataPoints?.map((point, idx) => {
-                                    const position = getPosition(point.value, min, max);
                                     const colorKeys = ['visit1', 'visit2', 'visit3'] as const;
                                     const visitColor = idx < colorKeys.length
                                         ? VISIT_COLORS[colorKeys[idx]]?.primary
                                         : '#6B7280';
-                                    const statusStyle = getStatusStyle(point.status);
 
                                     return (
                                         <div
                                             key={`${point.date}-${idx}`}
-                                            className="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 z-10 cursor-pointer"
-                                            style={{ left: `${position}%` }}
-                                            onMouseEnter={(e) => handlePointHover(e, trend, point, idx)}
-                                            onMouseLeave={handlePointLeave}
+                                            className="relative flex-1 max-w-[50px] group cursor-pointer flex flex-col items-center"
+                                            onMouseEnter={(e) => handleBarHover(e, trend, point, idx)}
+                                            onMouseLeave={() => setTooltip(null)}
                                         >
-                                            {/* Outer glow ring */}
-                                            <div
-                                                className={`absolute inset-0 w-8 h-8 -m-2 rounded-full opacity-0 group-hover:opacity-30 transition-opacity duration-200 ${statusStyle.bg}`}
-                                            />
-                                            {/* Main point */}
-                                            <div
-                                                className={`w-5 h-5 rounded-full border-3 border-white dark:border-gray-900 shadow-lg transition-all duration-200 hover:scale-125 hover:shadow-xl flex items-center justify-center`}
-                                                style={{ backgroundColor: visitColor }}
-                                            >
-                                                <span className="text-[8px] font-bold text-white drop-shadow">
-                                                    {idx + 1}
-                                                </span>
+                                            {/* Value Label Above Bar */}
+                                            <div className="text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                                {point.value.toFixed(1)}
                                             </div>
-                                            {/* Value label on hover */}
-                                            <div className="absolute -bottom-7 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                                <span className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded shadow-sm">
-                                                    {point.value}
-                                                </span>
+
+                                            {/* Bar Container */}
+                                            <div className="w-full h-24 flex items-end">
+                                                {/* Bar */}
+                                                <div
+                                                    className="w-full rounded-t-md transition-all duration-300 group-hover:opacity-80 shadow-md relative"
+                                                    style={{
+                                                        height: `${Math.max(10, heightPercent)}%`,
+                                                        backgroundColor: visitColor,
+                                                    }}
+                                                >
+                                                    {/* Status dot at top of bar */}
+                                                    <div className={`absolute -top-1 left-1/2 transform -translate-x-1/2 w-2.5 h-2.5 rounded-full ${getStatusColor(point.status)} ring-2 ring-white dark:ring-gray-800`} />
+                                                </div>
+                                            </div>
+
+                                            {/* Visit number label */}
+                                            <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-1">
+                                                V{idx + 1}
                                             </div>
                                         </div>
                                     );
                                 })}
+                            </div>
 
-                                {/* Scale indicators */}
-                                <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-[10px] font-medium text-gray-400 dark:text-gray-500">
-                                    {min.toFixed(1)}
-                                </div>
-                                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-[10px] font-medium text-gray-400 dark:text-gray-500">
-                                    {max.toFixed(1)}
+                            {/* Reference Range Label */}
+                            <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
+                                    <span>Normal range:</span>
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                        {trend.referenceMin} - {trend.referenceMax}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -238,44 +196,36 @@ const LabTrendGraph: React.FC<LabTrendGraphProps> = ({ trends, visits }) => {
                 })}
             </div>
 
-            {/* Floating Tooltip */}
+            {/* Tooltip */}
             {tooltip && (
                 <div
                     className="fixed z-50 pointer-events-none animate-fadeIn"
                     style={{
                         left: tooltip.x,
-                        top: tooltip.y - 80,
+                        top: tooltip.y - 90,
                         transform: 'translateX(-50%)',
                     }}
                 >
-                    <div className="bg-gray-900 dark:bg-gray-700 text-white rounded-xl shadow-2xl px-4 py-3 min-w-[140px]">
-                        {/* Visit indicator */}
+                    <div className="bg-gray-900 dark:bg-gray-700 text-white rounded-xl shadow-2xl px-4 py-3 min-w-[130px]">
                         <div className="flex items-center gap-2 mb-2">
                             <div
-                                className="w-3 h-3 rounded-full shadow"
+                                className="w-3 h-3 rounded shadow"
                                 style={{ backgroundColor: visits[tooltip.visitIndex]?.color }}
                             />
                             <span className="text-xs text-gray-300">
                                 Visit {tooltip.visitIndex + 1}
                             </span>
                         </div>
-                        {/* Value */}
                         <div className="text-lg font-bold">
                             {tooltip.value} <span className="text-sm font-normal text-gray-300">{tooltip.unit}</span>
                         </div>
-                        {/* Test name */}
                         <div className="text-xs text-gray-400 mt-1">
-                            {tooltip.testName}
-                        </div>
-                        {/* Date */}
-                        <div className="text-xs text-gray-400">
                             {new Date(tooltip.date).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                                 year: 'numeric'
                             })}
                         </div>
-                        {/* Status badge */}
                         <div className="mt-2">
                             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${tooltip.status === 'normal' ? 'bg-emerald-500/20 text-emerald-300' :
                                     tooltip.status === 'borderline' ? 'bg-amber-500/20 text-amber-300' :
@@ -285,7 +235,6 @@ const LabTrendGraph: React.FC<LabTrendGraphProps> = ({ trends, visits }) => {
                                 {tooltip.status.charAt(0).toUpperCase() + tooltip.status.slice(1)}
                             </span>
                         </div>
-                        {/* Arrow */}
                         <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-900 dark:border-t-gray-700" />
                     </div>
                 </div>
@@ -294,10 +243,6 @@ const LabTrendGraph: React.FC<LabTrendGraphProps> = ({ trends, visits }) => {
             {/* Legend Footer */}
             <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <div className="flex items-center justify-center gap-6 text-xs text-gray-500 dark:text-gray-400">
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-2 bg-gradient-to-r from-emerald-100 to-emerald-50 rounded border border-emerald-200" />
-                        <span>Normal Range</span>
-                    </div>
                     <div className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full bg-emerald-500" />
                         <span>Normal</span>

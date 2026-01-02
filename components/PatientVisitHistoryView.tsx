@@ -160,12 +160,7 @@ const PatientVisitHistoryView: React.FC<PatientVisitHistoryViewProps> = ({
                         {/* Main Content */}
                         {!isLoading && !error && visits.length > 0 && (
                             <>
-                                {/* Lab Trend Graph */}
-                                {labTrends.length > 0 && (
-                                    <LabTrendGraph trends={labTrends} visits={visits} />
-                                )}
-
-                                {/* Visit Cards Grid */}
+                                {/* Visit Cards Grid - Now first */}
                                 <div>
                                     <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
                                         <span>🗓️</span> Recent Visits
@@ -180,6 +175,11 @@ const PatientVisitHistoryView: React.FC<PatientVisitHistoryViewProps> = ({
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* Lab Trend Graph - Now below cards */}
+                                {labTrends.length > 0 && (
+                                    <LabTrendGraph trends={labTrends} visits={visits} />
+                                )}
 
                                 {/* View All Visits Button */}
                                 {totalVisitCount > 3 && (
