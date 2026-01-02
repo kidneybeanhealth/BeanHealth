@@ -101,6 +101,7 @@ export interface ChatMessage {
   fileType?: 'pdf' | 'image' | 'audio';
   fileSize?: number;
   mimeType?: string;
+  audioDuration?: number; // Duration in seconds for voice messages
 }
 
 export interface Patient extends User {

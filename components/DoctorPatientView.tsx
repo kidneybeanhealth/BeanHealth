@@ -11,6 +11,7 @@ import { EyeIcon } from './icons/EyeIcon';
 import { PillIcon } from './icons/PillIcon';
 import RichSummaryDisplay from './RichSummaryDisplay';
 import NephrologistSnapshot from './NephrologistSnapshot';
+import PatientVisitHistoryView from './PatientVisitHistoryView';
 import { PrescriptionService } from '../services/prescriptionService';
 import { MedicalRecordsService } from '../services/medicalRecordsService';
 import { VitalsService } from '../services/dataService';
@@ -414,6 +415,17 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
         patientMedications={patientMedications}
         caseDetails={caseDetails}
         vitals={vitals}
+      />
+
+      {/* Visit History Section - New Feature */}
+      <PatientVisitHistoryView
+        patientId={patient.id}
+        patientMedications={patientMedications}
+        onVisitSaved={() => {
+          // Refresh data when a new visit is saved
+          fetchLatestPrescription();
+          fetchPatientMedications();
+        }}
       />
 
       {/* Collapsible Details Section */}

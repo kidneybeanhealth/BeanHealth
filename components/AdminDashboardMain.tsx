@@ -20,7 +20,7 @@ const MOCK_USERS: User[] = [
     { id: '4', name: 'Dr. Michael Chen', email: 'michael@clinic.com', role: 'doctor', specialty: 'Cardiology' },
 ];
 
-type AdminView = 'dashboard' | 'users' | 'relationships' | 'labtypes' | 'ruleengine';
+type AdminView = 'dashboard' | 'users' | 'relationships' | 'labtypes' | 'ruleengine' | 'alerts';
 
 const AdminDashboardMain: React.FC = () => {
     const { user, profile, signOut } = useAuth();
