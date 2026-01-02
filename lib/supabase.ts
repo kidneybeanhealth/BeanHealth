@@ -123,6 +123,12 @@ export interface Database {
           referral_code?: string
           referred_by?: string
           patient_id?: string
+          // CKD-specific fields
+          age?: number
+          ckd_stage?: '1' | '2' | '3a' | '3b' | '4' | '5'
+          comorbidities?: string[]
+          baseline_weight?: number
+          daily_fluid_target?: number
           created_at: string
           updated_at: string
         }
@@ -142,6 +148,12 @@ export interface Database {
           referral_code?: string
           referred_by?: string
           patient_id?: string
+          // CKD-specific fields
+          age?: number
+          ckd_stage?: '1' | '2' | '3a' | '3b' | '4' | '5'
+          comorbidities?: string[]
+          baseline_weight?: number
+          daily_fluid_target?: number
           created_at?: string
           updated_at?: string
         }
@@ -161,6 +173,12 @@ export interface Database {
           referral_code?: string
           referred_by?: string
           patient_id?: string
+          // CKD-specific fields
+          age?: number
+          ckd_stage?: '1' | '2' | '3a' | '3b' | '4' | '5'
+          comorbidities?: string[]
+          baseline_weight?: number
+          daily_fluid_target?: number
           created_at?: string
           updated_at?: string
         }
@@ -181,6 +199,12 @@ export interface Database {
           glucose_value?: string
           glucose_unit?: string
           glucose_trend?: 'up' | 'down' | 'stable'
+          // CKD extension fields
+          spo2_value?: string
+          spo2_unit?: string
+          spo2_trend?: 'up' | 'down' | 'stable'
+          weight_value?: number
+          weight_unit?: string
           recorded_at: string
         }
         Insert: {
@@ -198,6 +222,12 @@ export interface Database {
           glucose_value?: string
           glucose_unit?: string
           glucose_trend?: 'up' | 'down' | 'stable'
+          // CKD extension fields
+          spo2_value?: string
+          spo2_unit?: string
+          spo2_trend?: 'up' | 'down' | 'stable'
+          weight_value?: number
+          weight_unit?: string
           recorded_at?: string
         }
         Update: {
@@ -215,6 +245,12 @@ export interface Database {
           glucose_value?: string
           glucose_unit?: string
           glucose_trend?: 'up' | 'down' | 'stable'
+          // CKD extension fields
+          spo2_value?: string
+          spo2_unit?: string
+          spo2_trend?: 'up' | 'down' | 'stable'
+          weight_value?: number
+          weight_unit?: string
           recorded_at?: string
         }
       }

@@ -77,6 +77,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Use ref to track auth subscription
   const authSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
 
+  // Use ref to track if we're processing an auth state change
+  const isProcessingAuthRef = useRef(false)
+
   /**
    * Fetch user profile with proper error handling
    */
@@ -126,34 +129,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   /**
-   * Initialize auth state on mount - called once
+   * Process a session - fetch profile and set all states
    */
-  const initializeAuth = useCallback(async () => {
-    console.log('[AuthContext] Initializing auth state');
+  const processSession = useCallback(async (currentSession: Session | null) => {
+    if (!isMountedRef.current) return;
 
-    try {
-      // Get current session with timeout
-      console.log('[AuthContext] Calling supabase.auth.getSession()...');
-      const startTime = Date.now();
+    if (currentSession?.user) {
+      console.log('[AuthContext] Processing session for user:', currentSession.user.id);
+      
+      setUser(currentSession.user);
+      setSession(currentSession);
 
-      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-
-      console.log('[AuthContext] getSession completed in', Date.now() - startTime, 'ms');
-
-      if (sessionError) {
-        console.error('[AuthContext] Session error:', sessionError);
-        throw sessionError;
-      }
-
-      if (!isMountedRef.current) return;
-
-      if (currentSession?.user) {
-        console.log('[AuthContext] Session found, loading profile');
-
-        setUser(currentSession.user);
-        setSession(currentSession);
-
-        // Fetch profile
+      // Fetch profile
+      try {
         const userProfile = await fetchUserProfile(currentSession.user.id, currentSession);
 
         if (!isMountedRef.current) return;
@@ -166,7 +154,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const isOnboarded = await OnboardingService.checkOnboardingStatus(currentSession.user.id);
           if (isMountedRef.current) {
             setNeedsOnboarding(!isOnboarded);
-            console.log('[AuthContext] User needs onboarding:', !isOnboarded);
           }
         } else {
           setNeedsOnboarding(false);
@@ -177,42 +164,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const needsTerms = await TermsService.needsToAcceptNewTerms(currentSession.user.id);
           if (isMountedRef.current) {
             setNeedsTermsAcceptance(needsTerms);
-            console.log('[AuthContext] Patient needs terms acceptance:', needsTerms);
           }
         } else {
           setNeedsTermsAcceptance(false);
         }
-
-        console.log('[AuthContext] Auth initialized with user');
-      } else {
-        console.log('[AuthContext] No session found');
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setNeedsProfileSetup(false);
-        setNeedsOnboarding(false);
-        setNeedsTermsAcceptance(false);
+      } catch (error) {
+        console.error('[AuthContext] Error processing session:', error);
+        if (isMountedRef.current) {
+          setProfile(null);
+          setNeedsProfileSetup(true);
+          setNeedsOnboarding(false);
+          setNeedsTermsAcceptance(false);
+        }
       }
-    } catch (error) {
-      console.error('[AuthContext] Error initializing auth:', error);
-
-      // Clear state on ANY auth errors so user can proceed to login
-      // This prevents getting stuck in loading state
-      if (isMountedRef.current) {
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setNeedsProfileSetup(false);
-        setNeedsOnboarding(false);
-        setNeedsTermsAcceptance(false);
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-        setIsInitialized(true);
-        isInitializedRef.current = true; // Also set the ref for callback access
-        console.log('[AuthContext] Auth initialization complete');
-      }
+    } else {
+      console.log('[AuthContext] No session to process');
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setNeedsProfileSetup(false);
+      setNeedsOnboarding(false);
+      setNeedsTermsAcceptance(false);
     }
   }, [fetchUserProfile]);
 
@@ -220,13 +192,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Handle auth state changes from Supabase
    */
   const handleAuthStateChange = useCallback(async (event: string, newSession: Session | null) => {
-    // Don't process during initial load - use ref to get current value
+    console.log('[AuthContext] Auth state change:', event, 'initialized:', isInitializedRef.current);
+
+    // Prevent concurrent processing
+    if (isProcessingAuthRef.current) {
+      console.log('[AuthContext] Already processing auth, skipping');
+      return;
+    }
+
+    // For INITIAL_SESSION during OAuth callback, we need to process it
+    // even if not "initialized" because that's how OAuth works
+    if (event === 'INITIAL_SESSION' && newSession?.user) {
+      console.log('[AuthContext] Processing INITIAL_SESSION with user');
+      isProcessingAuthRef.current = true;
+      
+      try {
+        if (isMountedRef.current) {
+          setLoading(true);
+        }
+        await processSession(newSession);
+      } finally {
+        isProcessingAuthRef.current = false;
+        if (isMountedRef.current) {
+          setLoading(false);
+          setIsInitialized(true);
+          isInitializedRef.current = true;
+        }
+      }
+      return;
+    }
+
+    // For other events, only process if initialized
     if (!isInitializedRef.current) {
       console.log('[AuthContext] Skipping auth state change - not initialized yet');
       return;
     }
 
-    console.log('[AuthContext] Auth state change:', event);
+    // Clean up OAuth tokens from URL after processing
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.hash.includes('access_token') || url.hash.includes('refresh_token') || url.searchParams.has('code')) {
+        window.history.replaceState({}, document.title, url.pathname);
+        console.log('[AuthContext] Cleared OAuth tokens from URL');
+      }
+    }
 
     // Handle sign out immediately
     if (event === 'SIGNED_OUT') {
@@ -237,105 +246,109 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setNeedsProfileSetup(false);
         setNeedsOnboarding(false);
         setNeedsTermsAcceptance(false);
+        setLoading(false);
       }
       return;
     }
 
     // Handle sign in / token refresh
     if (newSession?.user) {
-      if (isMountedRef.current) {
-        setUser(newSession.user);
-        setSession(newSession);
-
-        // Fetch profile in background
-        fetchUserProfile(newSession.user.id, newSession).then(async userProfile => {
-          if (isMountedRef.current) {
-            setProfile(userProfile);
-            setNeedsProfileSetup(!userProfile || !userProfile.role);
-
-            // Check if user needs onboarding
-            if (userProfile && userProfile.role) {
-              const isOnboarded = await OnboardingService.checkOnboardingStatus(newSession.user.id);
-              if (isMountedRef.current) {
-                setNeedsOnboarding(!isOnboarded);
-              }
-            } else {
-              setNeedsOnboarding(false);
-            }
-
-            // Check if patient needs to accept terms
-            if (userProfile && userProfile.role === 'patient') {
-              const needsTerms = await TermsService.needsToAcceptNewTerms(newSession.user.id);
-              if (isMountedRef.current) {
-                setNeedsTermsAcceptance(needsTerms);
-              }
-            } else {
-              setNeedsTermsAcceptance(false);
-            }
-          }
-        }).catch(error => {
-          console.error('[AuthContext] Error fetching profile on auth change:', error);
-          if (isMountedRef.current) {
-            setProfile(null);
-            setNeedsProfileSetup(true);
-            setNeedsOnboarding(false);
-            setNeedsTermsAcceptance(false);
-          }
-        });
+      isProcessingAuthRef.current = true;
+      try {
+        if (isMountedRef.current) {
+          setLoading(true);
+        }
+        await processSession(newSession);
+      } finally {
+        isProcessingAuthRef.current = false;
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
       }
     } else {
+      // No session
       if (isMountedRef.current) {
         setUser(null);
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
         setNeedsOnboarding(false);
+        setLoading(false);
       }
     }
-  }, [fetchUserProfile]); // Removed isInitialized from deps - using ref instead
+  }, [processSession]);
 
   /**
-   * Initialize auth state on mount
+   * Initialize auth - sets up listener first, then checks session
    */
   useEffect(() => {
-    // Reset mounted ref to true at the start (important for React Strict Mode)
     isMountedRef.current = true;
 
-    // Initialize auth state first
-    initializeAuth();
+    console.log('[AuthContext] Setting up auth...');
 
-    // Cleanup on unmount
-    return () => {
-      console.log('[AuthContext] Cleaning up auth context (mount effect)');
-      isMountedRef.current = false;
-    };
-  }, [initializeAuth]);
-
-  /**
-   * Setup auth state listener AFTER initialization is complete
-   */
-  useEffect(() => {
-    // Only setup listener after initialization is complete
-    if (!isInitialized) {
-      return;
-    }
-
-    console.log('[AuthContext] Setting up auth state listener (after init)');
-
+    // Set up auth state listener FIRST - this catches OAuth callbacks
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
     authSubscriptionRef.current = subscription;
 
-    console.log('[AuthContext] Auth listener established');
+    // Then check for existing session (for normal page loads)
+    const checkSession = async () => {
+      // Small delay to let auth state listener handle OAuth callbacks first
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // If already initialized by auth state change (OAuth callback), skip
+      if (isInitializedRef.current) {
+        console.log('[AuthContext] Already initialized by auth state change');
+        return;
+      }
+
+      console.log('[AuthContext] Checking for existing session...');
+      
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('[AuthContext] Session error:', error);
+          throw error;
+        }
+
+        if (!isMountedRef.current) return;
+        
+        // Only process if not already initialized
+        if (!isInitializedRef.current) {
+          await processSession(session);
+        }
+      } catch (error) {
+        console.error('[AuthContext] Error checking session:', error);
+        if (isMountedRef.current && !isInitializedRef.current) {
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setNeedsProfileSetup(false);
+          setNeedsOnboarding(false);
+          setNeedsTermsAcceptance(false);
+        }
+      } finally {
+        if (isMountedRef.current && !isInitializedRef.current) {
+          setLoading(false);
+          setIsInitialized(true);
+          isInitializedRef.current = true;
+          console.log('[AuthContext] Auth initialization complete');
+        }
+      }
+    };
+
+    checkSession();
 
     // Cleanup
     return () => {
-      console.log('[AuthContext] Cleaning up auth listener');
+      console.log('[AuthContext] Cleaning up auth context');
+      isMountedRef.current = false;
       if (authSubscriptionRef.current) {
         authSubscriptionRef.current.unsubscribe();
         authSubscriptionRef.current = null;
       }
     };
-  }, [isInitialized, handleAuthStateChange]);
+  }, [handleAuthStateChange, processSession]);
 
   /**
    * Sign in with email/password
@@ -520,6 +533,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
   }, [user]);
+
+  /**
+   * Re-check authentication state
+   */
+  const initializeAuth = useCallback(async () => {
+    console.log('[AuthContext] Re-checking auth state...');
+    setLoading(true);
+    
+    try {
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('[AuthContext] Session error:', error);
+        throw error;
+      }
+
+      if (!isMountedRef.current) return;
+      
+      await processSession(currentSession);
+    } catch (error) {
+      console.error('[AuthContext] Error checking auth:', error);
+      if (isMountedRef.current) {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setNeedsProfileSetup(false);
+        setNeedsOnboarding(false);
+        setNeedsTermsAcceptance(false);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [processSession]);
 
   const value: AuthContextType = {
     user,
