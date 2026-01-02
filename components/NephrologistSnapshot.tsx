@@ -6,6 +6,8 @@ import AlertService from '../services/alertService';
 import { ChatService } from '../services/chatService';
 import { useAuth } from '../contexts/AuthContext';
 import { recordDoctorReview } from '../services/acknowledgmentService';
+import LabDrilldownModal from './LabDrilldownModal';
+import MedicationDrilldownModal from './MedicationDrilldownModal';
 import {
     calculateSnapshot,
     SnapshotResult,
@@ -33,6 +35,13 @@ const NephrologistSnapshot: React.FC<NephrologistSnapshotProps> = ({
     const [snapshotData, setSnapshotData] = useState<SnapshotResult | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isMarkingReviewed, setIsMarkingReviewed] = useState(false);
+    const [showLabModal, setShowLabModal] = useState(false);
+    const [showMedModal, setShowMedModal] = useState(false);
+    const [labTrendData, setLabTrendData] = useState<{
+        creatinine: { date: string; value: number }[];
+        egfr: { date: string; value: number }[];
+        potassium: { date: string; value: number }[];
+    }>({ creatinine: [], egfr: [], potassium: [] });
 
     // Fetch and calculate snapshot
     const fetchSnapshotData = useCallback(async () => {
@@ -93,6 +102,13 @@ const NephrologistSnapshot: React.FC<NephrologistSnapshotProps> = ({
             // Calculate snapshot using deterministic rules
             const result = calculateSnapshot(input);
             setSnapshotData(result);
+
+            // Store lab data for drill-down modal
+            setLabTrendData({
+                creatinine: creatinineData,
+                egfr: egfrData,
+                potassium: potassiumData
+            });
         } catch (error) {
             console.error('Error fetching snapshot data:', error);
         } finally {
@@ -145,16 +161,19 @@ const NephrologistSnapshot: React.FC<NephrologistSnapshotProps> = ({
     // Trend display with ONE arrow, ONE word, ONE time reference
     const TrendDisplay: React.FC<{ label: string; trend: TrendStatus }> = ({ label, trend }) => {
         const statusColors = {
-            'Abnormal': 'text-red-600 dark:text-red-400',
-            'Controlled': 'text-green-600 dark:text-green-400',
+            'Needs attention': 'text-red-600 dark:text-red-400',
+            'Within expected range': 'text-green-600 dark:text-green-400',
             'No data': 'text-gray-400'
         };
+
+        // Shorten display labels for cleaner UI
+        const statusLabel = trend.status === 'Within expected range' ? 'In range' : trend.status;
 
         return (
             <div className="flex items-center justify-between py-1">
                 <span className="text-xs text-gray-700 dark:text-gray-300">{label}</span>
                 <span className={`text-xs font-semibold ${statusColors[trend.status]}`}>
-                    {trend.arrow} {trend.status} ({trend.timeRef})
+                    {trend.arrow} {statusLabel} ({trend.timeRef})
                 </span>
             </div>
         );
@@ -187,162 +206,239 @@ const NephrologistSnapshot: React.FC<NephrologistSnapshotProps> = ({
     }
 
     return (
-        <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/30 dark:via-purple-950/30 dark:to-pink-950/30 rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-indigo-100/50 dark:border-indigo-900/50">
-            {/* Header with Action State */}
-            <div className="flex items-start justify-between mb-5">
-                <div>
-                    <h2 className="text-lg font-extrabold text-indigo-900 dark:text-indigo-100 tracking-tight flex items-center gap-2">
-                        <span className="text-xl">🔬</span>
-                        Nephrologist Snapshot
-                    </h2>
-                    <div className="flex items-center gap-2 mt-1">
-                        {/* Risk tier - subtle, smaller */}
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${getRiskTierStyles(snapshotData.riskTier)} bg-opacity-10`}>
-                            {snapshotData.riskTier}
-                        </span>
-                        {snapshotData.riskReason && (
-                            <>
-                                <span className="text-gray-400 text-[10px]">•</span>
-                                <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                                    {snapshotData.riskReason}
-                                </span>
-                            </>
+        <>
+            <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/30 dark:via-purple-950/30 dark:to-pink-950/30 rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-indigo-100/50 dark:border-indigo-900/50">
+                {/* Header with Action State */}
+                <div className="flex items-start justify-between mb-5">
+                    <div>
+                        <h2 className="text-lg font-extrabold text-indigo-900 dark:text-indigo-100 tracking-tight flex items-center gap-2">
+                            <span className="text-xl">🔬</span>
+                            Nephrologist Snapshot
+                        </h2>
+                        <div className="flex items-center gap-2 mt-1">
+                            {/* Risk tier - subtle, smaller */}
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${getRiskTierStyles(snapshotData.riskTier)} bg-opacity-10`}>
+                                {snapshotData.riskTier}
+                            </span>
+                            {snapshotData.riskReason && (
+                                <>
+                                    <span className="text-gray-400 text-[10px]">•</span>
+                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                        {snapshotData.riskReason}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                        {/* Attention needed detection timestamp */}
+                        {snapshotData.abnormalityDaysAgo !== null && (
+                            <p className="text-[10px] text-red-500 dark:text-red-400 mt-1 font-medium">
+                                ⚠️ Needs attention: {snapshotData.abnormalityDaysAgo === 0 ? 'Today' : `${snapshotData.abnormalityDaysAgo} day${snapshotData.abnormalityDaysAgo !== 1 ? 's' : ''} ago`}
+                            </p>
+                        )}
+                        {/* Medico-legal timestamp */}
+                        {snapshotData.daysSinceReview !== null && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                                Last reviewed: {snapshotData.daysSinceReview} days ago
+                            </p>
                         )}
                     </div>
-                    {/* Abnormality detection timestamp */}
-                    {snapshotData.abnormalityDaysAgo !== null && (
-                        <p className="text-[10px] text-red-500 dark:text-red-400 mt-1 font-medium">
-                            ⚠️ Abnormality detected: {snapshotData.abnormalityDaysAgo === 0 ? 'Today' : `${snapshotData.abnormalityDaysAgo} day${snapshotData.abnormalityDaysAgo !== 1 ? 's' : ''} ago`}
-                        </p>
-                    )}
-                    {/* Medico-legal timestamp */}
-                    {snapshotData.daysSinceReview !== null && (
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                            Last reviewed: {snapshotData.daysSinceReview} days ago
-                        </p>
-                    )}
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                    <ActionStateBadge
-                        state={snapshotData.actionState}
-                        reason={snapshotData.actionReason}
-                        nextAction={snapshotData.nextAction}
-                    />
-                    {/* Acknowledge button - records that doctor has seen this, does NOT clear red state */}
-                    {snapshotData.actionState !== 'no-action' && (
-                        <button
-                            onClick={async () => {
-                                if (!user?.id) return;
-                                setIsMarkingReviewed(true);
-                                try {
-                                    // Record acknowledgment to database
-                                    const result = await recordDoctorReview(patient.id, user.id);
-                                    if (result.success) {
-                                        // Refresh snapshot to show updated review timestamp
-                                        await fetchSnapshotData();
-                                    } else {
-                                        console.error('Failed to record acknowledgment:', result.error);
+                    <div className="flex flex-col items-end gap-2">
+                        <ActionStateBadge
+                            state={snapshotData.actionState}
+                            reason={snapshotData.actionReason}
+                            nextAction={snapshotData.nextAction}
+                        />
+                        {/* Acknowledge button - records that doctor has seen this, does NOT clear red state */}
+                        {snapshotData.actionState !== 'no-action' && (
+                            <button
+                                onClick={async () => {
+                                    if (!user?.id) return;
+                                    setIsMarkingReviewed(true);
+                                    try {
+                                        // Record acknowledgment to database
+                                        const result = await recordDoctorReview(patient.id, user.id);
+                                        if (result.success) {
+                                            // Refresh snapshot to show updated review timestamp
+                                            await fetchSnapshotData();
+                                        } else {
+                                            console.error('Failed to record acknowledgment:', result.error);
+                                        }
+                                    } catch (error) {
+                                        console.error('Error recording acknowledgment:', error);
+                                    } finally {
+                                        setIsMarkingReviewed(false);
                                     }
-                                } catch (error) {
-                                    console.error('Error recording acknowledgment:', error);
-                                } finally {
-                                    setIsMarkingReviewed(false);
+                                }}
+                                disabled={isMarkingReviewed}
+                                className="text-[10px] px-2 py-1 bg-white/80 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                                title="Records that you've seen this alert. Alert remains active until resolved."
+                            >
+                                {isMarkingReviewed ? 'Saving...' : '👁 Acknowledge'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* 5-Section Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    {/* 1️⃣ CKD Identity */}
+                    <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <span className="text-sm">🏷️</span>
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">CKD Identity</span>
+                        </div>
+                        <div className="space-y-2">
+                            <div>
+                                <p className="text-xl font-black text-gray-900 dark:text-white">{snapshotData.ckdStage}</p>
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400">{snapshotData.stageDate}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                    {snapshotData.etiology}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 2️⃣ Trend Summary */}
+                    <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-sm">📊</span>
+                                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Trends</span>
+                            </div>
+                            <button
+                                onClick={() => setShowLabModal(true)}
+                                className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium flex items-center gap-1"
+                            >
+                                View lab details →
+                            </button>
+                        </div>
+                        <div className="space-y-1">
+                            <TrendDisplay label="eGFR" trend={snapshotData.eGFRTrend} />
+                            <TrendDisplay label="Creatinine" trend={snapshotData.creatinineTrend} />
+                            <TrendDisplay label="K+" trend={snapshotData.potassiumTrend} />
+                            <TrendDisplay label="BP" trend={snapshotData.bpTrend} />
+                        </div>
+                    </div>
+
+                    {/* 3️⃣ Medications */}
+                    <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-sm">💊</span>
+                                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Medications</span>
+                            </div>
+                            <button
+                                onClick={() => setShowMedModal(true)}
+                                className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium flex items-center gap-1"
+                            >
+                                View medications →
+                            </button>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                {patientMedications.length} active meds
+                            </p>
+                            <div className="flex items-center gap-1 group relative">
+                                <p className={`text-xs font-semibold ${snapshotData.hasRenalRiskMedication ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                    {snapshotData.hasRenalRiskMedication ? '⚠️' : '✓'} {snapshotData.renalRiskMedicationNote}
+                                </p>
+                                {snapshotData.hasRenalRiskMedication && (
+                                    <span className="cursor-help" title="Renal-risk = requires renal attention, not necessarily unsafe">
+                                        <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                        </svg>
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 4️⃣ Lab Follow-up */}
+                    <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <span className="text-sm">🔬</span>
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Labs</span>
+                        </div>
+                        <div className="space-y-2">
+                            <p className={`text-xs font-semibold ${snapshotData.hasPendingLabs ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                                {snapshotData.hasPendingLabs ? '⚠️' : '✓'} {snapshotData.pendingLabNote}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* 5️⃣ Messages (Safety-focused) */}
+                    <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <span className="text-sm">💬</span>
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Messages</span>
+                        </div>
+                        <div className="space-y-2">
+                            <p className={`text-xs font-semibold ${snapshotData.hasUnreviewedHighRisk ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                {snapshotData.hasUnreviewedHighRisk ? '🚨' : '✓'} {snapshotData.messageNote}
+                            </p>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                {snapshotData.daysSinceLastContact !== null
+                                    ? `Last contact: ${snapshotData.daysSinceLastContact} day${snapshotData.daysSinceLastContact !== 1 ? 's' : ''} ago`
+                                    : 'No patient messages yet'
                                 }
-                            }}
-                            disabled={isMarkingReviewed}
-                            className="text-[10px] px-2 py-1 bg-white/80 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-                            title="Records that you've seen this alert. Alert remains active until resolved."
-                        >
-                            {isMarkingReviewed ? 'Saving...' : '👁 Acknowledge'}
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* 5-Section Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                {/* 1️⃣ CKD Identity */}
-                <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
-                    <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-sm">🏷️</span>
-                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">CKD Identity</span>
-                    </div>
-                    <div className="space-y-2">
-                        <div>
-                            <p className="text-xl font-black text-gray-900 dark:text-white">{snapshotData.ckdStage}</p>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400">{snapshotData.stageDate}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-semibold text-gray-700 dark:text-gray-300">
-                                {snapshotData.etiology}
-                            </span>
+                            </p>
                         </div>
                     </div>
                 </div>
-
-                {/* 2️⃣ Trend Summary */}
-                <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
-                    <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-sm">📊</span>
-                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Trends</span>
-                    </div>
-                    <div className="space-y-1">
-                        <TrendDisplay label="eGFR" trend={snapshotData.eGFRTrend} />
-                        <TrendDisplay label="Creatinine" trend={snapshotData.creatinineTrend} />
-                        <TrendDisplay label="K+" trend={snapshotData.potassiumTrend} />
-                        <TrendDisplay label="BP" trend={snapshotData.bpTrend} />
-                    </div>
-                </div>
-
-                {/* 3️⃣ Medications */}
-                <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
-                    <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-sm">💊</span>
-                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Medications</span>
-                    </div>
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                            {patientMedications.length} active meds
-                        </p>
-                        <p className={`text-xs font-semibold ${snapshotData.hasRenalRiskMedication ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                            {snapshotData.hasRenalRiskMedication ? '⚠️' : '✓'} {snapshotData.renalRiskMedicationNote}
-                        </p>
-                    </div>
-                </div>
-
-                {/* 4️⃣ Lab Follow-up */}
-                <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
-                    <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-sm">🔬</span>
-                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Labs</span>
-                    </div>
-                    <div className="space-y-2">
-                        <p className={`text-xs font-semibold ${snapshotData.hasPendingLabs ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
-                            {snapshotData.hasPendingLabs ? '⚠️' : '✓'} {snapshotData.pendingLabNote}
-                        </p>
-                    </div>
-                </div>
-
-                {/* 5️⃣ Messages (Safety-focused) */}
-                <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/50 dark:border-gray-700/50">
-                    <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-sm">💬</span>
-                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Messages</span>
-                    </div>
-                    <div className="space-y-2">
-                        <p className={`text-xs font-semibold ${snapshotData.hasUnreviewedHighRisk ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                            {snapshotData.hasUnreviewedHighRisk ? '🚨' : '✓'} {snapshotData.messageNote}
-                        </p>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                            {snapshotData.daysSinceLastContact !== null
-                                ? `Last contact: ${snapshotData.daysSinceLastContact} day${snapshotData.daysSinceLastContact !== 1 ? 's' : ''} ago`
-                                : 'No patient messages yet'
-                            }
-                        </p>
-                    </div>
-                </div>
             </div>
-        </div>
+
+            {/* Lab Drill-down Modal */}
+            <LabDrilldownModal
+                isOpen={showLabModal}
+                onClose={() => setShowLabModal(false)}
+                labs={[
+                    {
+                        label: 'eGFR',
+                        trend: snapshotData.eGFRTrend,
+                        values: labTrendData.egfr,
+                        unit: 'mL/min/1.73m²',
+                        referenceMin: 60,
+                        referenceMax: 999
+                    },
+                    {
+                        label: 'Creatinine',
+                        trend: snapshotData.creatinineTrend,
+                        values: labTrendData.creatinine,
+                        unit: 'mg/dL',
+                        referenceMin: 0.7,
+                        referenceMax: 1.3
+                    },
+                    {
+                        label: 'Potassium',
+                        trend: snapshotData.potassiumTrend,
+                        values: labTrendData.potassium,
+                        unit: 'mEq/L',
+                        referenceMin: 3.5,
+                        referenceMax: 5.0
+                    },
+                    {
+                        label: 'Blood Pressure',
+                        trend: snapshotData.bpTrend,
+                        values: vitals?.bloodPressure?.value ? [{
+                            date: new Date().toISOString(),
+                            value: parseInt(vitals.bloodPressure.value.split('/')[0])
+                        }] : [],
+                        unit: 'mmHg',
+                        referenceMin: 90,
+                        referenceMax: 140
+                    }
+                ]}
+            />
+
+            {/* Medication Drill-down Modal */}
+            <MedicationDrilldownModal
+                isOpen={showMedModal}
+                onClose={() => setShowMedModal(false)}
+                medications={patientMedications}
+            />
+        </>
     );
 };
 

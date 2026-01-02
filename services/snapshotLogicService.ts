@@ -21,7 +21,7 @@ export type RiskTier = 'Stable' | 'Watch' | 'High-risk';
 export type ActionState = 'no-action' | 'review' | 'immediate';
 
 export interface TrendStatus {
-    status: 'Abnormal' | 'Controlled' | 'No data';
+    status: 'Needs attention' | 'Within expected range' | 'No data';
     arrow: '↑' | '↓' | '→' | '—';
     timeRef: string;
     value?: number;
@@ -249,10 +249,10 @@ export function calculateTrend(input: TrendInput): TrendStatus {
     }
 
     if (isAbnormal) {
-        return { status: 'Abnormal', arrow, timeRef, value: latestValue };
+        return { status: 'Needs attention', arrow, timeRef, value: latestValue };
     }
 
-    return { status: 'Controlled', arrow, timeRef, value: latestValue };
+    return { status: 'Within expected range', arrow, timeRef, value: latestValue };
 }
 
 /**
@@ -277,7 +277,7 @@ export function calculateBPTrend(vitals: Vitals | null): TrendStatus {
     const isControlled = systolic < 140 && diastolic < 90;
 
     return {
-        status: isControlled ? 'Controlled' : 'Abnormal',
+        status: isControlled ? 'Within expected range' : 'Needs attention',
         arrow: '→', // BP shown without trend arrow
         timeRef: 'current',
         value: systolic
@@ -554,10 +554,10 @@ export function calculateSnapshot(input: SnapshotInput): SnapshotResult {
     // 3. DETECT ABNORMAL TRENDS
     // =========================================================================
     const abnormalTrendPresent =
-        eGFRTrend.status === 'Abnormal' ||
-        creatinineTrend.status === 'Abnormal' ||
-        potassiumTrend.status === 'Abnormal' ||
-        bpTrend.status === 'Abnormal';
+        eGFRTrend.status === 'Needs attention' ||
+        creatinineTrend.status === 'Needs attention' ||
+        potassiumTrend.status === 'Needs attention' ||
+        bpTrend.status === 'Needs attention';
 
     // =========================================================================
     // 4. MEDICATION CHECK
@@ -596,13 +596,13 @@ export function calculateSnapshot(input: SnapshotInput): SnapshotResult {
     let lastAbnormalLabDate: Date | null = null;
 
     // Check each lab trend for abnormal status
-    if (creatinineTrend.status === 'Abnormal' && labTrendData.creatinine.length > 0) {
+    if (creatinineTrend.status === 'Needs attention' && labTrendData.creatinine.length > 0) {
         const lastCreatDate = new Date(labTrendData.creatinine[labTrendData.creatinine.length - 1].date);
         if (!lastAbnormalLabDate || lastCreatDate > lastAbnormalLabDate) {
             lastAbnormalLabDate = lastCreatDate;
         }
     }
-    if (potassiumTrend.status === 'Abnormal' && labTrendData.potassium.length > 0) {
+    if (potassiumTrend.status === 'Needs attention' && labTrendData.potassium.length > 0) {
         const lastKDate = new Date(labTrendData.potassium[labTrendData.potassium.length - 1].date);
         if (!lastAbnormalLabDate || lastKDate > lastAbnormalLabDate) {
             lastAbnormalLabDate = lastKDate;
