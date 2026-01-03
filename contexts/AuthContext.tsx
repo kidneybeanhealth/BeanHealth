@@ -136,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (currentSession?.user) {
       console.log('[AuthContext] Processing session for user:', currentSession.user.id);
-      
+
       setUser(currentSession.user);
       setSession(currentSession);
 
@@ -205,16 +205,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (event === 'INITIAL_SESSION' && newSession?.user) {
       console.log('[AuthContext] Processing INITIAL_SESSION with user');
       isProcessingAuthRef.current = true;
-      
+
       try {
-        if (isMountedRef.current) {
+        if (isMountedRef.current && !isInitializedRef.current) {
           setLoading(true);
         }
         await processSession(newSession);
       } finally {
         isProcessingAuthRef.current = false;
         if (isMountedRef.current) {
-          setLoading(false);
+          // Only turn off loading if we turned it on
+          if (!isInitializedRef.current) {
+            setLoading(false);
+          }
           setIsInitialized(true);
           isInitializedRef.current = true;
         }
@@ -255,13 +258,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (newSession?.user) {
       isProcessingAuthRef.current = true;
       try {
-        if (isMountedRef.current) {
+        // Only show loading if not initialized (sanity check, though we check above)
+        if (isMountedRef.current && !isInitializedRef.current) {
           setLoading(true);
         }
         await processSession(newSession);
       } finally {
         isProcessingAuthRef.current = false;
-        if (isMountedRef.current) {
+        if (isMountedRef.current && !isInitializedRef.current) {
           setLoading(false);
         }
       }
@@ -294,7 +298,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkSession = async () => {
       // Small delay to let auth state listener handle OAuth callbacks first
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // If already initialized by auth state change (OAuth callback), skip
       if (isInitializedRef.current) {
         console.log('[AuthContext] Already initialized by auth state change');
@@ -302,17 +306,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       console.log('[AuthContext] Checking for existing session...');
-      
+
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.error('[AuthContext] Session error:', error);
           throw error;
         }
 
         if (!isMountedRef.current) return;
-        
+
         // Only process if not already initialized
         if (!isInitializedRef.current) {
           await processSession(session);
@@ -540,17 +544,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initializeAuth = useCallback(async () => {
     console.log('[AuthContext] Re-checking auth state...');
     setLoading(true);
-    
+
     try {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-      
+
       if (error) {
         console.error('[AuthContext] Session error:', error);
         throw error;
       }
 
       if (!isMountedRef.current) return;
-      
+
       await processSession(currentSession);
     } catch (error) {
       console.error('[AuthContext] Error checking auth:', error);

@@ -279,19 +279,21 @@ const DoctorDashboardMain: React.FC = () => {
         <div className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-[#222222] dark:text-white">Recent Patients</h2>
-            <button className="text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-secondary-500 dark:hover:text-secondary-500 transition-colors">
+            <button
+              onClick={() => setActiveView('monitoring')}
+              className="text-sm font-semibold text-[#222222] dark:text-white underline decoration-2 underline-offset-4 hover:text-secondary-500 dark:hover:text-secondary-500 transition-colors">
               View all
             </button>
           </div>
 
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800 overflow-hidden">
+          <div className="bg-transparent rounded-2xl border-none overflow-visible">
             {loading ? (
-              <div className="p-12 text-center">
+              <div className="p-12 text-center bg-white dark:bg-[#1e1e1e] rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800">
                 <div className="w-8 h-8 border-2 border-secondary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-[#717171]">Loading library...</p>
               </div>
             ) : patients.length === 0 ? (
-              <div className="p-16 text-center">
+              <div className="p-16 text-center bg-white dark:bg-[#1e1e1e] rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800">
                 <div className="mx-auto w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
                   <UserGroupIcon className="w-8 h-8 text-[#717171]" />
                 </div>
@@ -299,37 +301,56 @@ const DoctorDashboardMain: React.FC = () => {
                 <p className="text-[#717171] max-w-xs mx-auto">Share your referral code to start checking up on patients.</p>
               </div>
             ) : (
-              <div className="flex flex-col">
-                {patients.slice(0, 5).map((patient, idx) => (
-                  <div
-                    key={patient.id}
-                    onClick={() => handleViewPatient(patient)}
-                    className={`group flex items-center justify-between p-5 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#2c2c2c] transition-colors ${idx !== patients.length - 1 ? 'border-b border-gray-100 dark:border-gray-800' : ''
-                      }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`h-12 w-12 rounded-full bg-[#222222] dark:bg-white flex items-center justify-center text-white dark:text-[#222222] font-bold text-sm shadow-sm scale-100 group-hover:scale-105 transition-transform`}>
-                        {getInitials(patient.name, patient.email)}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {patients.slice(0, 4).map((patient, idx) => {
+                  const status = getPatientStatus(patient.id);
+                  const config = statusConfig[status];
+                  return (
+                    <div
+                      key={patient.id}
+                      onClick={() => handleViewPatient(patient)}
+                      className="group bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-800 hover:border-[#8AC43C]/30 dark:hover:border-[#8AC43C]/30 transition-all duration-200 ease-out flex flex-col justify-between relative overflow-hidden cursor-pointer h-full"
+                    >
+                      {/* Hover Accent */}
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#8AC43C] to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out" />
+
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-12 w-12 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-900 dark:text-gray-100 font-bold text-sm shadow-inner group-hover:scale-105 transition-transform duration-300`}>
+                            {getInitials(patient.name, patient.email)}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-[#222222] dark:text-white text-base group-hover:text-[#8AC43C] transition-colors line-clamp-1">
+                              {patient.name || patient.email}
+                            </h4>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                              {patient.patientId || 'ID Pending'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${config.bg} ${config.color}`}>
+                          {config.label}
+                        </span>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-[#222222] dark:text-white text-base group-hover:text-secondary-500 transition-colors">
-                          {patient.name || patient.email}
-                        </h4>
-                        <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium">
-                          {patient.email}
-                        </p>
+
+                      <div className="space-y-2 mt-2">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 flex items-center justify-between">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Condition</span>
+                          <span className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate max-w-[120px]">{patient.condition || 'General'}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleViewPatient(patient); }}
+                          className="w-full py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-black text-xs font-bold hover:opacity-90 transition-opacity"
+                        >
+                          View Profile
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleViewPatient(patient); }}
-                        className="px-6 py-2.5 rounded-full bg-white dark:bg-[#333] border border-gray-200 dark:border-gray-600 text-sm font-bold text-[#222222] dark:text-white hover:border-[#222222] dark:hover:border-white transition-colors"
-                      >
-                        View
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -455,67 +476,87 @@ const DoctorDashboardMain: React.FC = () => {
       />
 
       {/* Patients Grid */}
-      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] border border-transparent dark:border-gray-800 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your Patients ({patients.length})</h2>
-        </div>
-        <div className="divide-y divide-gray-100 dark:divide-gray-700">
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto"></div>
-              <p className="text-gray-500 dark:text-gray-400 mt-2">Loading patients...</p>
-            </div>
-          ) : patients.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-gray-500 dark:text-gray-400">No patients linked yet.</p>
-            </div>
-          ) : patients.map(patient => {
-            const status = getPatientStatus(patient.id);
-            const config = statusConfig[status];
-            return (
-              <div key={patient.id} className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <div className="flex items-center gap-4">
-                  {/* Avatar */}
-                  <div className="h-12 w-12 rounded-full bg-[#222222] dark:bg-white flex items-center justify-center text-white dark:text-[#222222] font-bold text-sm shadow-sm">
-                    {getInitials(patient.name || '', patient.email)}
-                  </div>
-                  {/* Info */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white px-1">Your Patients ({patients.length})</h2>
+        {loading ? (
+          <div className="p-12 text-center bg-white dark:bg-[#1e1e1e] rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8AC43C] mx-auto"></div>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">Loading patients...</p>
+          </div>
+        ) : patients.length === 0 ? (
+          <div className="p-12 text-center bg-white dark:bg-[#1e1e1e] rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800">
+            <p className="text-gray-500 dark:text-gray-400">No patients linked yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {patients.map(patient => {
+              const status = getPatientStatus(patient.id);
+              const config = statusConfig[status];
+              return (
+                <div
+                  key={patient.id}
+                  className="group bg-white dark:bg-[#1e1e1e] rounded-3xl p-6 shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-800 hover:border-[#8AC43C]/30 dark:hover:border-[#8AC43C]/30 transition-all duration-200 ease-out flex flex-col justify-between relative overflow-hidden cursor-pointer"
+                  onClick={() => handleViewPatient(patient)}
+                >
+                  {/* Hover Accent */}
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#8AC43C] to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out" />
+
                   <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900 dark:text-white">{patient.name || patient.email}</p>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.color}`}>
+                    {/* Header: Status & Avatar */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`h-14 w-14 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-900 dark:text-gray-100 font-bold text-lg shadow-inner group-hover:scale-110 transition-transform duration-300`}>
+                        {getInitials(patient.name || '', patient.email)}
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm ${config.bg} ${config.color}`}>
                         {config.icon} {config.label}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {patient.patientId || 'ID pending'} • {patient.condition || 'No condition set'}
-                    </p>
+
+                    {/* Info */}
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-1 group-hover:text-[#8AC43C] dark:group-hover:text-[#8AC43C] transition-colors line-clamp-1" title={patient.name || patient.email}>
+                        {patient.name || patient.email}
+                      </h3>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                        {patient.patientId || 'ID Pending'}
+                      </p>
+
+                      <div className="space-y-2 mb-6">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Primary Condition</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 line-clamp-1">{patient.condition || 'General Checkup'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="flex items-center gap-2 pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveView('messages');
+                        // Could pre-select patient in messages
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all"
+                    >
+                      <MessagesIcon className="w-4 h-4" /> Message
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewPatient(patient);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-[#8AC43C] dark:text-[#8AC43C] bg-[#8AC43C]/10 dark:bg-[#8AC43C]/10 hover:bg-[#8AC43C]/20 dark:hover:bg-[#8AC43C]/20 transition-all"
+                    >
+                      <DocumentIcon className="w-4 h-4" /> View
+                    </button>
                   </div>
                 </div>
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setActiveView('messages');
-                      // Could pre-select patient in messages
-                    }}
-                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                    title="Send Message"
-                  >
-                    <MessagesIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleViewPatient(patient)}
-                    className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-                    title="View Patient"
-                  >
-                    <DocumentIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
