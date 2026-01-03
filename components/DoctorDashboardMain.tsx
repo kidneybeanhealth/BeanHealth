@@ -577,8 +577,9 @@ const DoctorDashboardMain: React.FC = () => {
       <div className="min-h-screen bg-gray-100 dark:bg-black font-sans text-[#222222] selection:bg-secondary-500 selection:text-white">
 
         {/* Sticky Header */}
-        <div className={`sticky top-0 z-30 transition-all duration-300 bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
-          <div className="max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12">
+        {/* Sticky Header converted to Fixed Floating Capsule */}
+        <div className={`fixed top-3 sm:top-5 left-3 sm:left-6 right-3 sm:right-6 z-40 transition-all duration-300 bg-white/90 dark:bg-[#1e1e1e]/90 backdrop-blur-3xl saturate-150 border border-white/30 dark:border-gray-800/50 shadow-[0_20px_40px_-5px_rgba(0,0,0,0.15),0_10px_20px_-5px_rgba(0,0,0,0.1)] ring-1 ring-white/20 dark:ring-white/5 rounded-3xl ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
+          <div className="max-w-[1440px] mx-auto px-6 sm:px-8">
             <div className="flex items-center justify-between h-20">
               {/* Logo / Brand Area */}
               <div
