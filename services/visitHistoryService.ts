@@ -1,6 +1,7 @@
 // Visit History Service - Updated
 // Now uses dedicated patient_visits table instead of aggregating from prescriptions
 // Includes full history access via getAllPatientVisits()
+// Now includes medications via visit_medications table
 
 import { supabase } from '../lib/supabase';
 import { LabResult, LabTestType } from '../types';
@@ -10,6 +11,7 @@ import {
     LabTrendPoint,
     VISIT_COLORS,
 } from '../types/visitHistory';
+import { VisitMedicationService } from './visitMedicationService';
 
 // Lab test display names
 const LAB_DISPLAY_NAMES: Record<string, string> = {
@@ -239,6 +241,15 @@ export class VisitHistoryService {
         // Reverse for chronological display (oldest first)
         const reversedVisits = [...storedVisits].reverse();
 
+        // Fetch medications for all visits in batch
+        const visitIds = reversedVisits.slice(0, limit).map(v => v.id);
+        let visitMedsMap = new Map();
+        try {
+            visitMedsMap = await VisitMedicationService.getMedicationsForVisits(visitIds);
+        } catch (err) {
+            console.warn('[VisitHistoryService] Could not fetch visit medications:', err);
+        }
+
         for (let i = 0; i < Math.min(reversedVisits.length, limit); i++) {
             const visit = reversedVisits[i];
             const visitDate = visit.visit_date;
@@ -257,6 +268,10 @@ export class VisitHistoryService {
                 lab.status === 'abnormal' || lab.status === 'critical'
             );
 
+            // Get medications for this visit
+            const visitMeds = visitMedsMap.get(visit.id) || [];
+            const medicationSnapshots = VisitMedicationService.toMedicationSnapshots(visitMeds);
+
             visits.push({
                 id: visit.id,
                 visitDate,
@@ -264,7 +279,7 @@ export class VisitHistoryService {
                 color: colors.primary,
                 colorClass: colors.bg + ' ' + colors.border,
                 complaint: visit.complaint || 'Follow-up visit',
-                medications: [], // No longer tracking medications in visits
+                medications: medicationSnapshots,
                 dietRecommendation: visit.diet_recommendation || 'Not specified',
                 dietFollowed: null,
                 labResults: visitLabs,

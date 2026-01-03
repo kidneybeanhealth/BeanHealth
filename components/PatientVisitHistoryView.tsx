@@ -92,15 +92,15 @@ const PatientVisitHistoryView: React.FC<PatientVisitHistoryViewProps> = ({
                                 ))}
                             </div>
                         )}
-                        {/* View All History Icon */}
-                        {totalVisitCount > 3 && (
+                        {/* View All History Icon - always visible */}
+                        {visits.length > 0 && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setShowAllVisitsModal(true);
                                 }}
                                 className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
-                                title={`View all ${totalVisitCount} visits`}
+                                title={`View complete visit history (${totalVisitCount} visits)`}
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -181,20 +181,18 @@ const PatientVisitHistoryView: React.FC<PatientVisitHistoryViewProps> = ({
                                     <LabTrendGraph trends={labTrends} visits={visits} />
                                 )}
 
-                                {/* View All Visits Button */}
-                                {totalVisitCount > 3 && (
-                                    <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-                                        <button
-                                            onClick={() => setShowAllVisitsModal(true)}
-                                            className="w-full py-3 px-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-xl transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                                            </svg>
-                                            View All {totalVisitCount} Visits
-                                        </button>
-                                    </div>
-                                )}
+                                {/* View Complete History Button - always visible when there are visits */}
+                                <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                                    <button
+                                        onClick={() => setShowAllVisitsModal(true)}
+                                        className="w-full py-3 px-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-xl transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                        </svg>
+                                        View Complete History ({totalVisitCount} visits)
+                                    </button>
+                                </div>
                             </>
                         )}
                     </div>
