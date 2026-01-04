@@ -206,14 +206,14 @@ const DoctorDashboardMain: React.FC = () => {
     const count = unreadMessageCount || localCount;
 
     return (
-      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-shadow duration-300 border border-transparent dark:border-gray-800">
+      <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-5 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-shadow duration-300 border border-transparent dark:border-gray-800">
         <div className="flex flex-col h-full justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">Messages</h3>
               <MessagesIcon className="w-6 h-6 text-secondary-500" />
             </div>
-            <span className="text-4xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{count}</span>
+            <span className="text-3xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{count}</span>
           </div>
           <p className="text-sm font-medium text-[#717171] dark:text-[#888888] mt-2">Awaiting response</p>
         </div>
@@ -222,14 +222,14 @@ const DoctorDashboardMain: React.FC = () => {
   };
 
   const StatCard = ({ title, value, subtext, icon: Icon, colorClass }: any) => (
-    <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-6 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-shadow duration-300 border border-transparent dark:border-gray-800">
+    <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-5 shadow-[0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-shadow duration-300 border border-transparent dark:border-gray-800">
       <div className="flex flex-col h-full justify-between">
         <div>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-bold text-[#717171] dark:text-[#a0a0a0] uppercase tracking-wider">{title}</h3>
             <Icon className={`w-6 h-6 ${colorClass}`} />
           </div>
-          <span className="text-4xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{value}</span>
+          <span className="text-3xl font-extrabold text-[#222222] dark:text-[#f7f7f7] tracking-tight">{value}</span>
         </div>
         <p className="text-sm font-medium text-[#717171] dark:text-[#888888] mt-2">{subtext}</p>
       </div>
@@ -438,16 +438,16 @@ const DoctorDashboardMain: React.FC = () => {
   const renderMonitoring = () => (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Patient Monitoring</h1>
-          <p className="text-gray-600 dark:text-gray-400">Real-time patient status and alerts</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Patient Monitoring</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Real-time patient status and alerts</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {alertCounts.urgent > 0 && (
             <button
               onClick={() => setActiveView('alerts')}
-              className="flex items-center gap-2 px-6 py-2.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full font-bold animate-pulse"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-xs sm:text-sm font-bold animate-pulse flex-1 sm:flex-initial justify-center"
             >
               <span>🔴</span>
               <span>{alertCounts.urgent} Urgent</span>
@@ -455,11 +455,12 @@ const DoctorDashboardMain: React.FC = () => {
           )}
           <button
             onClick={() => setActiveView('alerts')}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#222222] dark:text-white rounded-full font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-gray-100 dark:bg-gray-800 text-[#222222] dark:text-white rounded-full text-xs sm:text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-1 sm:flex-initial justify-center"
           >
-            <span>View All Alerts</span>
+            <span className="hidden sm:inline">View All Alerts</span>
+            <span className="sm:hidden">Alerts</span>
             {alertCounts.total > 0 && (
-              <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full">{alertCounts.total}</span>
+              <span className="px-1.5 sm:px-2 py-0.5 bg-amber-500 text-white text-[10px] sm:text-xs rounded-full">{alertCounts.total}</span>
             )}
           </button>
         </div>
@@ -574,13 +575,12 @@ const DoctorDashboardMain: React.FC = () => {
 
   return (
     <NotificationProvider userId={user?.id || ''} activeView={activeView} userRole="doctor">
-      <div className="min-h-screen bg-gray-100 dark:bg-black font-sans text-[#222222] selection:bg-secondary-500 selection:text-white">
+      <div className="min-h-screen bg-gray-100 dark:bg-black font-sans text-[#222222] selection:bg-secondary-500 selection:text-white relative">
 
-        {/* Sticky Header */}
-        {/* Sticky Header converted to Fixed Floating Capsule */}
-        <div className={`fixed top-3 sm:top-5 left-3 sm:left-6 right-3 sm:right-6 z-40 transition-all duration-300 bg-white/90 dark:bg-[#1e1e1e]/90 backdrop-blur-3xl saturate-150 border border-white/30 dark:border-gray-800/50 shadow-[0_20px_40px_-5px_rgba(0,0,0,0.15),0_10px_20px_-5px_rgba(0,0,0,0.1)] ring-1 ring-white/20 dark:ring-white/5 rounded-3xl ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
-          <div className="max-w-[1440px] mx-auto px-6 sm:px-8">
-            <div className="flex items-center justify-between h-20">
+        {/* Sticky Header with Rounded Edges */}
+        <div className={`sticky top-2 sm:top-4 mx-2 sm:mx-4 mt-2 sm:mt-4 z-40 transition-all duration-300 bg-white dark:bg-black backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-gray-800 shadow-md ${activeView === 'messages' ? 'hidden md:flex' : ''}`}>
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            <div className="flex items-center justify-between h-16 sm:h-20">
               {/* Logo / Brand Area */}
               <div
                 onClick={() => setActiveView('dashboard')}
@@ -599,40 +599,72 @@ const DoctorDashboardMain: React.FC = () => {
               </div>
 
               {/* Center Tabs */}
-              {/* Center Tabs - Desktop Only */}
-              <nav className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 p-1 bg-gray-100 dark:bg-[#2c2c2c] rounded-full">
+              {/* Center Tabs - Desktop Only with Enhanced Mobile-style Animation */}
+              <nav className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 p-1 bg-white/80 dark:bg-[#121212]/80 backdrop-blur-3xl saturate-150 border border-white/20 dark:border-white/10 rounded-full ring-1 ring-white/20 dark:ring-white/5 transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'dashboard'
-                    ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
-                    : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                  className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'dashboard'
+                    ? 'w-[130px] bg-black dark:bg-white text-white dark:text-black scale-105'
+                    : 'w-[100px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
                     }`}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
-                  <span>Dashboard</span>
+                  <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'dashboard' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Dashboard</span>
+                  {activeView === 'dashboard' && (
+                    <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                  )}
                 </button>
                 <button
                   onClick={() => setActiveView('monitoring')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 ${activeView === 'monitoring' || activeView === 'alerts'
-                    ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
-                    : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                  className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'monitoring'
+                    ? 'w-[140px] bg-black dark:bg-white text-white dark:text-black scale-105'
+                    : 'w-[110px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
                     }`}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
-                  <span>Monitoring</span>
+                  <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'monitoring' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Monitoring</span>
                   {alertCounts.urgent > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
+                    <span className="ml-1.5 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
                       {alertCounts.urgent}
                     </span>
+                  )}
+                  {activeView === 'monitoring' && (
+                    <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveView('alerts')}
+                  className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'alerts'
+                    ? 'w-[110px] bg-black dark:bg-white text-white dark:text-black scale-105'
+                    : 'w-[90px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
+                    }`}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'alerts' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Alerts</span>
+                  {alertCounts.total > 0 && (
+                    <span className="ml-1.5 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                      {alertCounts.total}
+                    </span>
+                  )}
+                  {activeView === 'alerts' && (
+                    <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
                   )}
                 </button>
                 <button
                   onClick={() => setActiveView('messages')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-200 relative ${activeView === 'messages'
-                    ? 'bg-white dark:bg-black text-[#222222] dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]'
-                    : 'text-[#717171] hover:text-[#222222] dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                  className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'messages'
+                    ? 'w-[130px] bg-black dark:bg-white text-white dark:text-black scale-105'
+                    : 'w-[100px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
                     }`}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
-                  <span>Messages</span>
-                  <MessagesNotificationBadge localCount={localUnreadCount} />
+                  <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'messages' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Messages</span>
+                  <div className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'messages' ? 'ml-1.5' : 'ml-0'}`}>
+                    <MessagesNotificationBadge localCount={localUnreadCount} />
+                  </div>
+                  {activeView === 'messages' && (
+                    <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                  )}
                 </button>
               </nav>
 
@@ -689,7 +721,7 @@ const DoctorDashboardMain: React.FC = () => {
         />
 
         {/* Main Content Area */}
-        <main className={`transition-all duration-500 ${activeView === 'messages' ? 'h-[calc(100vh-80px)] pb-24 md:pb-0' : activeView === 'alerts' ? 'pb-24 md:pb-0' : 'py-10 pb-28 md:pb-10'}`}>
+        <main className={`transition-all duration-500 pt-12 sm:pt-16 ${activeView === 'messages' ? 'h-[calc(100vh-80px)] pb-24 md:pb-0' : activeView === 'alerts' ? 'pb-24 md:pb-0' : 'pb-28 md:pb-10'}`}>
           <div className={`${activeView === 'messages' ? 'h-full' : activeView === 'alerts' ? 'w-full' : 'max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12'}`}>
             {activeView === 'dashboard' && renderDashboard()}
 
@@ -772,6 +804,9 @@ const DoctorDashboardMain: React.FC = () => {
             />
           );
         })()}
+        
+        {/* Strong blur fade mask for scrolling content - UI/UX optimized */}
+        <div className="pointer-events-none fixed top-2 sm:top-4 left-0 right-0 h-28 bg-gradient-to-b from-gray-100 from-0% via-gray-100/80 via-40% to-transparent to-100% dark:from-black dark:from-0% dark:via-black/80 dark:via-40% dark:to-transparent z-30"></div>
       </div>
     </NotificationProvider>
   );

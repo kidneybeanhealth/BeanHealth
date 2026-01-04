@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { EnhancedMedication, ExtractedMedication } from '../types';
 import { MedicationService } from '../services/medicationService';
+import { PillIcon } from './icons/PillIcon';
+import { XIcon } from './icons/XIcon';
 
 interface ExtractedMedicationsModalProps {
     isOpen: boolean;
@@ -73,8 +75,9 @@ const ExtractedMedicationsModal: React.FC<ExtractedMedicationsModalProps> = ({
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                                💊 Medications Detected
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <PillIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                Medications Detected
                             </h2>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                 From: {sourceRecordType} ({new Date(sourceRecordDate).toLocaleDateString()})
@@ -84,7 +87,7 @@ const ExtractedMedicationsModal: React.FC<ExtractedMedicationsModalProps> = ({
                             onClick={onClose}
                             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
                         >
-                            <span className="text-gray-500 dark:text-gray-400">✕</span>
+                            <XIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                         </button>
                     </div>
                 </div>
