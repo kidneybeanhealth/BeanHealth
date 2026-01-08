@@ -107,6 +107,7 @@ export interface PatientVisitHistoryViewProps {
     patientId: string;
     patientMedications?: EnhancedMedication[]; // Optional - component fetches visits internally
     onVisitSaved?: () => void;
+    readOnly?: boolean; // If true, hides editing functionality (for patient dashboard)
 }
 
 export interface VisitCardProps {

@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 interface NephrologistScratchpadProps {
     patientId: string;
     onNoteSaved?: () => void;
+    readOnly?: boolean;
 }
 
 // Lab types to show in threshold editor
@@ -32,6 +33,7 @@ interface ThresholdData {
 const NephrologistScratchpad: React.FC<NephrologistScratchpadProps> = ({
     patientId,
     onNoteSaved,
+    readOnly = false,
 }) => {
     const { user } = useAuth();
     const [noteContent, setNoteContent] = useState('');
@@ -223,43 +225,48 @@ const NephrologistScratchpad: React.FC<NephrologistScratchpadProps> = ({
             {/* Collapsible Content */}
             {isExpanded && (
                 <div className="p-6 space-y-6 border-t border-indigo-100 dark:border-indigo-900/30">
-                    {/* Save Note Button */}
-                    <div className="flex justify-end">
-                        <button
-                            onClick={handleSaveNote}
-                            disabled={!noteContent.trim() || isSaving}
-                            className="px-4 py-1.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 rounded-lg transition-colors"
-                        >
-                            {isSaving ? 'Saving...' : 'Save Note'}
-                        </button>
-                    </div>
-                    {/* Quick Note Section */}
-                    <div>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
-                            Quick Note
-                        </label>
-                        <textarea
-                            value={noteContent}
-                            onChange={(e) => setNoteContent(e.target.value)}
-                            placeholder="Add clinical observations, follow-up reminders, or any notes about this patient..."
-                            className="w-full p-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                            rows={3}
-                        />
-                        <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={isVisibleToPatient}
-                                onChange={(e) => setIsVisibleToPatient(e.target.checked)}
-                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                            />
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                                Visible to patient
-                            </span>
-                            <span className="text-xs text-gray-400 dark:text-gray-500">
-                                (Patient can see this note in their portal)
-                            </span>
-                        </label>
-                    </div>
+                    {/* Quick Note Section - Only show for doctors (not read-only) */}
+                    {!readOnly && (
+                        <>
+                            {/* Save Note Button */}
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={handleSaveNote}
+                                    disabled={!noteContent.trim() || isSaving}
+                                    className="px-4 py-1.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 rounded-lg transition-colors"
+                                >
+                                    {isSaving ? 'Saving...' : 'Save Note'}
+                                </button>
+                            </div>
+                            {/* Quick Note Section */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+                                    Quick Note
+                                </label>
+                                <textarea
+                                    value={noteContent}
+                                    onChange={(e) => setNoteContent(e.target.value)}
+                                    placeholder="Add clinical observations, follow-up reminders, or any notes about this patient..."
+                                    className="w-full p-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                                    rows={3}
+                                />
+                                <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isVisibleToPatient}
+                                        onChange={(e) => setIsVisibleToPatient(e.target.checked)}
+                                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                    />
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                                        Visible to patient
+                                    </span>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                        (Patient can see this note in their portal)
+                                    </span>
+                                </label>
+                            </div>
+                        </>
+                    )}
 
                     {/* Lab Thresholds Section */}
                     <div>
@@ -267,9 +274,11 @@ const NephrologistScratchpad: React.FC<NephrologistScratchpadProps> = ({
                             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                                 ⚙️ Lab Thresholds (Personalized)
                             </label>
-                            <span className="text-xs text-gray-400">
-                                Click ✏️ to customize ranges for this patient
-                            </span>
+                            {!readOnly && (
+                                <span className="text-xs text-gray-400">
+                                    Click ✏️ to customize ranges for this patient
+                                </span>
+                            )}
                         </div>
 
                         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl overflow-hidden">
@@ -280,7 +289,7 @@ const NephrologistScratchpad: React.FC<NephrologistScratchpadProps> = ({
                                         <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Range</th>
                                         <th className="text-center px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Current</th>
                                         <th className="text-center px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
-                                        <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Actions</th>
+                                        {!readOnly && <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Actions</th>}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -343,43 +352,45 @@ const NephrologistScratchpad: React.FC<NephrologistScratchpadProps> = ({
                                                         <span className="text-gray-400">--</span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-2.5 text-right">
-                                                    {isEditing ? (
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <button
-                                                                onClick={handleSaveThreshold}
-                                                                className="px-2 py-1 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded"
-                                                            >
-                                                                Save
-                                                            </button>
-                                                            <button
-                                                                onClick={() => setEditingThreshold(null)}
-                                                                className="px-2 py-1 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <button
-                                                                onClick={() => handleEditThreshold(lab.type)}
-                                                                className="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                                                                title="Edit threshold"
-                                                            >
-                                                                ✏️
-                                                            </button>
-                                                            {threshold?.isCustom && (
+                                                {!readOnly && (
+                                                    <td className="px-4 py-2.5 text-right">
+                                                        {isEditing ? (
+                                                            <div className="flex items-center justify-end gap-1">
                                                                 <button
-                                                                    onClick={() => handleResetThreshold(lab.type)}
-                                                                    className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                                                                    title="Reset to default"
+                                                                    onClick={handleSaveThreshold}
+                                                                    className="px-2 py-1 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded"
                                                                 >
-                                                                    ↩️
+                                                                    Save
                                                                 </button>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </td>
+                                                                <button
+                                                                    onClick={() => setEditingThreshold(null)}
+                                                                    className="px-2 py-1 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <button
+                                                                    onClick={() => handleEditThreshold(lab.type)}
+                                                                    className="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                                                                    title="Edit threshold"
+                                                                >
+                                                                    ✏️
+                                                                </button>
+                                                                {threshold?.isCustom && (
+                                                                    <button
+                                                                        onClick={() => handleResetThreshold(lab.type)}
+                                                                        className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                                                                        title="Reset to default"
+                                                                    >
+                                                                        ↩️
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                )}
                                             </tr>
                                         );
                                     })}
@@ -388,7 +399,7 @@ const NephrologistScratchpad: React.FC<NephrologistScratchpadProps> = ({
                         </div>
 
                         {/* Reason input when editing */}
-                        {editingThreshold && (
+                        {!readOnly && editingThreshold && (
                             <div className="mt-2">
                                 <input
                                     type="text"

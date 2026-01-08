@@ -11,6 +11,7 @@ const PatientVisitHistoryView: React.FC<PatientVisitHistoryViewProps> = ({
     patientId,
     patientMedications,
     onVisitSaved,
+    readOnly = false,
 }) => {
     const { user } = useAuth();
     const [visits, setVisits] = useState<VisitRecord[]>([]);
@@ -203,6 +204,7 @@ const PatientVisitHistoryView: React.FC<PatientVisitHistoryViewProps> = ({
             <NephrologistScratchpad
                 patientId={patientId}
                 onNoteSaved={handleNoteSaved}
+                readOnly={readOnly}
             />
 
             {/* Visit History Modal */}

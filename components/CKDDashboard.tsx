@@ -427,7 +427,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
                     <LabResultsCard patientId={patient.id} />
 
                     {/* Visit History - Same cards as doctor view */}
-                    <PatientVisitHistoryView patientId={patient.id} />
+                    <PatientVisitHistoryView patientId={patient.id} readOnly={true} />
                 </div>
 
                 {/* Right Column (Management & Tracking) */}
