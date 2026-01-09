@@ -1,4 +1,10 @@
 import React from 'react';
+import { StethoscopeIcon } from './icons/StethoscopeIcon';
+import { ClipboardIcon } from './icons/ClipboardIcon';
+import { MicroscopeIcon } from './icons/MicroscopeIcon';
+import { ActivityIcon } from './icons/ActivityIcon';
+import { PillIcon } from './icons/PillIcon';
+import { BookmarkIcon } from './icons/BookmarkIcon';
 
 interface RichSummaryDisplayProps {
   summary: string;
@@ -43,40 +49,40 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
     );
   }
 
-  // Map of section keys to their display info
-  const sectionConfig: Record<string, { icon: string; title: string; color: string; bgColor: string }> = {
+  // Map of section keys to their display info with icon components
+  const sectionConfig: Record<string, { icon: React.FC<React.SVGProps<SVGSVGElement>>; title: string; color: string; bgColor: string }> = {
     "Current Issue/Reason for Visit": {
-      icon: "🩺",
+      icon: StethoscopeIcon,
       title: "Current Issue / Reason for Visit",
       color: "text-rose-700 dark:text-rose-400",
       bgColor: "bg-rose-50 dark:bg-rose-900/20"
     },
     "Medical History": {
-      icon: "📋",
+      icon: ClipboardIcon,
       title: "Medical History",
       color: "text-blue-700 dark:text-blue-400",
       bgColor: "bg-blue-50 dark:bg-blue-900/20"
     },
     "Findings/Results": {
-      icon: "🔬",
+      icon: MicroscopeIcon,
       title: "Findings & Results",
       color: "text-purple-700 dark:text-purple-400",
       bgColor: "bg-purple-50 dark:bg-purple-900/20"
     },
     "Diagnosis": {
-      icon: "⚕️",
+      icon: ActivityIcon,
       title: "Diagnosis",
       color: "text-indigo-700 dark:text-indigo-400",
-      bgColor: "bg-rose-50 dark:bg-indigo-900/20"
+      bgColor: "bg-indigo-50 dark:bg-indigo-900/20"
     },
     "Medications/Treatment": {
-      icon: "💊",
+      icon: PillIcon,
       title: "Medications & Treatment",
       color: "text-green-700 dark:text-green-400",
       bgColor: "bg-green-50 dark:bg-green-900/20"
     },
     "Recommendations/Follow-up": {
-      icon: "📌",
+      icon: BookmarkIcon,
       title: "Recommendations & Follow-up",
       color: "text-amber-700 dark:text-amber-400",
       bgColor: "bg-amber-50 dark:bg-amber-900/20"
@@ -89,26 +95,28 @@ const RichSummaryDisplay: React.FC<RichSummaryDisplayProps> = ({ summary, classN
         if (!items || items.length === 0) return null;
 
         const config = sectionConfig[sectionKey] || {
-          icon: "📄",
+          icon: ClipboardIcon,
           title: sectionKey,
           color: "text-gray-700 dark:text-gray-400",
           bgColor: "bg-gray-50 dark:bg-gray-900/20"
         };
+
+        const IconComponent = config.icon;
 
         return (
           <div 
             key={sectionKey} 
             className={`rounded-xl p-5 border border-gray-200 dark:border-gray-700 ${config.bgColor} transition-all duration-300 hover:shadow-md`}
           >
-            <h4 className={`text-lg font-bold mb-3 flex items-center ${config.color}`}>
-              <span className="text-2xl mr-2">{config.icon}</span>
+            <h4 className={`text-base sm:text-lg font-bold mb-3 flex items-center ${config.color}`}>
+              <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 mr-2 flex-shrink-0" />
               {config.title}
             </h4>
             <ul className="space-y-2">
               {items.map((item, index) => (
                 <li 
                   key={index} 
-                  className="flex items-start text-gray-700 dark:text-gray-300 leading-relaxed"
+                  className="flex items-start text-sm sm:text-base text-gray-700 dark:text-gray-300 leading-relaxed"
                 >
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 mt-2 mr-3 flex-shrink-0"></span>
                   <span className="flex-1">{item}</span>

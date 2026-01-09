@@ -90,16 +90,16 @@ const Records: React.FC<RecordsProps> = ({ records, onRemoveRecord }) => {
                   <DocumentIcon className="h-4 w-4 sm:h-6 sm:w-6 text-[#222222] dark:text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-1.5 sm:mb-2 gap-1.5 sm:gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className={`inline-flex items-center px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mb-1.5 sm:mb-2 ${getCategoryColor(record.category).replace('border', 'border-none')}`}>
+                  <div className="flex flex-row justify-between items-start mb-1.5 sm:mb-2 gap-3 sm:gap-2">
+                    <div className="flex-1 min-w-0 pr-3 sm:pr-2">
+                      <div className={`inline-flex items-center px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mb-1.5 sm:mb-2 mr-2 ${getCategoryColor(record.category).replace('border', 'border-none')}`}>
                         <TagIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 sm:mr-1.5" />
                         {record.category}
                       </div>
                       <h3 className="text-sm sm:text-lg font-bold text-[#222222] dark:text-white mb-0.5 truncate">{record.type}</h3>
                       <p className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400">{new Date(record.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                     </div>
-                    <div className="flex items-center gap-1 sm:gap-1.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-1.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0 pt-1">
                       {record.fileUrl && (
                         <a
                           href={record.fileUrl}

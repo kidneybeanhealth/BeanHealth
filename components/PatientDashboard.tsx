@@ -2,8 +2,8 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { NotificationProvider, useNotifications } from "../contexts/NotificationContext";
 import { UrgentCreditsProvider, useUrgentCredits } from "../contexts/UrgentCreditsContext";
-import Header from "./Header";
 import Sidebar from "./Sidebar";
+import Header from "./Header";
 import MobileBottomNav from "./MobileBottomNav";
 import Dashboard from "./Dashboard";
 import CKDDashboard from "./CKDDashboard";
@@ -195,17 +195,17 @@ const PatientDashboard: React.FC = () => {
             try {
                 const messagesData = await ChatService.getAllConversations(user.id);
                 setChatMessages(messagesData);
-                
+
                 // Get unique contact IDs from chat messages (other than current user)
                 const contactIds = new Set<string>();
                 messagesData.forEach(msg => {
                     if (msg.senderId !== user.id) contactIds.add(msg.senderId);
                     if (msg.recipientId !== user.id) contactIds.add(msg.recipientId);
                 });
-                
+
                 // Fetch contact details for IDs not in the linked doctors list
                 const unlinkedIds = Array.from(contactIds).filter(id => !doctors.some(d => d.id === id));
-                
+
                 if (unlinkedIds.length > 0) {
                     // Fetch user details for unlinked contacts
                     const { supabase } = await import('../lib/supabase');
@@ -214,12 +214,12 @@ const PatientDashboard: React.FC = () => {
                         .select('id, name, email, specialty, referral_code, role')
                         .in('id', unlinkedIds)
                         .eq('role', 'doctor');
-                    
+
                     if (unlinkedContacts && unlinkedContacts.length > 0) {
                         // Combine linked doctors with unlinked contacts that have chat history
                         const allContacts = [
                             ...doctors,
-                            ...unlinkedContacts.map(c => ({
+                            ...unlinkedContacts.map((c: any) => ({
                                 ...c,
                                 referralCode: c.referral_code,
                             } as User))
@@ -751,7 +751,6 @@ const PatientDashboard: React.FC = () => {
             <NotificationProvider userId={user?.id || ''} activeView={activeView} userRole="patient">
                 <div className="h-screen bg-gray-100 dark:bg-black flex flex-col md:flex-row overflow-hidden">
                     {/* Sidebar */}
-
                     <SidebarWithNotifications
                         activeView={activeView}
                         setActiveView={setActiveView}
@@ -766,19 +765,20 @@ const PatientDashboard: React.FC = () => {
                     />
 
                     {/* Main content wrapper */}
-                    <div className="flex-1 flex flex-col min-w-0 w-full md:w-auto h-full overflow-hidden">
-                        {/* Hide header on mobile when in messages view */}
-                        <div className={`flex-shrink-0 ${activeView === 'messages' ? 'hidden md:block' : ''}`}>
+                    <div className="flex-1 flex flex-col min-w-0 w-full md:w-auto h-full overflow-hidden relative">
+                        <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-2 sm:px-4 pb-20 sm:pb-24 md:pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-2 sm:px-4 md:px-5 lg:px-6 pb-24 sm:pb-28 md:pb-8'}`}>
                             <Header
                                 user={appUser}
                                 onLogout={signOut}
                                 onMenuClick={() => setSidebarOpen(true)}
                                 onTitleClick={() => setActiveView('dashboard')}
                                 showMenu={false}
+                                className={activeView === 'messages' ? 'hidden md:flex' : ''}
                             />
-                        </div>
-
-                        <main className={`flex-1 min-h-0 ${activeView === 'messages' ? 'px-2 sm:px-4 pt-2 sm:pt-4 pb-20 sm:pb-24 md:pb-4 flex flex-col overflow-hidden' : 'overflow-y-auto px-2 sm:px-4 md:px-5 lg:px-6 pt-3 sm:pt-4 md:pt-6 pb-24 sm:pb-28 md:pb-8'}`}>{renderContent()}</main>
+                            {renderContent()}
+                        </main>
+                        {/* Strong blur fade mask for scrolling content - UI/UX optimized */}
+                        <div className="pointer-events-none absolute top-2 sm:top-4 left-0 right-0 h-32 bg-gradient-to-b from-gray-100/90 via-gray-100/40 to-transparent dark:from-black/90 dark:via-black/40 dark:to-transparent z-30"></div>
                     </div>
 
                     {/* Extracted Medications Modal */}
