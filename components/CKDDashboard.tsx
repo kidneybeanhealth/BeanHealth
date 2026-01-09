@@ -6,6 +6,7 @@ import EnhancedMedicationCard from './EnhancedMedicationCard';
 import FluidIntakeTracker from './FluidIntakeTracker';
 import LabResultsCard from './LabResultsCard';
 import UpcomingTestsCard from './UpcomingTestsCard';
+import PatientVisitHistoryView from './PatientVisitHistoryView';
 import VerticalScrollPicker from './VerticalScrollPicker';
 import { UserService } from '../services/authService';
 import { supabase } from '../lib/supabase';
@@ -424,6 +425,9 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
 
                     {/* Lab Results */}
                     <LabResultsCard patientId={patient.id} />
+
+                    {/* Visit History - Same cards as doctor view */}
+                    <PatientVisitHistoryView patientId={patient.id} readOnly={true} />
                 </div>
 
                 {/* Right Column (Management & Tracking) */}

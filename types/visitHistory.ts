@@ -105,13 +105,15 @@ export interface MedicationAction {
 // Props for components
 export interface PatientVisitHistoryViewProps {
     patientId: string;
-    patientMedications: EnhancedMedication[];
+    patientMedications?: EnhancedMedication[]; // Optional - component fetches visits internally
     onVisitSaved?: () => void;
+    readOnly?: boolean; // If true, hides editing functionality (for patient dashboard)
 }
 
 export interface VisitCardProps {
     visit: VisitRecord;
     showConnectionArrow?: boolean;
+    onEditClick?: (visit: VisitRecord) => void;
 }
 
 export interface LabTrendGraphProps {
@@ -125,3 +127,24 @@ export interface DoctorActionPanelProps {
     onSave: (action: DoctorVisitAction) => void;
     isSaving: boolean;
 }
+
+// Medication linked to a specific visit
+export interface VisitMedication {
+    id: string;
+    visitId: string;
+    medicationName: string;
+    dosage: string;
+    dosageUnit: string;
+    frequency: string; // e.g., "0-0-1 :: DAILY"
+    status: MedicationChangeStatus;
+    previousDosage?: string;
+    previousDosageUnit?: string;
+    instructions?: string;
+    composition?: string; // e.g., "ROSUVASTATIN - 10MG"
+    timing?: string; // e.g., "AFTER FOOD - DINNER"
+    duration?: string; // e.g., "1 MONTH"
+    source: 'manual' | 'ai_extracted' | 'synced';
+    sourceMedicationId?: string;
+    createdAt: string;
+}
+

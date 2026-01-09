@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User } from '../types';
 import { AlertDefinition } from '../types/alerts';
+import { VisitRecord } from '../types/visitHistory';
 import { supabase } from '../lib/supabase';
 import ThemeToggle from './ThemeToggle';
 import { LogoutIcon } from './icons/LogoutIcon';
@@ -9,8 +10,10 @@ import { LogoIcon } from './icons/LogoIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { getInitials, getInitialsColor } from '../utils/avatarUtils';
 import AdminLabTypesPanel from './AdminLabTypesPanel';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import RuleEngineAdmin from './RuleEngineAdmin';
+import AdminVisitEditModal from './AdminVisitEditModal';
+import { VisitHistoryService } from '../services/visitHistoryService';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 // Mock data for initial development - will be replaced with real service calls
 const MOCK_USERS: User[] = [
@@ -20,7 +23,7 @@ const MOCK_USERS: User[] = [
     { id: '4', name: 'Dr. Michael Chen', email: 'michael@clinic.com', role: 'doctor', specialty: 'Cardiology' },
 ];
 
-type AdminView = 'dashboard' | 'users' | 'relationships' | 'labtypes' | 'ruleengine' | 'alerts';
+type AdminView = 'dashboard' | 'users' | 'relationships' | 'labtypes' | 'ruleengine' | 'alerts' | 'visitrecords';
 
 const AdminDashboardMain: React.FC = () => {
     const { user, profile, signOut } = useAuth();
@@ -34,6 +37,7 @@ const AdminDashboardMain: React.FC = () => {
             case 'relationships': return 'Maintain Connections';
             case 'ruleengine': return 'Clinical Alerts System';
             case 'labtypes': return 'Lab Record Types';
+            case 'visitrecords': return 'Visit Records';
             default: return 'Admin Portal';
         }
     };
@@ -69,6 +73,14 @@ const AdminDashboardMain: React.FC = () => {
         cooldownHours: 168,
         dedupWindowHours: 24,
     });
+
+    // Visit Records management state
+    const [visitRecordsPatientId, setVisitRecordsPatientId] = useState('');
+    const [patientVisits, setPatientVisits] = useState<VisitRecord[]>([]);
+    const [loadingVisits, setLoadingVisits] = useState(false);
+    const [selectedVisit, setSelectedVisit] = useState<VisitRecord | null>(null);
+    const [showVisitEditModal, setShowVisitEditModal] = useState(false);
+    const [isCreatingVisit, setIsCreatingVisit] = useState(false);
 
     // Initialize edit form when selecting an alert
     const openAlertEditor = (alertDef: AlertDefinition) => {
@@ -1335,6 +1347,166 @@ const AdminDashboardMain: React.FC = () => {
         </div>
     );
 
+    // Visit Records Management View
+    const fetchPatientVisits = async (patientId: string) => {
+        if (!patientId) {
+            setPatientVisits([]);
+            return;
+        }
+        setLoadingVisits(true);
+        try {
+            const visits = await VisitHistoryService.getAllPatientVisits(patientId);
+            setPatientVisits(visits);
+        } catch (error) {
+            console.error('Error fetching visits:', error);
+            setPatientVisits([]);
+        } finally {
+            setLoadingVisits(false);
+        }
+    };
+
+    const handleVisitPatientChange = async (patientId: string) => {
+        setVisitRecordsPatientId(patientId);
+        await fetchPatientVisits(patientId);
+    };
+
+    const renderVisitRecords = () => (
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Visit Records</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">View and edit patient visit history with medications</p>
+                </div>
+                <button
+                    onClick={() => setActiveView('dashboard')}
+                    className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back to Dashboard
+                </button>
+            </div>
+
+            {/* Patient Selector */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select Patient to View/Edit Visits
+                </label>
+                <select
+                    value={visitRecordsPatientId}
+                    onChange={(e) => handleVisitPatientChange(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500"
+                >
+                    <option value="">-- Select a patient --</option>
+                    {users.filter(u => u.role === 'patient').map(patient => (
+                        <option key={patient.id} value={patient.id}>
+                            {patient.name} ({patient.patientId || patient.email})
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Visits List */}
+            {visitRecordsPatientId && (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                            Visit History ({patientVisits.length} visits)
+                        </h2>
+                        <button
+                            onClick={() => {
+                                setSelectedVisit(null);
+                                setIsCreatingVisit(true);
+                                setShowVisitEditModal(true);
+                            }}
+                            className="px-4 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Create New Visit
+                        </button>
+                    </div>
+
+                    {loadingVisits ? (
+                        <div className="p-8 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto"></div>
+                            <p className="text-gray-500 dark:text-gray-400 mt-2">Loading visits...</p>
+                        </div>
+                    ) : patientVisits.length === 0 ? (
+                        <div className="p-8 text-center">
+                            <span className="text-4xl mb-4 block">📋</span>
+                            <p className="text-gray-500 dark:text-gray-400">No visits recorded for this patient.</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {patientVisits.map((visit) => (
+                                <div
+                                    key={visit.id}
+                                    className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div
+                                                className="w-3 h-3 rounded-full"
+                                                style={{ backgroundColor: visit.color }}
+                                            />
+                                            <div>
+                                                <p className="font-semibold text-gray-900 dark:text-white">
+                                                    Visit #{visit.visitNumber} - {new Date(visit.visitDate).toLocaleDateString('en-US', {
+                                                        year: 'numeric', month: 'short', day: 'numeric'
+                                                    })}
+                                                </p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                    {visit.complaint || 'No complaint recorded'}
+                                                </p>
+                                                <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
+                                                    <span>💊 {visit.medications.length} medications</span>
+                                                    <span>🩺 {visit.prescribedBy}</span>
+                                                    {visit.abnormalLabs.length > 0 && (
+                                                        <span className="text-red-500">⚠️ {visit.abnormalLabs.length} abnormal labs</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedVisit(visit);
+                                                setIsCreatingVisit(false);
+                                                setShowVisitEditModal(true);
+                                            }}
+                                            className="px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors flex items-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            Edit
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Visit Edit Modal */}
+            <AdminVisitEditModal
+                visit={selectedVisit}
+                patientId={visitRecordsPatientId}
+                isOpen={showVisitEditModal}
+                isCreating={isCreatingVisit}
+                onClose={() => {
+                    setShowVisitEditModal(false);
+                    setSelectedVisit(null);
+                    setIsCreatingVisit(false);
+                }}
+                onSave={() => fetchPatientVisits(visitRecordsPatientId)}
+            />
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             {/* Header */}
@@ -1354,7 +1526,7 @@ const AdminDashboardMain: React.FC = () => {
 
                         {/* Nav Tabs */}
                         <nav className="hidden md:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
-                            {(['dashboard', 'users', 'relationships', 'labtypes', 'ruleengine'] as AdminView[]).map((view) => (
+                            {(['dashboard', 'users', 'relationships', 'visitrecords', 'labtypes', 'ruleengine'] as AdminView[]).map((view) => (
                                 <button
                                     key={view}
                                     onClick={() => setActiveView(view)}
@@ -1363,7 +1535,7 @@ const AdminDashboardMain: React.FC = () => {
                                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                                         }`}
                                 >
-                                    {view === 'labtypes' ? 'Lab Types' : view === 'ruleengine' ? 'Rule Engine' : view.charAt(0).toUpperCase() + view.slice(1)}
+                                    {view === 'labtypes' ? 'Lab Types' : view === 'ruleengine' ? 'Rule Engine' : view === 'visitrecords' ? 'Visit Records' : view.charAt(0).toUpperCase() + view.slice(1)}
                                 </button>
                             ))}
                         </nav>
@@ -1397,6 +1569,7 @@ const AdminDashboardMain: React.FC = () => {
                 {activeView === 'dashboard' && renderDashboard()}
                 {activeView === 'users' && renderUsers()}
                 {activeView === 'relationships' && renderRelationships()}
+                {activeView === 'visitrecords' && renderVisitRecords()}
                 {activeView === 'labtypes' && <AdminLabTypesPanel adminId={profile?.id || user?.id || ''} />}
                 {activeView === 'ruleengine' && <RuleEngineAdmin />}
             </main>

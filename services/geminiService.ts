@@ -47,6 +47,51 @@ const createFallbackAnalysis = (file: File): MedicalRecordWithVitals => {
     };
 };
 
+// Normalize lab test type to consistent lowercase, underscore-separated code
+const normalizeLabTestType = (testType: string): string => {
+    if (!testType) return '';
+
+    // Common mappings for standardized test type codes
+    const mappings: Record<string, string> = {
+        'egfr': 'egfr',
+        'gfr': 'egfr',
+        'glomerular filtration rate': 'egfr',
+        'blood urea nitrogen': 'bun',
+        'albumin-creatinine ratio': 'acr',
+        'albumin creatinine ratio': 'acr',
+        'uacr': 'acr',
+        'hba1c': 'hba1c',
+        'a1c': 'hba1c',
+        'hemoglobin a1c': 'hba1c',
+        'glycated hemoglobin': 'hba1c',
+        'total cholesterol': 'total_cholesterol',
+        'ldl cholesterol': 'ldl',
+        'hdl cholesterol': 'hdl',
+        'vitamin d': 'vitamin_d',
+        '25-oh vitamin d': 'vitamin_d',
+        '25-hydroxyvitamin d': 'vitamin_d',
+        'vitamin b12': 'vitamin_b12',
+        'white blood cell': 'wbc',
+        'red blood cell': 'rbc',
+        'c-reactive protein': 'crp',
+    };
+
+    const normalized = testType.toLowerCase().trim();
+
+    // Check for direct mapping
+    if (mappings[normalized]) {
+        return mappings[normalized];
+    }
+
+    // Otherwise, convert to snake_case
+    return normalized
+        .replace(/[^a-z0-9\s]/g, '')  // Remove special chars
+        .replace(/\s+/g, '_')          // Replace spaces with underscores
+        .replace(/_+/g, '_')           // Collapse multiple underscores
+        .replace(/^_|_$/g, '');        // Trim leading/trailing underscores
+};
+
+
 const fileToGenerativePart = async (file: File) => {
     const base64EncodedData = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -94,11 +139,23 @@ export interface AIExtractedCaseDetails {
     medicalHistory?: string[];
 }
 
+// Interface for AI extracted lab results (supports any lab type)
+export interface AIExtractedLabResult {
+    testType: string;      // Can be standard (creatinine, egfr) or custom (vitamin_d, etc)
+    testName: string;      // Human-readable name for display
+    value: number;
+    unit: string;
+    referenceMin?: number;
+    referenceMax?: number;
+    testDate?: string;     // Falls back to document date if not present
+}
+
 // Enhanced interface that includes both analysis and vitals
 export interface MedicalRecordWithVitals extends MedicalRecord {
     extractedVitals?: ExtractedVitals;
     extractedMedications?: AIExtractedMedication[];
     extractedCaseDetails?: AIExtractedCaseDetails;
+    extractedLabResults?: AIExtractedLabResult[];  // NEW: Lab results extraction
 }
 
 export const analyzeMedicalRecord = async (
@@ -184,7 +241,17 @@ OUTPUT FORMAT: Return ONLY valid JSON (no markdown, no explanations):
     "primaryCondition": "Main diagnosis or condition",
     "latestComplaint": "Current symptoms or reason for visit",
     "medicalHistory": ["Past condition 1", "Past condition 2"]
-  }
+  },
+  "labResults": [
+    {
+      "testType": "creatinine",
+      "testName": "Creatinine",
+      "value": 1.2,
+      "unit": "mg/dL",
+      "referenceMin": 0.7,
+      "referenceMax": 1.3
+    }
+  ]
 }
 
 EXTRACTION INSTRUCTIONS:
@@ -198,6 +265,7 @@ EXTRACTION INSTRUCTIONS:
 2. TYPE:
    - Choose from: "Lab Report", "Blood Test", "Prescription", "X-Ray Report", "MRI Report", "CT Scan", "Ultrasound", "Doctor's Note", "Discharge Summary", "Vaccination Record", "Medical Image", "Medical Document"
    - Be specific (e.g., prefer "Blood Test" over "Lab Report" if it's specifically blood work)
+
 
 3. SUMMARY (MOST IMPORTANT - STRUCTURED JSON FORMAT):
    Create a structured JSON object with these sections (only include sections with content):
@@ -249,6 +317,29 @@ EXTRACTION INSTRUCTIONS:
    - bmi: Body Mass Index (e.g., "24.5", "BMI: 22.3")
    
    Only include measurements that are explicitly stated in the document.
+
+6. LAB RESULTS (CRITICAL - Extract ALL laboratory test results):
+   Extract EVERY lab test found in the document. For each lab result, include:
+   - testType: Lowercase, underscore-separated code (e.g., "creatinine", "egfr", "vitamin_d", "hba1c")
+   - testName: Human-readable name (e.g., "Creatinine", "eGFR", "Vitamin D", "HbA1c")
+   - value: Numeric value only
+   - unit: Unit of measurement (e.g., "mg/dL", "mL/min/1.73m²", "ng/mL", "%")
+   - referenceMin: Lower bound of normal range if provided
+   - referenceMax: Upper bound of normal range if provided
+   
+   COMMON LAB TESTS TO LOOK FOR:
+   - Kidney: Creatinine, eGFR (GFR), BUN (Blood Urea Nitrogen), ACR (Albumin-Creatinine Ratio)
+   - Electrolytes: Potassium, Sodium, Chloride, Bicarbonate (CO2), Calcium, Phosphorus, Magnesium
+   - Blood: Hemoglobin, Hematocrit, WBC, RBC, Platelets
+   - Diabetes: Glucose, HbA1c (A1C), Fasting Glucose
+   - Liver: ALT (SGPT), AST (SGOT), Bilirubin, Albumin, ALP
+   - Lipids: Total Cholesterol, LDL, HDL, Triglycerides
+   - Thyroid: TSH, T3, T4, Free T4
+   - Vitamins: Vitamin D (25-OH), Vitamin B12, Folate, Iron, Ferritin
+   - Urine: Protein, Microalbumin, Specific Gravity
+   - Other: Uric Acid, CRP, ESR, PSA
+   
+   Extract ALL lab values found, even if not in this list. This is essential for trend tracking.
 
 CRITICAL: Return ONLY the JSON object. No markdown formatting, no code blocks, no explanations.`;
 
@@ -409,6 +500,26 @@ CRITICAL: Return ONLY the JSON object. No markdown formatting, no code blocks, n
             console.log(
                 "📋 Case details extracted from analysis:",
                 cleanResult.extractedCaseDetails
+            );
+        }
+
+        // Extract lab results if present
+        if (parsedResult.labResults && Array.isArray(parsedResult.labResults) && parsedResult.labResults.length > 0) {
+            cleanResult.extractedLabResults = parsedResult.labResults
+                .map((lab: any) => ({
+                    testType: normalizeLabTestType(lab.testType || lab.testName || ''),
+                    testName: lab.testName || lab.testType || '',
+                    value: typeof lab.value === 'number' ? lab.value : parseFloat(lab.value),
+                    unit: lab.unit || '',
+                    referenceMin: lab.referenceMin,
+                    referenceMax: lab.referenceMax,
+                    testDate: lab.testDate || cleanResult.date,
+                }))
+                .filter((lab: any) => lab.testType && !isNaN(lab.value) && lab.unit);
+
+            console.log(
+                "🔬 Lab results extracted from analysis:",
+                cleanResult.extractedLabResults
             );
         }
 
