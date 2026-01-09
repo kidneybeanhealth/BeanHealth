@@ -578,131 +578,138 @@ const DoctorDashboardMain: React.FC = () => {
       <div className="min-h-screen bg-gray-100 dark:bg-black font-sans text-[#222222] selection:bg-secondary-500 selection:text-white relative flex flex-col">
 
         {/* Sticky Header with Rounded Edges */}
-        <div className={`sticky top-2 sm:top-4 mx-2 sm:mx-4 mt-2 sm:mt-4 z-40 transition-all duration-300 bg-white dark:bg-black backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-gray-800 shadow-md ${activeView === 'messages' ? 'hidden md:flex' : ''}`}>
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
-            <div className="flex items-center justify-between h-16 sm:h-20">
-              {/* Logo / Brand Area */}
-              <div
-                onClick={() => setActiveView('dashboard')}
-                className="flex items-center gap-3 cursor-pointer group active:scale-95 transition-transform"
-              >
-                <div className="h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0 group-hover:shadow-md transition-shadow">
-                  <LogoIcon className="w-9 h-9 md:w-10 md:h-10" />
-                </div>
-                <div className="flex flex-col justify-center">
-                  <h2 className="text-lg md:text-xl font-bold leading-none tracking-tight">
-                    <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
-                    <span className="text-secondary-500">Health</span>
-                  </h2>
-                  <p className="text-[9px] md:text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-0.5">DOCTOR PORTAL</p>
-                </div>
-              </div>
+        {/* Sticky Header Wrapper with Gradient Mask */}
+        <div className="sticky top-0 z-50 w-full flex justify-center pointer-events-none">
+          {/* Gradient Backdrop to hide scrolling content above */}
+          <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-gray-100 via-gray-100/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent" />
 
-              {/* Center Tabs */}
-              {/* Center Tabs - Desktop Only with Enhanced Mobile-style Animation */}
-              <nav className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 p-1 bg-white/80 dark:bg-[#121212]/80 backdrop-blur-3xl saturate-150 border border-white/20 dark:border-white/10 rounded-full ring-1 ring-white/20 dark:ring-white/5 transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]">
-                <button
+          {/* Main Header Pill */}
+          <div className={`pointer-events-auto relative mt-2 sm:mt-4 mx-2 sm:mx-4 w-full max-w-[1440px] transition-all duration-300 bg-white/80 dark:bg-black/80 backdrop-blur-3xl saturate-150 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-gray-800 shadow-md ${activeView === 'messages' ? 'hidden md:flex' : ''}`}>
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
+              <div className="flex items-center justify-between h-16 sm:h-20">
+                {/* Logo / Brand Area */}
+                <div
                   onClick={() => setActiveView('dashboard')}
-                  className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'dashboard'
-                    ? 'w-[130px] bg-black dark:bg-white text-white dark:text-black scale-105'
-                    : 'w-[100px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
-                    }`}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  className="flex items-center gap-3 cursor-pointer group active:scale-95 transition-transform"
                 >
-                  <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'dashboard' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Dashboard</span>
-                  {activeView === 'dashboard' && (
-                    <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveView('monitoring')}
-                  className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'monitoring'
-                    ? 'w-[140px] bg-black dark:bg-white text-white dark:text-black scale-105'
-                    : 'w-[110px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
-                    }`}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                >
-                  <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'monitoring' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Monitoring</span>
-                  {alertCounts.urgent > 0 && (
-                    <span className="ml-1.5 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
-                      {alertCounts.urgent}
-                    </span>
-                  )}
-                  {activeView === 'monitoring' && (
-                    <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveView('alerts')}
-                  className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'alerts'
-                    ? 'w-[110px] bg-black dark:bg-white text-white dark:text-black scale-105'
-                    : 'w-[90px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
-                    }`}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                >
-                  <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'alerts' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Alerts</span>
-                  {alertCounts.total > 0 && (
-                    <span className="ml-1.5 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                      {alertCounts.total}
-                    </span>
-                  )}
-                  {activeView === 'alerts' && (
-                    <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveView('messages')}
-                  className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'messages'
-                    ? 'w-[130px] bg-black dark:bg-white text-white dark:text-black scale-105'
-                    : 'w-[100px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
-                    }`}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                >
-                  <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'messages' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Messages</span>
-                  <div className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'messages' ? 'ml-1.5' : 'ml-0'}`}>
-                    <MessagesNotificationBadge localCount={localUnreadCount} />
+                  <div className="h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0 group-hover:shadow-md transition-shadow">
+                    <LogoIcon className="w-9 h-9 md:w-10 md:h-10" />
                   </div>
-                  {activeView === 'messages' && (
-                    <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
-                  )}
-                </button>
-              </nav>
-
-              {/* Right User Actions */}
-              <div className="flex items-center gap-5">
-                <ThemeToggle />
-
-                <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-1 sm:mx-2"></div>
-
-                {/* Doctor's Name & Specialty (Plain text, not part of the interactive capsule) */}
-                <div className="hidden md:block text-right pr-1">
-                  <p className="text-sm font-bold text-[#222222] dark:text-white leading-none">
-                    {profile?.name || user?.email?.split('@')[0] || 'Doctor'}
-                  </p>
-                  <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-wide mt-1 uppercase">
-                    {profile?.specialty || 'MD'}
-                  </p>
+                  <div className="flex flex-col justify-center">
+                    <h2 className="text-lg md:text-xl font-bold leading-none tracking-tight">
+                      <span className="text-[#3A2524] dark:text-[#e6b8a3]">Bean</span>
+                      <span className="text-secondary-500">Health</span>
+                    </h2>
+                    <p className="text-[9px] md:text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-0.5">DOCTOR PORTAL</p>
+                  </div>
                 </div>
 
-                <button
-                  onClick={() => setIsProfileOpen(true)}
-                  className="group flex items-center p-1 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-500 ease-out"
-                  aria-label="View Profile"
-                >
-                  <div className="relative z-10">
-                    <div className="h-9 w-9 md:h-10 md:w-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black font-bold text-xs md:text-sm shadow-md ring-2 ring-white dark:ring-black transition-colors duration-300 group-hover:ring-secondary-500">
-                      {getInitials(profile?.name || user?.email || 'Dr', user?.email || '')}
+                {/* Center Tabs */}
+                {/* Center Tabs - Desktop Only with Enhanced Mobile-style Animation */}
+                <nav className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 p-1 bg-white/80 dark:bg-[#121212]/80 backdrop-blur-3xl saturate-150 border border-white/20 dark:border-white/10 rounded-full ring-1 ring-white/20 dark:ring-white/5 transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]">
+                  <button
+                    onClick={() => setActiveView('dashboard')}
+                    className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'dashboard'
+                      ? 'w-[130px] bg-black dark:bg-white text-white dark:text-black scale-105'
+                      : 'w-[100px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
+                      }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'dashboard' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Dashboard</span>
+                    {activeView === 'dashboard' && (
+                      <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveView('monitoring')}
+                    className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'monitoring'
+                      ? 'w-[140px] bg-black dark:bg-white text-white dark:text-black scale-105'
+                      : 'w-[110px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
+                      }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'monitoring' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Monitoring</span>
+                    {alertCounts.urgent > 0 && (
+                      <span className="ml-1.5 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
+                        {alertCounts.urgent}
+                      </span>
+                    )}
+                    {activeView === 'monitoring' && (
+                      <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveView('alerts')}
+                    className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'alerts'
+                      ? 'w-[110px] bg-black dark:bg-white text-white dark:text-black scale-105'
+                      : 'w-[90px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
+                      }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'alerts' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Alerts</span>
+                    {alertCounts.total > 0 && (
+                      <span className="ml-1.5 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                        {alertCounts.total}
+                      </span>
+                    )}
+                    {activeView === 'alerts' && (
+                      <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveView('messages')}
+                    className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'messages'
+                      ? 'w-[130px] bg-black dark:bg-white text-white dark:text-black scale-105'
+                      : 'w-[100px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
+                      }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'messages' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Messages</span>
+                    <div className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'messages' ? 'ml-1.5' : 'ml-0'}`}>
+                      <MessagesNotificationBadge localCount={localUnreadCount} />
                     </div>
-                    {/* Online indicator */}
-                    <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-black bg-secondary-500"></span>
+                    {activeView === 'messages' && (
+                      <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                    )}
+                  </button>
+                </nav>
+
+                {/* Right User Actions */}
+                <div className="flex items-center gap-5">
+                  <ThemeToggle />
+
+                  <div className="h-8 w-px bg-gray-200 dark:bg-white/10 mx-1 sm:mx-2"></div>
+
+                  {/* Doctor's Name & Specialty (Plain text, not part of the interactive capsule) */}
+                  <div className="hidden md:block text-right pr-1">
+                    <p className="text-sm font-bold text-[#222222] dark:text-white leading-none">
+                      {profile?.name || user?.email?.split('@')[0] || 'Doctor'}
+                    </p>
+                    <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-wide mt-1 uppercase">
+                      {profile?.specialty || 'MD'}
+                    </p>
                   </div>
 
-                  <div className="max-w-0 group-hover:max-w-[100px] overflow-hidden transition-all duration-500 ease-out opacity-0 group-hover:opacity-100">
-                    <div className="flex items-center gap-2 pl-3 pr-2 whitespace-nowrap text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      <span>My Profile</span>
+                  <button
+                    onClick={() => setIsProfileOpen(true)}
+                    className="group flex items-center p-1 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-500 ease-out"
+                    aria-label="View Profile"
+                  >
+                    <div className="relative z-10">
+                      <div className="h-9 w-9 md:h-10 md:w-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black font-bold text-xs md:text-sm shadow-md ring-2 ring-white dark:ring-black transition-colors duration-300 group-hover:ring-secondary-500">
+                        {getInitials(profile?.name || user?.email || 'Dr', user?.email || '')}
+                      </div>
+                      {/* Online indicator */}
+                      <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-black bg-secondary-500"></span>
                     </div>
-                  </div>
-                </button>
+
+                    <div className="max-w-0 group-hover:max-w-[100px] overflow-hidden transition-all duration-500 ease-out opacity-0 group-hover:opacity-100">
+                      <div className="flex items-center gap-2 pl-3 pr-2 whitespace-nowrap text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        <span>My Profile</span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
