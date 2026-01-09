@@ -281,7 +281,7 @@ const NephrologistScratchpad: React.FC<NephrologistScratchpadProps> = ({
                             )}
                         </div>
 
-                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl overflow-hidden">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-gray-200 dark:border-gray-700">
