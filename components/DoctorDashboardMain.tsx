@@ -575,7 +575,7 @@ const DoctorDashboardMain: React.FC = () => {
 
   return (
     <NotificationProvider userId={user?.id || ''} activeView={activeView} userRole="doctor">
-      <div className="min-h-screen bg-gray-100 dark:bg-black font-sans text-[#222222] selection:bg-secondary-500 selection:text-white relative">
+      <div className="min-h-screen bg-gray-100 dark:bg-black font-sans text-[#222222] selection:bg-secondary-500 selection:text-white relative flex flex-col">
 
         {/* Sticky Header with Rounded Edges */}
         <div className={`sticky top-2 sm:top-4 mx-2 sm:mx-4 mt-2 sm:mt-4 z-40 transition-all duration-300 bg-white dark:bg-black backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-gray-800 shadow-md ${activeView === 'messages' ? 'hidden md:flex' : ''}`}>
@@ -804,7 +804,7 @@ const DoctorDashboardMain: React.FC = () => {
             />
           );
         })()}
-        
+
         {/* Strong blur fade mask for scrolling content - UI/UX optimized */}
         <div className="pointer-events-none fixed top-2 sm:top-4 left-0 right-0 h-28 bg-gradient-to-b from-gray-100 from-0% via-gray-100/80 via-40% to-transparent to-100% dark:from-black dark:from-0% dark:via-black/80 dark:via-40% dark:to-transparent z-30"></div>
       </div>
