@@ -22,10 +22,10 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onMenuClick, onTitleCli
 
   return (
     <>
-      <div className={`sticky top-0 z-50 w-full flex justify-center pointer-events-none ${className}`}>
+      <div className={`sticky top-0 z-50 flex justify-center pointer-events-none mb-6 -mx-1 sm:-mx-2 md:-mx-3 ${className}`}>
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-gray-100 via-gray-100/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent" />
 
-        <header className="pointer-events-auto relative mt-2 sm:mt-4 mx-2 sm:mx-4 w-full h-16 sm:h-20 bg-white/80 dark:bg-[#8AC43C]/[0.04] backdrop-blur-xl saturate-150 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-[#8AC43C]/15 flex items-center transition-all duration-300 shadow-sm md:shadow-2xl dark:shadow-[0_0_20px_rgba(138,196,60,0.1)]">
+        <header className="pointer-events-auto relative mt-2 sm:mt-4 w-full h-16 sm:h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-xl saturate-150 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-[#8AC43C]/15 flex items-center transition-all duration-300 shadow-sm md:shadow-2xl dark:shadow-[0_0_20px_rgba(138,196,60,0.1)]">
           <div className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
               {showMenu && (
