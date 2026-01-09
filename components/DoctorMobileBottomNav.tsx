@@ -48,7 +48,7 @@ const DoctorMobileBottomNav: React.FC<DoctorMobileBottomNavProps> = ({
                 - Subtle saturation boost (saturate-150)
                 - Softer shadows and borders 
             */}
-            <nav className="pointer-events-auto bg-white/80 dark:bg-[#121212]/80 backdrop-blur-3xl saturate-150 border border-white/20 dark:border-white/10 rounded-[24px] shadow-[0_20px_40px_-5px_rgba(0,0,0,0.15),0_10px_20px_-5px_rgba(0,0,0,0.1)] p-1 flex items-center w-full max-w-[340px] mx-auto transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ring-1 ring-white/20 dark:ring-white/5">
+            <nav className="pointer-events-auto bg-white/80 dark:bg-[#121212]/80 backdrop-blur-3xl saturate-150 border border-white/20 dark:border-white/10 rounded-[26px] shadow-[0_20px_40px_-5px_rgba(0,0,0,0.15),0_10px_20px_-5px_rgba(0,0,0,0.1)] p-1.5 flex items-center w-full max-w-[380px] mx-auto transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ring-1 ring-white/20 dark:ring-white/5">
 
                 {navItems.map((item) => {
                     const isActive = isItemActive(item.view);
@@ -57,7 +57,7 @@ const DoctorMobileBottomNav: React.FC<DoctorMobileBottomNavProps> = ({
                             key={item.view}
                             onClick={() => setActiveView(item.view)}
                             className={`
-                                group relative flex items-center justify-center h-10 rounded-[20px] 
+                                group relative flex items-center justify-center h-11 rounded-[22px] 
                                 transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color]
                                 ${isActive
                                     ? 'flex-[2.5] bg-black dark:bg-white text-white dark:text-black shadow-[0_4px_12px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_12px_rgba(255,255,255,0.2)]'
@@ -76,7 +76,7 @@ const DoctorMobileBottomNav: React.FC<DoctorMobileBottomNavProps> = ({
                                 relative flex items-center justify-center transition-transform duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]
                                 ${isActive ? 'scale-95' : 'scale-100'}
                             `}>
-                                <item.icon className="w-[18px] h-[18px] stroke-[2px]" />
+                                <item.icon className="w-5 h-5 stroke-[2px]" />
 
                                 {/* Notification Dot for Messages */}
                                 {item.view === 'messages' && unreadMessageCount > 0 && !isActive && (
@@ -99,16 +99,16 @@ const DoctorMobileBottomNav: React.FC<DoctorMobileBottomNavProps> = ({
                             <div className={`
                                 overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]
                                 flex items-center
-                                ${isActive ? 'max-w-[80px] opacity-100 ml-2 translate-x-0' : 'max-w-0 opacity-0 ml-0 -translate-x-2'}
+                                ${isActive ? 'max-w-[100px] opacity-100 ml-2 translate-x-0' : 'max-w-0 opacity-0 ml-0 -translate-x-2'}
                             `}>
-                                <span className="text-[11px] font-bold tracking-tight leading-none">
+                                <span className="text-xs font-bold tracking-tight leading-none">
                                     {item.label}
                                 </span>
                             </div>
 
                             {/* Active State Background Glow (Optional subtle internal glow) */}
                             {isActive && (
-                                <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+                                <div className="absolute inset-0 rounded-[22px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
                             )}
                         </button>
                     );
