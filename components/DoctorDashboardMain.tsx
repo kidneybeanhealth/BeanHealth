@@ -622,19 +622,19 @@ const DoctorDashboardMain: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setActiveView('monitoring')}
-                    className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${activeView === 'monitoring'
+                    className={`group relative flex items-center justify-center h-10 rounded-[20px] overflow-hidden text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width,transform,background-color] ${(activeView === 'monitoring' || activeView === 'patient-detail')
                       ? 'w-[140px] bg-black dark:bg-white text-white dark:text-black scale-105'
                       : 'w-[110px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95'
                       }`}
                     style={{ WebkitTapHighlightColor: 'transparent' }}
                   >
-                    <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${activeView === 'monitoring' ? 'scale-95 tracking-tight' : 'scale-100'}`}>Monitoring</span>
+                    <span className={`transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] ${(activeView === 'monitoring' || activeView === 'patient-detail') ? 'scale-95 tracking-tight' : 'scale-100'}`}>Monitoring</span>
                     {alertCounts.urgent > 0 && (
                       <span className="ml-1.5 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
                         {alertCounts.urgent}
                       </span>
                     )}
-                    {activeView === 'monitoring' && (
+                    {(activeView === 'monitoring' || activeView === 'patient-detail') && (
                       <div className="absolute inset-0 rounded-[20px] bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
                     )}
                   </button>
