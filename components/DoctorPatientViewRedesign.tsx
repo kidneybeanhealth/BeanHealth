@@ -10,6 +10,8 @@ import { DocumentIcon } from './icons/DocumentIcon';
 import { EyeIcon } from './icons/EyeIcon';
 import { PillIcon } from './icons/PillIcon';
 import RichSummaryDisplay from './RichSummaryDisplay';
+import NephrologistSnapshot from './NephrologistSnapshot';
+import PatientVisitHistoryView from './PatientVisitHistoryView';
 import { PrescriptionService } from '../services/prescriptionService';
 import { MedicalRecordsService } from '../services/medicalRecordsService';
 import { VitalsService } from '../services/dataService';
@@ -254,6 +256,16 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                 </div>
             </div>
 
+            {/* Nephrologist Snapshot - Added from anacondafounder */}
+            <div className="w-full">
+                <NephrologistSnapshot
+                    patient={patient}
+                    patientMedications={patientMedications}
+                    caseDetails={caseDetails}
+                    vitals={vitals}
+                />
+            </div>
+
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                 {/* LEFT COLUMN: Sidebar Info (Vitals, Quick Stats, Case) */}
                 <div className="space-y-6 xl:col-span-4 xl:sticky xl:top-6">
@@ -333,6 +345,17 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
 
                 {/* RIGHT COLUMN: Actionable Content (Meds, Records) */}
                 <div className="space-y-6 xl:col-span-8">
+
+                    {/* Visit History Section - Added from anacondafounder */}
+                    <PatientVisitHistoryView
+                        patientId={patient.id}
+                        patientMedications={patientMedications}
+                        onVisitSaved={() => {
+                            // Refresh data when a new visit is saved
+                            fetchLatestPrescription();
+                            fetchPatientMedications();
+                        }}
+                    />
 
                     {/* MEDICATIONS */}
                     <div className="bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800">
