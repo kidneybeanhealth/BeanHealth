@@ -19,6 +19,7 @@ import OnboardingFlow from './components/OnboardingFlow';
 import PatientDashboard from './components/PatientDashboard';
 import DoctorDashboardMain from './components/DoctorDashboardMain';
 import AdminDashboardMain from './components/AdminDashboardMain';
+import ClinicDashboard from './components/ClinicDashboard';
 import ReturnToAdminButton from './components/ReturnToAdminButton';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -226,6 +227,14 @@ const AppContent: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Check for clinic route - this bypasses normal auth
+  const isClinicRoute = typeof window !== 'undefined' && window.location.pathname === '/clinic';
+  const hasClinicSession = typeof window !== 'undefined' && localStorage.getItem('clinicSession');
+
+  if (isClinicRoute && hasClinicSession) {
+    return <ClinicDashboard />;
   }
 
   // Not authenticated
