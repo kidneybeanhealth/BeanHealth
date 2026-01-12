@@ -8,6 +8,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const Auth: React.FC = () => {
   const [view, setView] = useState<'chooser' | 'login' | 'admin-login'>('chooser');
+  const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | 'hospital'>('patient');
   const [showTerms, setShowTerms] = useState(false);
 
   // Dynamic document title based on view
@@ -24,12 +25,20 @@ const Auth: React.FC = () => {
   const renderView = () => {
     switch (view) {
       case 'login':
-        return <Login onSwitchToChooser={() => setView('chooser')} />;
+        return <Login onSwitchToChooser={() => setView('chooser')} selectedRole={selectedRole} />;
       case 'admin-login':
         return <AdminLogin onSwitchToChooser={() => setView('chooser')} />;
       case 'chooser':
       default:
-        return <AuthChooser onNext={() => setView('login')} onAdminLogin={() => setView('admin-login')} />;
+        return (
+          <AuthChooser
+            onNext={(role) => {
+              setSelectedRole(role);
+              setView('login');
+            }}
+            onAdminLogin={() => setView('admin-login')}
+          />
+        );
     }
   }
 

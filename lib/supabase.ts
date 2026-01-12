@@ -111,7 +111,8 @@ export interface Database {
           id: string
           email: string
           name: string
-          role: 'patient' | 'doctor'
+          role: 'patient' | 'doctor' | 'admin' | 'hospital'
+          hospital_id?: string
           avatar_url?: string
           specialty?: string
           date_of_birth?: string
@@ -136,7 +137,8 @@ export interface Database {
           id?: string
           email: string
           name: string
-          role: 'patient' | 'doctor'
+          role: 'patient' | 'doctor' | 'admin' | 'hospital'
+          hospital_id?: string
           avatar_url?: string
           specialty?: string
           date_of_birth?: string
@@ -161,7 +163,8 @@ export interface Database {
           id?: string
           email?: string
           name?: string
-          role?: 'patient' | 'doctor'
+          role?: 'patient' | 'doctor' | 'admin' | 'hospital'
+          hospital_id?: string
           avatar_url?: string
           specialty?: string
           date_of_birth?: string
@@ -477,6 +480,108 @@ export interface Database {
           notes?: string
           completed?: boolean
           completed_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      hospitals: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          address?: string
+          phone?: string
+          email?: string
+          license_number?: string
+          details_completed: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          address?: string
+          phone?: string
+          email?: string
+          license_number?: string
+          details_completed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          address?: string
+          phone?: string
+          email?: string
+          license_number?: string
+          details_completed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      hospital_patients: {
+        Row: {
+          id: string
+          hospital_id: string
+          name: string
+          age?: number
+          token_number: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hospital_id: string
+          name: string
+          age?: number
+          token_number: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_id?: string
+          name?: string
+          age?: number
+          token_number?: string
+          created_at?: string
+        }
+      }
+      hospital_queues: {
+        Row: {
+          id: string
+          hospital_id: string
+          patient_id: string
+          doctor_id?: string
+          queue_number: number
+          status: 'pending' | 'working' | 'done'
+          prescription_notes?: string
+          prescribed_at?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          hospital_id: string
+          patient_id: string
+          doctor_id?: string
+          queue_number: number
+          status?: 'pending' | 'working' | 'done'
+          prescription_notes?: string
+          prescribed_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_id?: string
+          patient_id?: string
+          doctor_id?: string
+          queue_number?: number
+          status?: 'pending' | 'working' | 'done'
+          prescription_notes?: string
+          prescribed_at?: string
           created_at?: string
           updated_at?: string
         }

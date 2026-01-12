@@ -153,8 +153,8 @@ body {
   color: #424242;
 }
 
-.dark body {
-  background-color: #0f172a;
+.dark body, html.dark {
+  background-color: #000000;
   color: #e2e8f0;
 }
 

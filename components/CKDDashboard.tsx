@@ -6,6 +6,7 @@ import EnhancedMedicationCard from './EnhancedMedicationCard';
 import FluidIntakeTracker from './FluidIntakeTracker';
 import LabResultsCard from './LabResultsCard';
 import UpcomingTestsCard from './UpcomingTestsCard';
+import PatientVisitHistoryView from './PatientVisitHistoryView';
 import VerticalScrollPicker from './VerticalScrollPicker';
 import { UserService } from '../services/authService';
 import { supabase } from '../lib/supabase';
@@ -406,7 +407,7 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
             </div>
 
             {/* Dashboard Grid - Main Layout */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-5 md:gap-6 items-start">
                 {/* Left Column (Primary Info) */}
                 <div className="xl:col-span-2 space-y-4 sm:space-y-5 md:space-y-6">
                     {/* Patient Information */}
@@ -424,10 +425,13 @@ const CKDDashboard: React.FC<CKDDashboardProps> = ({ patient, onNavigateToDoctor
 
                     {/* Lab Results */}
                     <LabResultsCard patientId={patient.id} />
+
+                    {/* Visit History - Same cards as doctor view */}
+                    <PatientVisitHistoryView patientId={patient.id} readOnly={true} />
                 </div>
 
-                {/* Right Column (Management & Tracking) */}
-                <div className="space-y-4 sm:space-y-5 md:space-y-6">
+                {/* Right Column (Management & Tracking) - Fixed/Sticky on Desktop */}
+                <div className="xl:col-span-1 space-y-4 sm:space-y-5 md:space-y-6 xl:sticky xl:top-28 h-fit">
                     {/* Enhanced Medications with Adherence Tracking */}
                     <EnhancedMedicationCard patientId={patient.id} />
 

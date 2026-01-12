@@ -19,6 +19,7 @@ import { showErrorToast, showSuccessToast, showWarningToast } from '../utils/toa
 import { useUrgentCredits } from '../contexts/UrgentCreditsContext';
 import PrescriptionModal from './PrescriptionModal';
 import PrescriptionListModal from './PrescriptionListModal';
+import { PatientQueryComposer } from './PatientQueryComposer';
 
 type Contact = Doctor | Patient;
 
@@ -124,7 +125,7 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
   const sortedContacts = useMemo(() => {
     const contactsToSort = localContacts.length > 0 ? localContacts : contacts;
     if (!contactsToSort || contactsToSort.length === 0) return [];
-    
+
     if (currentUser.role !== 'doctor') return contactsToSort;
 
     const getUnreadInfo = (contactId: string) => {
@@ -152,10 +153,10 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     // Check on mount
     checkMobile();
-    
+
     // Listen for resize
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -453,6 +454,80 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
     }
   };
 
+  // Handle structured patient query submission
+  const handlePatientQuery = async (data: {
+    text: string;
+    audioBlob?: Blob;
+    audioDuration?: number;
+    attachments: File[];
+    isUrgent: boolean;
+  }) => {
+    if (!selectedContactId) {
+      showErrorToast('Please select a doctor first');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // 1. Send text message if provided
+      if (data.text) {
+        await sendRealTimeMessage(selectedContactId, data.text, data.isUrgent);
+      }
+
+      // 2. Send audio if recorded
+      if (data.audioBlob && data.audioDuration) {
+        const audioData = await uploadAudioRecording(data.audioBlob, currentUser.id, selectedContactId, data.audioDuration);
+        const sentMessage = await ChatService.sendFileMessage(
+          currentUser.id,
+          selectedContactId,
+          audioData.fileUrl,
+          audioData.fileName,
+          'audio',
+          audioData.fileSize,
+          audioData.mimeType,
+          undefined,
+          data.isUrgent
+        );
+        if (realTimeChat.addMessage) {
+          realTimeChat.addMessage(sentMessage);
+        }
+      }
+
+      // 3. Send attachments
+      for (const file of data.attachments) {
+        const fileType = getFileType(file);
+        const fileData = await uploadChatFile(file, currentUser.id, selectedContactId, fileType);
+        const sentMessage = await ChatService.sendFileMessage(
+          currentUser.id,
+          selectedContactId,
+          fileData.fileUrl,
+          fileData.fileName,
+          fileType,
+          fileData.fileSize,
+          fileData.mimeType,
+          undefined,
+          data.isUrgent
+        );
+        if (realTimeChat.addMessage) {
+          realTimeChat.addMessage(sentMessage);
+        }
+      }
+
+      // Use credits if urgent
+      if (data.isUrgent && isPatient) {
+        urgentCreditsContext.useCredit();
+      }
+
+      showSuccessToast('Query sent successfully');
+    } catch (error) {
+      console.error('Error sending patient query:', error);
+      showErrorToast('Failed to send query. Please try again.');
+      throw error;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const getFileType = (file: File): 'pdf' | 'image' | 'audio' => {
     if (file.type === 'application/pdf') return 'pdf';
     if (file.type.startsWith('image/')) return 'image';
@@ -471,7 +546,7 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
 
   const selectedContact = contacts.find(d => d.id === selectedContactId);
   const cannotTurnOnUrgent = isPatient && !hasCredits && !isUrgent;
-  
+
   // Check if the selected contact is linked (for patients viewing doctors)
   const isSelectedContactLinked = useMemo(() => {
     if (!selectedContactId || !isPatient) return true; // Doctors can always message
@@ -866,170 +941,181 @@ const WhatsAppChatWindow: React.FC<WhatsAppChatWindowProps> = ({
 
                 {/* Message Input - WhatsApp Style OR Link Doctor Prompt */}
                 {isSelectedContactLinked ? (
-                <div className="px-3 sm:px-4 py-2 sm:py-3 bg-[#F0F2F5] dark:bg-[#202C33] border-t border-gray-100 dark:border-[#2A3942] flex-shrink-0">
-                  {showCreditWarning && (
-                    <div className="mb-2 sm:mb-3 p-2 sm:p-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-[11px] sm:text-xs rounded-lg border border-amber-200 dark:border-amber-800/50 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <AlertIcon className="h-4 w-4 flex-shrink-0" />
-                        <span className="font-medium">Last urgent credit</span>
-                      </div>
-                      <button
-                        onClick={onNavigateToBilling}
-                        className="px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold rounded-full hover:bg-amber-600 transition-colors uppercase"
-                      >
-                        Buy More
-                      </button>
-                    </div>
-                  )}
-
-                  {uploadProgress && (
-                    <div className="mb-3 p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800/50">
-                      <div className="flex items-center justify-between text-xs text-blue-700 dark:text-blue-300 mb-1.5">
-                        <span className="flex items-center gap-1.5 font-medium">
-                          <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          {uploadProgress.fileName}
-                        </span>
-                        <span className="font-bold">{Math.round(uploadProgress.progress)}%</span>
-                      </div>
-                      <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-1 overflow-hidden">
-                        <div className="bg-blue-600 dark:bg-blue-400 h-1 rounded-full transition-all" style={{ width: `${uploadProgress.progress}%` }} />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    {isRecordingAudio ? (
-                      <div className="flex-1">
-                        <InlineAudioRecorder
-                          onRecordingComplete={handleAudioRecording}
-                          onCancel={() => setIsRecordingAudio(false)}
-                        />
-                      </div>
-                    ) : (
-                      <>
-                        {/* Input Container */}
-                        <div className="flex-1 flex items-center bg-white dark:bg-[#2A3942] rounded-full px-2 sm:px-3 py-0.5 sm:py-1 min-h-[40px] sm:min-h-[44px]">
-                          {/* Urgent Button */}
-                          <div className="relative flex-shrink-0 mr-0.5 sm:mr-1">
-                            <button
-                              type="button"
-                              onClick={handleToggleUrgent}
-                              disabled={cannotTurnOnUrgent}
-                              className={`p-1 sm:p-1.5 rounded-full transition-colors ${isUrgent
-                                ? 'bg-red-500 text-white'
-                                : 'text-[#54656F] dark:text-[#8696A0] hover:text-red-500'
-                                } disabled:opacity-40`}
-                              aria-label="Toggle urgent"
-                            >
-                              <AlertIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </button>
-                            {isPatient && (
-                              <span className="absolute -top-1 -right-1 text-[8px] sm:text-[9px] bg-[#25D366] text-white font-bold rounded-full h-3.5 w-3.5 sm:h-4 sm:w-4 flex items-center justify-center ring-2 ring-white dark:ring-[#2A3942]">
-                                {urgentCredits}
-                              </span>
-                            )}
+                  isPatient ? (
+                    /* Patient Query Composer - Structured form for patients */
+                    <PatientQueryComposer
+                      recipientName={selectedContact?.name?.split(' ')[0] || 'Doctor'}
+                      urgentCredits={urgentCredits}
+                      hasCredits={hasCredits}
+                      isUploading={isUploading}
+                      onSendQuery={handlePatientQuery}
+                    />
+                  ) : (
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 bg-[#F0F2F5] dark:bg-[#202C33] border-t border-gray-100 dark:border-[#2A3942] flex-shrink-0">
+                      {showCreditWarning && (
+                        <div className="mb-2 sm:mb-3 p-2 sm:p-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-[11px] sm:text-xs rounded-lg border border-amber-200 dark:border-amber-800/50 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <AlertIcon className="h-4 w-4 flex-shrink-0" />
+                            <span className="font-medium">Last urgent credit</span>
                           </div>
+                          <button
+                            onClick={onNavigateToBilling}
+                            className="px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold rounded-full hover:bg-amber-600 transition-colors uppercase"
+                          >
+                            Buy More
+                          </button>
+                        </div>
+                      )}
 
-                          {/* Text Input */}
-                          <input
-                            type="text"
-                            value={input}
-                            onChange={(e) => {
-                              setInput(e.target.value);
-                              if (selectedContactId && realTimeChat.startTyping) {
-                                realTimeChat.startTyping(selectedContactId);
-                              }
-                            }}
-                            onBlur={() => {
-                              if (selectedContactId && realTimeChat.stopTyping) {
-                                realTimeChat.stopTyping(selectedContactId);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSendMessage(e as any);
-                              }
-                            }}
-                            placeholder="Type a message"
-                            className="flex-1 px-1.5 sm:px-2 py-2 text-[13px] sm:text-sm bg-transparent border-0 focus:outline-none text-[#111B21] dark:text-[#E9EDEF] placeholder-[#667781] dark:placeholder-[#8696A0]"
-                          />
-
-                          {/* Attach Menu */}
-                          <div className="relative attach-menu-container flex-shrink-0 ml-0.5 sm:ml-1">
-                            <button
-                              type="button"
-                              onClick={() => setShowAttachMenu(!showAttachMenu)}
-                              className="p-1 sm:p-1.5 rounded-full text-[#54656F] dark:text-[#8696A0] hover:text-[#111B21] dark:hover:text-[#E9EDEF] transition-colors"
-                              aria-label="Attach"
-                            >
-                              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      {uploadProgress && (
+                        <div className="mb-3 p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800/50">
+                          <div className="flex items-center justify-between text-xs text-blue-700 dark:text-blue-300 mb-1.5">
+                            <span className="flex items-center gap-1.5 font-medium">
+                              <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                               </svg>
-                            </button>
-
-                            {showAttachMenu && (
-                              <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-[#233138] rounded-lg shadow-lg border border-gray-100 dark:border-[#2A3942] overflow-hidden z-50 min-w-[120px]">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    fileInputRef.current?.click();
-                                    setShowAttachMenu(false);
-                                  }}
-                                  className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-[#182229] transition-colors text-xs text-[#111B21] dark:text-[#E9EDEF]"
-                                >
-                                  <div className="w-7 h-7 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
-                                    <DocumentUploadIcon className="h-3.5 w-3.5 text-white" />
-                                  </div>
-                                  <span>Document</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setShowAttachMenu(false)}
-                                  className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-[#182229] transition-colors text-xs text-[#111B21] dark:text-[#E9EDEF]"
-                                >
-                                  <div className="w-7 h-7 rounded-full bg-pink-500 flex items-center justify-center flex-shrink-0">
-                                    <svg className="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                  </div>
-                                  <span>Camera</span>
-                                </button>
-                              </div>
-                            )}
+                              {uploadProgress.fileName}
+                            </span>
+                            <span className="font-bold">{Math.round(uploadProgress.progress)}%</span>
+                          </div>
+                          <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-1 overflow-hidden">
+                            <div className="bg-blue-600 dark:bg-blue-400 h-1 rounded-full transition-all" style={{ width: `${uploadProgress.progress}%` }} />
                           </div>
                         </div>
+                      )}
 
-                        {/* Send/Voice Button - Outside the input container */}
-                        {input.trim() ? (
-                          <button
-                            type="button"
-                            onClick={(e) => handleSendMessage(e as any)}
-                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] text-white hover:bg-[#1EBE5A] active:scale-95 transition-all flex-shrink-0 flex items-center justify-center"
-                            aria-label="Send"
-                          >
-                            <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                            </svg>
-                          </button>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        {isRecordingAudio ? (
+                          <div className="flex-1">
+                            <InlineAudioRecorder
+                              onRecordingComplete={handleAudioRecording}
+                              onCancel={() => setIsRecordingAudio(false)}
+                            />
+                          </div>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => setIsRecordingAudio(true)}
-                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] text-white hover:bg-[#1EBE5A] active:scale-95 transition-all flex-shrink-0 flex items-center justify-center"
-                            aria-label="Record voice"
-                          >
-                            <MicrophoneIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                          </button>
+                          <>
+                            {/* Input Container */}
+                            <div className="flex-1 flex items-center bg-white dark:bg-[#2A3942] rounded-full px-2 sm:px-3 py-0.5 sm:py-1 min-h-[40px] sm:min-h-[44px]">
+                              {/* Urgent Button */}
+                              <div className="relative flex-shrink-0 mr-0.5 sm:mr-1">
+                                <button
+                                  type="button"
+                                  onClick={handleToggleUrgent}
+                                  disabled={cannotTurnOnUrgent}
+                                  className={`p-1 sm:p-1.5 rounded-full transition-colors ${isUrgent
+                                    ? 'bg-red-500 text-white'
+                                    : 'text-[#54656F] dark:text-[#8696A0] hover:text-red-500'
+                                    } disabled:opacity-40`}
+                                  aria-label="Toggle urgent"
+                                >
+                                  <AlertIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                                </button>
+                                {isPatient && (
+                                  <span className="absolute -top-1 -right-1 text-[8px] sm:text-[9px] bg-[#25D366] text-white font-bold rounded-full h-3.5 w-3.5 sm:h-4 sm:w-4 flex items-center justify-center ring-2 ring-white dark:ring-[#2A3942]">
+                                    {urgentCredits}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Text Input */}
+                              <input
+                                type="text"
+                                value={input}
+                                onChange={(e) => {
+                                  setInput(e.target.value);
+                                  if (selectedContactId && realTimeChat.startTyping) {
+                                    realTimeChat.startTyping(selectedContactId);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (selectedContactId && realTimeChat.stopTyping) {
+                                    realTimeChat.stopTyping(selectedContactId);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSendMessage(e as any);
+                                  }
+                                }}
+                                placeholder="Type a message"
+                                className="flex-1 px-1.5 sm:px-2 py-2 text-[13px] sm:text-sm bg-transparent border-0 focus:outline-none text-[#111B21] dark:text-[#E9EDEF] placeholder-[#667781] dark:placeholder-[#8696A0]"
+                              />
+
+                              {/* Attach Menu */}
+                              <div className="relative attach-menu-container flex-shrink-0 ml-0.5 sm:ml-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowAttachMenu(!showAttachMenu)}
+                                  className="p-1 sm:p-1.5 rounded-full text-[#54656F] dark:text-[#8696A0] hover:text-[#111B21] dark:hover:text-[#E9EDEF] transition-colors"
+                                  aria-label="Attach"
+                                >
+                                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                  </svg>
+                                </button>
+
+                                {showAttachMenu && (
+                                  <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-[#233138] rounded-lg shadow-lg border border-gray-100 dark:border-[#2A3942] overflow-hidden z-50 min-w-[120px]">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        fileInputRef.current?.click();
+                                        setShowAttachMenu(false);
+                                      }}
+                                      className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-[#182229] transition-colors text-xs text-[#111B21] dark:text-[#E9EDEF]"
+                                    >
+                                      <div className="w-7 h-7 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
+                                        <DocumentUploadIcon className="h-3.5 w-3.5 text-white" />
+                                      </div>
+                                      <span>Document</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowAttachMenu(false)}
+                                      className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-[#182229] transition-colors text-xs text-[#111B21] dark:text-[#E9EDEF]"
+                                    >
+                                      <div className="w-7 h-7 rounded-full bg-pink-500 flex items-center justify-center flex-shrink-0">
+                                        <svg className="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                      </div>
+                                      <span>Camera</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Send/Voice Button - Outside the input container */}
+                            {input.trim() ? (
+                              <button
+                                type="button"
+                                onClick={(e) => handleSendMessage(e as any)}
+                                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] text-white hover:bg-[#1EBE5A] active:scale-95 transition-all flex-shrink-0 flex items-center justify-center"
+                                aria-label="Send"
+                              >
+                                <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                                </svg>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setIsRecordingAudio(true)}
+                                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] text-white hover:bg-[#1EBE5A] active:scale-95 transition-all flex-shrink-0 flex items-center justify-center"
+                                aria-label="Record voice"
+                              >
+                                <MicrophoneIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                              </button>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                  </div>
-                </div>
+                      </div>
+                    </div>
+                  )
                 ) : (
                   /* Unlinked Doctor - Show Link Prompt */
                   <div className="px-3 sm:px-4 py-3 sm:py-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-t border-amber-200 dark:border-amber-800/50 flex-shrink-0">

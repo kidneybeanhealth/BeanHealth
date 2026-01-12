@@ -1,6 +1,6 @@
 export type View = 'dashboard' | 'records' | 'upload' | 'messages' | 'billing' | 'doctors';
 
-export type UserRole = 'patient' | 'doctor' | 'admin';
+export type UserRole = 'patient' | 'doctor' | 'admin' | 'hospital';
 
 export type AuthView = 'chooser' | 'patient-login' | 'doctor-login' | 'admin-login';
 
@@ -39,6 +39,7 @@ export interface User {
   terms_accepted_at?: string; // Database field name
   termsVersion?: string;
   terms_version?: string; // Database field name
+  hospital_id?: string; // NEW: Hospital link
 }
 
 export interface Vital {
@@ -101,6 +102,7 @@ export interface ChatMessage {
   fileType?: 'pdf' | 'image' | 'audio';
   fileSize?: number;
   mimeType?: string;
+  audioDuration?: number; // Duration in seconds for voice messages
 }
 
 export interface Patient extends User {
@@ -400,3 +402,56 @@ export interface CaseDetails {
   updatedAt?: string;
   updated_at?: string; // Database field
 }
+
+// ============================================
+// HOSPITAL MANAGEMENT TYPES
+// ============================================
+
+export interface Hospital {
+  id: string;
+  userId: string;
+  user_id?: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  licenseNumber?: string;
+  license_number?: string;
+  detailsCompleted: boolean;
+  details_completed?: boolean;
+  createdAt?: string;
+  created_at?: string;
+}
+
+export interface HospitalPatient {
+  id: string;
+  hospitalId: string;
+  hospital_id?: string;
+  name: string;
+  age?: number;
+  tokenNumber: string;
+  token_number?: string;
+  createdAt?: string;
+  created_at?: string;
+}
+
+export interface HospitalQueue {
+  id: string;
+  hospitalId: string;
+  hospital_id?: string;
+  patientId: string;
+  patient_id?: string;
+  doctorId?: string;
+  doctor_id?: string;
+  queueNumber: number;
+  queue_number?: number;
+  status: 'pending' | 'working' | 'done';
+  createdAt?: string;
+  created_at?: string;
+  // Populated fields (from joins)
+  patientName?: string;
+  doctorName?: string;
+  age?: number;
+  tokenNumber?: string;
+}
+

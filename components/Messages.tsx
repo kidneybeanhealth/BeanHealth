@@ -854,7 +854,7 @@ const Messages: React.FC<MessagesProps> = ({
                   input.trim() ? (
                     <button
                       type="submit"
-                      className="p-2.5 rounded-full bg-[#8AC43C] text-white hover:opacity-90 active:scale-95 transition-all"
+                      className="w-11 h-11 rounded-full bg-[#25D366] text-white hover:bg-[#1EBE5A] active:scale-95 transition-all flex items-center justify-center shadow-md"
                       aria-label="Send"
                     >
                       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -865,7 +865,7 @@ const Messages: React.FC<MessagesProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsRecordingAudio(true)}
-                      className="p-2.5 rounded-full bg-[#8AC43C] text-white hover:opacity-90 active:scale-95 transition-all"
+                      className="w-11 h-11 rounded-full bg-[#25D366] text-white hover:bg-[#1EBE5A] active:scale-95 transition-all flex items-center justify-center shadow-md"
                       aria-label="Record voice"
                     >
                       <MicrophoneIcon className="h-5 w-5" />

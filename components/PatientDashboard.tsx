@@ -17,13 +17,15 @@ import ExtractedMedicationsModal from "./ExtractedMedicationsModal";
 import { View, Patient, Vitals, Medication, MedicalRecord, User, Doctor, ChatMessage, ExtractedMedication } from "../types";
 import { MedicalRecordsService } from "../services/medicalRecordsService";
 import { uploadFileToSupabase, uploadFileToSupabaseSimple, testStorageConnection, deleteFileFromSupabase } from "../services/storageService";
-import { analyzeMedicalRecord, summarizeAllRecords, ExtractedVitals, AIExtractedMedication, AIExtractedCaseDetails } from "../services/geminiService";
+import { analyzeMedicalRecord, summarizeAllRecords, ExtractedVitals, AIExtractedMedication, AIExtractedCaseDetails, AIExtractedLabResult } from "../services/geminiService";
 import { categorizeMedicalRecord } from "../services/categorizationService";
 import { UserService } from "../services/authService";
 import { PatientAdditionService } from "../services/patientInvitationService";
 import { ChatService } from "../services/chatService";
 import { VitalsService } from "../services/dataService";
 import { CaseDetailsService } from "../services/caseDetailsService";
+import { LabResultsService } from "../services/labResultsService";
+import { VisitHistoryService } from "../services/visitHistoryService";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 
@@ -605,6 +607,56 @@ const PatientDashboard: React.FC = () => {
                     console.log('📋 Case details updated from record');
                 } catch (caseError) {
                     console.error('Error updating case details:', caseError);
+                }
+            }
+
+            // Auto-save extracted lab results
+            const extractedLabResults = analysisResult.extractedLabResults;
+            if (extractedLabResults && extractedLabResults.length > 0 && user?.id) {
+                try {
+                    const savedLabs = await LabResultsService.addLabResultsBulk(
+                        user.id,
+                        extractedLabResults.map(lab => ({
+                            testType: lab.testType,
+                            value: lab.value,
+                            unit: lab.unit,
+                            referenceMin: lab.referenceMin,
+                            referenceMax: lab.referenceMax,
+                            testDate: lab.testDate || newRecord.date,
+                        })),
+                        newRecord.date
+                    );
+                    if (savedLabs.length > 0) {
+                        successMessage += `\n\n🔬 ${savedLabs.length} lab result(s) saved!`;
+                        console.log('✅ Lab results auto-saved:', savedLabs.map(l => l.testType));
+                    }
+                } catch (labError) {
+                    console.error('Error saving lab results:', labError);
+                    // Don't fail upload if lab save fails
+                }
+            }
+
+            // Auto-create visit record from uploaded document
+            if (user?.id && (extractedCaseDetails?.latestComplaint || analysisResult.type !== 'Medical Document')) {
+                try {
+                    await VisitHistoryService.createVisit(
+                        user.id,
+                        'patient-upload', // Special doctor ID for patient-uploaded records
+                        {
+                            visitDate: newRecord.date,
+                            complaint: extractedCaseDetails?.latestComplaint || `${analysisResult.type} uploaded`,
+                            observations: typeof analysisResult.summary === 'string'
+                                ? analysisResult.summary.substring(0, 500)
+                                : 'Medical record uploaded by patient',
+                            notes: `Source: ${analysisResult.type}\nDoctor/Facility: ${analysisResult.doctor}\nAuto-created from patient upload`,
+                            isVisibleToPatient: true,
+                        }
+                    );
+                    successMessage += '\n\n📅 Visit record created!';
+                    console.log('✅ Visit record auto-created from upload');
+                } catch (visitError) {
+                    console.error('Error creating visit record:', visitError);
+                    // Don't fail upload if visit creation fails
                 }
             }
 

@@ -10,6 +10,8 @@ import { DocumentIcon } from './icons/DocumentIcon';
 import { EyeIcon } from './icons/EyeIcon';
 import { PillIcon } from './icons/PillIcon';
 import RichSummaryDisplay from './RichSummaryDisplay';
+import NephrologistSnapshot from './NephrologistSnapshot';
+import PatientVisitHistoryView from './PatientVisitHistoryView';
 import { PrescriptionService } from '../services/prescriptionService';
 import { MedicalRecordsService } from '../services/medicalRecordsService';
 import { VitalsService } from '../services/dataService';
@@ -254,12 +256,22 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                 </div>
             </div>
 
+            {/* Nephrologist Snapshot - Added from anacondafounder */}
+            <div className="w-full">
+                <NephrologistSnapshot
+                    patient={patient}
+                    patientMedications={patientMedications}
+                    caseDetails={caseDetails}
+                    vitals={vitals}
+                />
+            </div>
+
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                 {/* LEFT COLUMN: Sidebar Info (Vitals, Quick Stats, Case) */}
-                <div className="space-y-6 xl:col-span-4 xl:sticky xl:top-6">
+                <div className="contents xl:block xl:col-span-4 xl:sticky xl:top-6 xl:space-y-6">
 
                     {/* VITALS - High Priority */}
-                    <div className="bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div className="bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800 order-2 xl:order-none">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                             <FeatureVitalsIcon className="w-5 h-5 text-gray-500" />
                             Recent Vitals
@@ -299,7 +311,7 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                     </div>
 
                     {/* CASE DETAILS */}
-                    <div className="bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div className="bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800 order-3 xl:order-none">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Patient Overview</h3>
                         <div className="space-y-6">
                             <div>
@@ -332,10 +344,23 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                 </div>
 
                 {/* RIGHT COLUMN: Actionable Content (Meds, Records) */}
-                <div className="space-y-6 xl:col-span-8">
+                <div className="contents xl:block xl:col-span-8 xl:space-y-6">
+
+                    {/* Visit History Section - Added from anacondafounder */}
+                    <div className="order-1 xl:order-none w-full">
+                        <PatientVisitHistoryView
+                            patientId={patient.id}
+                            patientMedications={patientMedications}
+                            onVisitSaved={() => {
+                                // Refresh data when a new visit is saved
+                                fetchLatestPrescription();
+                                fetchPatientMedications();
+                            }}
+                        />
+                    </div>
 
                     {/* MEDICATIONS */}
-                    <div className="bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div className="bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800 order-4 xl:order-none">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                             <div>
                                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Medications</h3>
@@ -416,7 +441,7 @@ const DoctorPatientView: React.FC<DoctorPatientViewProps> = ({ patient, onBack }
                     </div>
 
                     {/* MEDICAL RECORDS */}
-                    <div className="bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div className="bg-white dark:bg-[#1e1e1e] rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800 order-5 xl:order-none">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
                             <div>
                                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Medical Records</h3>

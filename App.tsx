@@ -19,6 +19,8 @@ import OnboardingFlow from './components/OnboardingFlow';
 import PatientDashboard from './components/PatientDashboard';
 import DoctorDashboardMain from './components/DoctorDashboardMain';
 import AdminDashboardMain from './components/AdminDashboardMain';
+import HospitalDashboardMain from './components/hospital/HospitalDashboardMain';
+import DoctorDashboardHospital from './components/hospital/DoctorDashboardHospital';
 import ReturnToAdminButton from './components/ReturnToAdminButton';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -38,6 +40,7 @@ const AppContent: React.FC = () => {
     if (needsOnboarding) return 'Welcome to BeanHealth';
 
     if (profile?.role === 'doctor') return 'Doctor Portal';
+    if (profile?.role === 'hospital') return 'Hospital Portal';
     if (profile?.role === 'admin') return 'Admin Dashboard';
     if (profile?.role === 'patient') return 'Patient Portal';
 
@@ -241,7 +244,13 @@ const AppContent: React.FC = () => {
   // Define Dashboard Component
   let DashboardComponent;
   if (profile?.role === 'doctor') {
-    DashboardComponent = <DoctorDashboardMain />;
+    if (profile.hospital_id) {
+      DashboardComponent = <DoctorDashboardHospital />;
+    } else {
+      DashboardComponent = <DoctorDashboardMain />;
+    }
+  } else if (profile?.role === 'hospital') {
+    DashboardComponent = <HospitalDashboardMain />;
   } else if (profile?.role === 'admin') {
     DashboardComponent = <AdminDashboardMain />;
   } else if (profile?.role === 'patient') {

@@ -187,12 +187,12 @@ const DoctorsPage: React.FC<DoctorsPageProps> = ({ patientId, onNavigateToChat, 
     return (
         <div className="space-y-6 pb-8 animate-fade-in max-w-[1440px] mx-auto pt-0">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-[#222222] dark:text-white tracking-tight">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#222222] dark:text-white tracking-tight">
                         My Doctors
                     </h1>
-                    <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium mt-1">Connect and communicate with your healthcare providers</p>
+                    <p className="text-xs sm:text-sm text-[#717171] dark:text-[#a0a0a0] font-medium mt-0.5 sm:mt-1">Connect and communicate with your healthcare providers</p>
                 </div>
             </div>
 
