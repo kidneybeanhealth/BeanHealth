@@ -2,17 +2,21 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthService } from '../../services/authService';
 import { UserRole } from '../../types';
-import { UserIcon } from '../icons/UserIcon';
-import { DoctorIcon } from '../icons/DoctorIcon';
-import { HospitalIcon } from '../icons/HospitalIcon';
 
 const ProfileSetup: React.FC = () => {
   const { user, refreshProfile } = useAuth();
   const [role, setRole] = useState<UserRole>('patient');
   const [name, setName] = useState(user?.user_metadata?.full_name || '');
+
+  // Doctor/Patient specific fields
   const [specialty, setSpecialty] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [condition, setCondition] = useState('');
+
+  // Enterprise specific fields
+  const [address, setAddress] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
+
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,9 +30,13 @@ const ProfileSetup: React.FC = () => {
         email: user.email!,
         name,
         role,
+        // Doctor specific
         specialty: role === 'doctor' ? specialty : undefined,
+        // Patient specific
         dateOfBirth: role === 'patient' ? dateOfBirth : undefined,
         condition: role === 'patient' ? condition : undefined,
+        // Enterprise specific handled via notes buffer for now or custom fields if extended
+        notes: role === 'enterprise' ? `Address: ${address}\nContact: ${contactNumber}` : undefined,
         avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture,
       };
 
@@ -60,37 +68,24 @@ const ProfileSetup: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
           <div className="text-center mb-8">
             <h2 className="text-4xl font-display font-bold text-gray-900 dark:text-gray-100 mb-3">
-              Complete Your Profile
+              Complete Profile
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
-              Tell us a bit about yourself to personalize your experience
+              {role === 'enterprise'
+                ? 'Set up your Hospital Information'
+                : 'Tell us a bit about yourself'}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Full Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="block w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-900 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-gray-100"
-                placeholder="Enter your full name"
-              />
-            </div>
-
-            <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                I am a...
+                Account Type
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <label className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${role === 'patient'
-                  ? 'border-rose-900 bg-rose-50 dark:bg-rose-900/20'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              <div className="grid grid-cols-3 gap-2">
+                <label className={`relative flex flex-col items-center p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 ${role === 'patient'
+                    ? 'border-rose-900 bg-rose-50 dark:bg-rose-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                   }`}>
                   <input
                     type="radio"
@@ -100,21 +95,12 @@ const ProfileSetup: React.FC = () => {
                     onChange={(e) => setRole(e.target.value as UserRole)}
                     className="sr-only"
                   />
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${role === 'patient'
-                    ? 'bg-rose-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}>
-                    <UserIcon className="w-6 h-6" />
-                  </div>
-                  <span className={`text-sm font-semibold ${role === 'patient'
-                    ? 'text-rose-900 dark:text-rose-400'
-                    : 'text-gray-700 dark:text-gray-300'
-                    }`}>Patient</span>
+                  <span className={`text-xs font-semibold ${role === 'patient' ? 'text-rose-900' : 'text-gray-700'}`}>Patient</span>
                 </label>
 
-                <label className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${role === 'doctor'
-                  ? 'border-indigo-500 bg-rose-50 dark:bg-indigo-900/20'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                <label className={`relative flex flex-col items-center p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 ${role === 'doctor'
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                   }`}>
                   <input
                     type="radio"
@@ -124,44 +110,73 @@ const ProfileSetup: React.FC = () => {
                     onChange={(e) => setRole(e.target.value as UserRole)}
                     className="sr-only"
                   />
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${role === 'doctor'
-                    ? 'bg-indigo-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}>
-                    <DoctorIcon className="w-6 h-6" />
-                  </div>
-                  <span className={`text-sm font-semibold ${role === 'doctor'
-                    ? 'text-indigo-700 dark:text-indigo-400'
-                    : 'text-gray-700 dark:text-gray-300'
-                    }`}>Doctor</span>
+                  <span className={`text-xs font-semibold ${role === 'doctor' ? 'text-indigo-700' : 'text-gray-700'}`}>Doctor</span>
                 </label>
 
-                <label className={`relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${role === 'hospital'
-                  ? 'border-secondary-500 bg-secondary-50 dark:bg-secondary-900/20'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                <label className={`relative flex flex-col items-center p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 ${role === 'enterprise'
+                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                   }`}>
                   <input
                     type="radio"
                     name="role"
-                    value="hospital"
-                    checked={role === 'hospital'}
+                    value="enterprise"
+                    checked={role === 'enterprise'}
                     onChange={(e) => setRole(e.target.value as UserRole)}
                     className="sr-only"
                   />
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${role === 'hospital'
-                    ? 'bg-secondary-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}>
-                    <HospitalIcon className="w-6 h-6" />
-                  </div>
-                  <span className={`text-sm font-semibold ${role === 'hospital'
-                    ? 'text-secondary-700 dark:text-secondary-400'
-                    : 'text-gray-700 dark:text-gray-300'
-                    }`}>Hospital</span>
+                  <span className={`text-xs font-semibold ${role === 'enterprise' ? 'text-emerald-700' : 'text-gray-700'}`}>Hospital</span>
                 </label>
               </div>
-
             </div>
+
+            <div>
+              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                {role === 'enterprise' ? 'Hospital Name' : 'Full Name'}
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="block w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-900 focus:border-transparent outline-none transition-all"
+                placeholder={role === 'enterprise' ? "e.g. City General Hospital" : "Enter your full name"}
+              />
+            </div>
+
+            {role === 'enterprise' && (
+              <div className="space-y-6 animate-slide-up">
+                <div>
+                  <label htmlFor="address" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Hospital Address
+                  </label>
+                  <textarea
+                    id="address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    required
+                    rows={3}
+                    className="block w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-600 focus:border-transparent outline-none transition-all"
+                    placeholder="Street, City, State, Zip Code"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contact" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Contact Number
+                  </label>
+                  <input
+                    id="contact"
+                    type="tel"
+                    value={contactNumber}
+                    onChange={(e) => setContactNumber(e.target.value)}
+                    required
+                    className="block w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-600 focus:border-transparent outline-none transition-all"
+                    placeholder="+1 (555) 000-0000"
+                  />
+                </div>
+              </div>
+            )}
 
             {role === 'doctor' && (
               <div className="animate-slide-up">
@@ -175,7 +190,7 @@ const ProfileSetup: React.FC = () => {
                   onChange={(e) => setSpecialty(e.target.value)}
                   required
                   placeholder="e.g., Cardiology, Pediatrics"
-                  className="block w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-900 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-gray-100"
+                  className="block w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
                 />
               </div>
             )}
@@ -192,7 +207,7 @@ const ProfileSetup: React.FC = () => {
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
                     required
-                    className="block w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-900 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-gray-100"
+                    className="block w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-900 focus:border-transparent outline-none transition-all"
                   />
                 </div>
                 <div>
@@ -205,7 +220,7 @@ const ProfileSetup: React.FC = () => {
                     value={condition}
                     onChange={(e) => setCondition(e.target.value)}
                     placeholder="e.g., Diabetes, Hypertension"
-                    className="block w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-900 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-gray-100"
+                    className="block w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-900 focus:border-transparent outline-none transition-all"
                   />
                 </div>
               </div>
@@ -214,7 +229,10 @@ const ProfileSetup: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full py-4 px-6 border-none rounded-xl shadow-sm text-base font-bold text-white bg-rose-900 hover:bg-rose-800 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-900 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 overflow-hidden mt-8"
+              className={`group relative w-full py-4 px-6 border-none rounded-xl shadow-sm text-base font-bold text-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 mt-8 ${role === 'enterprise' ? 'bg-emerald-700 hover:bg-emerald-800 focus:ring-emerald-700' :
+                  role === 'doctor' ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-600' :
+                    'bg-rose-900 hover:bg-rose-800 focus:ring-rose-900'
+                }`}
             >
               <span className="relative z-10 flex items-center justify-center">
                 {loading ? (

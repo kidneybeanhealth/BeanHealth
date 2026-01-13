@@ -1,24 +1,23 @@
 import React, { useState } from 'react';
 import { DoctorIcon } from '../icons/DoctorIcon';
 import { UserIcon } from '../icons/UserIcon';
-import { HospitalIcon } from '../icons/HospitalIcon';
 
 
 interface AuthChooserProps {
-    onNext: (role: 'patient' | 'doctor' | 'hospital') => void;
-    onAdminLogin?: () => void;
+    onNext: () => void;
+    onEnterpriseLogin?: () => void;
 }
 
-const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onAdminLogin }) => {
-    const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | 'hospital' | null>(null);
+const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: onAdminLogin }) => {
+    const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | null>(null);
 
-    const handleRoleSelect = (role: 'patient' | 'doctor' | 'hospital') => {
+    const handleRoleSelect = (role: 'patient' | 'doctor') => {
         setSelectedRole(role);
     };
 
     const handleContinue = () => {
         if (selectedRole) {
-            onNext(selectedRole);
+            onNext();
         }
     };
 
@@ -98,35 +97,29 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onAdminLogin }) => {
                     )}
                 </button>
 
-                {/* Hospital Card */}
+                {/* Enterprise Card */}
                 <button
-                    onClick={() => handleRoleSelect('hospital')}
-                    className={`w-full p-4 rounded-2xl border-2 transition-all duration-200 text-left flex items-center gap-4 group ${selectedRole === 'hospital'
-                        ? 'border-secondary-500 bg-secondary-50/50'
-                        : 'border-gray-200 bg-gray-50 hover:border-secondary-200'
-                        }`}
+                    onClick={() => onAdminLogin?.()}
+                    className="w-full p-4 rounded-2xl border-2 border-gray-200 bg-white hover:border-secondary-900/50 hover:shadow-md transition-all duration-200 text-left flex items-center gap-4 group"
                 >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${selectedRole === 'hospital'
-                        ? 'bg-secondary-500 text-white'
-                        : 'bg-secondary-100 text-secondary-500 group-hover:bg-secondary-200'
-                        }`}>
-                        <HospitalIcon className="h-6 w-6" />
+                    <div className="w-12 h-12 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center flex-shrink-0 group-hover:bg-secondary-900 group-hover:text-white transition-colors">
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
                     </div>
                     <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-base !text-gray-900">
-                            I'm a Hospital
+                            Enterprise Login
                         </h3>
                         <p className="text-xs sm:text-sm !text-gray-500">
-                            Manage your facility, staff and walk-in queues
+                            Hospital & Organization Access
                         </p>
                     </div>
-                    {selectedRole === 'hospital' && (
-                        <div className="w-6 h-6 rounded-full bg-secondary-500 flex items-center justify-center flex-shrink-0 animate-scale-in">
-                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                    )}
+                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                        <svg className="w-4 h-4 text-gray-400 group-hover:text-secondary-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
                 </button>
             </div>
 
@@ -143,15 +136,6 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onAdminLogin }) => {
             </button>
 
 
-            {/* Admin Link */}
-            <div className="text-center">
-                <button
-                    onClick={() => onAdminLogin?.()}
-                    className="text-xs !text-gray-400 hover:text-secondary-500 transition-colors hover:underline"
-                >
-                    Admin Access
-                </button>
-            </div>
         </div>
     );
 };

@@ -78,6 +78,7 @@ export class AuthService {
     specialty?: string
     dateOfBirth?: string
     condition?: string
+    notes?: string
     avatarUrl?: string
   }) {
     try {
@@ -105,6 +106,7 @@ export class AuthService {
             specialty: userData.role === 'doctor' ? userData.specialty : null,
             date_of_birth: userData.role === 'patient' ? userData.dateOfBirth : null,
             condition: userData.role === 'patient' ? userData.condition : null,
+            // notes: userData.notes, // Separated for Enterprise
             avatar_url: userData.avatarUrl,
           })
 
@@ -126,6 +128,7 @@ export class AuthService {
             specialty: userData.role === 'doctor' ? userData.specialty : null,
             date_of_birth: userData.role === 'patient' ? userData.dateOfBirth : null,
             condition: userData.role === 'patient' ? userData.condition : null,
+            // notes: userData.notes,
             avatar_url: userData.avatarUrl,
           })
           .eq('id', userData.id)
@@ -140,6 +143,40 @@ export class AuthService {
         // Some other error occurred during select
         console.error('[AuthService] Select error:', selectError);
         throw selectError;
+      }
+
+      // Handle Enterprise-Specific Table
+      if (userData.role === 'enterprise' && userData.notes) {
+        // Parse notes to extract address and contact
+        let address = '';
+        let contact = '';
+
+        const lines = userData.notes.split('\n');
+        lines.forEach(line => {
+          if (line.startsWith('Address: ')) address = line.replace('Address: ', '');
+          if (line.startsWith('Contact: ')) contact = line.replace('Contact: ', '');
+        });
+
+        console.log('[AuthService] Upserting hospital_profiles');
+        // We use try/catch block here specifically because we don't want to fail the whole process 
+        // if this optional table fails (e.g. if the SQL script wasn't run yet)
+        try {
+          const { error: hospitalError } = await supabase
+            .from('hospital_profiles')
+            .upsert({
+              id: userData.id,
+              hospital_name: userData.name,
+              address: address,
+              contact_number: contact,
+              updated_at: new Date().toISOString()
+            })
+
+          if (hospitalError) {
+            console.error('[AuthService] Hospital profile upsert error:', hospitalError);
+          }
+        } catch (e) {
+          console.warn('[AuthService] Failed to update hospital_profiles (table might not exist yet)', e);
+        }
       }
     } catch (error) {
       console.error('[AuthService] Error in createOrUpdateProfile:', error);

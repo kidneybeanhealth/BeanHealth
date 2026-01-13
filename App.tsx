@@ -19,8 +19,7 @@ import OnboardingFlow from './components/OnboardingFlow';
 import PatientDashboard from './components/PatientDashboard';
 import DoctorDashboardMain from './components/DoctorDashboardMain';
 import AdminDashboardMain from './components/AdminDashboardMain';
-import HospitalDashboardMain from './components/hospital/HospitalDashboardMain';
-import DoctorDashboardHospital from './components/hospital/DoctorDashboardHospital';
+import EnterpriseDashboardMain from './components/EnterpriseDashboardMain';
 import ReturnToAdminButton from './components/ReturnToAdminButton';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -40,8 +39,8 @@ const AppContent: React.FC = () => {
     if (needsOnboarding) return 'Welcome to BeanHealth';
 
     if (profile?.role === 'doctor') return 'Doctor Portal';
-    if (profile?.role === 'hospital') return 'Hospital Portal';
     if (profile?.role === 'admin') return 'Admin Dashboard';
+    if (profile?.role === 'enterprise') return 'Enterprise Portal';
     if (profile?.role === 'patient') return 'Patient Portal';
 
     return 'Healthcare Management';
@@ -244,15 +243,11 @@ const AppContent: React.FC = () => {
   // Define Dashboard Component
   let DashboardComponent;
   if (profile?.role === 'doctor') {
-    if (profile.hospital_id) {
-      DashboardComponent = <DoctorDashboardHospital />;
-    } else {
-      DashboardComponent = <DoctorDashboardMain />;
-    }
-  } else if (profile?.role === 'hospital') {
-    DashboardComponent = <HospitalDashboardMain />;
+    DashboardComponent = <DoctorDashboardMain />;
   } else if (profile?.role === 'admin') {
     DashboardComponent = <AdminDashboardMain />;
+  } else if (profile?.role === 'enterprise') {
+    DashboardComponent = <EnterpriseDashboardMain />;
   } else if (profile?.role === 'patient') {
     if (needsTermsAcceptance) {
       // For terms acceptance, we can treat it similar to onboarding or just return it directly
@@ -272,8 +267,29 @@ const AppContent: React.FC = () => {
     // In this case, we can't show a specific dash, so we might show an empty state or just the overlay
     // But logically, if they have no role, they should be in ProfileSetup.
     // If they have a role but needed onboarding, they hit the logic above.
-    // This fallback is rare.
-    DashboardComponent = <div className="min-h-screen bg-white" />;
+    // This fallback is rare - usually indicates a corrupted state or new role not handled.
+    DashboardComponent = (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Account State Error</h2>
+          <p className="text-gray-500 mb-6">
+            Your account is in an unknown state (Role: {profile?.role || 'None'}).
+            Please sign out and try again.
+          </p>
+          <button
+            onClick={() => supabase.auth.signOut().then(() => window.location.reload())}
+            className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-red-600/20"
+          >
+            Sign Out & Reset
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Render Dashboard with potential Onboarding Overlay

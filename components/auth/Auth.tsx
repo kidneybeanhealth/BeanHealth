@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Login from './Login';
+import EnterpriseLogin from './EnterpriseLogin';
 import AdminLogin from './AdminLogin';
 import AuthChooser from './AuthChooser';
 import TermsAndConditionsModal from '../TermsAndConditionsModal';
@@ -7,8 +8,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 
 const Auth: React.FC = () => {
-  const [view, setView] = useState<'chooser' | 'login' | 'admin-login'>('chooser');
-  const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | 'hospital'>('patient');
+  const [view, setView] = useState<'chooser' | 'login' | 'admin-login' | 'enterprise-login'>('chooser');
   const [showTerms, setShowTerms] = useState(false);
 
   // Dynamic document title based on view
@@ -16,6 +16,7 @@ const Auth: React.FC = () => {
     switch (view) {
       case 'login': return 'Sign In';
       case 'admin-login': return 'Admin Portal';
+      case 'enterprise-login': return 'Enterprise Portal';
       case 'chooser': default: return 'Get Started';
     }
   };
@@ -25,20 +26,14 @@ const Auth: React.FC = () => {
   const renderView = () => {
     switch (view) {
       case 'login':
-        return <Login onSwitchToChooser={() => setView('chooser')} selectedRole={selectedRole} />;
+        return <Login onSwitchToChooser={() => setView('chooser')} />;
       case 'admin-login':
         return <AdminLogin onSwitchToChooser={() => setView('chooser')} />;
+      case 'enterprise-login':
+        return <EnterpriseLogin onSwitchToChooser={() => setView('chooser')} />;
       case 'chooser':
       default:
-        return (
-          <AuthChooser
-            onNext={(role) => {
-              setSelectedRole(role);
-              setView('login');
-            }}
-            onAdminLogin={() => setView('admin-login')}
-          />
-        );
+        return <AuthChooser onNext={() => setView('login')} onEnterpriseLogin={() => setView('enterprise-login')} />;
     }
   }
 

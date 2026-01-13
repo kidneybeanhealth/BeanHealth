@@ -33,7 +33,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>
   signUp: (email: string, password: string, userData: {
     name: string
-    role: 'patient' | 'doctor' | 'admin' | 'hospital'
+    role: 'patient' | 'doctor' | 'admin' | 'enterprise'
     specialty?: string
     dateOfBirth?: string
     condition?: string
@@ -406,7 +406,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   const signUp = useCallback(async (email: string, password: string, userData: {
     name: string
-    role: 'patient' | 'doctor' | 'admin' | 'hospital'
+    role: 'patient' | 'doctor' | 'admin' | 'enterprise'
     specialty?: string
     dateOfBirth?: string
     condition?: string
