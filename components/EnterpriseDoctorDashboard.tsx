@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import PrescriptionModal from './PrescriptionModal';
 
 interface DoctorProfile {
     id: string;
@@ -24,6 +23,8 @@ interface QueueItem {
     doctor_id: string;
     queue_number: number;
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+    created_at: string;
+    updated_at?: string;
     patient: Patient;
 }
 
@@ -45,9 +46,16 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     ]);
     const [notes, setNotes] = useState('');
 
+    const [viewMode, setViewMode] = useState<'queue' | 'history'>('queue');
+    const [historyList, setHistoryList] = useState<any[]>([]);
+
     useEffect(() => {
-        fetchQueue();
-    }, [doctor.id]);
+        if (viewMode === 'queue') {
+            fetchQueue();
+        } else {
+            fetchHistory();
+        }
+    }, [doctor.id, viewMode]);
 
     const fetchQueue = async () => {
         setLoading(true);
@@ -63,11 +71,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 .in('status', ['pending', 'in_progress'])
                 .order('queue_number', { ascending: true });
 
-            if (error) {
-                console.error('Queue Fetch Error:', error);
-                throw error;
-            }
-            console.log('Queue Data:', data);
+            if (error) throw error;
             setQueue(data || []);
         } catch (error) {
             console.error('Error fetching queue:', error);
@@ -77,11 +81,67 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         }
     };
 
+    const fetchHistory = async () => {
+        setLoading(true);
+        try {
+            // Fetch completed visits from queues table as it records ALL visits (Consulted or Prescribed)
+            const { data, error } = await supabase
+                .from('hospital_queues' as any)
+                .select(`
+                    *,
+                    patient:hospital_patients!hospital_queues_patient_id_fkey(*)
+                `)
+                .eq('doctor_id', doctor.id)
+                .eq('status', 'completed')
+                .order('updated_at', { ascending: false }); // Use updated_at for completion time
+
+            if (error) throw error;
+            setHistoryList(data || []);
+        } catch (error) {
+            console.error('Error fetching history:', error);
+            toast.error('Failed to load history');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleViewPrescription = async (historyItem: any) => {
+        const toastId = toast.loading('Opening prescription...');
+        try {
+            // Fetch the latest prescription for this patient and doctor
+            // ideally we would link queue_id to prescription_id, but for now we find the closest match
+            const { data, error } = await supabase
+                .from('hospital_prescriptions' as any)
+                .select(`
+                    *,
+                    patient:hospital_patients(*)
+                `)
+                .eq('doctor_id', doctor.id)
+                .eq('patient_id', historyItem.patient_id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (error || !data) {
+                toast.dismiss(toastId);
+                toast.error('No prescription found for this visit');
+                return;
+            }
+
+            toast.dismiss(toastId);
+            setSelectedHistoryItem(data);
+        } catch (err) {
+            console.error(err);
+            toast.dismiss(toastId);
+            toast.error('Could not load prescription');
+        }
+    };
+
     const handleUpdateStatus = async (queueId: string, status: string) => {
         try {
-            const { error } = await supabase
-                .from('hospital_queues' as any)
-                .update({ status })
+            const { error } = await (supabase
+                .from('hospital_queues') as any)
+                .update({ status } as any)
                 .eq('id', queueId);
 
             if (error) throw error;
@@ -92,6 +152,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         }
     };
 
+    // ... (rest of handlers like handleMedChange, handleSendToPharmacy remain same)
     const handleAddMedication = () => {
         setMedications([...medications, { name: '', dosage: '', frequency: '', duration: '', instruction: '' }]);
     };
@@ -108,64 +169,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         setMedications(newMeds);
     };
 
-    const generatePDF = () => {
-        if (!selectedPatient) return;
-
-        const doc = new jsPDF();
-
-        // Header
-        doc.setFontSize(22);
-        doc.setTextColor(0, 100, 0); // Dark Green
-        doc.text('BeanHealth Hospital', 105, 20, { align: 'center' });
-
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Dr. ${doctor.name} (${doctor.specialty})`, 105, 30, { align: 'center' });
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, 36, { align: 'center' });
-
-        doc.line(20, 40, 190, 40);
-
-        // Patient Info
-        doc.setFontSize(12);
-        doc.text(`Patient Name: ${selectedPatient.name}`, 20, 50);
-        doc.text(`Age: ${selectedPatient.age}`, 120, 50);
-        doc.text(`Token: ${selectedPatient.token_number}`, 160, 50);
-
-        // Medications Table
-        doc.text('Rx - Prescription', 20, 65);
-
-        const tableData = medications.map(m => [m.name, m.dosage, m.frequency, m.duration, m.instruction]);
-
-        autoTable(doc, {
-            startY: 70,
-            head: [['Medicine', 'Dosage', 'Frequency', 'Duration', 'Instruction']],
-            body: tableData,
-            theme: 'grid',
-            headStyles: { fillColor: [5, 150, 105] }, // Emerald Green
-        });
-
-        // Notes
-        const finalY = (doc as any).lastAutoTable.finalY || 150;
-        if (notes) {
-            doc.text('Notes:', 20, finalY + 10);
-            doc.setFontSize(10);
-            doc.text(notes, 20, finalY + 16);
-        }
-
-        // Footer
-        doc.setFontSize(10);
-        doc.text('Signature: ___________________', 140, 280);
-
-        return doc;
-    };
-
-    const handlePrint = () => {
-        const doc = generatePDF();
-        if (doc) doc.autoPrint(); // Opens print dialog
-        if (doc) window.open(doc.output('bloburl'), '_blank');
-    };
-
-    const handleSendToPharmacy = async () => {
+    const handleSendToPharmacy = async (prescriptionMeds: any[], prescriptionNotes: string) => {
         if (!selectedPatient) return;
         const toastId = toast.loading('Sending to pharmacy...');
 
@@ -177,196 +181,220 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     doctor_id: doctor.id,
                     patient_id: selectedPatient.id,
                     token_number: selectedPatient.token_number,
-                    medications: medications,
-                    notes: notes,
+                    medications: prescriptionMeds,
+                    notes: prescriptionNotes,
                     status: 'pending'
-                });
+                } as any);
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase Insert Error:', error);
+                throw error;
+            }
 
+            console.log('Prescription sent successfully:', { prescriptionMeds, prescriptionNotes });
             toast.success('Prescription sent to Pharmacy!', { id: toastId });
             setShowRxModal(false);
-            // Optionally update queue status?
+            // Update queue status
             handleUpdateStatus(queue.find(q => q.patient.id === selectedPatient.id)?.id || '', 'completed');
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to send prescription', { id: toastId });
+        } catch (error: any) {
+            console.error('Full Error Object:', error);
+            toast.error(`Failed to send: ${error.message || 'Unknown error'}`, { id: toastId });
         }
     };
 
+    // View Item for History
+    const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
+
     return (
-        <div className="max-w-7xl mx-auto px-6 py-8">
-            <div className="mb-8 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                 <div>
                     <button
                         onClick={onBack}
-                        className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-2 mb-2 transition-colors"
+                        className="text-sm font-semibold text-gray-500 hover:text-black mb-4 flex items-center transition-colors"
                     >
-                        ← Go Back
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                        Back to List
                     </button>
-                    <h2 className="text-3xl font-bold text-gray-900">Dr. {doctor.name}</h2>
-                    <p className="text-gray-500">Patient Queue & Prescriptions</p>
+                    <h2 className="text-4xl font-bold text-gray-900 tracking-tight">Dr. {doctor.name}</h2>
+                    <p className="text-lg text-gray-500 mt-2">Manage your patient queue and consultations</p>
                 </div>
-                <div className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium">
-                    {doctor.specialty}
+
+                <div className="flex items-center gap-4">
+                    <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm flex">
+                        <button
+                            onClick={() => setViewMode('queue')}
+                            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${viewMode === 'queue' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}
+                        >
+                            Active Queue
+                        </button>
+                        <button
+                            onClick={() => setViewMode('history')}
+                            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${viewMode === 'history' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}
+                        >
+                            History Log
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={viewMode === 'queue' ? fetchQueue : fetchHistory}
+                        className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
+                        title="Reload"
+                    >
+                        <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-medium text-gray-500 text-sm">
-                    <div className="col-span-1 text-center">Queue</div>
-                    <div className="col-span-2">Token</div>
-                    <div className="col-span-3">Patient Name</div>
-                    <div className="col-span-2">Status</div>
-                    <div className="col-span-4 text-right">Actions</div>
-                </div>
-
-                {loading ? (
-                    <div className="p-12 text-center text-gray-500">Loading patients...</div>
-                ) : queue.length === 0 ? (
-                    <div className="p-12 text-center text-gray-500">No patients in queue</div>
-                ) : (
-                    queue.map((item) => (
-                        <div key={item.id} className="grid grid-cols-12 gap-4 p-4 border-b border-gray-100 items-center hover:bg-gray-50 transition-colors">
-                            <div className="col-span-1 text-center font-bold text-gray-900 bg-gray-100 rounded-lg py-1">
-                                {item.queue_number}
-                            </div>
-                            <div className="col-span-2 font-mono text-gray-600">{item.patient.token_number}</div>
-                            <div className="col-span-3">
-                                <div className="font-medium text-gray-900">{item.patient.name}</div>
-                                <div className="text-xs text-gray-500">{item.patient.age} years old</div>
-                            </div>
-                            <div className="col-span-2">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                                    ${item.status === 'pending' ? 'bg-orange-100 text-orange-800' :
-                                        item.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                                    {item.status.replace('_', ' ')}
-                                </span>
-                            </div>
-                            <div className="col-span-4 flex justify-end gap-2">
-                                {item.status === 'pending' && (
-                                    <button
-                                        onClick={() => handleUpdateStatus(item.id, 'in_progress')}
-                                        className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-                                    >
-                                        Call In
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => {
-                                        setSelectedPatient(item.patient);
-                                        setShowRxModal(true);
-                                        setMedications([{ name: '', dosage: '', frequency: '', duration: '', instruction: '' }]); // Reset
-                                        setNotes('');
-                                    }}
-                                    className="px-3 py-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 flex items-center gap-1"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    Rx Prescribe
-                                </button>
-                                <button
-                                    onClick={() => handleUpdateStatus(item.id, 'completed')}
-                                    className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100"
-                                >
-                                    Consulted
-                                </button>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-
-            {/* Prescription Modal */}
-            {showRxModal && selectedPatient && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-8 animate-scale-in max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h3 className="text-2xl font-bold text-gray-900">Write Prescription</h3>
-                                <p className="text-gray-500">Patient: {selectedPatient.name} ({selectedPatient.token_number})</p>
-                            </div>
-                            <button onClick={() => setShowRxModal(false)} className="text-gray-400 hover:text-gray-600">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
+            <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
+                {viewMode === 'queue' ? (
+                    <>
+                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                            <h3 className="font-bold text-gray-900">Current Queue</h3>
+                            <span className="text-sm font-medium text-gray-500">{queue.length} Patients Waiting</span>
                         </div>
 
-                        <div className="space-y-6">
-                            {/* Medicine List */}
-                            <div className="space-y-3">
-                                <div className="grid grid-cols-12 gap-3 text-sm font-medium text-gray-700 px-1">
-                                    <div className="col-span-3">Medicine Name</div>
-                                    <div className="col-span-2">Dosage</div>
-                                    <div className="col-span-2">Frequency</div>
-                                    <div className="col-span-2">Duration</div>
-                                    <div className="col-span-3">Instructions</div>
+                        {loading ? (
+                            <div className="p-20 text-center">
+                                <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-black rounded-full mx-auto mb-4"></div>
+                                <p className="text-gray-500">Loading active patients...</p>
+                            </div>
+                        ) : queue.length === 0 ? (
+                            <div className="p-24 text-center flex flex-col items-center justify-center">
+                                <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 text-gray-400">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                                 </div>
+                                <h3 className="text-lg font-bold text-gray-900">Queue is Empty</h3>
+                                <p className="text-gray-500 mt-1">No patients are currently waiting for consultation.</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-gray-50">
+                                {queue.map((item) => (
+                                    <div key={item.id} className="p-6 md:p-8 flex items-center justify-between hover:bg-gray-50 transition-colors group">
+                                        <div className="flex items-center gap-6">
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm
+                                                ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
+                                                    item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                {item.queue_number}
+                                            </div>
+                                            <div>
+                                                <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
+                                                <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
+                                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600">Token: {item.patient.token_number}</span>
+                                                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                    <span>{item.patient.age} yrs</span>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                {medications.map((med, idx) => (
-                                    <div key={idx} className="grid grid-cols-12 gap-3 items-center">
-                                        <div className="col-span-3">
-                                            <input type="text" placeholder="e.g. Paracetamol" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                                                value={med.name} onChange={(e) => handleMedChange(idx, 'name', e.target.value)} />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <input type="text" placeholder="500mg" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                                                value={med.dosage} onChange={(e) => handleMedChange(idx, 'dosage', e.target.value)} />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <input type="text" placeholder="1-0-1" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                                                value={med.frequency} onChange={(e) => handleMedChange(idx, 'frequency', e.target.value)} />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <input type="text" placeholder="5 days" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                                                value={med.duration} onChange={(e) => handleMedChange(idx, 'duration', e.target.value)} />
-                                        </div>
-                                        <div className="col-span-3 flex gap-2">
-                                            <input type="text" placeholder="After food" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                                                value={med.instruction} onChange={(e) => handleMedChange(idx, 'instruction', e.target.value)} />
-                                            {medications.length > 1 && (
-                                                <button onClick={() => handleRemoveMedication(idx)} className="text-red-500 hover:text-red-700">
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        <div className="flex items-center gap-3">
+                                            {item.status === 'pending' && (
+                                                <button
+                                                    onClick={() => handleUpdateStatus(item.id, 'in_progress')}
+                                                    className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5"
+                                                >
+                                                    Call In
                                                 </button>
                                             )}
+
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedPatient(item.patient);
+                                                    setShowRxModal(true);
+                                                }}
+                                                className="px-5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center gap-2"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                Prescribe
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleUpdateStatus(item.id, 'completed')}
+                                                className="px-5 py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                                            >
+                                                Mark Done
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-
-                            <button onClick={handleAddMedication} className="text-emerald-600 font-medium hover:text-emerald-700 flex items-center gap-1">
-                                + Add Medicine
-                            </button>
-
-                            {/* Notes */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes / Advise</label>
-                                <textarea
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none h-24"
-                                    placeholder="e.g. Drink plenty of water, rest for 2 days..."
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Actions */}
-                            <div className="pt-6 flex gap-4 border-t border-gray-100">
-                                <button
-                                    onClick={handlePrint}
-                                    className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium flex-1 flex items-center justify-center gap-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                    Print / PDF
-                                </button>
-                                <button
-                                    onClick={handleSendToPharmacy}
-                                    className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium flex-1 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                                    Send to Pharmacy
-                                </button>
-                            </div>
+                        )}
+                    </>
+                ) : (
+                    <>
+                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                            <h3 className="font-bold text-gray-900">Consultation History</h3>
+                            <span className="text-sm font-medium text-gray-500">Past Records</span>
                         </div>
-                    </div>
-                </div>
+
+                        {loading ? (
+                            <div className="p-20 text-center text-gray-500">Loading history...</div>
+                        ) : historyList.length === 0 ? (
+                            <div className="p-24 text-center flex flex-col items-center justify-center">
+                                <p className="text-gray-400 font-medium">No prior consultations found</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-gray-50">
+                                {historyList.map((item) => (
+                                    <div key={item.id} className="p-6 md:p-8 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                                        <div className="grid grid-cols-12 items-center w-full">
+                                            <div className="col-span-2 text-sm text-gray-600">
+                                                {new Date(item.updated_at || item.created_at).toLocaleDateString()}
+                                            </div>
+                                            <div className="col-span-3">
+                                                <div className="font-medium text-gray-900">{item.patient?.name}</div>
+                                            </div>
+                                            <div className="col-span-2 font-mono text-gray-600">
+                                                {item.patient?.token_number}
+                                            </div>
+                                            <div className="col-span-2">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize bg-green-100 text-green-800">
+                                                    Completed
+                                                </span>
+                                            </div>
+                                            <div className="col-span-3 flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleViewPrescription(item)}
+                                                    className="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 flex items-center gap-1"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                    View PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+
+            {/* Prescription Modal - Active */}
+            {showRxModal && selectedPatient && (
+                <PrescriptionModal
+                    doctor={doctor}
+                    patient={selectedPatient}
+                    onClose={() => setShowRxModal(false)}
+                    onSendToPharmacy={handleSendToPharmacy}
+                />
+            )}
+
+            {/* History Modal - Read Only */}
+            {selectedHistoryItem && (
+                <PrescriptionModal
+                    doctor={doctor}
+                    patient={{
+                        ...selectedHistoryItem.patient,
+                        token_number: selectedHistoryItem.token_number || selectedHistoryItem.patient?.token_number
+                    }}
+                    onClose={() => setSelectedHistoryItem(null)}
+                    readOnly={true}
+                    existingData={selectedHistoryItem}
+                />
             )}
         </div>
     );

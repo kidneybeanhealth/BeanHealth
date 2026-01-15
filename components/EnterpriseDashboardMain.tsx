@@ -207,7 +207,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                 .from('hospital_profiles' as any)
                 .select('*')
                 .eq('id', profile.id)
-                .single();
+                .single() as { data: any; error: any };
             
             if (data && !error) {
                 setHospitalSettings({
@@ -282,7 +282,7 @@ const EnterpriseDashboardMain: React.FC = () => {
             }
 
             // Update hospital_profiles table (only columns that exist in schema)
-            const { error: profileError } = await supabase
+            const { error: profileError } = await (supabase
                 .from('hospital_profiles' as any)
                 .upsert({
                     id: profile.id,
@@ -290,7 +290,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                     address: hospitalSettings.address,
                     contact_number: hospitalSettings.contactNumber,
                     updated_at: new Date().toISOString()
-                });
+                } as any) as any);
 
             if (profileError) {
                 console.error('Settings save error:', profileError);
@@ -300,9 +300,9 @@ const EnterpriseDashboardMain: React.FC = () => {
             }
 
             // Update the main users table with name and avatar
-            await supabase
-                .from('users')
-                .update({ 
+            await (supabase
+                .from('users') as any)
+                .update({
                     name: hospitalSettings.hospitalName, 
                     avatar_url: avatarUrl,
                     email: hospitalSettings.email 
@@ -397,8 +397,8 @@ const EnterpriseDashboardMain: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
             <div className="text-center mb-16 max-w-3xl mx-auto">
                 <span className="inline-block text-secondary-600 font-semibold tracking-wider text-sm uppercase mb-4">Enterprise Portal</span>
-                <h2 className="text-4xl md:text-5xl font-bold text-primary-900 mb-6 leading-tight">KONGUNAD KIDNEY CENTRE</h2>
-                <p className="text-lg md:text-xl text-primary-600/70 leading-relaxed">
+                <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ color: '#000000' }}>{profile?.name || 'Select your workspace'}</h2>
+                <p className="text-lg md:text-xl leading-relaxed" style={{ color: '#333333' }}>
                     Welcome to the BeanHealth Enterprise Suite. Secure, efficient, and integrated management for your healthcare facility.
                 </p>
             </div>
@@ -453,9 +453,9 @@ const EnterpriseDashboardMain: React.FC = () => {
                         <div className={`w-14 h-14 ${item.bgColor} ${item.iconColor} rounded-xl flex items-center justify-center mb-6 group-hover:scale-105 transition-transform duration-300`}>
                             {item.icon}
                         </div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-3">{item.title}</h3>
-                        <p className="text-gray-500 leading-relaxed mb-auto text-base">{item.desc}</p>
-                        <div className={`mt-8 flex items-center text-sm font-semibold ${item.iconColor} opacity-70 group-hover:opacity-100 transition-opacity`}>
+                        <h3 className="text-2xl font-bold mb-3" style={{ color: '#000000' }}>{item.title}</h3>
+                        <p className="leading-relaxed mb-auto text-base" style={{ color: '#555555' }}>{item.desc}</p>
+                        <div className="mt-8 flex items-center text-sm font-semibold opacity-70 group-hover:opacity-100 transition-opacity" style={{ color: '#000000' }}>
                             Enter Workspace <span className="ml-2 transition-transform group-hover:translate-x-1">→</span>
                         </div>
                     </button>
@@ -469,15 +469,15 @@ const EnterpriseDashboardMain: React.FC = () => {
             <div className="mb-12">
                 <button
                     onClick={() => setCurrentView('selection')}
-                    className="inline-flex items-center text-sm font-semibold text-primary-600 hover:text-primary-800 mb-6 transition-colors focus:outline-none focus:underline"
+                    className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-gray-900 mb-6 transition-colors focus:outline-none focus:underline"
                 >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                     Back to Departments
                 </button>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-primary-900 tracking-tight mb-2">Medical Staff</h2>
-                        <p className="text-gray-500 text-lg">Select your profile to access your clinical dashboard.</p>
+                        <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-2" style={{ color: '#000000' }}>Medical Staff</h2>
+                        <p className="text-lg" style={{ color: '#666666' }}>Select your profile to access your clinical dashboard.</p>
                     </div>
                 </div>
             </div>
@@ -497,13 +497,13 @@ const EnterpriseDashboardMain: React.FC = () => {
                             className="group bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-primary-100 hover:-translate-y-1 transition-all duration-300 text-center flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                         >
                             <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300 ring-4 ring-primary-50/50">
-                                <span className="text-2xl font-bold text-primary-600">
+                                <span className="text-2xl font-bold" style={{ color: '#333333' }}>
                                     {doctor.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                 </span>
                             </div>
-                            <h3 className="font-bold text-lg text-gray-900 mb-2">{doctor.name}</h3>
-                            <p className="text-sm font-medium text-primary-600 bg-primary-50 px-4 py-1.5 rounded-full mb-6">{doctor.specialty}</p>
-                            <div className="mt-auto w-full py-3 rounded-xl bg-gray-50 text-gray-700 font-semibold text-sm group-hover:bg-primary-600 group-hover:text-white transition-colors">
+                            <h3 className="font-bold text-lg mb-2" style={{ color: '#000000' }}>{doctor.name}</h3>
+                            <p className="text-sm font-medium bg-gray-100 px-4 py-1.5 rounded-full mb-6" style={{ color: '#444444' }}>{doctor.specialty}</p>
+                            <div className="mt-auto w-full py-3 rounded-xl bg-gray-50 font-semibold text-sm group-hover:bg-primary-600 group-hover:text-white transition-colors" style={{ color: '#444444' }}>
                                 Access Dashboard
                             </div>
                         </button>
@@ -518,11 +518,11 @@ const EnterpriseDashboardMain: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                 <div>
-                    <button onClick={() => setCurrentView('selection')} className="text-sm font-semibold text-gray-500 hover:text-black mb-4 flex items-center">
+                    <button onClick={() => setCurrentView('selection')} className="text-sm font-semibold mb-4 flex items-center" style={{ color: '#666666' }}>
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                         Back
                     </button>
-                    <h2 className="text-4xl font-bold text-gray-900 tracking-tight">Reception Desk</h2>
+                    <h2 className="text-4xl font-bold tracking-tight" style={{ color: '#000000' }}>Reception Desk</h2>
                     <p className="text-lg text-gray-500 mt-2">Manage patient check-ins and appointments</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -564,7 +564,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                 <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-gray-50 rounded-full translate-x-8 -translate-y-8 group-hover:scale-110 transition-transform"></div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 relative z-10">Total Visits</p>
-                    <p className="text-4xl md:text-5xl font-bold text-gray-900 relative z-10">{queue.length}</p>
+                    <p className="text-4xl md:text-5xl font-bold relative z-10" style={{ color: '#000000' }}>{queue.length}</p>
                 </div>
                 <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-orange-50 rounded-full translate-x-8 -translate-y-8 group-hover:scale-110 transition-transform"></div>
@@ -584,13 +584,15 @@ const EnterpriseDashboardMain: React.FC = () => {
                     <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
                         <button
                             onClick={() => setActiveTab('queue')}
-                            className={`px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'queue' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                            className={`px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'queue' ? 'bg-white shadow-sm' : ''}`}
+                            style={{ color: activeTab === 'queue' ? '#000000' : '#666666' }}
                         >
                             Live Queue
                         </button>
                         <button
                             onClick={() => setActiveTab('patients')}
-                            className={`px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'patients' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                            className={`px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'patients' ? 'bg-white shadow-sm' : ''}`}
+                            style={{ color: activeTab === 'patients' ? '#000000' : '#666666' }}
                         >
                             History Log
                         </button>
@@ -616,9 +618,9 @@ const EnterpriseDashboardMain: React.FC = () => {
                                             {item.queue_number}
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-lg text-gray-900 mb-1">{item.patient.name}</h4>
+                                            <h4 className="font-bold text-lg mb-1" style={{ color: '#000000' }}>{item.patient.name}</h4>
                                             <div className="flex items-center gap-3 text-sm font-medium text-gray-500">
-                                                <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-700">Token: {item.patient.token_number}</span>
+                                                <span className="bg-gray-100 px-2 py-0.5 rounded" style={{ color: '#444444' }}>Token: {item.patient.token_number}</span>
                                                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                                 <span>{new Date(item.created_at).toLocaleDateString()}</span>
                                             </div>
@@ -631,7 +633,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                                     item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                                                 {item.status.replace('_', ' ')}
                                             </span>
-                                            <p className="font-medium text-gray-900 text-sm">Dr. {item.doctor?.name}</p>
+                                            <p className="font-medium text-sm" style={{ color: '#000000' }}>Dr. {item.doctor?.name}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -648,7 +650,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-900/50 backdrop-blur-sm transition-opacity duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 transform transition-all duration-200">
                         <div className="flex justify-between items-center mb-8">
-                            <h3 className="text-2xl font-bold text-gray-900">Patient Registration</h3>
+                            <h3 className="text-2xl font-bold" style={{ color: '#000000' }}>Patient Registration</h3>
                             <button onClick={handleCloseWalkInModal} className="text-gray-300 hover:text-gray-500 transition-colors focus:outline-none">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
@@ -661,7 +663,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                     <input
                                         type="text"
                                         required
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
+                                        style={{ color: '#000000' }}
                                         value={walkInForm.tokenNumber}
                                         onChange={e => setWalkInForm({ ...walkInForm, tokenNumber: e.target.value })}
                                         placeholder="T-101"
@@ -672,7 +675,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                     <input
                                         type="number"
                                         required
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
+                                        style={{ color: '#000000' }}
                                         value={walkInForm.age}
                                         onChange={e => setWalkInForm({ ...walkInForm, age: e.target.value })}
                                         placeholder="Years"
@@ -684,7 +688,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 <input
                                     type="text"
                                     required
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
+                                    style={{ color: '#000000' }}
                                     value={walkInForm.name}
                                     onChange={e => setWalkInForm({ ...walkInForm, name: e.target.value })}
                                     placeholder="Patient Name"
@@ -695,7 +700,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 <input
                                     type="text"
                                     required
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
+                                    style={{ color: '#000000' }}
                                     value={walkInForm.department}
                                     onChange={e => setWalkInForm({ ...walkInForm, department: e.target.value })}
                                     placeholder="e.g. Cardiology"
@@ -705,7 +711,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Consulting Doctor</label>
                                 <select
                                     required
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold text-gray-900"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold"
+                                    style={{ color: '#000000' }}
                                     value={walkInForm.doctorId}
                                     onChange={e => setWalkInForm({ ...walkInForm, doctorId: e.target.value })}
                                 >
@@ -722,7 +729,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={handleCloseWalkInModal}
-                                    className="flex-1 px-4 py-3.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+                                    className="flex-1 px-4 py-3.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+                                    style={{ color: '#444444' }}
                                 >
                                     Cancel
                                 </button>
@@ -743,7 +751,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-900/50 backdrop-blur-sm transition-opacity duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto transform transition-all duration-200">
                         <div className="sticky top-0 bg-white px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="text-2xl font-bold text-gray-900">Hospital Settings</h3>
+                            <h3 className="text-2xl font-bold" style={{ color: '#000000' }}>Hospital Settings</h3>
                             <button 
                                 onClick={() => {
                                     setShowSettingsModal(false);
@@ -764,7 +772,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                         {avatarPreview ? (
                                             <img src={avatarPreview} alt="Hospital Logo" className="w-full h-full object-cover" />
                                         ) : (
-                                            <span className="text-3xl font-bold text-primary-600">
+                                            <span className="text-3xl font-bold" style={{ color: '#333333' }}>
                                                 {hospitalSettings.hospitalName?.charAt(0) || 'H'}
                                             </span>
                                         )}
@@ -791,7 +799,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 <input
                                     type="text"
                                     required
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
+                                    style={{ color: '#000000' }}
                                     value={hospitalSettings.hospitalName}
                                     onChange={e => setHospitalSettings({ ...hospitalSettings, hospitalName: e.target.value })}
                                     placeholder="City General Hospital"
@@ -803,7 +812,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Address / Location</label>
                                 <textarea
                                     rows={3}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all text-gray-900 placeholder:text-gray-400 resize-none"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all placeholder:text-gray-400 resize-none"
+                                    style={{ color: '#000000' }}
                                     value={hospitalSettings.address}
                                     onChange={e => setHospitalSettings({ ...hospitalSettings, address: e.target.value })}
                                     placeholder="123 Medical Center Drive, Suite 100&#10;City, State 12345"
@@ -815,7 +825,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Contact Number</label>
                                 <input
                                     type="tel"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
+                                    style={{ color: '#000000' }}
                                     value={hospitalSettings.contactNumber}
                                     onChange={e => setHospitalSettings({ ...hospitalSettings, contactNumber: e.target.value })}
                                     placeholder="+1 (555) 123-4567"
@@ -827,7 +838,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
                                 <input
                                     type="email"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
+                                    style={{ color: '#000000' }}
                                     value={hospitalSettings.email}
                                     onChange={e => setHospitalSettings({ ...hospitalSettings, email: e.target.value })}
                                     placeholder="contact@hospital.com"
@@ -842,7 +854,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                         setAvatarFile(null);
                                         setAvatarPreview(hospitalSettings.avatarUrl || null);
                                     }}
-                                    className="flex-1 px-4 py-3.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+                                    className="flex-1 px-4 py-3.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+                                    style={{ color: '#444444' }}
                                 >
                                     Cancel
                                 </button>
@@ -894,7 +907,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                             {currentView === 'doctor_dashboard' && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />}
                         </svg>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#000000' }}>
                         {currentView === 'pharmacy' ? 'Prescription Fulfillment' :
                             `Dr. ${activeDoctor?.name?.split(' ')?.[1] || 'Doctor'}'s Consultations`}
                     </h3>
@@ -916,8 +929,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                             <img src="/logo.png" alt="BeanHealth" className="w-full h-full object-contain" />
                         </div>
                         <div className="hidden sm:block">
-                            <h1 className="font-bold text-primary-900 text-base leading-tight tracking-tight">BeanHealth</h1>
-                            <p className="text-xs font-semibold text-secondary-600 tracking-wider uppercase">Enterprise</p>
+                            <h1 className="font-bold text-base leading-tight tracking-tight" style={{ color: '#000000' }}>BeanHealth</h1>
+                            <p className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#8AC43C' }}>Enterprise</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -927,12 +940,12 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 {profile?.avatar_url ? (
                                     <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="text-base font-bold text-primary-600">
+                                    <span className="text-base font-bold" style={{ color: '#333333' }}>
                                         {profile?.name?.charAt(0) || 'H'}
                                     </span>
                                 )}
                             </div>
-                            <span className="hidden md:inline-block text-sm text-gray-900 font-semibold">{profile?.name}</span>
+                            <span className="hidden md:inline-block text-sm font-semibold" style={{ color: '#000000' }}>{profile?.name}</span>
                         </div>
                         <button
                             onClick={() => signOut()}
@@ -976,7 +989,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">
+                            <h3 className="text-xl font-bold mb-2" style={{ color: '#000000' }}>
                                 {selectedDoctorForAuth ? `Hello, Dr. ${selectedDoctorForAuth.name.split(' ').pop()}` :
                                     selectedDeptForAuth === 'reception' ? 'Reception Access' : 'Pharmacy Access'}
                             </h3>
@@ -993,7 +1006,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 value={passwordInput}
                                 onChange={(e) => setPasswordInput(e.target.value)}
                                 placeholder="••••••"
-                                className="w-full px-4 py-4 border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-0 outline-none transition-colors mb-6 text-center text-2xl font-bold tracking-[0.3em] text-primary-900 placeholder:text-gray-200 placeholder:tracking-[0.3em]"
+                                className="w-full px-4 py-4 border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-0 outline-none transition-colors mb-6 text-center text-2xl font-bold tracking-[0.3em] placeholder:text-gray-200 placeholder:tracking-[0.3em]"
+                                style={{ color: '#000000' }}
                                 autoFocus
                             />
                             <div className="grid grid-cols-2 gap-3">
