@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import PrescriptionModal from './PrescriptionModal';
+import EnterpriseCKDSnapshotView from './EnterpriseCKDSnapshotView';
 
 interface DoctorProfile {
     id: string;
@@ -47,7 +48,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     const [notes, setNotes] = useState('');
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
 
-    const [viewMode, setViewMode] = useState<'queue' | 'history'>('queue');
+    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot'>('queue');
     const [historyList, setHistoryList] = useState<any[]>([]);
 
     // Memoized fetch functions for background updates
@@ -98,16 +99,27 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         }
     }, [doctor.id]);
 
-    // Initial fetch and realtime subscription
+    // Loading timeout - prevents infinite loading state
+    useEffect(() => {
+        if (loading) {
+            const timeout = setTimeout(() => {
+                setLoading(false);
+                toast.error('Loading timed out. Please try refreshing.');
+            }, 15000); // 15 second timeout
+            return () => clearTimeout(timeout);
+        }
+    }, [loading]);
+
+    // Initial fetch
     useEffect(() => {
         if (viewMode === 'queue') {
             fetchQueue();
-        } else {
+        } else if (viewMode === 'history') {
             fetchHistory();
         }
     }, [doctor.id, viewMode, fetchQueue, fetchHistory]);
 
-    // Realtime subscription for queue updates
+    // Realtime subscription for queue updates with error handling
     useEffect(() => {
         if (!doctor.id) return;
 
@@ -129,19 +141,45 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     // Refetch in background
                     if (viewMode === 'queue') {
                         fetchQueue(true);
-                    } else {
+                    } else if (viewMode === 'history') {
                         fetchHistory(true);
                     }
                 }
             )
-            .subscribe((status) => {
+            .subscribe((status, err) => {
                 console.log('Doctor queue realtime status:', status);
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.error('Doctor realtime error:', err);
+                    // Attempt to refetch data after connection error
+                    setTimeout(() => {
+                        if (viewMode === 'queue') {
+                            fetchQueue(true);
+                        } else if (viewMode === 'history') {
+                            fetchHistory(true);
+                        }
+                    }, 3000);
+                }
             });
 
         return () => {
             supabase.removeChannel(channel);
         };
     }, [doctor.id, viewMode, fetchQueue, fetchHistory]);
+
+    // Periodic health check - refresh data every 60 seconds when tab is visible
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                console.log('Periodic health check - refreshing doctor data...');
+                if (viewMode === 'queue') {
+                    fetchQueue(true);
+                } else if (viewMode === 'history') {
+                    fetchHistory(true);
+                }
+            }
+        }, 60000); // Every 60 seconds
+        return () => clearInterval(interval);
+    }, [viewMode, fetchQueue, fetchHistory]);
 
     // Refetch when tab becomes visible (handles browser tab switching)
     useEffect(() => {
@@ -150,7 +188,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 console.log('Tab became visible, refreshing data...');
                 if (viewMode === 'queue') {
                     fetchQueue(true);
-                } else {
+                } else if (viewMode === 'history') {
                     fetchHistory(true);
                 }
             }
@@ -281,32 +319,100 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
 
     return (
-        <div className="max-w-7xl mx-auto px-6 py-12">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-                <div>
-                    <button
-                        onClick={onBack}
-                        className="text-sm font-semibold text-gray-500 hover:text-black mb-4 flex items-center transition-colors"
-                    >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                        Back to List
-                    </button>
-                    <h2 className="text-4xl font-bold text-gray-900 tracking-tight">Dr. {doctor.name}</h2>
-                    <p className="text-lg text-gray-500 mt-2">Manage your patient queue and consultations</p>
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6">
+                    <div className="h-16 md:h-18 flex items-center justify-between">
+                        {/* Left Section - Back + BeanHealth Logo & Enterprise Tagline */}
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={onBack}
+                                className="p-2 -ml-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                                title="Back to Doctors List"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <div className="w-px h-8 bg-gray-200" />
+                            <img 
+                                src="/beanhealth-logo.png" 
+                                alt="BeanHealth" 
+                                className="h-14 w-14 object-contain"
+                            />
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">BeanHealth</h1>
+                                <p className="text-sm font-semibold tracking-widest uppercase text-green-600">ENTERPRISE</p>
+                            </div>
+                        </div>
+
+                        {/* Right Section - Hospital Logo & Name */}
+                        <div className="hidden sm:flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
+                                {hospitalLogo ? (
+                                    <img 
+                                        src={hospitalLogo} 
+                                        alt="Hospital" 
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-sm font-bold text-gray-700">H</span>
+                                )}
+                            </div>
+                            <span className="text-sm font-semibold text-gray-900">Dr. {doctor.name}</span>
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-6 py-8">
+                {/* Title & Controls Section */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Dr. {doctor.name}</h2>
+                        <p className="text-lg text-gray-700 mt-2">Manage your patient queue and consultations</p>
+                    </div>
 
                 <div className="flex items-center gap-4">
+                    {/* Rainbow CKD Snapshot Button */}
+                    <button
+                        onClick={() => setViewMode('ckd_snapshot')}
+                        className="relative group overflow-hidden rounded-xl"
+                        style={{
+                            background: 'linear-gradient(135deg, #9333ea, #ec4899)',
+                            padding: '2px'
+                        }}
+                    >
+                        {/* Animated rainbow border */}
+                        <div
+                            className="absolute inset-[-2px] rounded-xl opacity-75 group-hover:opacity-100 transition-opacity"
+                            style={{
+                                background: 'linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff, #ff0000)',
+                                backgroundSize: '400% 400%',
+                                animation: 'rainbow-slide 3s linear infinite',
+                                zIndex: 0
+                            }}
+                        />
+                        <div className="relative flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[10px] text-white font-bold text-sm z-10">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            <span className="uppercase tracking-wide">View</span>
+                            <span>CKD Snapshot</span>
+                        </div>
+                    </button>
+
                     <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm flex">
                         <button
                             onClick={() => setViewMode('queue')}
-                            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${viewMode === 'queue' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}
+                            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${viewMode === 'queue' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                         >
                             Active Queue
                         </button>
                         <button
                             onClick={() => setViewMode('history')}
-                            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${viewMode === 'history' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}
+                            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${viewMode === 'history' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                         >
                             History Log
                         </button>
@@ -324,129 +430,144 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 </div>
             </div>
 
-            <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
-                {viewMode === 'queue' ? (
-                    <>
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-900">Current Queue</h3>
-                            <span className="text-sm font-medium text-gray-500">{queue.length} Patients Waiting</span>
-                        </div>
+            {/* Rainbow animation keyframes - injected via style tag */}
+            <style>{`
+                @keyframes rainbow-slide {
+                    0% { background-position: 0% 50%; }
+                    100% { background-position: 400% 50%; }
+                }
+            `}</style>
 
-                        {loading ? (
-                            <div className="p-20 text-center">
-                                <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-black rounded-full mx-auto mb-4"></div>
-                                <p className="text-gray-500">Loading active patients...</p>
+            {viewMode === 'ckd_snapshot' ? (
+                <EnterpriseCKDSnapshotView
+                    doctor={doctor}
+                    onBack={() => setViewMode('queue')}
+                />
+            ) : (
+                <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
+                    {viewMode === 'queue' ? (
+                        <>
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                                <h3 className="font-bold text-gray-900">Current Queue</h3>
+                                <span className="text-sm font-medium text-gray-700">{queue.length} Patients Waiting</span>
                             </div>
-                        ) : queue.length === 0 ? (
-                            <div className="p-24 text-center flex flex-col items-center justify-center">
-                                <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 text-gray-400">
-                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+
+                            {loading ? (
+                                <div className="p-20 text-center">
+                                    <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-black rounded-full mx-auto mb-4"></div>
+                                    <p className="text-gray-700">Loading active patients...</p>
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900">Queue is Empty</h3>
-                                <p className="text-gray-500 mt-1">No patients are currently waiting for consultation.</p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-gray-50">
-                                {queue.map((item) => (
-                                    <div key={item.id} className="p-6 md:p-8 flex items-center justify-between hover:bg-gray-50 transition-colors group">
-                                        <div className="flex items-center gap-6">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm
-                                                ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
-                                                    item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                {item.queue_number}
+                            ) : queue.length === 0 ? (
+                                <div className="p-24 text-center flex flex-col items-center justify-center">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 text-gray-600">
+                                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-gray-900">Queue is Empty</h3>
+                                    <p className="text-gray-700 mt-1">No patients are currently waiting for consultation.</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-gray-50">
+                                    {queue.map((item) => (
+                                        <div key={item.id} className="p-6 md:p-8 flex items-center justify-between hover:bg-gray-50 transition-colors group">
+                                            <div className="flex items-center gap-6">
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm
+                                                    ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
+                                                        item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                    {item.queue_number}
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
+                                                    <div className="flex items-center gap-2 text-sm text-gray-700 font-medium">
+                                                        <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-800">Token: {item.patient.token_number}</span>
+                                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                        <span>{item.patient.age} yrs</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
-                                                <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600">Token: {item.patient.token_number}</span>
-                                                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                    <span>{item.patient.age} yrs</span>
+
+                                            <div className="flex items-center gap-3">
+                                                {item.status === 'pending' && (
+                                                    <button
+                                                        onClick={() => handleUpdateStatus(item.id, 'in_progress')}
+                                                        className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5"
+                                                    >
+                                                        Call In
+                                                    </button>
+                                                )}
+
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedPatient(item.patient);
+                                                        setShowRxModal(true);
+                                                    }}
+                                                    className="px-5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center gap-2"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                    Prescribe
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleUpdateStatus(item.id, 'completed')}
+                                                    className="px-5 py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                                                >
+                                                    Mark Done
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                                <h3 className="font-bold text-gray-900">Consultation History</h3>
+                                <span className="text-sm font-medium text-gray-700">Past Records</span>
+                            </div>
+
+                            {loading ? (
+                                <div className="p-20 text-center text-gray-700">Loading history...</div>
+                            ) : historyList.length === 0 ? (
+                                <div className="p-24 text-center flex flex-col items-center justify-center">
+                                    <p className="text-gray-700 font-medium">No prior consultations found</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-gray-50">
+                                    {historyList.map((item) => (
+                                        <div key={item.id} className="p-6 md:p-8 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                                            <div className="grid grid-cols-12 items-center w-full">
+                                                <div className="col-span-2 text-sm text-gray-800">
+                                                    {new Date(item.updated_at || item.created_at).toLocaleDateString()}
+                                                </div>
+                                                <div className="col-span-3">
+                                                    <div className="font-medium text-gray-900">{item.patient?.name}</div>
+                                                </div>
+                                                <div className="col-span-2 font-mono text-gray-800">
+                                                    {item.patient?.token_number}
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize bg-green-100 text-green-800">
+                                                        Completed
+                                                    </span>
+                                                </div>
+                                                <div className="col-span-3 flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleViewPrescription(item)}
+                                                        className="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 flex items-center gap-1"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                        View PDF
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
-
-                                        <div className="flex items-center gap-3">
-                                            {item.status === 'pending' && (
-                                                <button
-                                                    onClick={() => handleUpdateStatus(item.id, 'in_progress')}
-                                                    className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5"
-                                                >
-                                                    Call In
-                                                </button>
-                                            )}
-
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedPatient(item.patient);
-                                                    setShowRxModal(true);
-                                                }}
-                                                className="px-5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center gap-2"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                Prescribe
-                                            </button>
-
-                                            <button
-                                                onClick={() => handleUpdateStatus(item.id, 'completed')}
-                                                className="px-5 py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
-                                            >
-                                                Mark Done
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </>
-                ) : (
-                    <>
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-900">Consultation History</h3>
-                            <span className="text-sm font-medium text-gray-500">Past Records</span>
-                        </div>
-
-                        {loading ? (
-                            <div className="p-20 text-center text-gray-500">Loading history...</div>
-                        ) : historyList.length === 0 ? (
-                            <div className="p-24 text-center flex flex-col items-center justify-center">
-                                <p className="text-gray-400 font-medium">No prior consultations found</p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-gray-50">
-                                {historyList.map((item) => (
-                                    <div key={item.id} className="p-6 md:p-8 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
-                                        <div className="grid grid-cols-12 items-center w-full">
-                                            <div className="col-span-2 text-sm text-gray-600">
-                                                {new Date(item.updated_at || item.created_at).toLocaleDateString()}
-                                            </div>
-                                            <div className="col-span-3">
-                                                <div className="font-medium text-gray-900">{item.patient?.name}</div>
-                                            </div>
-                                            <div className="col-span-2 font-mono text-gray-600">
-                                                {item.patient?.token_number}
-                                            </div>
-                                            <div className="col-span-2">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize bg-green-100 text-green-800">
-                                                    Completed
-                                                </span>
-                                            </div>
-                                            <div className="col-span-3 flex justify-end gap-2">
-                                                <button
-                                                    onClick={() => handleViewPrescription(item)}
-                                                    className="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 flex items-center gap-1"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                    View PDF
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
 
             {/* Prescription Modal - Active */}
             {showRxModal && selectedPatient && (
@@ -473,6 +594,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     clinicLogo={hospitalLogo || undefined}
                 />
             )}
+            </div>
         </div>
     );
 };

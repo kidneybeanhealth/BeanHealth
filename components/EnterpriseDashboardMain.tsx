@@ -168,6 +168,36 @@ const EnterpriseDashboardMain: React.FC = () => {
         }
     }, [currentView]);
 
+    // Realtime subscription for reception queue updates
+    useEffect(() => {
+        if (!profile?.id || currentView !== 'reception') return;
+
+        const channel = supabase
+            .channel(`reception-queue-${profile.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'hospital_queues',
+                    filter: `hospital_id=eq.${profile.id}`
+                },
+                (payload) => {
+                    console.log('[Reception Dashboard] Queue update received:', payload.eventType);
+                    fetchQueue();
+                }
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('[Reception Dashboard] Realtime connected');
+                }
+            });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [profile?.id, currentView]);
+
     const fetchDoctors = async () => {
         if (!profile?.id) return;
         setIsLoadingDoctors(true);
@@ -539,7 +569,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                             {item.icon}
                         </div>
                         <h3 className="text-2xl font-bold mb-3" style={{ color: '#000000' }}>{item.title}</h3>
-                        <p className="leading-relaxed mb-auto text-base" style={{ color: '#555555' }}>{item.desc}</p>
+                        <p className="leading-relaxed mb-auto text-base" style={{ color: '#333333' }}>{item.desc}</p>
                         <div className="mt-8 flex items-center text-sm font-semibold opacity-70 group-hover:opacity-100 transition-opacity" style={{ color: '#000000' }}>
                             Enter Workspace <span className="ml-2 transition-transform group-hover:translate-x-1">→</span>
                         </div>
@@ -562,7 +592,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-2" style={{ color: '#000000' }}>Medical Staff</h2>
-                        <p className="text-lg" style={{ color: '#666666' }}>Select your profile to access your clinical dashboard.</p>
+                        <p className="text-lg" style={{ color: '#333333' }}>Select your profile to access your clinical dashboard.</p>
                     </div>
                 </div>
             </div>
@@ -603,12 +633,12 @@ const EnterpriseDashboardMain: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                 <div>
-                    <button onClick={() => setCurrentView('selection')} className="text-sm font-semibold mb-4 flex items-center" style={{ color: '#666666' }}>
+                    <button onClick={() => setCurrentView('selection')} className="text-sm font-semibold mb-4 flex items-center" style={{ color: '#333333' }}>
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                         Back
                     </button>
                     <h2 className="text-4xl font-bold tracking-tight" style={{ color: '#000000' }}>Reception Desk</h2>
-                    <p className="text-lg text-gray-500 mt-2">Manage patient check-ins and appointments</p>
+                    <p className="text-lg text-gray-700 mt-2">Manage patient check-ins and appointments</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -648,7 +678,7 @@ const EnterpriseDashboardMain: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-10">
                 <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-gray-50 rounded-full translate-x-8 -translate-y-8 group-hover:scale-110 transition-transform"></div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 relative z-10">Total Visits</p>
+                    <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2 relative z-10">Total Visits</p>
                     <p className="text-4xl md:text-5xl font-bold relative z-10" style={{ color: '#000000' }}>{queue.length}</p>
                 </div>
                 <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
@@ -670,14 +700,14 @@ const EnterpriseDashboardMain: React.FC = () => {
                         <button
                             onClick={() => setActiveTab('queue')}
                             className={`px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'queue' ? 'bg-white shadow-sm' : ''}`}
-                            style={{ color: activeTab === 'queue' ? '#000000' : '#666666' }}
+                            style={{ color: activeTab === 'queue' ? '#000000' : '#333333' }}
                         >
                             Live Queue
                         </button>
                         <button
                             onClick={() => setActiveTab('patients')}
                             className={`px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'patients' ? 'bg-white shadow-sm' : ''}`}
-                            style={{ color: activeTab === 'patients' ? '#000000' : '#666666' }}
+                            style={{ color: activeTab === 'patients' ? '#000000' : '#333333' }}
                         >
                             History Log
                         </button>
@@ -685,10 +715,10 @@ const EnterpriseDashboardMain: React.FC = () => {
                 </div>
 
                 {isLoadingQueue ? (
-                    <div className="p-16 text-center text-gray-400">Loading queue...</div>
+                    <div className="p-16 text-center text-gray-600">Loading queue...</div>
                 ) : queue.length === 0 ? (
                     <div className="p-20 text-center flex flex-col items-center justify-center gap-4">
-                        <p className="text-gray-400 font-medium">No records found</p>
+                        <p className="text-gray-600 font-medium">No records found</p>
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-50">
@@ -704,7 +734,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-lg mb-1" style={{ color: '#000000' }}>{item.patient.name}</h4>
-                                            <div className="flex items-center gap-3 text-sm font-medium text-gray-500">
+                                            <div className="flex items-center gap-3 text-sm font-medium text-gray-700">
                                                 <span className="bg-gray-100 px-2 py-0.5 rounded" style={{ color: '#444444' }}>Token: {item.patient.token_number}</span>
                                                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                                 <span>{new Date(item.created_at).toLocaleDateString()}</span>
@@ -724,7 +754,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 </div>
                             ))}
                         {activeTab === 'queue' && queue.filter(i => i.status === 'pending' || i.status === 'in_progress').length === 0 && (
-                            <div className="p-16 text-center text-gray-500">All caught up! No active patients in queue.</div>
+                            <div className="p-16 text-center text-gray-700">All caught up! No active patients in queue.</div>
                         )}
                     </div>
                 )}
@@ -736,7 +766,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 transform transition-all duration-200">
                         <div className="flex justify-between items-center mb-8">
                             <h3 className="text-2xl font-bold" style={{ color: '#000000' }}>Patient Registration</h3>
-                            <button onClick={handleCloseWalkInModal} className="text-gray-300 hover:text-gray-500 transition-colors focus:outline-none">
+                            <button onClick={handleCloseWalkInModal} className="text-gray-500 hover:text-gray-700 transition-colors focus:outline-none">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -744,7 +774,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                         <form onSubmit={handleWalkInSubmit} className="space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Token #</label>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Token #</label>
                                     <input
                                         type="text"
                                         required
@@ -756,7 +786,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Age</label>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Age</label>
                                     <input
                                         type="number"
                                         required
@@ -769,7 +799,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Full Name</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Full Name</label>
                                 <input
                                     type="text"
                                     required
@@ -781,7 +811,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Department</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Department</label>
                                 <input
                                     type="text"
                                     required
@@ -793,7 +823,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Consulting Doctor</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Consulting Doctor</label>
                                 <select
                                     required
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold"
@@ -843,7 +873,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                     setAvatarFile(null);
                                     setAvatarPreview(hospitalSettings.avatarUrl || null);
                                 }}
-                                className="text-gray-300 hover:text-gray-500 transition-colors focus:outline-none"
+                                className="text-gray-500 hover:text-gray-700 transition-colors focus:outline-none"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
@@ -875,12 +905,12 @@ const EnterpriseDashboardMain: React.FC = () => {
                                         />
                                     </label>
                                 </div>
-                                <p className="text-xs text-gray-400 mt-3">Click to upload hospital logo</p>
+                                <p className="text-xs text-gray-600 mt-3">Click to upload hospital logo</p>
                             </div>
 
                             {/* Hospital Name */}
                             <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Hospital Name</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Hospital Name</label>
                                 <input
                                     type="text"
                                     required
@@ -894,7 +924,7 @@ const EnterpriseDashboardMain: React.FC = () => {
 
                             {/* Address */}
                             <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Address / Location</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Address / Location</label>
                                 <textarea
                                     rows={3}
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all placeholder:text-gray-400 resize-none"
@@ -907,7 +937,7 @@ const EnterpriseDashboardMain: React.FC = () => {
 
                             {/* Contact Number */}
                             <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Contact Number</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Contact Number</label>
                                 <input
                                     type="tel"
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
@@ -920,7 +950,7 @@ const EnterpriseDashboardMain: React.FC = () => {
 
                             {/* Email */}
                             <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Email Address</label>
                                 <input
                                     type="email"
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
@@ -974,7 +1004,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                     <div>
                         <button
                             onClick={() => setCurrentView('selection')}
-                            className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-2 mb-2 transition-colors"
+                            className="text-sm text-gray-700 hover:text-gray-900 flex items-center gap-2 mb-2 transition-colors"
                         >
                             ← Switch Department
                         </button>
@@ -996,7 +1026,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                         {currentView === 'pharmacy' ? 'Prescription Fulfillment' :
                             `Dr. ${activeDoctor?.name?.split(' ')?.[1] || 'Doctor'}'s Consultations`}
                     </h3>
-                    <p className="text-gray-500 max-w-lg mx-auto mb-8">
+                    <p className="text-gray-700 max-w-lg mx-auto mb-8">
                         This module is under active development. Features for {title} will appear here.
                     </p>
                 </div>
@@ -1007,38 +1037,42 @@ const EnterpriseDashboardMain: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-50 font-sans selection:bg-secondary-100 selection:text-secondary-900">
             {/* Nav - Professional Sticky Header */}
-            <nav className="bg-white/95 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-6 h-16 md:h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden">
-                            <img src="/logo.png" alt="BeanHealth" className="w-full h-full object-contain" />
-                        </div>
-                        <div className="hidden sm:block">
-                            <h1 className="font-bold text-base leading-tight tracking-tight" style={{ color: '#000000' }}>BeanHealth</h1>
-                            <p className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#8AC43C' }}>Enterprise</p>
+            <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-6 h-16 md:h-18 flex items-center justify-between">
+                    {/* Left - BeanHealth Logo & Enterprise Tagline */}
+                    <div className="flex items-center gap-4">
+                        <img 
+                            src="/beanhealth-logo.png" 
+                            alt="BeanHealth" 
+                            className="h-14 w-14 object-contain"
+                        />
+                        <div>
+                            <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">BeanHealth</h1>
+                            <p className="text-sm font-semibold tracking-widest uppercase text-green-600">ENTERPRISE</p>
                         </div>
                     </div>
+
+                    {/* Right - Hospital Logo & Name + Sign Out */}
                     <div className="flex items-center gap-4">
-                        {/* Hospital Avatar & Name */}
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-primary-50 flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
                                 {profile?.avatar_url ? (
                                     <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="text-base font-bold" style={{ color: '#333333' }}>
+                                    <span className="text-sm font-bold text-gray-700">
                                         {profile?.name?.charAt(0) || 'H'}
                                     </span>
                                 )}
                             </div>
-                            <span className="hidden md:inline-block text-sm font-semibold" style={{ color: '#000000' }}>{profile?.name}</span>
+                            <span className="hidden md:inline-block text-sm font-semibold text-gray-900">{profile?.name}</span>
                         </div>
                         <button
                             onClick={() => signOut()}
-                            className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             title="Sign Out"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                             </svg>
                         </button>
                     </div>
@@ -1082,7 +1116,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 {selectedDoctorForAuth ? `Hello, Dr. ${selectedDoctorForAuth.name.split(' ').pop()}` :
                                     selectedDeptForAuth === 'reception' ? 'Reception Access' : 'Pharmacy Access'}
                             </h3>
-                            <p className="text-sm text-gray-500 leading-relaxed">
+                            <p className="text-sm text-gray-700 leading-relaxed">
                                 {selectedDoctorForAuth
                                     ? 'Enter your secure passcode'
                                     : 'Please authenticate to continue'}

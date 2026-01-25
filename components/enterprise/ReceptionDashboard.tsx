@@ -31,12 +31,12 @@ interface QueueItem {
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
     const { profile } = useAuth();
-    
+
     const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
     const [queue, setQueue] = useState<QueueItem[]>([]);
     const [isLoadingQueue, setIsLoadingQueue] = useState(false);
     const [activeTab, setActiveTab] = useState<'queue' | 'patients'>('queue');
-    
+
     // Walk-in Modal
     const [showWalkInModal, setShowWalkInModal] = useState(false);
     const [walkInForm, setWalkInForm] = useState({
@@ -101,6 +101,17 @@ const ReceptionDashboard: React.FC = () => {
         }
     }, [profile?.id]);
 
+    // Loading timeout - prevents infinite loading state
+    useEffect(() => {
+        if (isLoadingQueue) {
+            const timeout = setTimeout(() => {
+                setIsLoadingQueue(false);
+                toast.error('Loading timed out. Please try refreshing.');
+            }, 15000); // 15 second timeout
+            return () => clearTimeout(timeout);
+        }
+    }, [isLoadingQueue]);
+
     // Initial fetch
     useEffect(() => {
         if (profile?.id) {
@@ -109,7 +120,7 @@ const ReceptionDashboard: React.FC = () => {
         }
     }, [profile?.id, fetchDoctors, fetchQueue]);
 
-    // Realtime subscription for queue updates
+    // Realtime subscription for queue updates with error handling
     useEffect(() => {
         if (!profile?.id) return;
 
@@ -141,14 +152,33 @@ const ReceptionDashboard: React.FC = () => {
                     fetchDoctors();
                 }
             )
-            .subscribe((status) => {
+            .subscribe((status, err) => {
                 console.log('Reception realtime status:', status);
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.error('Reception realtime error:', err);
+                    // Attempt to refetch data after connection error
+                    setTimeout(() => {
+                        fetchQueue(true);
+                        fetchDoctors();
+                    }, 3000);
+                }
             });
 
         return () => {
             supabase.removeChannel(channel);
         };
     }, [profile?.id, fetchQueue, fetchDoctors]);
+
+    // Periodic health check - refresh data every 60 seconds when tab is visible
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible' && profile?.id) {
+                console.log('Periodic health check - refreshing reception data...');
+                fetchQueue(true);
+            }
+        }, 60000); // Every 60 seconds
+        return () => clearInterval(interval);
+    }, [profile?.id, fetchQueue]);
 
     // Refetch when tab becomes visible
     useEffect(() => {
@@ -357,48 +387,76 @@ const ReceptionDashboard: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => navigate('/enterprise-dashboard')}
-                            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                            <span className="font-medium hidden sm:inline">Dashboard</span>
-                        </button>
-                        <div className="w-px h-6 bg-gray-200" />
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                                <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6">
+                    {/* Main Header Row */}
+                    <div className="h-16 md:h-18 flex items-center justify-between">
+                        {/* Left Section - Back + BeanHealth Logo & Enterprise Tagline */}
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => navigate('/enterprise-dashboard')}
+                                className="p-2 -ml-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                                title="Back to Dashboard"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                 </svg>
+                            </button>
+                            <div className="w-px h-8 bg-gray-200" />
+                            <img 
+                                src="/beanhealth-logo.png" 
+                                alt="BeanHealth" 
+                                className="h-14 w-14 object-contain"
+                            />
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">BeanHealth</h1>
+                                <p className="text-sm font-semibold tracking-widest uppercase text-green-600">ENTERPRISE</p>
                             </div>
-                            <span className="font-semibold text-gray-900">Reception</span>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => { fetchHospitalSettings(); setShowSettingsModal(true); }}
-                            className="p-2 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
-                            title="Settings"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        </button>
-                        <button
-                            onClick={handleLogout}
-                            className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                            title="Logout from Reception"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                        </button>
+
+                        {/* Right Section - Hospital Logo & Name + Actions */}
+                        <div className="flex items-center gap-4">
+                            {/* Hospital Info */}
+                            <div className="hidden sm:flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
+                                    {profile?.avatar_url ? (
+                                        <img 
+                                            src={profile.avatar_url} 
+                                            alt={profile?.name || 'Hospital'} 
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <span className="text-sm font-bold text-gray-700">
+                                            {profile?.name?.charAt(0) || 'H'}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-sm font-semibold text-gray-900">{profile?.name || 'Hospital'}</span>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => { fetchHospitalSettings(); setShowSettingsModal(true); }}
+                                    className="p-2 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-all"
+                                    title="Settings"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all"
+                                    title="Logout from Reception"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -408,7 +466,7 @@ const ReceptionDashboard: React.FC = () => {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight text-gray-900">Reception Desk</h2>
-                        <p className="text-gray-500 mt-1">Manage patient check-ins and appointments</p>
+                        <p className="text-gray-700 mt-1">Manage patient check-ins and appointments</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -435,7 +493,7 @@ const ReceptionDashboard: React.FC = () => {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Visits</p>
+                        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Total Visits</p>
                         <p className="text-4xl font-bold text-gray-900">{queue.length}</p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
@@ -454,13 +512,13 @@ const ReceptionDashboard: React.FC = () => {
                         <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
                             <button
                                 onClick={() => setActiveTab('queue')}
-                                className={`px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'queue' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+                                className={`px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'queue' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'}`}
                             >
                                 Live Queue
                             </button>
                             <button
                                 onClick={() => setActiveTab('patients')}
-                                className={`px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'patients' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+                                className={`px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'patients' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'}`}
                             >
                                 History Log
                             </button>
@@ -468,10 +526,10 @@ const ReceptionDashboard: React.FC = () => {
                     </div>
 
                     {isLoadingQueue ? (
-                        <div className="p-16 text-center text-gray-400">Loading queue...</div>
+                        <div className="p-16 text-center text-gray-700">Loading queue...</div>
                     ) : queue.length === 0 ? (
                         <div className="p-20 text-center">
-                            <p className="text-gray-400 font-medium">No records found</p>
+                            <p className="text-gray-700 font-medium">No records found</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-gray-50">
@@ -487,8 +545,8 @@ const ReceptionDashboard: React.FC = () => {
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-gray-900">{item.patient?.name}</h4>
-                                                <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600">Token: {item.patient?.token_number}</span>
+                                                <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
+                                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-800">Token: {item.patient?.token_number}</span>
                                                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
@@ -499,12 +557,12 @@ const ReceptionDashboard: React.FC = () => {
                                                     item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                                                 {item.status.replace('_', ' ')}
                                             </span>
-                                            <p className="font-medium text-sm text-gray-600 mt-1">Dr. {item.doctor?.name}</p>
+                                            <p className="font-medium text-sm text-gray-800 mt-1">Dr. {item.doctor?.name}</p>
                                         </div>
                                     </div>
                                 ))}
                             {activeTab === 'queue' && queue.filter(i => i.status === 'pending' || i.status === 'in_progress').length === 0 && (
-                                <div className="p-16 text-center text-gray-500">All caught up! No active patients in queue.</div>
+                                <div className="p-16 text-center text-gray-700">All caught up! No active patients in queue.</div>
                             )}
                         </div>
                     )}
@@ -517,7 +575,7 @@ const ReceptionDashboard: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold text-gray-900">Patient Registration</h3>
-                            <button onClick={handleCloseWalkInModal} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={handleCloseWalkInModal} className="text-gray-500 hover:text-gray-700">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -527,7 +585,7 @@ const ReceptionDashboard: React.FC = () => {
                         <form onSubmit={handleWalkInSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Token #</label>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Token #</label>
                                     <input
                                         type="text"
                                         required
@@ -538,7 +596,7 @@ const ReceptionDashboard: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Age</label>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Age</label>
                                     <input
                                         type="number"
                                         required
@@ -550,7 +608,7 @@ const ReceptionDashboard: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Full Name</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Full Name</label>
                                 <input
                                     type="text"
                                     required
@@ -561,7 +619,7 @@ const ReceptionDashboard: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Department</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Department</label>
                                 <input
                                     type="text"
                                     required
@@ -572,7 +630,7 @@ const ReceptionDashboard: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Consulting Doctor</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Consulting Doctor</label>
                                 <select
                                     required
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
@@ -614,7 +672,7 @@ const ReceptionDashboard: React.FC = () => {
                             <h3 className="text-xl font-bold text-gray-900">Hospital Settings</h3>
                             <button
                                 onClick={() => { setShowSettingsModal(false); setAvatarFile(null); }}
-                                className="text-gray-400 hover:text-gray-600"
+                                className="text-gray-500 hover:text-gray-700"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -644,7 +702,7 @@ const ReceptionDashboard: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Hospital Name</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Hospital Name</label>
                                 <input
                                     type="text"
                                     required
@@ -654,7 +712,7 @@ const ReceptionDashboard: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Address</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Address</label>
                                 <textarea
                                     rows={2}
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 resize-none"
@@ -663,7 +721,7 @@ const ReceptionDashboard: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Contact Number</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Contact Number</label>
                                 <input
                                     type="tel"
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900"
@@ -672,7 +730,7 @@ const ReceptionDashboard: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Email</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Email</label>
                                 <input
                                     type="email"
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900"

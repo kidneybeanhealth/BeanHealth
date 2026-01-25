@@ -64,7 +64,7 @@ const DoctorDashboardWrapper: React.FC = () => {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-gray-500 mb-4">Doctor not found</p>
+                    <p className="text-gray-800 font-medium mb-4">Doctor not found</p>
                     <button
                         onClick={() => navigate('/enterprise-dashboard/doctors')}
                         className="text-primary-600 font-semibold hover:underline"

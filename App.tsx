@@ -11,7 +11,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import ReturnToAdminButton from './components/ReturnToAdminButton';
 import AppRoutes from './routes';
@@ -192,23 +191,21 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <ThemeProvider>
-            <DataProvider>
-              <DeepLinkHandler>
-                <Toaster
-                  position="top-center"
-                  toastOptions={{
-                    duration: 3000,
-                    style: { background: '#363636', color: '#fff' },
-                  }}
-                />
-                <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-                  <AppRoutes />
-                  <ReturnToAdminButton />
-                </div>
-              </DeepLinkHandler>
-            </DataProvider>
-          </ThemeProvider>
+          <DataProvider>
+            <DeepLinkHandler>
+              <Toaster
+                position="top-center"
+                toastOptions={{
+                  duration: 3000,
+                  style: { background: '#363636', color: '#fff' },
+                }}
+              />
+              <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+                <AppRoutes />
+                <ReturnToAdminButton />
+              </div>
+            </DeepLinkHandler>
+          </DataProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

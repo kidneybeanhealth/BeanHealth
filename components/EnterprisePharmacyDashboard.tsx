@@ -69,13 +69,24 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         }
     }, [hospitalId]);
 
+    // Loading timeout - prevents infinite loading state
+    useEffect(() => {
+        if (loading) {
+            const timeout = setTimeout(() => {
+                setLoading(false);
+                toast.error('Loading timed out. Please try refreshing.');
+            }, 15000); // 15 second timeout
+            return () => clearTimeout(timeout);
+        }
+    }, [loading]);
+
     useEffect(() => {
         if (!hospitalId) return;
 
         // Initial Fetch
         fetchPrescriptions();
 
-        // Realtime Subscription
+        // Realtime Subscription with error handling
         const channel = supabase
             .channel(`pharmacy-dashboard-${hospitalId}`)
             .on(
@@ -95,15 +106,32 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     fetchPrescriptions(true);
                 }
             )
-            .subscribe((status) => {
+            .subscribe((status, err) => {
                 if (status === 'SUBSCRIBED') {
                     console.log('Pharmacy realtime connected');
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.error('Pharmacy realtime error:', err);
+                    // Attempt to refetch data after connection error
+                    setTimeout(() => {
+                        fetchPrescriptions(true);
+                    }, 3000);
                 }
             });
 
         return () => {
             supabase.removeChannel(channel);
         };
+    }, [hospitalId, fetchPrescriptions]);
+
+    // Periodic health check - refresh data every 60 seconds when tab is visible
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible' && hospitalId) {
+                console.log('Periodic health check - refreshing pharmacy data...');
+                fetchPrescriptions(true);
+            }
+        }, 60000); // Every 60 seconds
+        return () => clearInterval(interval);
     }, [hospitalId, fetchPrescriptions]);
 
     // Refetch when tab becomes visible
@@ -166,14 +194,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     {onBack && (
                         <button
                             onClick={onBack}
-                            className="text-sm font-semibold text-gray-500 hover:text-black mb-4 flex items-center transition-colors"
+                            className="text-sm font-semibold text-gray-700 hover:text-black mb-4 flex items-center transition-colors"
                         >
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                             Back to Selection
                         </button>
                     )}
                     <h2 className="text-4xl font-bold text-gray-900 tracking-tight">Pharmacy</h2>
-                    <p className="text-lg text-gray-500 mt-2">Incoming prescriptions & fulfillment queue</p>
+                    <p className="text-lg text-gray-700 mt-2">Incoming prescriptions & fulfillment queue</p>
                 </div>
 
                 <button
@@ -200,15 +228,15 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 {loading ? (
                     <div className="p-20 text-center">
                         <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full mx-auto mb-4"></div>
-                        <p className="text-gray-500">Loading pharmacy queue...</p>
+                        <p className="text-gray-700">Loading pharmacy queue...</p>
                     </div>
                 ) : prescriptions.length === 0 ? (
                     <div className="p-24 text-center flex flex-col items-center justify-center">
-                        <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 text-gray-400">
+                        <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 text-gray-600">
                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         </div>
                         <h3 className="text-lg font-bold text-gray-900">No Prescriptions</h3>
-                        <p className="text-gray-500 mt-1">There are no pending prescriptions at the moment.</p>
+                        <p className="text-gray-700 mt-1">There are no pending prescriptions at the moment.</p>
                         <button
                             onClick={() => fetchPrescriptions()}
                             className="mt-6 text-sm text-blue-600 hover:text-blue-700 font-bold flex items-center gap-2 px-6 py-3 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
@@ -227,15 +255,15 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                             >
                                 <div className="flex items-center gap-6">
                                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm
-                                        ${item.status === 'pending' ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                                        ${item.status === 'pending' ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
                                         {item.token_number}
                                     </div>
                                     <div>
                                         <h4 className="text-lg font-bold text-gray-900">{item.patient?.name}</h4>
-                                        <div className="flex items-center gap-3 text-sm font-medium text-gray-500">
+                                        <div className="flex items-center gap-3 text-sm font-medium text-gray-700">
                                             <span>Age: {item.patient?.age}</span>
                                             <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                            <span className="text-gray-700">Dr. {item.doctor?.name}</span>
+                                            <span className="text-gray-900">Dr. {item.doctor?.name}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -268,7 +296,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                 <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                                     Prescription Details
                                 </h3>
-                                <p className="text-sm font-medium text-gray-500 mt-1">Token: <span className="text-gray-900">{selectedPrescription.token_number}</span></p>
+                                <p className="text-sm font-medium text-gray-700 mt-1">Token: <span className="text-gray-900">{selectedPrescription.token_number}</span></p>
                             </div>
                             <button onClick={() => setSelectedPrescription(null)} className="text-gray-400 hover:text-black p-2 hover:bg-gray-100 rounded-full transition-colors">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -279,20 +307,20 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                         <div className="p-8 overflow-y-auto flex-1 font-serif bg-white">
                             <div className="text-center mb-8 pb-6 border-b border-gray-100">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-1">BeanHealth Hospital</h2>
-                                <p className="text-gray-500 text-sm tracking-wide uppercase">Excellence in Care</p>
+                                <p className="text-gray-700 text-sm tracking-wide uppercase">Excellence in Care</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
                                 <div className="space-y-1">
-                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Patient</p>
+                                    <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Patient</p>
                                     <p className="font-bold text-gray-900 text-lg">{selectedPrescription.patient?.name}</p>
-                                    <p className="text-gray-600 font-sans">Age: {selectedPrescription.patient?.age}</p>
+                                    <p className="text-gray-800 font-sans">Age: {selectedPrescription.patient?.age}</p>
                                 </div>
                                 <div className="space-y-1 text-right">
-                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Doctor</p>
+                                    <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Doctor</p>
                                     <p className="font-bold text-gray-900 text-lg">Dr. {selectedPrescription.doctor?.name}</p>
-                                    <p className="text-gray-600 font-sans">{selectedPrescription.doctor?.specialty}</p>
-                                    <p className="text-gray-400 text-xs mt-2 font-sans">{new Date(selectedPrescription.created_at).toLocaleDateString()}</p>
+                                    <p className="text-gray-800 font-sans">{selectedPrescription.doctor?.specialty}</p>
+                                    <p className="text-gray-600 text-xs mt-2 font-sans">{new Date(selectedPrescription.created_at).toLocaleDateString()}</p>
                                 </div>
                             </div>
 
@@ -305,12 +333,12 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                     {(selectedPrescription.medications || []).map((med: any, i: number) => (
                                         <div key={i} className="flex justify-between items-start pb-4 border-b border-gray-50 last:border-0 last:pb-0">
                                             <div>
-                                                <p className="font-bold text-gray-900 text-lg">{med.name} <span className="text-gray-400 font-normal text-sm ml-1">({med.dosage})</span></p>
-                                                <p className="text-gray-600 italic mt-1">{med.instruction}</p>
+                                                <p className="font-bold text-gray-900 text-lg">{med.name} <span className="text-gray-600 font-normal text-sm ml-1">({med.dosage})</span></p>
+                                                <p className="text-gray-700 italic mt-1">{med.instruction}</p>
                                             </div>
                                             <div className="text-right text-sm font-sans">
                                                 <div className="inline-block px-3 py-1 bg-gray-100 rounded-lg text-gray-700 font-medium">{med.frequency}</div>
-                                                <p className="text-gray-400 mt-1">{med.duration}</p>
+                                                <p className="text-gray-600 mt-1">{med.duration}</p>
                                             </div>
                                         </div>
                                     ))}

@@ -30,10 +30,6 @@ const DoctorLogin: React.FC = () => {
     // Session storage key (scoped per hospital)
     const getSessionKey = () => `enterprise_doctor_session_${profile?.id}`;
 
-    useEffect(() => {
-        fetchDoctors();
-    }, [profile?.id]);
-
     // If doctorId is in URL, check session or prompt for password
     useEffect(() => {
         if (!doctorId || doctors.length === 0) return;
@@ -73,7 +69,11 @@ const DoctorLogin: React.FC = () => {
     }, [doctorId, doctors]);
 
     const fetchDoctors = async () => {
-        if (!profile?.id) return;
+        if (!profile?.id) {
+            console.log('[DoctorLogin] No profile.id yet, skipping fetch');
+            return;
+        }
+        console.log('[DoctorLogin] Fetching doctors for hospital:', profile.id);
         setLoading(true);
         try {
             const { data, error } = await supabase
@@ -82,15 +82,37 @@ const DoctorLogin: React.FC = () => {
                 .eq('hospital_id', profile.id)
                 .eq('is_active', true);
 
-            if (error) throw error;
+            if (error) {
+                console.error('[DoctorLogin] Error fetching doctors:', error);
+                throw error;
+            }
+            console.log('[DoctorLogin] Found doctors:', data?.length);
             setDoctors(data || []);
         } catch (error) {
-            console.error('Error fetching doctors:', error);
+            console.error('[DoctorLogin] Error fetching doctors:', error);
             toast.error('Failed to load doctors list');
         } finally {
             setLoading(false);
         }
     };
+
+    // Fetch doctors when profile.id is available
+    useEffect(() => {
+        if (profile?.id) {
+            fetchDoctors();
+        }
+    }, [profile?.id]);
+
+    // Loading timeout - prevent infinite loading
+    useEffect(() => {
+        if (loading) {
+            const timeout = setTimeout(() => {
+                console.log('[DoctorLogin] Loading timed out');
+                setLoading(false);
+            }, 15000);
+            return () => clearTimeout(timeout);
+        }
+    }, [loading]);
 
     const handleDoctorClick = (doctor: DoctorProfile) => {
         // Navigate to doctor-specific login URL
@@ -132,7 +154,7 @@ const DoctorLogin: React.FC = () => {
                 <div className="max-w-md w-full">
                     <button
                         onClick={handleCloseModal}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+                        className="flex items-center gap-2 text-gray-900 hover:text-gray-900 mb-6 transition-colors"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -143,14 +165,14 @@ const DoctorLogin: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-xl p-8">
                         <div className="text-center mb-8">
                             <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-primary-50/50">
-                                <span className="text-2xl font-bold text-gray-700">
+                                <span className="text-2xl font-bold text-gray-900">
                                     {selectedDoctor.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                 </span>
                             </div>
                             <h2 className="text-2xl font-bold text-gray-900">
                                 Hello, Dr. {selectedDoctor.name.split(' ').pop()}
                             </h2>
-                            <p className="text-gray-500 mt-2">{selectedDoctor.specialty}</p>
+                            <p className="text-gray-900 mt-2">{selectedDoctor.specialty}</p>
                         </div>
 
                         <form onSubmit={handlePasswordSubmit} className="space-y-6">
@@ -172,7 +194,7 @@ const DoctorLogin: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
-                                    className="px-4 py-3.5 text-gray-600 bg-gray-50 rounded-xl hover:bg-gray-100 font-semibold transition-colors"
+                                    className="px-4 py-3.5 text-gray-900 bg-gray-50 rounded-xl hover:bg-gray-100 font-semibold transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -195,17 +217,50 @@ const DoctorLogin: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <button
-                        onClick={() => navigate('/enterprise-dashboard')}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        <span className="font-medium">Back to Dashboard</span>
-                    </button>
+            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6">
+                    <div className="h-16 md:h-18 flex items-center justify-between">
+                        {/* Left Section - Back + BeanHealth Logo & Enterprise Tagline */}
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => navigate('/enterprise-dashboard')}
+                                className="p-2 -ml-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                                title="Back to Dashboard"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <div className="w-px h-8 bg-gray-200" />
+                            <img 
+                                src="/beanhealth-logo.png" 
+                                alt="BeanHealth" 
+                                className="h-14 w-14 object-contain"
+                            />
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">BeanHealth</h1>
+                                <p className="text-sm font-semibold tracking-widest uppercase text-green-600">ENTERPRISE</p>
+                            </div>
+                        </div>
+
+                        {/* Right Section - Hospital Logo & Name */}
+                        <div className="hidden sm:flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
+                                {profile?.avatar_url ? (
+                                    <img 
+                                        src={profile.avatar_url} 
+                                        alt={profile?.name || 'Hospital'} 
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-sm font-bold text-gray-700">
+                                        {profile?.name?.charAt(0) || 'H'}
+                                    </span>
+                                )}
+                            </div>
+                            <span className="text-sm font-semibold text-gray-900">{profile?.name || 'Hospital'}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -214,7 +269,7 @@ const DoctorLogin: React.FC = () => {
                     <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900 mb-2">
                         Medical Staff
                     </h2>
-                    <p className="text-lg text-gray-600">
+                    <p className="text-lg text-gray-900">
                         Select your profile to access your clinical dashboard.
                     </p>
                 </div>
@@ -228,12 +283,12 @@ const DoctorLogin: React.FC = () => {
                 ) : doctors.length === 0 ? (
                     <div className="text-center py-20">
                         <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">No Doctors Found</h3>
-                        <p className="text-gray-500">Add doctors to your hospital to get started.</p>
+                        <p className="text-gray-900">Add doctors to your hospital to get started.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -244,15 +299,15 @@ const DoctorLogin: React.FC = () => {
                                 className="group bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-primary-100 hover:-translate-y-1 transition-all duration-300 text-center flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                             >
                                 <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300 ring-4 ring-primary-50/50">
-                                    <span className="text-2xl font-bold text-gray-700">
+                                    <span className="text-2xl font-bold text-gray-900">
                                         {doctor.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                     </span>
                                 </div>
                                 <h3 className="font-bold text-lg text-gray-900 mb-2">{doctor.name}</h3>
-                                <p className="text-sm font-medium bg-gray-100 px-4 py-1.5 rounded-full text-gray-600 mb-6">
+                                <p className="text-sm font-medium bg-gray-100 px-4 py-1.5 rounded-full text-gray-900 mb-6">
                                     {doctor.specialty}
                                 </p>
-                                <div className="mt-auto w-full py-3 rounded-xl bg-gray-50 font-semibold text-sm text-gray-600 group-hover:bg-primary-600 group-hover:text-white transition-colors">
+                                <div className="mt-auto w-full py-3 rounded-xl bg-gray-50 font-semibold text-sm text-gray-900 group-hover:bg-primary-600 group-hover:text-white transition-colors">
                                     Access Dashboard
                                 </div>
                             </button>

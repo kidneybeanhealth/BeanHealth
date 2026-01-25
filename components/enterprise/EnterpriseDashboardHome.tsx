@@ -104,7 +104,7 @@ const EnterpriseDashboardHome: React.FC = () => {
                     <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight text-gray-900">
                         {profile?.name || 'Select your workspace'}
                     </h2>
-                    <p className="text-lg md:text-xl leading-relaxed text-gray-600">
+                    <p className="text-lg md:text-xl leading-relaxed text-gray-700">
                         Welcome to the BeanHealth Enterprise Suite. Secure, efficient, and integrated management for your healthcare facility.
                     </p>
                 </div>
@@ -120,7 +120,7 @@ const EnterpriseDashboardHome: React.FC = () => {
                                 {item.icon}
                             </div>
                             <h3 className="text-2xl font-bold mb-3 text-gray-900">{item.title}</h3>
-                            <p className="leading-relaxed mb-auto text-base text-gray-600">{item.desc}</p>
+                            <p className="leading-relaxed mb-auto text-base text-gray-700">{item.desc}</p>
                             <div className="mt-8 flex items-center text-sm font-semibold text-gray-900 opacity-70 group-hover:opacity-100 transition-opacity">
                                 Enter Workspace <span className="ml-2 transition-transform group-hover:translate-x-1">→</span>
                             </div>

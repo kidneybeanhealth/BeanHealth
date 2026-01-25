@@ -295,6 +295,48 @@ export class AuthService {
     }
   }
 
+  /**
+   * Get user profile directly by ID - OPTIMIZED version that skips session check
+   * Use this when you already have a valid session/userId
+   */
+  static async getUserProfileById(userId: string): Promise<User | null> {
+    try {
+      console.log('[AuthService] Getting user profile by ID:', userId);
+
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      // If user doesn't exist in database, return null (they need to set up profile)
+      if (error && error.code === 'PGRST116') {
+        console.log('[AuthService] User profile not found - needs setup');
+        return null;
+      }
+
+      if (error) {
+        console.error('[AuthService] Error fetching user profile:', error);
+        throw error;
+      }
+
+      console.log('[AuthService] Profile fetched successfully');
+      return profile as User;
+    } catch (error: any) {
+      console.error('[AuthService] Error in getUserProfileById:', error);
+
+      // Don't throw network errors, return null instead
+      if (error?.message?.includes('fetch') ||
+        error?.message?.includes('network') ||
+        error?.message?.includes('timeout')) {
+        console.warn('[AuthService] Network error, returning null');
+        return null;
+      }
+
+      return null;
+    }
+  }
+
   static async getCurrentUser(): Promise<User | null> {
     try {
       console.log('[AuthService] Getting current user');

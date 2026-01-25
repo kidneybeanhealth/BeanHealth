@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-// Auth Components
+// Auth Components - kept eager as they're needed immediately
 import Auth from '../components/auth/Auth';
 import AuthChooser from '../components/auth/AuthChooser';
 import Login from '../components/auth/Login';
@@ -10,30 +10,53 @@ import EnterpriseLogin from '../components/auth/EnterpriseLogin';
 import AdminLogin from '../components/auth/AdminLogin';
 import ProfileSetup from '../components/auth/ProfileSetup';
 
-// Dashboard Components
-import PatientDashboard from '../components/PatientDashboard';
-import DoctorDashboardMain from '../components/DoctorDashboardMain';
-import AdminDashboardMain from '../components/AdminDashboardMain';
+// Dashboard Components - LAZY LOADED for faster initial load
+const PatientDashboard = React.lazy(() => import('../components/PatientDashboard'));
+const DoctorDashboardMain = React.lazy(() => import('../components/DoctorDashboardMain'));
+const AdminDashboardMain = React.lazy(() => import('../components/AdminDashboardMain'));
 
-// Enterprise Components
-import {
-    EnterpriseDashboardHome,
-    ReceptionLogin,
-    ReceptionDashboard,
-    PharmacyLogin,
-    PharmacyDashboard,
-    DoctorLogin,
-    DoctorDashboardWrapper,
-    DepartmentProtectedRoute,
-    DoctorProtectedRoute
-} from '../components/enterprise';
+// Enterprise Components - LAZY LOADED
+const EnterpriseDashboardHome = React.lazy(() => 
+    import('../components/enterprise').then(m => ({ default: m.EnterpriseDashboardHome }))
+);
+const ReceptionLogin = React.lazy(() => 
+    import('../components/enterprise').then(m => ({ default: m.ReceptionLogin }))
+);
+const ReceptionDashboard = React.lazy(() => 
+    import('../components/enterprise').then(m => ({ default: m.ReceptionDashboard }))
+);
+const PharmacyLogin = React.lazy(() => 
+    import('../components/enterprise').then(m => ({ default: m.PharmacyLogin }))
+);
+const PharmacyDashboard = React.lazy(() => 
+    import('../components/enterprise').then(m => ({ default: m.PharmacyDashboard }))
+);
+const DoctorLogin = React.lazy(() => 
+    import('../components/enterprise').then(m => ({ default: m.DoctorLogin }))
+);
+const DoctorDashboardWrapper = React.lazy(() => 
+    import('../components/enterprise').then(m => ({ default: m.DoctorDashboardWrapper }))
+);
+
+// These are needed synchronously for route protection
+import { DepartmentProtectedRoute, DoctorProtectedRoute } from '../components/enterprise';
 
 // Route Guards
 import ProtectedRoute from '../components/ProtectedRoute';
 
-// Onboarding
-import OnboardingFlow from '../components/OnboardingFlow';
-import TermsAndConditionsModal from '../components/TermsAndConditionsModal';
+// Onboarding - LAZY LOADED
+const OnboardingFlow = React.lazy(() => import('../components/OnboardingFlow'));
+const TermsAndConditionsModal = React.lazy(() => import('../components/TermsAndConditionsModal'));
+
+// Loading fallback component for lazy-loaded routes
+const PageLoader: React.FC = () => (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
+            <p className="text-gray-900 dark:text-gray-100 font-medium">Loading...</p>
+        </div>
+    </div>
+);
 
 /**
  * AuthRedirect - Redirects authenticated users to their dashboard
@@ -46,7 +69,7 @@ const AuthRedirect: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400 font-medium">Loading...</p>
+                    <p className="text-gray-900 dark:text-gray-100 font-medium">Loading...</p>
                 </div>
             </div>
         );
@@ -83,7 +106,7 @@ const ProfileSetupRoute: React.FC = () => {
             <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400 font-medium">Loading...</p>
+                    <p className="text-gray-900 dark:text-gray-100 font-medium">Loading...</p>
                 </div>
             </div>
         );
@@ -102,12 +125,14 @@ const ProfileSetupRoute: React.FC = () => {
 
 /**
  * Main App Routes Configuration
+ * Wrapped in Suspense for lazy-loaded components
  */
 const AppRoutes: React.FC = () => {
     const { needsOnboarding, needsTermsAcceptance, acceptTerms, profile } = useAuth();
 
     return (
-        <Routes>
+        <Suspense fallback={<PageLoader />}>
+            <Routes>
             {/* ============ PUBLIC AUTH ROUTES ============ */}
 
             {/* Landing / Role Chooser */}
@@ -292,6 +317,7 @@ const AppRoutes: React.FC = () => {
             {/* ============ FALLBACK ============ */}
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
     );
 };
 
