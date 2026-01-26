@@ -44,6 +44,16 @@ interface EnterpriseCKDSnapshotViewProps {
     onBack: () => void;
 }
 
+// Helper to format doctor name professionally
+const formatDoctorName = (name: string) => {
+    if (!name) return "";
+    // Remove existing Dr prefix and any trailing dots/spaces
+    let cleanName = name.replace(/^(dr\.?\s*)/i, "").trim();
+    // Fix initials formatting (e.g., A.Divakar -> A. Divakar)
+    cleanName = cleanName.replace(/([A-Z])\.(\S)/g, "$1. $2");
+    return `Dr. ${cleanName}`;
+};
+
 const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ doctor, onBack }) => {
     const [patients, setPatients] = useState<PatientWithData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -57,6 +67,7 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
     const fetchPatients = async () => {
         setLoading(true);
         try {
+            // Explicitly type the response to avoid 'any' if possible, or cast appropriately
             const { data: queueData, error: queueError } = await supabase
                 .from('hospital_queues' as any)
                 .select(`
@@ -71,7 +82,9 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
 
             const patientMap = new Map<string, PatientWithData>();
 
-            for (const queue of (queueData || [])) {
+            // Safely iterate assuming queueData is any[] to avoid strict type issues with 'never'
+            const queues = queueData || [];
+            for (const queue of queues) {
                 if (queue.patient && !patientMap.has(queue.patient.id)) {
                     patientMap.set(queue.patient.id, {
                         ...queue.patient,
@@ -220,7 +233,7 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
             dietFollowed: null,
             labResults: [],
             abnormalLabs: [],
-            prescribedBy: doctor.name.toLowerCase().startsWith('dr.') ? doctor.name : `Dr. ${doctor.name}`,
+            prescribedBy: formatDoctorName(doctor.name),
             notes: rx.notes
         }));
     };

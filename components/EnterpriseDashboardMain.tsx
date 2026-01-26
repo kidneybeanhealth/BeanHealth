@@ -526,69 +526,84 @@ const EnterpriseDashboardMain: React.FC = () => {
 
     // Renderers
     const renderSelectionScreen = () => (
-        <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
-            <div className="text-center mb-16 max-w-3xl mx-auto">
-                <span className="inline-block text-secondary-600 font-semibold tracking-wider text-sm uppercase mb-4">Enterprise Portal</span>
-                <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ color: '#000000' }}>{profile?.name || 'Select your workspace'}</h2>
-                <p className="text-lg md:text-xl leading-relaxed" style={{ color: '#333333' }}>
+        <div className="max-w-7xl mx-auto px-6 py-20 relative overflow-hidden">
+            {/* Background Decoration */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-primary-50/40 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+            <div className="text-center mb-16 max-w-3xl mx-auto relative z-10">
+                <span className="inline-block text-primary-600 font-bold tracking-widest text-xs uppercase mb-4 bg-primary-50 px-3 py-1 rounded-full border border-primary-100">
+                    Enterprise Portal
+                </span>
+                <h2 className="text-4xl sm:text-5xl font-bold mb-6 text-gray-900 tracking-tight">
+                    {profile?.name || 'Select your workspace'}
+                </h2>
+                <p className="text-xl text-gray-500 leading-relaxed font-light">
                     Welcome to the BeanHealth Enterprise Suite. Secure, efficient, and integrated management for your healthcare facility.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
                 {[
                     {
                         id: 'reception',
                         title: 'Reception',
                         desc: 'Patient registration, check-ins, and queue management.',
                         icon: (
-                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                         ),
-                        bgColor: 'bg-orange-50',
+                        bgDecoration: 'bg-orange-50/80',
+                        hoverShadow: 'hover:shadow-[0_8px_30px_rgb(251,146,60,0.15)]',
                         iconColor: 'text-orange-600',
-                        hoverRing: 'hover:ring-orange-100'
+                        borderColor: 'hover:border-orange-200'
                     },
                     {
                         id: 'pharmacy',
                         title: 'Pharmacy',
                         desc: 'Prescription fulfillment, inventory, and dispensing logs.',
                         icon: (
-                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                             </svg>
                         ),
-                        bgColor: 'bg-rose-50',
+                        bgDecoration: 'bg-rose-50/80',
+                        hoverShadow: 'hover:shadow-[0_8px_30px_rgb(244,63,94,0.15)]',
                         iconColor: 'text-rose-600',
-                        hoverRing: 'hover:ring-rose-100'
+                        borderColor: 'hover:border-rose-200'
                     },
                     {
                         id: 'doctor',
                         title: 'Doctors',
                         desc: 'Clinical dashboards, consultation tools, and patient history.',
                         icon: (
-                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                         ),
-                        bgColor: 'bg-secondary-50',
-                        iconColor: 'text-secondary-600',
-                        hoverRing: 'hover:ring-secondary-100'
+                        bgDecoration: 'bg-indigo-50/80',
+                        hoverShadow: 'hover:shadow-[0_8px_30px_rgb(99,102,241,0.15)]',
+                        iconColor: 'text-indigo-600',
+                        borderColor: 'hover:border-indigo-200'
                     }
                 ].map((item) => (
                     <button
                         key={item.id}
                         onClick={() => handleDeptClick(item.id as any)}
-                        className={`group bg-white p-8 md:p-10 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out text-left flex flex-col h-full ring-1 ring-transparent ${item.hoverRing} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                        className={`group bg-white p-10 rounded-[2rem] border border-gray-100 transition-all duration-300 ease-out text-left flex flex-col h-full ${item.hoverShadow} ${item.borderColor} hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-gray-100`}
                     >
-                        <div className={`w-14 h-14 ${item.bgColor} ${item.iconColor} rounded-xl flex items-center justify-center mb-6 group-hover:scale-105 transition-transform duration-300`}>
-                            {item.icon}
+                        <div className={`w-16 h-16 ${item.bgDecoration} rounded-2xl flex items-center justify-center mb-8 transition-transform duration-300 group-hover:scale-110`}>
+                            <div className={item.iconColor}>{item.icon}</div>
                         </div>
-                        <h3 className="text-2xl font-bold mb-3" style={{ color: '#000000' }}>{item.title}</h3>
-                        <p className="leading-relaxed mb-auto text-base" style={{ color: '#333333' }}>{item.desc}</p>
-                        <div className="mt-8 flex items-center text-sm font-semibold opacity-70 group-hover:opacity-100 transition-opacity" style={{ color: '#000000' }}>
-                            Enter Workspace <span className="ml-2 transition-transform group-hover:translate-x-1">→</span>
+
+                        <h3 className="text-2xl font-bold mb-3 text-gray-900">{item.title}</h3>
+                        <p className="text-gray-500 leading-relaxed mb-8 font-light">{item.desc}</p>
+
+                        <div className="mt-auto flex items-center text-sm font-bold text-gray-900 group-hover:opacity-100 transition-opacity">
+                            <span className="group-hover:mr-2 transition-all">Enter Workspace</span>
+                            <svg className="w-4 h-4 ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                            </svg>
                         </div>
                     </button>
                 ))}
