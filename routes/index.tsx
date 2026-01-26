@@ -37,7 +37,6 @@ const DoctorLogin = React.lazy(() =>
 const DoctorDashboardWrapper = React.lazy(() =>
     import('../components/enterprise').then(m => ({ default: m.DoctorDashboardWrapper }))
 );
-const ClinicDashboard = React.lazy(() => import('../components/ClinicDashboard'));
 
 // These are needed synchronously for route protection
 import { DepartmentProtectedRoute, DoctorProtectedRoute } from '../components/enterprise';
@@ -312,25 +311,6 @@ const AppRoutes: React.FC = () => {
                                 <DoctorDashboardWrapper />
                             </DoctorProtectedRoute>
                         </ProtectedRoute>
-                    }
-                />
-
-                {/* ============ CLINIC ROUTES ============ */}
-                {/* Clinic Login - Public */}
-                <Route
-                    path="/clinic-login"
-                    element={
-                        <AuthRedirect>
-                            <Auth initialView="clinic-login" />
-                        </AuthRedirect>
-                    }
-                />
-
-                {/* Clinic Dashboard - Protected by local session check */}
-                <Route
-                    path="/clinic/*"
-                    element={
-                        <ClinicDashboard />
                     }
                 />
 

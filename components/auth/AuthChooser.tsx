@@ -6,10 +6,9 @@ import { UserIcon } from '../icons/UserIcon';
 interface AuthChooserProps {
     onNext: () => void;
     onEnterpriseLogin?: () => void;
-    onClinicLogin?: () => void;
 }
 
-const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: onAdminLogin, onClinicLogin }) => {
+const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: onAdminLogin }) => {
     const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | null>(null);
 
     const handleRoleSelect = (role: 'patient' | 'doctor') => {
@@ -114,26 +113,6 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: on
                         </h3>
                         <p className="text-xs sm:text-sm !text-gray-500">
                             Hospital & Organization Access
-                        </p>
-                    </div>
-                </button>
-
-                {/* Clinic Card */}
-                <button
-                    onClick={() => onClinicLogin?.()}
-                    className="w-full p-4 rounded-2xl border-2 border-gray-200 bg-white hover:border-primary-500/50 hover:shadow-md transition-all duration-200 text-left flex items-center gap-4 group"
-                >
-                    <div className="w-12 h-12 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center flex-shrink-0 group-hover:bg-primary-600 group-hover:text-white transition-colors">
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base !text-gray-900">
-                            Clinic Login
-                        </h3>
-                        <p className="text-xs sm:text-sm !text-gray-500">
-                            Private Clinic Access
                         </p>
                     </div>
                 </button>
