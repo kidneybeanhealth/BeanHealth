@@ -150,41 +150,72 @@ const DoctorLogin: React.FC = () => {
     // If we have a doctorId in URL but showing password modal, render the modal
     if (doctorId && showPasswordModal && selectedDoctor) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="max-w-md w-full">
+            <div
+                className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6"
+                style={{
+                    background: 'linear-gradient(135deg, #f8faf6 0%, #e8f5e0 50%, #f0f7ec 100%)'
+                }}
+            >
+                <div className="w-full max-w-lg">
+                    {/* Logo & Branding */}
+                    <div className="flex flex-col items-center justify-center mb-12 animate-fade-in w-full text-center">
+                        <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 relative transition-transform duration-700 hover:scale-105 mb-8">
+                            <img
+                                src="/logo.png"
+                                alt="BeanHealth Logo"
+                                className="w-full h-full object-contain drop-shadow-sm"
+                            />
+                        </div>
+
+                        <div className="flex items-center w-full">
+                            <div className="flex-1 flex justify-end pr-5">
+                                <div className="flex text-3xl sm:text-4xl font-black tracking-tight leading-none">
+                                    <span className="text-[#3d2e2a]">Bean</span>
+                                    <span className="text-secondary-500">Health</span>
+                                </div>
+                            </div>
+                            <div className="h-10 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
+                            <div className="flex-1 flex justify-start pl-5 text-left">
+                                <span className="text-[#3d2e2a] text-2xl sm:text-3xl font-black leading-none tracking-tight">
+                                    {profile?.name || 'Hospital Registry'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <button
                         onClick={handleCloseModal}
-                        className="flex items-center gap-2 text-gray-900 hover:text-gray-900 mb-6 transition-colors"
+                        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors group px-4"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                         <span className="font-medium">Back to Doctors</span>
                     </button>
 
-                    <div className="bg-white rounded-2xl shadow-xl p-8">
-                        <div className="text-center mb-8">
-                            <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-primary-50/50">
-                                <span className="text-2xl font-bold text-gray-900">
-                                    {selectedDoctor.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                                </span>
+                    <div className="bg-white rounded-[2.5rem] shadow-[0_4px_30px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/50 p-10">
+                        <div className="text-center mb-10">
+                            <div className="w-16 h-16 bg-indigo-50/50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <svg className="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
                             </div>
-                            <h2 className="text-2xl font-bold text-gray-900">
+                            <h2 className="text-3xl font-black text-gray-900 tracking-tight">
                                 Hello, Dr. {selectedDoctor.name.split(' ').pop()}
                             </h2>
-                            <p className="text-gray-900 mt-2">{selectedDoctor.specialty}</p>
+                            <p className="text-gray-400 mt-3 font-medium text-[15px]">{selectedDoctor.specialty}</p>
                         </div>
 
                         <form onSubmit={handlePasswordSubmit} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">
                                     Enter Your Passcode
                                 </label>
                                 <input
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full px-4 py-4 border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-0 outline-none transition-colors text-center text-2xl font-bold tracking-[0.3em] placeholder:text-gray-200 placeholder:tracking-[0.3em]"
+                                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-xl focus:bg-white focus:border-primary-500 focus:ring-0 outline-none transition-all text-center text-2xl font-bold tracking-[0.3em] placeholder:text-gray-200 placeholder:tracking-[0.3em]"
                                     placeholder="••••••"
                                     autoFocus
                                 />
@@ -194,14 +225,14 @@ const DoctorLogin: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
-                                    className="px-4 py-3.5 text-gray-900 bg-gray-50 rounded-xl hover:bg-gray-100 font-semibold transition-colors"
+                                    className="px-4 py-3.5 text-gray-500 bg-gray-50 rounded-xl hover:bg-gray-100 font-bold transition-all active:scale-[0.98]"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={!password}
-                                    className="px-4 py-3.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-semibold transition-colors shadow-lg shadow-primary-600/20 disabled:opacity-50"
+                                    className="px-4 py-3.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-bold transition-all shadow-lg shadow-primary-600/20 disabled:opacity-50 active:scale-[0.98]"
                                 >
                                     Unlock
                                 </button>
@@ -215,63 +246,57 @@ const DoctorLogin: React.FC = () => {
 
     // Doctor List View
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6">
-                    <div className="h-16 md:h-18 flex items-center justify-between">
-                        {/* Left Section - Back + BeanHealth Logo & Enterprise Tagline */}
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => navigate('/enterprise-dashboard')}
-                                className="p-2 -ml-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
-                                title="Back to Dashboard"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                            </button>
-                            <div className="w-px h-8 bg-gray-200" />
-                            <img 
-                                src="/beanhealth-logo.png" 
-                                alt="BeanHealth" 
-                                className="h-14 w-14 object-contain"
-                            />
-                            <div>
-                                <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">BeanHealth</h1>
-                                <p className="text-sm font-semibold tracking-widest uppercase text-green-600">ENTERPRISE</p>
+        <div
+            className="min-h-screen flex flex-col p-4 sm:p-8"
+            style={{
+                background: 'linear-gradient(135deg, #f8faf6 0%, #e8f5e0 50%, #f0f7ec 100%)'
+            }}
+        >
+            <div className="max-w-7xl mx-auto w-full">
+                <div className="flex flex-col items-center justify-center mb-16 animate-fade-in text-center w-full">
+                    <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 relative transition-transform duration-700 hover:scale-105 mb-8">
+                        <img
+                            src="/logo.png"
+                            alt="BeanHealth Logo"
+                            className="w-full h-full object-contain drop-shadow-sm"
+                        />
+                    </div>
+
+                    <div className="flex items-center w-full">
+                        <div className="flex-1 flex justify-end pr-5">
+                            <div className="flex text-3xl sm:text-4xl font-black tracking-tight leading-none">
+                                <span className="text-[#3d2e2a]">Bean</span>
+                                <span className="text-secondary-500">Health</span>
                             </div>
                         </div>
-
-                        {/* Right Section - Hospital Logo & Name */}
-                        <div className="hidden sm:flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
-                                {profile?.avatar_url ? (
-                                    <img 
-                                        src={profile.avatar_url} 
-                                        alt={profile?.name || 'Hospital'} 
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <span className="text-sm font-bold text-gray-700">
-                                        {profile?.name?.charAt(0) || 'H'}
-                                    </span>
-                                )}
-                            </div>
-                            <span className="text-sm font-semibold text-gray-900">{profile?.name || 'Hospital'}</span>
+                        <div className="h-10 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
+                        <div className="flex-1 flex justify-start pl-5 text-left">
+                            <span className="text-[#3d2e2a] text-2xl sm:text-3xl font-black leading-none tracking-tight">
+                                {profile?.name || 'Hospital Registry'}
+                            </span>
                         </div>
                     </div>
+                    <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-[0.3em] uppercase opacity-80 mt-8">Medical Staff Access</p>
                 </div>
-            </div>
 
-            <div className="max-w-7xl mx-auto px-6 py-12">
-                <div className="mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900 mb-2">
-                        Medical Staff
-                    </h2>
-                    <p className="text-lg text-gray-900">
-                        Select your profile to access your clinical dashboard.
-                    </p>
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12 px-2">
+                    <div>
+                        <button
+                            onClick={() => navigate('/enterprise-dashboard')}
+                            className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors group"
+                        >
+                            <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <span className="font-medium">Back to Dashboard</span>
+                        </button>
+                        <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-gray-900 mb-2">
+                            Medical Staff
+                        </h2>
+                        <p className="text-lg text-gray-500 font-medium">
+                            Select your profile to access your clinical dashboard.
+                        </p>
+                    </div>
                 </div>
 
                 {loading ? (
