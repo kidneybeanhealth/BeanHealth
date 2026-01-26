@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { LogoIcon } from '../icons/LogoIcon';
 
 interface DoctorProfile {
     id: string;
@@ -30,7 +31,7 @@ interface QueueItem {
 
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
-    const { profile } = useAuth();
+    const { profile, refreshProfile } = useAuth();
 
     const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
     const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -219,8 +220,8 @@ const ReceptionDashboard: React.FC = () => {
                     email: data.email || profile.email || '',
                     avatarUrl: data.avatar_url || profile.avatar_url || ''
                 });
-                if (data.avatar_url) {
-                    setAvatarPreview(data.avatar_url);
+                if (data.avatar_url || profile.avatar_url) {
+                    setAvatarPreview(data.avatar_url || profile.avatar_url);
                 }
             } else {
                 setHospitalSettings({
@@ -230,6 +231,9 @@ const ReceptionDashboard: React.FC = () => {
                     email: profile.email || '',
                     avatarUrl: profile.avatar_url || ''
                 });
+                if (profile.avatar_url) {
+                    setAvatarPreview(profile.avatar_url);
+                }
             }
         } catch (err) {
             console.warn('Failed to fetch hospital settings:', err);
@@ -305,6 +309,9 @@ const ReceptionDashboard: React.FC = () => {
                     email: hospitalSettings.email
                 })
                 .eq('id', profile.id);
+
+            // Refresh profile to update dashboard header and global state
+            await refreshProfile();
 
             toast.success('Settings saved successfully!', { id: toastId });
             setShowSettingsModal(false);
@@ -391,40 +398,48 @@ const ReceptionDashboard: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6">
-                    {/* Main Header Row */}
-                    <div className="h-16 md:h-18 flex items-center justify-between">
+        <div className="min-h-screen bg-gray-100 dark:bg-black font-sans selection:bg-secondary-100 selection:text-secondary-900">
+            {/* Nav - Floating Glassmorphism Header */}
+            <div className="sticky top-0 z-50 flex justify-center pointer-events-none px-4 sm:px-6">
+                <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-gray-100 via-gray-100/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent" />
+
+                <header className="pointer-events-auto relative mt-2 sm:mt-4 w-full max-w-7xl h-16 sm:h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-xl saturate-150 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-[#8AC43C]/15 flex items-center transition-all duration-300 shadow-sm md:shadow-2xl dark:shadow-[0_0_20px_rgba(138,196,60,0.1)]">
+                    <div className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
                         {/* Left Section - Back + BeanHealth Logo & Enterprise Tagline */}
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
                             <button
                                 onClick={() => navigate('/enterprise-dashboard')}
-                                className="p-2 -ml-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                                className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-all flex-shrink-0"
                                 title="Back to Dashboard"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                 </svg>
                             </button>
-                            <div className="w-px h-8 bg-gray-200" />
-                            <img
-                                src="/beanhealth-logo.png"
-                                alt="BeanHealth"
-                                className="h-14 w-14 object-contain"
-                            />
-                            <div>
-                                <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">BeanHealth</h1>
-                                <p className="text-sm font-semibold tracking-widest uppercase text-green-600">ENTERPRISE</p>
+                            <div className="w-px h-8 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
+
+                            <div className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform overflow-hidden">
+                                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
+                                    <LogoIcon className="w-8 h-8 sm:w-10 sm:h-10" />
+                                </div>
+                                <div className="flex flex-col justify-center min-w-0">
+                                    <h2 className="text-sm sm:text-lg md:text-xl font-bold leading-none tracking-tight">
+                                        <span className="text-primary-500 dark:text-[#e6b8a3]">Bean</span>
+                                        <span className="text-secondary-500">Health</span>
+                                    </h2>
+                                    <p className="text-[7px] sm:text-[9px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-0.5 uppercase truncate">Enterprise Portal</p>
+                                </div>
                             </div>
                         </div>
 
                         {/* Right Section - Hospital Logo & Name + Actions */}
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5 sm:gap-4 flex-shrink-0">
                             {/* Hospital Info */}
-                            <div className="hidden sm:flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
+                            <button
+                                onClick={() => { fetchHospitalSettings(); setShowSettingsModal(true); }}
+                                className="flex items-center gap-3 p-1 rounded-xl transition-transform active:scale-95 cursor-pointer group"
+                            >
+                                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-transform group-hover:scale-105">
                                     {profile?.avatar_url ? (
                                         <img
                                             src={profile.avatar_url}
@@ -432,39 +447,19 @@ const ReceptionDashboard: React.FC = () => {
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
-                                        <span className="text-sm font-bold text-gray-700">
+                                        <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300">
                                             {profile?.name?.charAt(0) || 'H'}
                                         </span>
                                     )}
                                 </div>
-                                <span className="text-sm font-semibold text-gray-900">{profile?.name || 'Hospital'}</span>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => { fetchHospitalSettings(); setShowSettingsModal(true); }}
-                                    className="p-2 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-all"
-                                    title="Settings"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </button>
-                                <button
-                                    onClick={handleLogout}
-                                    className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all"
-                                    title="Logout from Reception"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                    </svg>
-                                </button>
-                            </div>
+                                <span className="hidden sm:inline-block text-sm md:text-base font-bold text-gray-900 dark:text-white whitespace-nowrap">{profile?.name || 'Hospital'}</span>
+                                <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                </div>
+                </header>
             </div>
 
             <div className="max-w-7xl mx-auto px-6 py-8">
@@ -777,20 +772,32 @@ const ReceptionDashboard: React.FC = () => {
                                 />
                             </div>
 
-                            <div className="pt-4 flex gap-3">
+                            <div className="pt-6 border-t border-gray-100 flex flex-col gap-3">
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowSettingsModal(false); setAvatarFile(null); }}
+                                        className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSavingSettings}
+                                        className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg transition-colors disabled:opacity-50"
+                                    >
+                                        {isSavingSettings ? 'Saving...' : 'Save Settings'}
+                                    </button>
+                                </div>
                                 <button
                                     type="button"
-                                    onClick={() => { setShowSettingsModal(false); setAvatarFile(null); }}
-                                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                                    onClick={handleLogout}
+                                    className="w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2 border border-red-100"
                                 >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSavingSettings}
-                                    className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg transition-colors disabled:opacity-50"
-                                >
-                                    {isSavingSettings ? 'Saving...' : 'Save Settings'}
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                    Sign Out from Portal
                                 </button>
                             </div>
                         </form>

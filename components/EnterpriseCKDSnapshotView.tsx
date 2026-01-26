@@ -220,7 +220,7 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
             dietFollowed: null,
             labResults: [],
             abnormalLabs: [],
-            prescribedBy: doctor.name,
+            prescribedBy: doctor.name.toLowerCase().startsWith('dr.') ? doctor.name : `Dr. ${doctor.name}`,
             notes: rx.notes
         }));
     };
@@ -235,15 +235,6 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                 <div>
-                    <button
-                        onClick={onBack}
-                        className="text-sm font-semibold text-gray-700 hover:text-black mb-4 flex items-center transition-colors"
-                    >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Back to Dashboard
-                    </button>
                     <h2 className="text-4xl font-bold text-gray-900 tracking-tight">Patient Health Snapshots</h2>
                     <p className="text-lg text-gray-700 mt-2">View complete health information for your patients</p>
                 </div>
@@ -341,8 +332,8 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setPatientSection(patient.id, 'snapshot'); }}
                                                             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${getActiveSection(patient.id) === 'snapshot'
-                                                                    ? 'bg-white text-purple-600 shadow-lg'
-                                                                    : 'bg-white/20 text-white hover:bg-white/30'
+                                                                ? 'bg-white text-purple-600 shadow-lg'
+                                                                : 'bg-white/20 text-white hover:bg-white/30'
                                                                 }`}
                                                         >
                                                             <span>🔬</span>
@@ -351,8 +342,8 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setPatientSection(patient.id, 'visits'); }}
                                                             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${getActiveSection(patient.id) === 'visits'
-                                                                    ? 'bg-white text-purple-600 shadow-lg'
-                                                                    : 'bg-white/20 text-white hover:bg-white/30'
+                                                                ? 'bg-white text-purple-600 shadow-lg'
+                                                                : 'bg-white/20 text-white hover:bg-white/30'
                                                                 }`}
                                                         >
                                                             <span>📋</span>
@@ -361,8 +352,8 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setPatientSection(patient.id, 'labs'); }}
                                                             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${getActiveSection(patient.id) === 'labs'
-                                                                    ? 'bg-white text-purple-600 shadow-lg'
-                                                                    : 'bg-white/20 text-white hover:bg-white/30'
+                                                                ? 'bg-white text-purple-600 shadow-lg'
+                                                                : 'bg-white/20 text-white hover:bg-white/30'
                                                                 }`}
                                                         >
                                                             <span>📊</span>

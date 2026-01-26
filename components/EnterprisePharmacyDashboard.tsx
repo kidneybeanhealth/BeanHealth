@@ -191,15 +191,6 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                 <div>
-                    {onBack && (
-                        <button
-                            onClick={onBack}
-                            className="text-sm font-semibold text-gray-700 hover:text-black mb-4 flex items-center transition-colors"
-                        >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                            Back to Selection
-                        </button>
-                    )}
                     <h2 className="text-4xl font-bold text-gray-900 tracking-tight">Pharmacy</h2>
                     <p className="text-lg text-gray-700 mt-2">Incoming prescriptions & fulfillment queue</p>
                 </div>
@@ -263,7 +254,9 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                         <div className="flex items-center gap-3 text-sm font-medium text-gray-700">
                                             <span>Age: {item.patient?.age}</span>
                                             <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                            <span className="text-gray-900">Dr. {item.doctor?.name}</span>
+                                            <span className="text-gray-900">
+                                                {item.doctor?.name?.toLowerCase().startsWith('dr.') ? item.doctor.name : `Dr. ${item.doctor?.name}`}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -318,7 +311,9 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                 </div>
                                 <div className="space-y-1 text-right">
                                     <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Doctor</p>
-                                    <p className="font-bold text-gray-900 text-lg">Dr. {selectedPrescription.doctor?.name}</p>
+                                    <p className="font-bold text-gray-900 text-lg">
+                                        {selectedPrescription.doctor?.name?.toLowerCase().startsWith('dr.') ? selectedPrescription.doctor.name : `Dr. ${selectedPrescription.doctor?.name}`}
+                                    </p>
                                     <p className="text-gray-800 font-sans">{selectedPrescription.doctor?.specialty}</p>
                                     <p className="text-gray-600 text-xs mt-2 font-sans">{new Date(selectedPrescription.created_at).toLocaleDateString()}</p>
                                 </div>

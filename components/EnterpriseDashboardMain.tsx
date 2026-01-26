@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import EnterpriseDoctorDashboard from './EnterpriseDoctorDashboard';
 import EnterprisePharmacyDashboard from './EnterprisePharmacyDashboard';
+import { LogoIcon } from './icons/LogoIcon';
 
 type Department = 'reception' | 'pharmacy' | 'doctor';
 
@@ -588,13 +589,6 @@ const EnterpriseDashboardMain: React.FC = () => {
     const renderDoctorList = () => (
         <div className="max-w-7xl mx-auto px-6 py-12">
             <div className="mb-12">
-                <button
-                    onClick={() => { navigate('/enterprise-dashboard'); setCurrentView('selection'); }}
-                    className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-gray-900 mb-6 transition-colors focus:outline-none focus:underline"
-                >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                    Back to Departments
-                </button>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-2" style={{ color: '#000000' }}>Medical Staff</h2>
@@ -639,10 +633,6 @@ const EnterpriseDashboardMain: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                 <div>
-                    <button onClick={() => setCurrentView('selection')} className="text-sm font-semibold mb-4 flex items-center" style={{ color: '#333333' }}>
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                        Back
-                    </button>
                     <h2 className="text-4xl font-bold tracking-tight" style={{ color: '#000000' }}>Reception Desk</h2>
                     <p className="text-lg text-gray-700 mt-2">Manage patient check-ins and appointments</p>
                 </div>
@@ -1002,25 +992,36 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 />
                             </div>
 
-                            <div className="pt-4 flex gap-3">
+                            <div className="pt-6 border-t border-gray-100 flex flex-col gap-3">
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowSettingsModal(false);
+                                            setAvatarFile(null);
+                                            setAvatarPreview(hospitalSettings.avatarUrl || null);
+                                        }}
+                                        className="flex-1 px-4 py-3.5 bg-gray-50 text-gray-600 rounded-xl font-bold hover:bg-gray-100 transition-all active:scale-95"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSavingSettings}
+                                        className="flex-1 px-4 py-3.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 shadow-lg shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isSavingSettings ? 'Saving...' : 'Save Settings'}
+                                    </button>
+                                </div>
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setShowSettingsModal(false);
-                                        setAvatarFile(null);
-                                        setAvatarPreview(hospitalSettings.avatarUrl || null);
-                                    }}
-                                    className="flex-1 px-4 py-3.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
-                                    style={{ color: '#444444' }}
+                                    onClick={() => signOut()}
+                                    className="w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2 border border-red-100"
                                 >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSavingSettings}
-                                    className="flex-1 px-4 py-3.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-semibold shadow-lg shadow-orange-500/20 transition-all focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isSavingSettings ? 'Saving...' : 'Save Settings'}
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                    Sign Out from Portal
                                 </button>
                             </div>
                         </form>
@@ -1076,49 +1077,49 @@ const EnterpriseDashboardMain: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans selection:bg-secondary-100 selection:text-secondary-900">
-            {/* Nav - Professional Sticky Header */}
-            <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-6 h-16 md:h-18 flex items-center justify-between">
-                    {/* Left - BeanHealth Logo & Enterprise Tagline */}
-                    <div className="flex items-center gap-4">
-                        <img
-                            src="/beanhealth-logo.png"
-                            alt="BeanHealth"
-                            className="h-14 w-14 object-contain"
-                        />
-                        <div>
-                            <h1 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">BeanHealth</h1>
-                            <p className="text-sm font-semibold tracking-widest uppercase text-green-600">ENTERPRISE</p>
-                        </div>
-                    </div>
+        <div className="min-h-screen bg-gray-100 dark:bg-black font-sans selection:bg-secondary-100 selection:text-secondary-900">
+            {/* Nav - Floating Glassmorphism Header */}
+            <div className="sticky top-0 z-50 flex justify-center pointer-events-none px-4 sm:px-6">
+                <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-gray-100 via-gray-100/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent" />
 
-                    {/* Right - Hospital Logo & Name + Sign Out */}
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
+                <header className="pointer-events-auto relative mt-2 sm:mt-4 w-full max-w-7xl h-16 sm:h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-xl saturate-150 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-[#8AC43C]/15 flex items-center transition-all duration-300 shadow-sm md:shadow-2xl dark:shadow-[0_0_20px_rgba(138,196,60,0.1)]">
+                    <div className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
+                        {/* Left - BeanHealth Logo & Enterprise Tagline */}
+                        <div className="flex items-center gap-3 cursor-pointer group active:scale-95 transition-transform">
+                            <div className="h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0 group-hover:shadow-md transition-shadow">
+                                <LogoIcon className="w-9 h-9 md:w-10 md:h-10" />
+                            </div>
+                            <div className="flex flex-col justify-center">
+                                <h2 className="text-base md:text-xl font-bold leading-none tracking-tight">
+                                    <span className="text-primary-500 dark:text-[#e6b8a3]">Bean</span>
+                                    <span className="text-secondary-500">Health</span>
+                                </h2>
+                                <p className="text-[8px] md:text-[9px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-0.5 uppercase">Enterprise Portal</p>
+                            </div>
+                        </div>
+
+                        {/* Right - Hospital Logo & Name + Sign Out */}
+                        <button
+                            onClick={() => setShowSettingsModal(true)}
+                            className="flex items-center gap-3 p-1 rounded-xl transition-transform active:scale-95 cursor-pointer group"
+                        >
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-transform group-hover:scale-105">
                                 {profile?.avatar_url ? (
                                     <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="text-sm font-bold text-gray-700">
+                                    <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300">
                                         {profile?.name?.charAt(0) || 'H'}
                                     </span>
                                 )}
                             </div>
-                            <span className="hidden md:inline-block text-sm font-semibold text-gray-900">{profile?.name}</span>
-                        </div>
-                        <button
-                            onClick={() => signOut()}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Sign Out"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            <span className="hidden sm:inline-block text-sm md:text-base font-bold text-gray-900 dark:text-white whitespace-nowrap">{profile?.name}</span>
+                            <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
                     </div>
-                </div>
-            </nav>
+                </header>
+            </div>
 
             {/* Main Content */}
             {/* Main Content */}

@@ -4,7 +4,6 @@ import { User } from '../types';
 import { AlertDefinition } from '../types/alerts';
 import { VisitRecord } from '../types/visitHistory';
 import { supabase } from '../lib/supabase';
-import ThemeToggle from './ThemeToggle';
 import { LogoutIcon } from './icons/LogoutIcon';
 import { LogoIcon } from './icons/LogoIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
@@ -1508,31 +1507,36 @@ const AdminDashboardMain: React.FC = () => {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Header */}
-            <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
-                        {/* Logo */}
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
-                                <LogoIcon className="w-10 h-10" />
+        <div className="min-h-screen bg-gray-100 dark:bg-black font-sans selection:bg-secondary-100 selection:text-secondary-900">
+            {/* Nav - Floating Glassmorphism Header */}
+            <div className="sticky top-0 z-50 flex justify-center pointer-events-none px-4 sm:px-6">
+                <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-gray-100 via-gray-100/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent" />
+
+                <header className="pointer-events-auto relative mt-2 sm:mt-4 w-full max-w-7xl h-16 sm:h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-xl saturate-150 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-[#8AC43C]/15 flex items-center transition-all duration-300 shadow-sm md:shadow-2xl dark:shadow-[0_0_20px_rgba(138,196,60,0.1)]">
+                    <div className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
+                        {/* Left - BeanHealth Logo & Admin Tagline */}
+                        <div className="flex items-center gap-3 cursor-pointer group active:scale-95 transition-transform flex-shrink-0">
+                            <div className="h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0 group-hover:shadow-md transition-shadow">
+                                <LogoIcon className="w-9 h-9 md:w-10 md:h-10" />
                             </div>
-                            <div>
-                                <h1 className="text-lg font-bold text-gray-900 dark:text-white">BeanHealth</h1>
-                                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Admin Portal</p>
+                            <div className="flex flex-col justify-center">
+                                <h2 className="text-base md:text-xl font-bold leading-none tracking-tight">
+                                    <span className="text-primary-500 dark:text-[#e6b8a3]">Bean</span>
+                                    <span className="text-secondary-500">Health</span>
+                                </h2>
+                                <p className="text-[8px] md:text-[9px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-[0.2em] mt-0.5 uppercase">Admin Portal</p>
                             </div>
                         </div>
 
-                        {/* Nav Tabs */}
-                        <nav className="hidden md:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
+                        {/* Center - Nav Tabs (Desktop) */}
+                        <nav className="hidden lg:flex items-center gap-1 bg-gray-100 dark:bg-white/5 p-1 rounded-2xl mx-4">
                             {(['dashboard', 'users', 'relationships', 'visitrecords', 'labtypes', 'ruleengine'] as AdminView[]).map((view) => (
                                 <button
                                     key={view}
                                     onClick={() => setActiveView(view)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeView === view
-                                        ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${activeView === view
+                                        ? 'bg-white dark:bg-[#8AC43C] text-gray-900 dark:text-black shadow-sm transform scale-105'
+                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5'
                                         }`}
                                 >
                                     {view === 'labtypes' ? 'Lab Types' : view === 'ruleengine' ? 'Rule Engine' : view === 'visitrecords' ? 'Visit Records' : view.charAt(0).toUpperCase() + view.slice(1)}
@@ -1541,28 +1545,28 @@ const AdminDashboardMain: React.FC = () => {
                         </nav>
 
                         {/* Right Section */}
-                        <div className="flex items-center gap-4">
-                            <ThemeToggle />
-                            <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-700">
-                                <div className="text-right">
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{profile?.name || user?.email}</p>
-                                    <p className="text-xs text-amber-600 dark:text-amber-400">Administrator</p>
+                        <div className="flex items-center gap-1.5 sm:gap-4 flex-shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="hidden sm:block text-right">
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white leading-none">{profile?.name || user?.email}</p>
+                                    <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 tracking-wider mt-1 uppercase leading-none">Administrator</p>
                                 </div>
-                                <div className="w-10 h-10 bg-amber-600 rounded-xl flex items-center justify-center text-white font-bold">
+                                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-amber-600 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-md border-2 border-white dark:border-black">
                                     {getInitials(profile?.name || user?.email || 'Admin', user?.email || '')}
                                 </div>
                             </div>
+
                             <button
                                 onClick={signOut}
-                                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                 title="Sign Out"
                             >
                                 <LogoutIcon className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
-                </div>
-            </header>
+                </header>
+            </div>
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
