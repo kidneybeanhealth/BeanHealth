@@ -51,6 +51,10 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
     navigate('/enterprise');
   };
 
+  const handleGoToClinic = () => {
+    navigate('/clinic-login');
+  };
+
   const renderView = () => {
     switch (view) {
       case 'login':
@@ -63,7 +67,7 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
         return <ClinicLogin onBack={handleSwitchToChooser} />;
       case 'chooser':
       default:
-        return <AuthChooser onNext={handleGoToLogin} onEnterpriseLogin={handleGoToEnterprise} />;
+        return <AuthChooser onNext={handleGoToLogin} onEnterpriseLogin={handleGoToEnterprise} onClinicLogin={handleGoToClinic} />;
     }
   }
 
