@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.svg', 'logo.png', 'beanhealth-logo.png'],
+      includeAssets: ['logo.svg', 'logo.png'],
       manifest: {
         name: 'BeanHealth',
         short_name: 'BeanHealth',
@@ -25,7 +25,7 @@ export default defineConfig({
             type: 'image/png'
           },
           {
-            src: '/beanhealth-logo.png',
+            src: '/logo.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
@@ -33,6 +33,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
           {
