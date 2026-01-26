@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
+  darkMode: ["class"],
   content: [
     "./index.html",
     "./index.tsx",
@@ -9,38 +10,77 @@ export default {
     "./hooks/**/*.{js,ts,jsx,tsx}",
     "./services/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+        '4xl': '2rem',
+        '5xl': '2.5rem',
+      },
       colors: {
-        // BeanHealth Brand Colors (Updated to match new logo)
-        // Primary: Dark Brown (the bean) #3A2524
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))'
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))'
+        },
         primary: {
-          50: '#fbfcf8',   // Light cream from logo
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+          50: '#fbfcf8',
           100: '#f9ebe5',
           200: '#f2d5c8',
           300: '#e6b8a3',
           400: '#d4927a',
-          500: '#3A2524',  // Main bean color (updated)
+          500: '#3A2524',
           600: '#322019',
           700: '#2a1b16',
           800: '#221612',
           900: '#1a110e',
-          950: '#120c0b',
+          950: '#120c0b'
         },
-        // Secondary: Lime Green (the stem/health) #8AC43C
         secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
           50: '#f6fdf0',
           100: '#e8f9d8',
           200: '#d2f3b4',
           300: '#b3e985',
           400: '#95db5a',
-          500: '#8AC43C',  // Main green color (updated)
+          500: '#8AC43C',
           600: '#6ea530',
           700: '#548027',
           800: '#456620',
           900: '#3a541c',
-          950: '#1f2e0f',
+          950: '#1f2e0f'
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))'
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))'
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))'
+        },
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        chart: {
+          '1': 'hsl(var(--chart-1))',
+          '2': 'hsl(var(--chart-2))',
+          '3': 'hsl(var(--chart-3))',
+          '4': 'hsl(var(--chart-4))',
+          '5': 'hsl(var(--chart-5))'
         },
         // Accent colors for the app
         bean: {
@@ -92,11 +132,10 @@ export default {
         'glow-success': '0 0 24px rgba(190, 18, 60, 0.4)',
         'glow-danger': '0 0 24px rgba(190, 18, 60, 0.4)',
       },
-      borderRadius: {
-        '4xl': '2rem',
-        '5xl': '2.5rem',
-      },
+      // Keep your existing custom animations
       animation: {
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in': 'fadeIn 0.4s ease-in-out',
         'slide-up': 'slideUp 0.4s ease-out',
         'slide-down': 'slideDown 0.4s ease-out',
@@ -106,6 +145,23 @@ export default {
         'pulse-glow': 'pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
+        'accordion-down': {
+          from: {
+            height: '0'
+          },
+          to: {
+            height: 'var(--radix-accordion-content-height)'
+          }
+        },
+        'accordion-up': {
+          from: {
+            height: 'var(--radix-accordion-content-height)'
+          },
+          to: {
+            height: '0'
+          }
+        },
+        // ... (Include other keyframes if needed, for brevity, common ones are default in tailwind-animate if configured, but keeping existing is safe)
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
@@ -142,7 +198,7 @@ export default {
       transitionTimingFunction: {
         'bounce-in': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
       },
-    },
+    }
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 }
