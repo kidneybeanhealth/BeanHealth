@@ -81,9 +81,6 @@ const EnterpriseDashboardMain: React.FC = () => {
     const [walkInForm, setWalkInForm] = useState({
         name: '',
         age: '',
-        fatherHusbandName: '',
-        place: '',
-        phone: '',
         department: '',
         doctorId: '',
         tokenNumber: ''
@@ -314,7 +311,7 @@ const EnterpriseDashboardMain: React.FC = () => {
 
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
-        setWalkInForm({ name: '', age: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '' });
+        setWalkInForm({ name: '', age: '', department: '', doctorId: '', tokenNumber: '' });
     };
 
     const fetchHospitalSettings = async () => {
@@ -459,10 +456,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                     hospital_id: profile.id,
                     name: walkInForm.name,
                     age: parseInt(walkInForm.age),
-                    token_number: tokenNumber,
-                    father_husband_name: walkInForm.fatherHusbandName || null,
-                    place: walkInForm.place || null,
-                    phone: walkInForm.phone || null
+                    token_number: tokenNumber
                 } as any)
                 .select()
                 .single();
@@ -817,41 +811,6 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Father/Husband Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
-                                    style={{ color: '#000000' }}
-                                    value={walkInForm.fatherHusbandName}
-                                    onChange={e => setWalkInForm({ ...walkInForm, fatherHusbandName: e.target.value })}
-                                    placeholder="Father or Husband Name"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Place</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
-                                        style={{ color: '#000000' }}
-                                        value={walkInForm.place}
-                                        onChange={e => setWalkInForm({ ...walkInForm, place: e.target.value })}
-                                        placeholder="City/Town"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Phone</label>
-                                    <input
-                                        type="tel"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 focus:bg-white outline-none transition-all font-semibold placeholder:font-normal placeholder:text-gray-400"
-                                        style={{ color: '#000000' }}
-                                        value={walkInForm.phone}
-                                        onChange={e => setWalkInForm({ ...walkInForm, phone: e.target.value })}
-                                        placeholder="Phone Number"
-                                    />
-                                </div>
-                            </div>
-                            <div>
                                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Department</label>
                                 <input
                                     type="text"
@@ -1082,9 +1041,9 @@ const EnterpriseDashboardMain: React.FC = () => {
                 <div className="max-w-7xl mx-auto px-6 h-16 md:h-18 flex items-center justify-between">
                     {/* Left - BeanHealth Logo & Enterprise Tagline */}
                     <div className="flex items-center gap-4">
-                        <img
-                            src="/beanhealth-logo.png"
-                            alt="BeanHealth"
+                        <img 
+                            src="/beanhealth-logo.png" 
+                            alt="BeanHealth" 
                             className="h-14 w-14 object-contain"
                         />
                         <div>

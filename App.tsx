@@ -11,7 +11,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import ReturnToAdminButton from './components/ReturnToAdminButton';
 import AppRoutes from './routes';

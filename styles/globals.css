@@ -19,11 +19,7 @@
   --primary-700: #757575;
   --primary-800: #616161;
   --primary-900: #424242;
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   /* Secondary Brand Colors - Bean Green */
   --secondary-50: #f6fdf0;
   --secondary-100: #e8f9d8;
@@ -35,30 +31,11 @@
   --secondary-700: #548027;
   --secondary-800: #456620;
   --secondary-900: #3a541c;
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   /* Semantic Colors */
   --success: #10B981;
   --success-light: #D1FAE5;
   --success-dark: #047857;
-<<<<<<< HEAD
-  
-  --warning: #F59E0B;
-  --warning-light: #FEF3C7;
-  --warning-dark: #B45309;
-  
-  --error: #EF4444;
-  --error-light: #FEE2E2;
-  --error-dark: #B91C1C;
-  
-  --info: #3B82F6;
-  --info-light: #DBEAFE;
-  --info-dark: #1D4ED8;
-  
-=======
 
   --warning: #F59E0B;
   --warning-light: #FEF3C7;
@@ -72,7 +49,6 @@
   --info-light: #DBEAFE;
   --info-dark: #1D4ED8;
 
->>>>>>> origin/harish
   /* Shadows - Subtle & Minimal (Airbnb/Cred style) */
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
@@ -83,46 +59,6 @@
   --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
   --shadow-card-hover: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.03);
-<<<<<<< HEAD
-  
-  /* Spacing Scale - 8pt grid system */
-  --spacing-0: 0;
-  --spacing-1: 0.25rem;    /* 4px */
-  --spacing-2: 0.5rem;     /* 8px */
-  --spacing-3: 0.75rem;    /* 12px */
-  --spacing-4: 1rem;       /* 16px */
-  --spacing-5: 1.25rem;    /* 20px */
-  --spacing-6: 1.5rem;     /* 24px */
-  --spacing-8: 2rem;       /* 32px */
-  --spacing-10: 2.5rem;    /* 40px */
-  --spacing-12: 3rem;      /* 48px */
-  --spacing-16: 4rem;      /* 64px */
-  --spacing-20: 5rem;      /* 80px */
-  --spacing-24: 6rem;      /* 96px */
-  
-  /* Border Radius - Consistent rounding */
-  --radius-none: 0;
-  --radius-sm: 0.375rem;   /* 6px */
-  --radius-md: 0.5rem;     /* 8px */
-  --radius-lg: 0.75rem;    /* 12px */
-  --radius-xl: 1rem;       /* 16px */
-  --radius-2xl: 1.25rem;   /* 20px */
-  --radius-3xl: 1.5rem;    /* 24px */
-  --radius-full: 9999px;
-  
-  /* Typography Scale */
-  --text-xs: 0.75rem;      /* 12px */
-  --text-sm: 0.875rem;     /* 14px */
-  --text-base: 1rem;       /* 16px */
-  --text-lg: 1.125rem;     /* 18px */
-  --text-xl: 1.25rem;      /* 20px */
-  --text-2xl: 1.5rem;      /* 24px */
-  --text-3xl: 1.875rem;    /* 30px */
-  --text-4xl: 2.25rem;     /* 36px */
-  --text-5xl: 3rem;        /* 48px */
-  --text-6xl: 3.75rem;     /* 60px */
-  
-=======
 
   /* Spacing Scale - 8pt grid system */
   --spacing-0: 0;
@@ -189,7 +125,6 @@
   --text-6xl: 3.75rem;
   /* 60px */
 
->>>>>>> origin/harish
   /* Line Heights */
   --leading-none: 1;
   --leading-tight: 1.25;
@@ -197,22 +132,14 @@
   --leading-normal: 1.5;
   --leading-relaxed: 1.625;
   --leading-loose: 2;
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   /* Transitions - Smooth micro-interactions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --transition-bounce: 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   /* Z-Index Scale */
   --z-dropdown: 1000;
   --z-sticky: 1020;
@@ -254,27 +181,19 @@ body {
   color: #424242;
 }
 
-<<<<<<< HEAD
-.dark body, html.dark {
-=======
 .dark body,
 html.dark {
->>>>>>> origin/harish
   background-color: #000000;
   color: #e2e8f0;
 }
 
 /* Typography - Clean & Minimal */
-<<<<<<< HEAD
-h1, h2, h3, h4, h5, h6 {
-=======
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
->>>>>>> origin/harish
   font-family: 'Manrope', 'Inter', sans-serif;
   font-weight: 600;
   line-height: 1.3;
@@ -282,18 +201,6 @@ h6 {
   color: #424242;
 }
 
-<<<<<<< HEAD
-.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
-  color: var(--gray-50);
-}
-
-h1 { font-size: var(--text-5xl); }
-h2 { font-size: var(--text-4xl); }
-h3 { font-size: var(--text-3xl); }
-h4 { font-size: var(--text-2xl); }
-h5 { font-size: var(--text-xl); }
-h6 { font-size: var(--text-lg); }
-=======
 .dark h1,
 .dark h2,
 .dark h3,
@@ -326,7 +233,6 @@ h5 {
 h6 {
   font-size: var(--text-lg);
 }
->>>>>>> origin/harish
 
 p {
   line-height: var(--leading-relaxed);
@@ -397,12 +303,8 @@ a:hover {
 
 /* Firefox Support */
 * {
-<<<<<<< HEAD
-  scrollbar-width: none; /* Hide by default */
-=======
   scrollbar-width: none;
   /* Hide by default */
->>>>>>> origin/harish
   scrollbar-color: transparent transparent;
   transition: scrollbar-color 0.3s ease;
 }
@@ -418,14 +320,6 @@ a:hover {
 
 /* Hide scrollbar utility */
 .scrollbar-hide {
-<<<<<<< HEAD
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari and Opera */
-=======
   -ms-overflow-style: none;
   /* IE and Edge */
   scrollbar-width: none;
@@ -435,7 +329,6 @@ a:hover {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
   /* Chrome, Safari and Opera */
->>>>>>> origin/harish
 }
 
 /* Utility Classes */
@@ -444,32 +337,11 @@ a:hover {
   .text-balance {
     text-wrap: balance;
   }
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   /* Healthcare-themed gradients - burgundy only */
   .gradient-primary {
     background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
   }
-<<<<<<< HEAD
-  
-  .gradient-primary-soft {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%);
-  }
-  
-  .gradient-light {
-    background: linear-gradient(to bottom right, #ffffff 0%, #fafafa 50%, #f5f5f5 100%);
-  }
-  
-  .gradient-success {
-    background: linear-gradient(135deg, #be123c 0%, #881337 100%);
-  }
-  
-  .gradient-mesh {
-    background: 
-=======
 
   .gradient-primary-soft {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%);
@@ -485,17 +357,12 @@ a:hover {
 
   .gradient-mesh {
     background:
->>>>>>> origin/harish
       radial-gradient(at 40% 20%, rgba(190, 18, 60, 0.03) 0px, transparent 50%),
       radial-gradient(at 80% 0%, rgba(190, 18, 60, 0.05) 0px, transparent 50%),
       radial-gradient(at 0% 50%, rgba(255, 255, 255, 0.9) 0px, transparent 50%),
       radial-gradient(at 80% 50%, rgba(250, 250, 250, 0.9) 0px, transparent 50%);
   }
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   /* Clean glass effect */
   .glass-effect {
     background: rgba(255, 255, 255, 0.95);
@@ -503,52 +370,21 @@ a:hover {
     -webkit-backdrop-filter: blur(16px) saturate(180%);
     border: 1px solid rgba(238, 238, 238, 0.6);
   }
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   .dark .glass-effect {
     background: rgba(31, 41, 55, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   /* Hover effects */
   .hover-lift {
     transition: transform var(--transition-base), box-shadow var(--transition-base);
   }
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   .hover-lift:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-xl);
   }
-<<<<<<< HEAD
-  
-  .hover-scale {
-    transition: transform var(--transition-base);
-  }
-  
-  .hover-scale:hover {
-    transform: scale(1.02);
-  }
-  
-  .hover-glow {
-    transition: box-shadow var(--transition-base);
-  }
-  
-  .hover-glow:hover {
-    box-shadow: var(--shadow-glow);
-  }
-  
-=======
 
   .hover-scale {
     transition: transform var(--transition-base);
@@ -566,30 +402,10 @@ a:hover {
     box-shadow: var(--shadow-glow);
   }
 
->>>>>>> origin/harish
   /* Animations */
   .animate-fade-in {
     animation: fadeIn var(--transition-smooth) ease-in-out;
   }
-<<<<<<< HEAD
-  
-  .animate-slide-up {
-    animation: slideUp var(--transition-smooth) ease-out;
-  }
-  
-  .animate-slide-down {
-    animation: slideDown var(--transition-smooth) ease-out;
-  }
-  
-  .animate-scale-in {
-    animation: scaleIn var(--transition-base) ease-out;
-  }
-  
-  .animate-bounce-in {
-    animation: bounceIn var(--transition-bounce) ease-out;
-  }
-  
-=======
 
   .animate-slide-up {
     animation: slideUp var(--transition-smooth) ease-out;
@@ -607,16 +423,11 @@ a:hover {
     animation: bounceIn var(--transition-bounce) ease-out;
   }
 
->>>>>>> origin/harish
   /* Focus states - Burgundy */
   .focus-ring {
     @apply focus:outline-none focus:ring-2 focus:ring-secondary-700 focus:ring-offset-2 dark:focus:ring-offset-gray-800;
   }
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   .focus-ring-inset {
     @apply focus:outline-none focus:ring-2 focus:ring-inset focus:ring-secondary-700;
   }
@@ -625,10 +436,7 @@ a:hover {
 /* Component Styles - Minimalist Design */
 /* stylelint-disable at-rule-no-unknown */
 @layer components {
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/harish
   /* Button Variants - White & Burgundy Only */
   .btn-primary {
     @apply px-6 py-3 bg-secondary-700 hover:bg-secondary-800 text-white font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-700 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed;
@@ -662,11 +470,7 @@ a:hover {
   .card-minimal {
     @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-gray-700/50;
   }
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   /* Input Styles - White & Burgundy */
   .input-modern {
     @apply w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:outline-none focus:border-secondary-700 dark:focus:border-gray-500 focus:ring-1 focus:ring-secondary-700 dark:focus:ring-gray-500 transition-all duration-200 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-500;
@@ -708,20 +512,12 @@ a:hover {
   .badge-neutral {
     @apply badge bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300;
   }
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   /* Divider */
   .divider {
     @apply border-t border-gray-300 dark:border-gray-700;
   }
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> origin/harish
   .divider-vertical {
     @apply border-l border-gray-300 dark:border-gray-700;
   }
@@ -732,10 +528,7 @@ a:hover {
   from {
     opacity: 0;
   }
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/harish
   to {
     opacity: 1;
   }
@@ -746,10 +539,7 @@ a:hover {
     opacity: 0;
     transform: translateY(24px);
   }
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/harish
   to {
     opacity: 1;
     transform: translateY(0);
@@ -761,10 +551,7 @@ a:hover {
     opacity: 0;
     transform: translateY(-24px);
   }
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/harish
   to {
     opacity: 1;
     transform: translateY(0);
@@ -776,10 +563,7 @@ a:hover {
     opacity: 0;
     transform: scale(0.95);
   }
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/harish
   to {
     opacity: 1;
     transform: scale(1);
@@ -791,17 +575,11 @@ a:hover {
     opacity: 0;
     transform: scale(0.9);
   }
-<<<<<<< HEAD
-  50% {
-    transform: scale(1.05);
-  }
-=======
 
   50% {
     transform: scale(1.05);
   }
 
->>>>>>> origin/harish
   100% {
     opacity: 1;
     transform: scale(1);
@@ -812,28 +590,19 @@ a:hover {
   0% {
     background-position: -1000px 0;
   }
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/harish
   100% {
     background-position: 1000px 0;
   }
 }
 
 @keyframes pulse-glow {
-<<<<<<< HEAD
-  0%, 100% {
-    opacity: 1;
-  }
-=======
 
   0%,
   100% {
     opacity: 1;
   }
 
->>>>>>> origin/harish
   50% {
     opacity: 0.6;
   }
@@ -841,20 +610,6 @@ a:hover {
 
 /* Trash/Delete Animation */
 @keyframes wiggle {
-<<<<<<< HEAD
-  0%, 100% {
-    transform: rotate(0deg);
-  }
-  20% {
-    transform: rotate(-15deg);
-  }
-  40% {
-    transform: rotate(12deg);
-  }
-  60% {
-    transform: rotate(-8deg);
-  }
-=======
 
   0%,
   100% {
@@ -873,7 +628,6 @@ a:hover {
     transform: rotate(-8deg);
   }
 
->>>>>>> origin/harish
   80% {
     transform: rotate(5deg);
   }
@@ -885,10 +639,7 @@ a:hover {
     transform: scale(1) translateY(0);
     filter: blur(0);
   }
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/harish
   100% {
     opacity: 0;
     transform: scale(0.95) translateY(-10px);
@@ -907,19 +658,10 @@ a:hover {
 
 .loading-shimmer {
   animation: shimmer 2s infinite;
-<<<<<<< HEAD
-  background: linear-gradient(
-    to right,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 50%,
-    transparent 100%
-  );
-=======
   background: linear-gradient(to right,
       transparent 0%,
       rgba(255, 255, 255, 0.1) 50%,
       transparent 100%);
->>>>>>> origin/harish
   background-size: 1000px 100%;
 }
 
@@ -961,12 +703,8 @@ a:hover {
 .bg-gradient-to-br.from-sky-400,
 .bg-gradient-to-r.from-blue-500,
 .bg-gradient-to-br.from-blue-500 {
-<<<<<<< HEAD
-  background: #be123c !important; /* burgundy solid */
-=======
   background: #be123c !important;
   /* burgundy solid */
->>>>>>> origin/harish
   background-image: none !important;
 }
 
@@ -982,8 +720,6 @@ a:hover .bg-gradient-to-br {
   mask-image: linear-gradient(to right, black 85%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
 }
-<<<<<<< HEAD
-=======
 
 /* Print Styles for Prescription PDF */
 @media print {
@@ -1050,4 +786,3 @@ a:hover .bg-gradient-to-br {
     break-inside: avoid !important;
   }
 }
->>>>>>> origin/harish
