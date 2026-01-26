@@ -23,6 +23,33 @@ import { OnboardingService } from '../services/onboardingService'
 import { User as AppUser } from '../types'
 import { showErrorToast, showSuccessToast } from '../utils/toastUtils'
 
+/**
+ * Generate a unique tab ID for session isolation
+ * This helps prevent auth conflicts when multiple tabs are open
+ */
+const getTabId = (): string => {
+  let tabId = sessionStorage.getItem('beanhealth_tab_id');
+  if (!tabId) {
+    tabId = `tab_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    sessionStorage.setItem('beanhealth_tab_id', tabId);
+  }
+  return tabId;
+};
+
+/**
+ * Debounce utility to prevent rapid-fire auth state changes
+ */
+function debounce<T extends (...args: any[]) => any>(
+  fn: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+}
+
 interface AuthContextType {
   user: User | null
   session: Session | null
@@ -33,7 +60,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>
   signUp: (email: string, password: string, userData: {
     name: string
-    role: 'patient' | 'doctor' | 'admin'
+    role: 'patient' | 'doctor' | 'admin' | 'enterprise'
     specialty?: string
     dateOfBirth?: string
     condition?: string
@@ -80,14 +107,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Use ref to track if we're processing an auth state change
   const isProcessingAuthRef = useRef(false)
 
+  // Tab ID for session isolation (prevents conflicts when multiple tabs are open)
+  const tabIdRef = useRef(getTabId())
+
+  // Track last processed session to prevent duplicate processing
+  const lastSessionIdRef = useRef<string | null>(null)
+
+  // Track if tab is visible (prevents processing when tab is hidden)
+  const isTabVisibleRef = useRef(!document.hidden)
+
+  // Debounce timer for auth state changes
+  const authDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Stability flag - once stable, avoid unnecessary reloads
+  const isStableRef = useRef(false)
+
   /**
    * Fetch user profile with proper error handling
+   * OPTIMIZED: Uses getUserProfileById to skip redundant session check
    */
   const fetchUserProfile = useCallback(async (userId: string, userSession: Session): Promise<AppUser | null> => {
     try {
       console.log('[AuthContext] Fetching profile for user:', userId);
 
-      const userProfile = await AuthService.getCurrentUser();
+      // OPTIMIZATION: Use getUserProfileById instead of getCurrentUser to skip session check
+      const userProfile = await AuthService.getUserProfileById(userId);
 
       if (!isMountedRef.current) return null;
 
@@ -108,8 +152,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             condition: userProfile?.condition
           });
 
-          // Refresh the profile to get the updated avatar
-          const updatedProfile = await AuthService.getCurrentUser();
+          // Refresh the profile to get the updated avatar - use optimized method
+          const updatedProfile = await AuthService.getUserProfileById(userId);
           if (isMountedRef.current) {
             return updatedProfile;
           }
@@ -130,6 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * Process a session - fetch profile and set all states
+   * OPTIMIZED: Parallelizes API calls for faster loading
    */
   const processSession = useCallback(async (currentSession: Session | null) => {
     if (!isMountedRef.current) return;
@@ -149,23 +194,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(userProfile);
         setNeedsProfileSetup(!userProfile || !userProfile.role);
 
-        // Check if user needs onboarding (has profile but hasn't completed onboarding)
+        // OPTIMIZATION: Parallelize onboarding and terms checks
         if (userProfile && userProfile.role) {
-          const isOnboarded = await OnboardingService.checkOnboardingStatus(currentSession.user.id);
+          const userId = currentSession.user.id;
+          const isPatient = userProfile.role === 'patient';
+
+          // Run checks in parallel for faster loading
+          const [isOnboarded, needsTerms] = await Promise.all([
+            OnboardingService.checkOnboardingStatus(userId),
+            isPatient ? TermsService.needsToAcceptNewTerms(userId) : Promise.resolve(false)
+          ]);
+
           if (isMountedRef.current) {
             setNeedsOnboarding(!isOnboarded);
-          }
-        } else {
-          setNeedsOnboarding(false);
-        }
-
-        // Check if patient needs to accept terms
-        if (userProfile && userProfile.role === 'patient') {
-          const needsTerms = await TermsService.needsToAcceptNewTerms(currentSession.user.id);
-          if (isMountedRef.current) {
             setNeedsTermsAcceptance(needsTerms);
           }
         } else {
+          setNeedsOnboarding(false);
           setNeedsTermsAcceptance(false);
         }
       } catch (error) {
@@ -190,13 +235,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * Handle auth state changes from Supabase
+   * Includes debouncing and tab visibility checks for enterprise stability
    */
   const handleAuthStateChange = useCallback(async (event: string, newSession: Session | null) => {
-    console.log('[AuthContext] Auth state change:', event, 'initialized:', isInitializedRef.current);
+    const tabId = tabIdRef.current;
+    console.log(`[AuthContext][${tabId}] Auth state change:`, event, 'initialized:', isInitializedRef.current);
+
+    // Skip if tab is not visible (prevents background tab conflicts)
+    if (!isTabVisibleRef.current && event === 'TOKEN_REFRESHED') {
+      console.log(`[AuthContext][${tabId}] Skipping TOKEN_REFRESHED - tab not visible`);
+      return;
+    }
 
     // Prevent concurrent processing
     if (isProcessingAuthRef.current) {
-      console.log('[AuthContext] Already processing auth, skipping');
+      console.log(`[AuthContext][${tabId}] Already processing auth, skipping`);
+      return;
+    }
+
+    // Skip duplicate session processing (prevents infinite loops)
+    const sessionId = newSession?.access_token?.substring(0, 20) || 'no-session';
+    if (event === 'TOKEN_REFRESHED' && lastSessionIdRef.current === sessionId && isStableRef.current) {
+      console.log(`[AuthContext][${tabId}] Skipping duplicate TOKEN_REFRESHED`);
       return;
     }
 
@@ -257,12 +317,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Handle sign in / token refresh
     if (newSession?.user) {
       isProcessingAuthRef.current = true;
+      const newSessionId = newSession.access_token?.substring(0, 20) || 'no-token';
+      
       try {
+        // For TOKEN_REFRESHED when already stable, don't show loading or reprocess profile
+        if (event === 'TOKEN_REFRESHED' && isStableRef.current && lastSessionIdRef.current) {
+          // Just update session without full reload
+          if (isMountedRef.current) {
+            setSession(newSession);
+            lastSessionIdRef.current = newSessionId;
+          }
+          console.log(`[AuthContext][${tabIdRef.current}] Token refreshed - updated session silently`);
+          return;
+        }
+
         // Only show loading if not initialized (sanity check, though we check above)
         if (isMountedRef.current && !isInitializedRef.current) {
           setLoading(true);
         }
         await processSession(newSession);
+        
+        // Mark as stable after successful processing
+        lastSessionIdRef.current = newSessionId;
+        isStableRef.current = true;
       } finally {
         isProcessingAuthRef.current = false;
         if (isMountedRef.current && !isInitializedRef.current) {
@@ -270,7 +347,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     } else {
-      // No session
+      // No session - reset stability
+      isStableRef.current = false;
+      lastSessionIdRef.current = null;
+      
       if (isMountedRef.current) {
         setUser(null);
         setSession(null);
@@ -284,20 +364,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * Initialize auth - sets up listener first, then checks session
+   * Includes tab visibility handling for enterprise multi-role support
    */
   useEffect(() => {
     isMountedRef.current = true;
+    const tabId = tabIdRef.current;
 
-    console.log('[AuthContext] Setting up auth...');
+    console.log(`[AuthContext][${tabId}] Setting up auth...`);
+
+    // Tab visibility handler - prevents auth conflicts when switching tabs
+    const handleVisibilityChange = () => {
+      isTabVisibleRef.current = !document.hidden;
+      console.log(`[AuthContext][${tabId}] Tab visibility:`, !document.hidden);
+      
+      // When tab becomes visible and is stable, just verify session is valid
+      if (!document.hidden && isStableRef.current && isInitializedRef.current) {
+        console.log(`[AuthContext][${tabId}] Tab visible - session is stable, no reload needed`);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Debounced auth state handler to prevent rapid-fire changes
+    const debouncedAuthHandler = debounce(handleAuthStateChange, 100);
 
     // Set up auth state listener FIRST - this catches OAuth callbacks
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Use immediate handling for critical events, debounced for others
+      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        handleAuthStateChange(event, session);
+      } else {
+        debouncedAuthHandler(event, session);
+      }
+    });
     authSubscriptionRef.current = subscription;
 
     // Then check for existing session (for normal page loads)
     const checkSession = async () => {
-      // Small delay to let auth state listener handle OAuth callbacks first
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // OPTIMIZATION: Reduced delay from 100ms to 10ms - just enough for event loop
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       // If already initialized by auth state change (OAuth callback), skip
       if (isInitializedRef.current) {
@@ -308,7 +413,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[AuthContext] Checking for existing session...');
 
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Add timeout to prevent infinite hang if Supabase is slow - reduced to 5s for faster feedback
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Session check timed out after 5s')), 5000)
+        );
+
+        const { data: { session }, error } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as Awaited<typeof sessionPromise>;
 
         if (error) {
           console.error('[AuthContext] Session error:', error);
@@ -345,8 +459,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Cleanup
     return () => {
-      console.log('[AuthContext] Cleaning up auth context');
+      console.log(`[AuthContext][${tabId}] Cleaning up auth context`);
       isMountedRef.current = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (authDebounceTimerRef.current) {
+        clearTimeout(authDebounceTimerRef.current);
+      }
       if (authSubscriptionRef.current) {
         authSubscriptionRef.current.unsubscribe();
         authSubscriptionRef.current = null;
@@ -406,7 +524,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   const signUp = useCallback(async (email: string, password: string, userData: {
     name: string
-    role: 'patient' | 'doctor' | 'admin'
+    role: 'patient' | 'doctor' | 'admin' | 'enterprise'
     specialty?: string
     dateOfBirth?: string
     condition?: string

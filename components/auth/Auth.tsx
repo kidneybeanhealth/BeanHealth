@@ -1,35 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Login from './Login';
+import EnterpriseLogin from './EnterpriseLogin';
 import AdminLogin from './AdminLogin';
 import AuthChooser from './AuthChooser';
 import TermsAndConditionsModal from '../TermsAndConditionsModal';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
+type AuthView = 'chooser' | 'login' | 'admin-login' | 'enterprise-login';
 
-const Auth: React.FC = () => {
-  const [view, setView] = useState<'chooser' | 'login' | 'admin-login'>('chooser');
+interface AuthProps {
+  initialView?: AuthView;
+}
+
+const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [view, setView] = useState<AuthView>(initialView);
   const [showTerms, setShowTerms] = useState(false);
+
+  // Sync view with initialView prop when it changes
+  useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
 
   // Dynamic document title based on view
   const getTitle = () => {
     switch (view) {
       case 'login': return 'Sign In';
       case 'admin-login': return 'Admin Portal';
+      case 'enterprise-login': return 'Enterprise Portal';
       case 'chooser': default: return 'Get Started';
     }
   };
 
   useDocumentTitle(getTitle());
 
+  // Navigation handlers using React Router
+  const handleSwitchToChooser = () => {
+    navigate('/');
+  };
+
+  const handleGoToLogin = () => {
+    navigate('/login');
+  };
+
+  const handleGoToEnterprise = () => {
+    navigate('/enterprise');
+  };
+
   const renderView = () => {
     switch (view) {
       case 'login':
-        return <Login onSwitchToChooser={() => setView('chooser')} />;
+        return <Login onSwitchToChooser={handleSwitchToChooser} />;
       case 'admin-login':
-        return <AdminLogin onSwitchToChooser={() => setView('chooser')} />;
+        return <AdminLogin onSwitchToChooser={handleSwitchToChooser} />;
+      case 'enterprise-login':
+        return <EnterpriseLogin onSwitchToChooser={handleSwitchToChooser} />;
       case 'chooser':
       default:
-        return <AuthChooser onNext={() => setView('login')} onAdminLogin={() => setView('admin-login')} />;
+        return <AuthChooser onNext={handleGoToLogin} onEnterpriseLogin={handleGoToEnterprise} />;
     }
   }
 
@@ -86,3 +116,4 @@ const Auth: React.FC = () => {
 };
 
 export default Auth;
+

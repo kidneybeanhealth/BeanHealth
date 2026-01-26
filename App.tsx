@@ -1,51 +1,29 @@
 /**
  * Main App Component
  * 
- * OAuth flow now handled by AuthService with browserFinished detection.
- * Deep link handler kept as backup but primary flow is browser close detection.
+ * Now using React Router for URL-based navigation.
+ * OAuth flow handled by AuthService with browserFinished detection.
+ * Deep link handler kept as backup for mobile OAuth.
  */
 
 import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
-import { useAuth } from './contexts/AuthContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import TermsAndConditionsModal from './components/TermsAndConditionsModal';
-import Auth from './components/auth/Auth';
-import ProfileSetup from './components/auth/ProfileSetup';
-import OnboardingFlow from './components/OnboardingFlow';
-import PatientDashboard from './components/PatientDashboard';
-import DoctorDashboardMain from './components/DoctorDashboardMain';
-import AdminDashboardMain from './components/AdminDashboardMain';
 import ReturnToAdminButton from './components/ReturnToAdminButton';
+import AppRoutes from './routes';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { supabase } from './lib/supabase';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
 
-const AppContent: React.FC = () => {
-  const { user, profile, loading, needsProfileSetup, needsOnboarding, isInitialized, needsTermsAcceptance, acceptTerms, checkAuth } = useAuth();
-  const [loadingTimeout, setLoadingTimeout] = React.useState(false);
-
-  // Dynamic document title based on app state
-  const getAppTitle = () => {
-    if (loading || !isInitialized) return 'Loading...';
-    if (!user) return 'Get Started'; // Default for Auth view
-    if (needsProfileSetup) return 'Set Up Your Profile';
-    if (needsOnboarding) return 'Welcome to BeanHealth';
-
-    if (profile?.role === 'doctor') return 'Doctor Portal';
-    if (profile?.role === 'admin') return 'Admin Dashboard';
-    if (profile?.role === 'patient') return 'Patient Portal';
-
-    return 'Healthcare Management';
-  };
-
-  useDocumentTitle(getAppTitle());
-
+/**
+ * DeepLinkHandler - Handles OAuth callbacks for native mobile apps
+ */
+const DeepLinkHandler: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Check for launch URL on mount (handles cold start deep links)
   React.useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -203,106 +181,34 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Timeout for loading
-  React.useEffect(() => {
-    if (!loading && isInitialized) return;
-
-    const timer = setTimeout(() => {
-      if (loading || !isInitialized) {
-        setLoadingTimeout(true);
-      }
-    }, 10000);
-
-    return () => clearTimeout(timer);
-  }, [loading, isInitialized]);
-
-  // Loading state
-  if ((loading || !isInitialized) && !loadingTimeout) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Not authenticated
-  if (!user) {
-    return <Auth />;
-  }
-
-  // Needs profile setup (first-time users who haven't selected a role)
-  if (needsProfileSetup) {
-    return <ProfileSetup />;
-  }
-
-  // Define Dashboard Component
-  let DashboardComponent;
-  if (profile?.role === 'doctor') {
-    DashboardComponent = <DoctorDashboardMain />;
-  } else if (profile?.role === 'admin') {
-    DashboardComponent = <AdminDashboardMain />;
-  } else if (profile?.role === 'patient') {
-    if (needsTermsAcceptance) {
-      // For terms acceptance, we can treat it similar to onboarding or just return it directly
-      // But since it's a modal, we might want to overlay it too
-      // For now, retaining original behavior for Terms
-      return (
-        <TermsAndConditionsModal
-          isOpen={true}
-          onAccept={acceptTerms}
-          userName={profile.name}
-        />
-      );
-    }
-    DashboardComponent = <PatientDashboard />;
-  } else {
-    // Fallback if no valid role or profile yet but needs onboarding
-    // In this case, we can't show a specific dash, so we might show an empty state or just the overlay
-    // But logically, if they have no role, they should be in ProfileSetup.
-    // If they have a role but needed onboarding, they hit the logic above.
-    // This fallback is rare.
-    DashboardComponent = <div className="min-h-screen bg-white" />;
-  }
-
-  // Render Dashboard with potential Onboarding Overlay
-  return (
-    <>
-      <div className={needsOnboarding ? 'filter blur-sm pointer-events-none select-none h-screen overflow-hidden' : ''}>
-        {DashboardComponent}
-      </div>
-
-      {needsOnboarding && (
-        <div className="fixed inset-0 z-[9999]">
-          <OnboardingFlow />
-        </div>
-      )}
-    </>
-  );
+  return <>{children}</>;
 };
 
+/**
+ * Main App Component with Router
+ */
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
           <DataProvider>
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                duration: 3000,
-                style: { background: '#363636', color: '#fff' },
-              }}
-            />
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-              <AppContent />
-              <ReturnToAdminButton />
-            </div>
+            <DeepLinkHandler>
+              <Toaster
+                position="top-center"
+                toastOptions={{
+                  duration: 3000,
+                  style: { background: '#363636', color: '#fff' },
+                }}
+              />
+              <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+                <AppRoutes />
+                <ReturnToAdminButton />
+              </div>
+            </DeepLinkHandler>
           </DataProvider>
-        </ThemeProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 };

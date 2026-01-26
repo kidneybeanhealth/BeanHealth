@@ -1,8 +1,8 @@
 export type View = 'dashboard' | 'records' | 'upload' | 'messages' | 'billing' | 'doctors';
 
-export type UserRole = 'patient' | 'doctor' | 'admin';
+export type UserRole = 'patient' | 'doctor' | 'admin' | 'enterprise';
 
-export type AuthView = 'chooser' | 'patient-login' | 'doctor-login' | 'admin-login';
+export type AuthView = 'chooser' | 'patient-login' | 'doctor-login' | 'admin-login' | 'enterprise-login';
 
 export type DoctorPortalView = 'dashboard' | 'messages';
 

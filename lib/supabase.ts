@@ -111,7 +111,7 @@ export interface Database {
           id: string
           email: string
           name: string
-          role: 'patient' | 'doctor'
+          role: 'patient' | 'doctor' | 'admin' | 'enterprise'
           avatar_url?: string
           specialty?: string
           date_of_birth?: string
@@ -136,7 +136,7 @@ export interface Database {
           id?: string
           email: string
           name: string
-          role: 'patient' | 'doctor'
+          role: 'patient' | 'doctor' | 'admin' | 'enterprise'
           avatar_url?: string
           specialty?: string
           date_of_birth?: string
@@ -161,7 +161,7 @@ export interface Database {
           id?: string
           email?: string
           name?: string
-          role?: 'patient' | 'doctor'
+          role?: 'patient' | 'doctor' | 'admin' | 'enterprise'
           avatar_url?: string
           specialty?: string
           date_of_birth?: string
@@ -179,6 +179,96 @@ export interface Database {
           comorbidities?: string[]
           baseline_weight?: number
           daily_fluid_target?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      hospital_doctors: {
+        Row: {
+          id: string
+          hospital_id: string
+          name: string
+          specialty: string
+          access_code: string
+          avatar_url: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hospital_id: string
+          name: string
+          specialty: string
+          access_code: string
+          avatar_url?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_id?: string
+          name?: string
+          specialty?: string
+          access_code?: string
+          avatar_url?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+      }
+      hospital_patients: {
+        Row: {
+          id: string
+          hospital_id: string
+          name: string
+          age: number
+          token_number: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hospital_id: string
+          name: string
+          age: number
+          token_number: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_id?: string
+          name?: string
+          age?: number
+          token_number?: string | null
+          created_at?: string
+        }
+      }
+      hospital_queues: {
+        Row: {
+          id: string
+          hospital_id: string
+          patient_id: string
+          doctor_id: string | null
+          queue_number: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          hospital_id: string
+          patient_id: string
+          doctor_id?: string | null
+          queue_number: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_id?: string
+          patient_id?: string
+          doctor_id?: string | null
+          queue_number?: number
+          status?: string
           created_at?: string
           updated_at?: string
         }
