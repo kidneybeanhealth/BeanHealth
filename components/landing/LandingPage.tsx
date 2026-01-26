@@ -165,7 +165,12 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="landing-page">
+    <div className="landing-page min-h-screen bg-white text-[#2d1012] selection:bg-[#1B4332] selection:text-white">
+      {/* Floating Background Shapes - Re-implemented with Tailwind for reliability */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-green-500/10 blur-[100px] animate-pulse" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/10 blur-[100px] animate-pulse delay-1000" />
+      </div>
       {/* Logo Section - Separate and Prominent */}
       <div className="logo-section cursor-pointer" onClick={scrollToTop} style={{ zIndex: 1000 }}>
         <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full pl-1.5 pr-4 py-1.5 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
@@ -273,10 +278,10 @@ const LandingPage = () => {
               🏥 For Hospitals & Nephrologists
             </span>
           </div>
-          <h1 className="hero-title">
+          <h1 className="text-4xl md:text-5xl lg:text-[4rem] font-bold leading-[1.1] tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#3C1518] via-[#1B4332] to-[#3C1518] mb-6 animate-in fade-in slide-in-from-bottom-8 duration-1000 bg-[length:200%_auto] animate-gradient">
             Turn CKD follow-up chaos into<br />a single clinical snapshot
           </h1>
-          <p className="hero-subtitle" style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <p className="text-lg md:text-xl text-[#69645E] leading-relaxed max-w-3xl mx-auto mb-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
             BeanHealth compresses fragmented medical data into a clinician-ready decision snapshot — highlighting deterioration, pending actions, and provenance so nephrologists can act faster with confidence and less manual review.
           </p>
           {/* Quantified Outcome Badge */}
