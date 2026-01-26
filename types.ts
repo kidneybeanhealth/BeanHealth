@@ -2,7 +2,7 @@ export type View = 'dashboard' | 'records' | 'upload' | 'messages' | 'billing' |
 
 export type UserRole = 'patient' | 'doctor' | 'admin' | 'enterprise';
 
-export type AuthView = 'chooser' | 'patient-login' | 'doctor-login' | 'admin-login' | 'enterprise-login';
+export type AuthView = 'chooser' | 'patient-login' | 'doctor-login' | 'admin-login' | 'enterprise-login' | 'clinic-login';
 
 export type DoctorPortalView = 'dashboard' | 'messages';
 
