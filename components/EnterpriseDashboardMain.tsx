@@ -39,6 +39,16 @@ interface QueueItem {
 // Session timeout: 4 hours
 const DOCTOR_SESSION_TIMEOUT = 4 * 60 * 60 * 1000;
 
+// Helper to format doctor name professionally
+const formatDoctorName = (name: string) => {
+    if (!name) return "";
+    // Remove existing Dr prefix and any trailing dots/spaces
+    let cleanName = name.replace(/^(dr\.?\s*)/i, "").trim();
+    // Fix initials formatting (e.g., A.Divakar -> A. Divakar)
+    cleanName = cleanName.replace(/([A-Z])\.(\S)/g, "$1. $2");
+    return `Dr. ${cleanName}`;
+};
+
 const EnterpriseDashboardMain: React.FC = () => {
     const { signOut, profile } = useAuth();
     const navigate = useNavigate();
@@ -616,8 +626,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                                     {doctor.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                 </span>
                             </div>
-                            <h3 className="font-bold text-lg mb-2" style={{ color: '#000000' }}>{doctor.name}</h3>
-                            <p className="text-sm font-medium bg-gray-100 px-4 py-1.5 rounded-full mb-6" style={{ color: '#444444' }}>{doctor.specialty}</p>
+                            <h3 className="font-bold text-lg mb-2" style={{ color: '#000000' }}>{formatDoctorName(doctor.name)}</h3>
+                            <p className="text-sm font-medium bg-gray-100 px-4 py-1.5 rounded-full mb-6 uppercase" style={{ color: '#444444' }}>{doctor.specialty || 'GENERAL MEDICINE'}</p>
                             <div className="mt-auto w-full py-3 rounded-xl bg-gray-50 font-semibold text-sm group-hover:bg-primary-600 group-hover:text-white transition-colors" style={{ color: '#444444' }}>
                                 Access Dashboard
                             </div>
@@ -744,7 +754,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                                     item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                                                 {item.status.replace('_', ' ')}
                                             </span>
-                                            <p className="font-medium text-sm" style={{ color: '#000000' }}>Dr. {item.doctor?.name}</p>
+                                            <p className="font-medium text-sm" style={{ color: '#000000' }}>{formatDoctorName(item.doctor?.name || '')}</p>
                                         </div>
                                     </div>
                                 </div>

@@ -29,6 +29,16 @@ interface QueueItem {
     created_at: string;
 }
 
+// Helper to format doctor name professionally
+const formatDoctorName = (name: string) => {
+    if (!name) return "";
+    // Remove existing Dr prefix and any trailing dots/spaces
+    let cleanName = name.replace(/^(dr\.?\s*)/i, "").trim();
+    // Fix initials formatting (e.g., A.Divakar -> A. Divakar)
+    cleanName = cleanName.replace(/([A-Z])\.(\S)/g, "$1. $2");
+    return `Dr. ${cleanName}`;
+};
+
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
     const { profile, refreshProfile } = useAuth();
@@ -558,7 +568,7 @@ const ReceptionDashboard: React.FC = () => {
                                                     item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                                                 {item.status.replace('_', ' ')}
                                             </span>
-                                            <p className="font-medium text-sm text-gray-800 mt-1">Dr. {item.doctor?.name}</p>
+                                            <p className="font-medium text-sm text-gray-800 mt-1">{formatDoctorName(item.doctor?.name || '')}</p>
                                         </div>
                                     </div>
                                 ))}

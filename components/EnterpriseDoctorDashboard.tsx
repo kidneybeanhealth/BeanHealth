@@ -38,6 +38,16 @@ interface Medication {
     instruction: string;
 }
 
+// Helper to format doctor name professionally
+const formatDoctorName = (name: string) => {
+    if (!name) return "";
+    // Remove existing Dr prefix and any trailing dots/spaces
+    let cleanName = name.replace(/^(dr\.?\s*)/i, "").trim();
+    // Fix initials formatting (e.g., A.Divakar -> A. Divakar)
+    cleanName = cleanName.replace(/([A-Z])\.(\S)/g, "$1. $2");
+    return `Dr. ${cleanName}`;
+};
+
 const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () => void }> = ({ doctor, onBack }) => {
     const [queue, setQueue] = useState<QueueItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -370,9 +380,9 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                 </div>
                                 <div className="hidden md:block text-right">
                                     <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">
-                                        {doctor.name.toLowerCase().startsWith('dr.') ? doctor.name : `Dr. ${doctor.name}`}
+                                        {formatDoctorName(doctor.name)}
                                     </p>
-                                    <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-wide mt-1 uppercase leading-none">{doctor.specialty || 'MD'}</p>
+                                    <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-wide mt-1 uppercase leading-none">{doctor.specialty || 'GENERAL MEDICINE'}</p>
                                 </div>
                             </div>
                         </div>
@@ -385,7 +395,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                     <div>
                         <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
-                            {doctor.name.toLowerCase().startsWith('dr.') ? doctor.name : `Dr. ${doctor.name}`}
+                            {formatDoctorName(doctor.name)}
                         </h2>
                         <p className="text-lg text-gray-700 mt-2">Manage your patient queue and consultations</p>
                     </div>
