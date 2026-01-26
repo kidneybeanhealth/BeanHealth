@@ -176,8 +176,8 @@ const LandingPage = () => {
         <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full pl-1.5 pr-4 py-1.5 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
           <img src="/logo.png" alt="BeanHealth Logo" className="w-10 h-10 sm:w-11 sm:h-11 object-contain" />
           <h2 className="text-xl sm:text-2xl font-black leading-none tracking-tight">
-            <span className="text-primary-500">Bean</span>
-            <span className="text-secondary-500">Health</span>
+            <span className="!text-[#3A2524]">Bean</span>
+            <span className="!text-[#8AC43C]">Health</span>
           </h2>
         </div>
       </div>
@@ -218,8 +218,8 @@ const LandingPage = () => {
               <div className="flex items-center gap-2">
                 <img src="/logo.png" alt="BeanHealth Logo" className="w-10 h-10 object-contain" />
                 <h2 className="text-xl font-black leading-none tracking-tight">
-                  <span className="text-primary-500">Bean</span>
-                  <span className="text-secondary-500">Health</span>
+                  <span className="!text-[#3A2524]">Bean</span>
+                  <span className="!text-[#8AC43C]">Health</span>
                 </h2>
               </div>
               <button onClick={closeMobileMenu} className="mobile-menu-close">
@@ -2048,8 +2048,8 @@ const LandingPage = () => {
               <div className="flex items-center gap-2 mb-4">
                 <img src="/logo.png" alt="BeanHealth Logo" className="w-10 h-10 object-contain" />
                 <h2 className="text-xl font-black leading-none tracking-tight">
-                  <span className="text-primary-500">Bean</span>
-                  <span className="text-secondary-500">Health</span>
+                  <span className="!text-[#3A2524]">Bean</span>
+                  <span className="!text-[#8AC43C]">Health</span>
                 </h2>
               </div>
               <p className="body-small mb-4">
