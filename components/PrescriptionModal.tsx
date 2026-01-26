@@ -8,6 +8,21 @@ interface SavedDrug {
   name: string;
 }
 
+interface ReferenceDrug {
+  id: string;
+  brand_name: string;      // Primary: "Ciprodac 500"
+  generic_name: string;    // Secondary: "CIPROFLOXACIN"
+  category: string;        // "ANTIBIOTIC"
+}
+
+interface DrugOption {
+  id: string;
+  name: string;            // The display name (brand or saved drug name)
+  genericName?: string;    // Generic name for reference drugs
+  category?: string;
+  isReference?: boolean;
+}
+
 interface PrescriptionModalProps {
   doctor: any;
   patient: any;
@@ -37,6 +52,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
   // Saved Drugs State
   const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
+  const [referenceDrugs, setReferenceDrugs] = useState<ReferenceDrug[]>([]);
   const [showDrugDropdown, setShowDrugDropdown] = useState<number | null>(null);
   const [drugSearchQuery, setDrugSearchQuery] = useState('');
   const [showManageDrugsModal, setShowManageDrugsModal] = useState(false);
@@ -48,10 +64,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   const componentRef = useRef<HTMLDivElement>(null);
   const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
-  // Fetch saved drugs on mount
+  // Fetch saved drugs and reference drugs on mount
   useEffect(() => {
-    if (doctor?.id && !readOnly) {
-      fetchSavedDrugs();
+    if (!readOnly) {
+      fetchReferenceDrugs();
+      if (doctor?.id) {
+        fetchSavedDrugs();
+      }
     }
   }, [doctor?.id, readOnly]);
 
@@ -81,6 +100,23 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
       setSavedDrugs(data || []);
     } catch (error) {
       console.error('Error fetching saved drugs:', error);
+    }
+  };
+
+  const fetchReferenceDrugs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('reference_drugs' as any)
+        .select('*')
+        .order('category', { ascending: true });
+
+      if (error) {
+        console.log('Reference drugs table not available yet:', error.message);
+        return;
+      }
+      setReferenceDrugs(data || []);
+    } catch (error) {
+      console.error('Error fetching reference drugs:', error);
     }
   };
 
@@ -164,13 +200,40 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     setDrugSearchQuery('');
   };
 
-  const filteredDrugs = savedDrugs.filter(drug =>
-    drug.name.toLowerCase().includes(drugSearchQuery.toLowerCase())
-  );
+  // Combine saved drugs and reference drugs for searching
+  const allDrugOptions: DrugOption[] = [
+    // Personal saved drugs first
+    ...savedDrugs.map(d => ({
+      id: d.id,
+      name: d.name,
+      isReference: false
+    })),
+    // Reference drugs (now with brand_name as primary)
+    ...referenceDrugs.map(d => ({
+      id: d.id,
+      name: d.brand_name,           // Brand name is now primary
+      genericName: d.generic_name,  // Generic name as secondary
+      category: d.category,
+      isReference: true
+    }))
+  ];
 
-  // Initialize phone if available
+  const filteredDrugs = allDrugOptions.filter(drug =>
+    drug.name.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
+    (drug.genericName && drug.genericName.toLowerCase().includes(drugSearchQuery.toLowerCase()))
+  ).slice(0, 20); // Limit to 20 results for performance
+
+  // Initialize patient data fields
   useEffect(() => {
-    if (patient?.phone) setFormData(prev => ({ ...prev, phone: patient.phone }));
+    // Auto-populate from patient data
+    if (patient) {
+      setFormData(prev => ({
+        ...prev,
+        fatherName: patient.father_husband_name || prev.fatherName || '',
+        place: patient.place || prev.place || '',
+        phone: patient.phone || prev.phone || ''
+      }));
+    }
 
     if (existingData) {
       // Parse Existing Data for Read-Only View
@@ -369,7 +432,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
               {/* Table Headers */}
               <div className="flex border-b border-black text-center font-bold text-xs">
                 <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
-                  வ.எ<br/>S.N
+                  வ.எ<br />S.N
                 </div>
                 <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
                   மருந்துக்கள் / DRUGS
@@ -419,12 +482,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                       onChange={e => {
                         updateMed(i, 'name', e.target.value);
                         setDrugSearchQuery(e.target.value);
-                        if (!readOnly && savedDrugs.length > 0) {
+                        if (!readOnly && allDrugOptions.length > 0) {
                           setShowDrugDropdown(i);
                         }
                       }}
                       onFocus={() => {
-                        if (!readOnly && savedDrugs.length > 0) {
+                        if (!readOnly && allDrugOptions.length > 0) {
                           setShowDrugDropdown(i);
                           setDrugSearchQuery(med.name);
                         }
@@ -433,7 +496,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                     />
                     {/* Drug Dropdown */}
                     {!readOnly && showDrugDropdown === i && filteredDrugs.length > 0 && (
-                      <div className="absolute left-0 top-full z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto print:hidden">
+                      <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
                         {filteredDrugs.map(drug => (
                           <button
                             key={drug.id}
@@ -441,7 +504,24 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                             onClick={() => handleSelectDrug(i, drug)}
                             className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
                           >
-                            <span className="font-semibold text-gray-900 text-sm">{drug.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-gray-900 text-sm">{drug.name}</span>
+                              {drug.isReference && drug.category && (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
+                                  {drug.category}
+                                </span>
+                              )}
+                              {!drug.isReference && (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
+                                  SAVED
+                                </span>
+                              )}
+                            </div>
+                            {drug.genericName && (
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {drug.genericName}
+                              </div>
+                            )}
                           </button>
                         ))}
                       </div>
@@ -488,8 +568,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                       {med.night ? '✓' : ''}
                     </div>
                     {/* Before/After Food Toggle */}
-                    <div 
-                      className="w-10 py-1 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]" 
+                    <div
+                      className="w-10 py-1 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]"
                       onClick={() => !readOnly && updateMed(i, 'beforeFood', !med.beforeFood)}
                     >
                       {med.beforeFood ? 'B/F' : 'A/F'}
@@ -498,7 +578,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                 </div>
               ))}
               {/* Add Row Button (Hidden in Print and ReadOnly) */}
-              <div 
+              <div
                 className="p-2 text-center border-t border-dashed border-gray-300 flex items-center justify-center gap-4 no-print"
                 style={{ display: 'flex' }}
               >
@@ -506,8 +586,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                   <>
                     <button onClick={addRow} className="text-emerald-600 text-sm font-bold hover:underline">+ Add Medicine Row</button>
                     <span className="text-gray-300">|</span>
-                    <button 
-                      onClick={() => setShowManageDrugsModal(true)} 
+                    <button
+                      onClick={() => setShowManageDrugsModal(true)}
                       className="text-purple-600 text-sm font-bold hover:underline flex items-center gap-1"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

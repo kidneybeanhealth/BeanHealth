@@ -16,25 +16,25 @@ const DoctorDashboardMain = React.lazy(() => import('../components/DoctorDashboa
 const AdminDashboardMain = React.lazy(() => import('../components/AdminDashboardMain'));
 
 // Enterprise Components - LAZY LOADED
-const EnterpriseDashboardHome = React.lazy(() =>
+const EnterpriseDashboardHome = React.lazy(() => 
     import('../components/enterprise').then(m => ({ default: m.EnterpriseDashboardHome }))
 );
-const ReceptionLogin = React.lazy(() =>
+const ReceptionLogin = React.lazy(() => 
     import('../components/enterprise').then(m => ({ default: m.ReceptionLogin }))
 );
-const ReceptionDashboard = React.lazy(() =>
+const ReceptionDashboard = React.lazy(() => 
     import('../components/enterprise').then(m => ({ default: m.ReceptionDashboard }))
 );
-const PharmacyLogin = React.lazy(() =>
+const PharmacyLogin = React.lazy(() => 
     import('../components/enterprise').then(m => ({ default: m.PharmacyLogin }))
 );
-const PharmacyDashboard = React.lazy(() =>
+const PharmacyDashboard = React.lazy(() => 
     import('../components/enterprise').then(m => ({ default: m.PharmacyDashboard }))
 );
-const DoctorLogin = React.lazy(() =>
+const DoctorLogin = React.lazy(() => 
     import('../components/enterprise').then(m => ({ default: m.DoctorLogin }))
 );
-const DoctorDashboardWrapper = React.lazy(() =>
+const DoctorDashboardWrapper = React.lazy(() => 
     import('../components/enterprise').then(m => ({ default: m.DoctorDashboardWrapper }))
 );
 
@@ -133,88 +133,68 @@ const AppRoutes: React.FC = () => {
     return (
         <Suspense fallback={<PageLoader />}>
             <Routes>
-                {/* ============ PUBLIC AUTH ROUTES ============ */}
+            {/* ============ PUBLIC AUTH ROUTES ============ */}
 
-                {/* Landing / Role Chooser */}
-                <Route
-                    path="/"
-                    element={
-                        <AuthRedirect>
-                            <Auth />
-                        </AuthRedirect>
-                    }
-                />
+            {/* Landing / Role Chooser */}
+            <Route
+                path="/"
+                element={
+                    <AuthRedirect>
+                        <Auth />
+                    </AuthRedirect>
+                }
+            />
 
-                {/* Patient/Doctor Login */}
-                <Route
-                    path="/login"
-                    element={
-                        <AuthRedirect>
-                            <Auth initialView="login" />
-                        </AuthRedirect>
-                    }
-                />
+            {/* Patient/Doctor Login */}
+            <Route
+                path="/login"
+                element={
+                    <AuthRedirect>
+                        <Auth initialView="login" />
+                    </AuthRedirect>
+                }
+            />
 
-                {/* Enterprise Login */}
-                <Route
-                    path="/enterprise"
-                    element={
-                        <AuthRedirect>
-                            <Auth initialView="enterprise-login" />
-                        </AuthRedirect>
-                    }
-                />
+            {/* Enterprise Login */}
+            <Route
+                path="/enterprise"
+                element={
+                    <AuthRedirect>
+                        <Auth initialView="enterprise-login" />
+                    </AuthRedirect>
+                }
+            />
 
-                {/* Admin Login */}
-                <Route
-                    path="/admin"
-                    element={
-                        <AuthRedirect>
-                            <Auth initialView="admin-login" />
-                        </AuthRedirect>
-                    }
-                />
+            {/* Admin Login */}
+            <Route
+                path="/admin"
+                element={
+                    <AuthRedirect>
+                        <Auth initialView="admin-login" />
+                    </AuthRedirect>
+                }
+            />
 
-                {/* Profile Setup */}
-                <Route path="/setup" element={<ProfileSetupRoute />} />
+            {/* Profile Setup */}
+            <Route path="/setup" element={<ProfileSetupRoute />} />
 
-                {/* ============ PROTECTED DASHBOARD ROUTES ============ */}
+            {/* ============ PROTECTED DASHBOARD ROUTES ============ */}
 
-                {/* Patient Dashboard */}
-                <Route
-                    path="/patient/*"
-                    element={
-                        <ProtectedRoute allowedRoles={['patient']}>
-                            {needsTermsAcceptance ? (
-                                <TermsAndConditionsModal
-                                    isOpen={true}
-                                    onAccept={acceptTerms}
-                                    userName={profile?.name}
-                                />
-                            ) : (
-                                <>
-                                    <div className={needsOnboarding ? 'filter blur-sm pointer-events-none select-none h-screen overflow-hidden' : ''}>
-                                        <PatientDashboard />
-                                    </div>
-                                    {needsOnboarding && (
-                                        <div className="fixed inset-0 z-[9999]">
-                                            <OnboardingFlow />
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </ProtectedRoute>
-                    }
-                />
-
-                {/* Doctor Dashboard */}
-                <Route
-                    path="/doctor/*"
-                    element={
-                        <ProtectedRoute allowedRoles={['doctor']}>
+            {/* Patient Dashboard */}
+            <Route
+                path="/patient/*"
+                element={
+                    <ProtectedRoute allowedRoles={['patient']}>
+                        {needsTermsAcceptance ? (
+                            <TermsAndConditionsModal
+                                isOpen={true}
+                                onAccept={acceptTerms}
+                                userName={profile?.name}
+                            />
+                        ) : (
                             <>
                                 <div className={needsOnboarding ? 'filter blur-sm pointer-events-none select-none h-screen overflow-hidden' : ''}>
-                                    <DoctorDashboardMain />
+                                    <PatientDashboard />
                                 </div>
                                 {needsOnboarding && (
                                     <div className="fixed inset-0 z-[9999]">
@@ -222,101 +202,121 @@ const AppRoutes: React.FC = () => {
                                     </div>
                                 )}
                             </>
-                        </ProtectedRoute>
-                    }
-                />
+                        )}
+                    </ProtectedRoute>
+                }
+            />
 
-                {/* Admin Dashboard */}
-                <Route
-                    path="/admin-dashboard/*"
-                    element={
-                        <ProtectedRoute allowedRoles={['admin']}>
-                            <AdminDashboardMain />
-                        </ProtectedRoute>
-                    }
-                />
+            {/* Doctor Dashboard */}
+            <Route
+                path="/doctor/*"
+                element={
+                    <ProtectedRoute allowedRoles={['doctor']}>
+                        <>
+                            <div className={needsOnboarding ? 'filter blur-sm pointer-events-none select-none h-screen overflow-hidden' : ''}>
+                                <DoctorDashboardMain />
+                            </div>
+                            {needsOnboarding && (
+                                <div className="fixed inset-0 z-[9999]">
+                                    <OnboardingFlow />
+                                </div>
+                            )}
+                        </>
+                    </ProtectedRoute>
+                }
+            />
 
-                {/* Enterprise Dashboard & Sub-routes */}
-                <Route
-                    path="/enterprise-dashboard"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <EnterpriseDashboardHome />
-                        </ProtectedRoute>
-                    }
-                />
+            {/* Admin Dashboard */}
+            <Route
+                path="/admin-dashboard/*"
+                element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminDashboardMain />
+                    </ProtectedRoute>
+                }
+            />
 
-                {/* Reception Routes */}
-                <Route
-                    path="/enterprise-dashboard/reception"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <ReceptionLogin />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/enterprise-dashboard/reception/dashboard"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <DepartmentProtectedRoute department="reception">
-                                <ReceptionDashboard />
-                            </DepartmentProtectedRoute>
-                        </ProtectedRoute>
-                    }
-                />
+            {/* Enterprise Dashboard & Sub-routes */}
+            <Route
+                path="/enterprise-dashboard"
+                element={
+                    <ProtectedRoute allowedRoles={['enterprise']}>
+                        <EnterpriseDashboardHome />
+                    </ProtectedRoute>
+                }
+            />
 
-                {/* Pharmacy Routes */}
-                <Route
-                    path="/enterprise-dashboard/pharmacy"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <PharmacyLogin />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/enterprise-dashboard/pharmacy/dashboard"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <DepartmentProtectedRoute department="pharmacy">
-                                <PharmacyDashboard />
-                            </DepartmentProtectedRoute>
-                        </ProtectedRoute>
-                    }
-                />
+            {/* Reception Routes */}
+            <Route
+                path="/enterprise-dashboard/reception"
+                element={
+                    <ProtectedRoute allowedRoles={['enterprise']}>
+                        <ReceptionLogin />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/enterprise-dashboard/reception/dashboard"
+                element={
+                    <ProtectedRoute allowedRoles={['enterprise']}>
+                        <DepartmentProtectedRoute department="reception">
+                            <ReceptionDashboard />
+                        </DepartmentProtectedRoute>
+                    </ProtectedRoute>
+                }
+            />
 
-                {/* Doctor Routes */}
-                <Route
-                    path="/enterprise-dashboard/doctors"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <DoctorLogin />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/enterprise-dashboard/doctors/:doctorId"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <DoctorLogin />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/enterprise-dashboard/doctors/:doctorId/dashboard"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <DoctorProtectedRoute>
-                                <DoctorDashboardWrapper />
-                            </DoctorProtectedRoute>
-                        </ProtectedRoute>
-                    }
-                />
+            {/* Pharmacy Routes */}
+            <Route
+                path="/enterprise-dashboard/pharmacy"
+                element={
+                    <ProtectedRoute allowedRoles={['enterprise']}>
+                        <PharmacyLogin />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/enterprise-dashboard/pharmacy/dashboard"
+                element={
+                    <ProtectedRoute allowedRoles={['enterprise']}>
+                        <DepartmentProtectedRoute department="pharmacy">
+                            <PharmacyDashboard />
+                        </DepartmentProtectedRoute>
+                    </ProtectedRoute>
+                }
+            />
 
-                {/* ============ FALLBACK ============ */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            {/* Doctor Routes */}
+            <Route
+                path="/enterprise-dashboard/doctors"
+                element={
+                    <ProtectedRoute allowedRoles={['enterprise']}>
+                        <DoctorLogin />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/enterprise-dashboard/doctors/:doctorId"
+                element={
+                    <ProtectedRoute allowedRoles={['enterprise']}>
+                        <DoctorLogin />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/enterprise-dashboard/doctors/:doctorId/dashboard"
+                element={
+                    <ProtectedRoute allowedRoles={['enterprise']}>
+                        <DoctorProtectedRoute>
+                            <DoctorDashboardWrapper />
+                        </DoctorProtectedRoute>
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* ============ FALLBACK ============ */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
         </Suspense>
     );
 };

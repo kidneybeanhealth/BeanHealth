@@ -42,6 +42,9 @@ const ReceptionDashboard: React.FC = () => {
     const [walkInForm, setWalkInForm] = useState({
         name: '',
         age: '',
+        fatherHusbandName: '',
+        place: '',
+        phone: '',
         department: '',
         doctorId: '',
         tokenNumber: ''
@@ -196,7 +199,7 @@ const ReceptionDashboard: React.FC = () => {
 
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
-        setWalkInForm({ name: '', age: '', department: '', doctorId: '', tokenNumber: '' });
+        setWalkInForm({ name: '', age: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '' });
     };
 
     const fetchHospitalSettings = async () => {
@@ -332,7 +335,10 @@ const ReceptionDashboard: React.FC = () => {
                     hospital_id: profile.id,
                     name: walkInForm.name,
                     age: parseInt(walkInForm.age),
-                    token_number: tokenNumber
+                    token_number: tokenNumber,
+                    father_husband_name: walkInForm.fatherHusbandName || null,
+                    place: walkInForm.place || null,
+                    phone: walkInForm.phone || null
                 } as any)
                 .select()
                 .single();
@@ -403,9 +409,9 @@ const ReceptionDashboard: React.FC = () => {
                                 </svg>
                             </button>
                             <div className="w-px h-8 bg-gray-200" />
-                            <img 
-                                src="/beanhealth-logo.png" 
-                                alt="BeanHealth" 
+                            <img
+                                src="/beanhealth-logo.png"
+                                alt="BeanHealth"
                                 className="h-14 w-14 object-contain"
                             />
                             <div>
@@ -420,9 +426,9 @@ const ReceptionDashboard: React.FC = () => {
                             <div className="hidden sm:flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 bg-white">
                                     {profile?.avatar_url ? (
-                                        <img 
-                                            src={profile.avatar_url} 
-                                            alt={profile?.name || 'Hospital'} 
+                                        <img
+                                            src={profile.avatar_url}
+                                            alt={profile?.name || 'Hospital'}
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
@@ -617,6 +623,38 @@ const ReceptionDashboard: React.FC = () => {
                                     onChange={e => setWalkInForm({ ...walkInForm, name: e.target.value })}
                                     placeholder="Patient Name"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Father/Husband Name</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                    value={walkInForm.fatherHusbandName}
+                                    onChange={e => setWalkInForm({ ...walkInForm, fatherHusbandName: e.target.value })}
+                                    placeholder="Father or Husband Name"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Place</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.place}
+                                        onChange={e => setWalkInForm({ ...walkInForm, place: e.target.value })}
+                                        placeholder="City/Town"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
+                                    <input
+                                        type="tel"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.phone}
+                                        onChange={e => setWalkInForm({ ...walkInForm, phone: e.target.value })}
+                                        placeholder="Phone Number"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Department</label>

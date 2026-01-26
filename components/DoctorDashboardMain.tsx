@@ -4,8 +4,6 @@ import { NotificationProvider, useNotifications } from '../contexts/Notification
 import { User, ChatMessage, Patient } from '../types';
 import { PatientAdditionService } from '../services/patientInvitationService';
 import { ChatService } from '../services/chatService';
-import { useRealTimePatients } from '../hooks/useRealTimePatients';
-import { toast } from 'react-hot-toast';
 import { MedicalRecordsService } from '../services/medicalRecordsService';
 import { VitalsService, MedicationService } from '../services/dataService';
 import { AlertService } from '../services/alertService';
@@ -29,27 +27,10 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const DoctorDashboardMain: React.FC = () => {
   const { user, profile, signOut } = useAuth();
-  
-  // Real-time patients subscription - ensures immediate visibility of newly assigned patients
-  const {
-    patients,
-    loading,
-    error,
-    isConnected: isPatientsConnected,
-    refetch: refetchPatients
-  } = useRealTimePatients({
-    doctorId: user?.id,
-    enableToasts: true,
-    healthCheckInterval: 60000, // 1 minute health check
-    onPatientAdded: (patient) => {
-      console.log('[DoctorDashboard] New patient assigned:', patient.name);
-    },
-    onPatientRemoved: (patientId) => {
-      console.log('[DoctorDashboard] Patient removed:', patientId);
-    }
-  });
-  
+  const [patients, setPatients] = useState<User[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<DoctorView>('dashboard');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
@@ -93,7 +74,24 @@ const DoctorDashboardMain: React.FC = () => {
     }
   }, [user?.id]);
 
-  // Fetch messages for all patients (patients now managed by useRealTimePatients hook)
+  // Fetch doctor's patients
+  const fetchPatients = async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      const patientsData = await PatientAdditionService.getDoctorPatients(user.id);
+      setPatients(patientsData);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching patients:', err);
+      setError('Failed to load patients');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch messages for all patients
   const fetchMessages = async () => {
     if (!user?.id || patients.length === 0) return;
 
@@ -104,6 +102,10 @@ const DoctorDashboardMain: React.FC = () => {
       console.error('Error fetching messages:', err);
     }
   };
+
+  useEffect(() => {
+    fetchPatients();
+  }, [user?.id]);
 
   useEffect(() => {
     fetchMessages();
@@ -244,14 +246,7 @@ const DoctorDashboardMain: React.FC = () => {
             <span className="text-secondary-500">Dr. {profile?.name || user?.email?.split('@')[0] || ''}</span>
           </h1>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Real-time connection status indicator */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-[#1e1e1e] px-3 py-2 rounded-full shadow-sm border border-gray-100 dark:border-gray-800">
-            <div className={`w-2 h-2 rounded-full ${isPatientsConnected ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></div>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {isPatientsConnected ? 'Live' : 'Connecting...'}
-            </span>
-          </div>
+        <div className="flex items-center">
           <div className="bg-white dark:bg-[#1e1e1e] px-5 py-2.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-none border border-gray-100 dark:border-gray-800">
             <span className="text-sm font-semibold text-[#222222] dark:text-[#e0e0e0]">
               {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
