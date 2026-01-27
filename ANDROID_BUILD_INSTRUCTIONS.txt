@@ -1,1 +1,0 @@
-Since Java is missing, I cannot build the APK directly. Please open the 'android' folder in Android Studio on your local machine to build the app.

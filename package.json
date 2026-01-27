@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "description": "BeanHealth - A comprehensive healthcare management platform with Supabase backend.",
-  "main": "server.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
