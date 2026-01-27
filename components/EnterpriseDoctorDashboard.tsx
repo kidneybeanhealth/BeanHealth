@@ -392,19 +392,19 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
 
             <div className="max-w-7xl mx-auto px-6 py-8">
                 {/* Title & Controls Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-10">
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
+                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
                             {formatDoctorName(doctor.name)}
                         </h2>
-                        <p className="text-lg text-gray-700 mt-2">Manage your patient queue and consultations</p>
+                        <p className="text-base md:text-lg text-gray-700 mt-2">Manage your patient queue and consultations</p>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-3 md:gap-4">
                         {/* Rainbow CKD Snapshot Button */}
                         <button
                             onClick={() => setViewMode('ckd_snapshot')}
-                            className="relative group overflow-hidden rounded-xl"
+                            className="relative group overflow-hidden rounded-xl flex-1 sm:flex-none"
                             style={{
                                 background: 'linear-gradient(135deg, #9333ea, #ec4899)',
                                 padding: '2px'
@@ -420,25 +420,25 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                     zIndex: 0
                                 }}
                             />
-                            <div className="relative flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[10px] text-white font-bold text-sm z-10">
+                            <div className="relative flex items-center justify-center gap-2 px-4 md:px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[10px] text-white font-bold text-sm z-10 whitespace-nowrap">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
-                                <span className="uppercase tracking-wide">View</span>
+                                <span className="uppercase tracking-wide hidden sm:inline">View</span>
                                 <span>CKD Snapshot</span>
                             </div>
                         </button>
 
-                        <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm flex">
+                        <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm flex flex-1 sm:flex-none">
                             <button
                                 onClick={() => setViewMode('queue')}
-                                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${viewMode === 'queue' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                className={`flex-1 sm:flex-none px-4 md:px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'queue' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                             >
                                 Active Queue
                             </button>
                             <button
                                 onClick={() => setViewMode('history')}
-                                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${viewMode === 'history' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                className={`flex-1 sm:flex-none px-4 md:px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'history' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                             >
                                 History Log
                             </button>
@@ -494,16 +494,16 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                 ) : (
                                     <div className="divide-y divide-gray-50">
                                         {queue.map((item) => (
-                                            <div key={item.id} className="p-6 md:p-8 flex items-center justify-between hover:bg-gray-50 transition-colors group">
-                                                <div className="flex items-center gap-6">
-                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm
+                                            <div key={item.id} className="p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors group gap-4">
+                                                <div className="flex items-center gap-4 sm:gap-6">
+                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0
                                                     ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
                                                             item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
                                                         {item.queue_number}
                                                     </div>
                                                     <div>
                                                         <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
-                                                        <div className="flex items-center gap-2 text-sm text-gray-700 font-medium">
+                                                        <div className="flex items-center gap-2 text-sm text-gray-700 font-medium whitespace-nowrap">
                                                             <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-800">Token: {item.patient.token_number}</span>
                                                             <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                                             <span>{item.patient.age} yrs</span>
@@ -511,11 +511,11 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end">
                                                     {item.status === 'pending' && (
                                                         <button
                                                             onClick={() => handleUpdateStatus(item.id, 'in_progress')}
-                                                            className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5"
+                                                            className="flex-1 sm:flex-none px-4 md:px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 whitespace-nowrap"
                                                         >
                                                             Call In
                                                         </button>
@@ -526,7 +526,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                                             setSelectedPatient(item.patient);
                                                             setShowRxModal(true);
                                                         }}
-                                                        className="px-5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center gap-2"
+                                                        className="flex-1 sm:flex-none px-4 md:px-5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                         Prescribe
@@ -534,7 +534,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
 
                                                     <button
                                                         onClick={() => handleUpdateStatus(item.id, 'completed')}
-                                                        className="px-5 py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                                                        className="px-4 md:px-5 py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors whitespace-nowrap"
                                                     >
                                                         Mark Done
                                                     </button>
@@ -560,26 +560,25 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                 ) : (
                                     <div className="divide-y divide-gray-50">
                                         {historyList.map((item) => (
-                                            <div key={item.id} className="p-6 md:p-8 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
-                                                <div className="grid grid-cols-12 items-center w-full">
-                                                    <div className="col-span-2 text-sm text-gray-800">
-                                                        {new Date(item.updated_at || item.created_at).toLocaleDateString()}
+                                            <div key={item.id} className="p-5 sm:p-6 md:p-8 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                                                {/* Stacked Layout on Mobile, Grid on Tablet+ */}
+                                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="font-bold text-base sm:text-lg text-gray-900">{item.patient?.name}</div>
+                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                            <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 text-xs">#{item.patient?.token_number}</span>
+                                                            <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                            <span>{new Date(item.updated_at || item.created_at).toLocaleDateString()}</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="col-span-3">
-                                                        <div className="font-medium text-gray-900">{item.patient?.name}</div>
-                                                    </div>
-                                                    <div className="col-span-2 font-mono text-gray-800">
-                                                        {item.patient?.token_number}
-                                                    </div>
-                                                    <div className="col-span-2">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize bg-green-100 text-green-800">
+
+                                                    <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize bg-green-100 text-green-800">
                                                             Completed
                                                         </span>
-                                                    </div>
-                                                    <div className="col-span-3 flex justify-end gap-2">
                                                         <button
                                                             onClick={() => handleViewPrescription(item)}
-                                                            className="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 flex items-center gap-1"
+                                                            className="px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 flex items-center gap-1 transition-colors whitespace-nowrap"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                             View PDF

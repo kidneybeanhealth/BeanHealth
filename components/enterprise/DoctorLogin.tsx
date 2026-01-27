@@ -193,7 +193,7 @@ const DoctorLogin: React.FC = () => {
                         <span className="font-medium">Back to Doctors</span>
                     </button>
 
-                    <div className="bg-white rounded-[2.5rem] shadow-[0_4px_30px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/50 p-10">
+                    <div className="bg-white rounded-[2.5rem] shadow-[0_4px_30px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/50 p-6 sm:p-10">
                         <div className="text-center mb-10">
                             <div className="w-16 h-16 bg-indigo-50/50 rounded-2xl flex items-center justify-center mx-auto mb-6">
                                 <svg className="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

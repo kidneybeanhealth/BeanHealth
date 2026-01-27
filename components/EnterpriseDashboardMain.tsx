@@ -695,12 +695,12 @@ const EnterpriseDashboardMain: React.FC = () => {
     const renderReceptionDashboard = () => (
         <div className="max-w-7xl mx-auto px-6 py-12">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-12">
                 <div>
-                    <h2 className="text-4xl font-bold tracking-tight" style={{ color: '#000000' }}>Reception Desk</h2>
-                    <p className="text-lg text-gray-700 mt-2">Manage patient check-ins and appointments</p>
+                    <h2 className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: '#000000' }}>Reception Desk</h2>
+                    <p className="text-base md:text-lg text-gray-700 mt-2">Manage patient check-ins and appointments</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={() => {
                             // Load current settings
@@ -726,7 +726,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setShowWalkInModal(true)}
-                        className="px-6 py-3 bg-secondary-500 text-white rounded-xl hover:bg-secondary-600 font-semibold shadow-lg shadow-secondary-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2"
+                        className="flex-1 sm:flex-none px-6 py-3 bg-secondary-500 text-white rounded-xl hover:bg-secondary-600 font-semibold shadow-lg shadow-secondary-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 whitespace-nowrap"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                         New Registration
@@ -753,20 +753,20 @@ const EnterpriseDashboardMain: React.FC = () => {
                 </div>
             </div>
 
-            {/* Queue List - Clean */}
+            {/* Queue List - Responsive */}
             <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 overflow-hidden border border-gray-100">
-                <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white">
-                    <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+                <div className="px-5 sm:px-8 py-4 sm:py-6 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white gap-4">
+                    <div className="flex gap-2 p-1 bg-gray-100 rounded-xl w-full sm:w-auto">
                         <button
                             onClick={() => setActiveTab('queue')}
-                            className={`px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'queue' ? 'bg-white shadow-sm' : ''}`}
+                            className={`flex-1 sm:flex-none px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'queue' ? 'bg-white shadow-sm' : ''}`}
                             style={{ color: activeTab === 'queue' ? '#000000' : '#333333' }}
                         >
                             Live Queue
                         </button>
                         <button
                             onClick={() => setActiveTab('patients')}
-                            className={`px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'patients' ? 'bg-white shadow-sm' : ''}`}
+                            className={`flex-1 sm:flex-none px-6 py-2.5 font-semibold text-sm rounded-lg transition-all ${activeTab === 'patients' ? 'bg-white shadow-sm' : ''}`}
                             style={{ color: activeTab === 'patients' ? '#000000' : '#333333' }}
                         >
                             History Log
@@ -785,31 +785,29 @@ const EnterpriseDashboardMain: React.FC = () => {
                         {queue
                             .filter(item => activeTab === 'queue' ? (item.status === 'pending' || item.status === 'in_progress') : true)
                             .map((item) => (
-                                <div key={item.id} className="p-6 md:p-8 flex items-center justify-between hover:bg-gray-50 transition-colors group">
-                                    <div className="flex items-center gap-6">
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm
+                                <div key={item.id} className="p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors group gap-4">
+                                    <div className="flex items-center gap-4 sm:gap-6">
+                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-sm flex-shrink-0
                                         ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
                                                 item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
                                             {item.queue_number}
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-lg mb-1" style={{ color: '#000000' }}>{item.patient.name}</h4>
-                                            <div className="flex items-center gap-3 text-sm font-medium text-gray-700">
-                                                <span className="bg-gray-100 px-2 py-0.5 rounded" style={{ color: '#444444' }}>Token: {item.patient.token_number}</span>
-                                                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                            <h4 className="font-bold text-base sm:text-lg mb-1" style={{ color: '#000000' }}>{item.patient.name}</h4>
+                                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm font-medium text-gray-700">
+                                                <span className="bg-gray-100 px-2 py-0.5 rounded whitespace-nowrap" style={{ color: '#444444' }}>Token: {item.patient.token_number}</span>
+                                                <span className="w-1 h-1 bg-gray-300 rounded-full hidden sm:block"></span>
+                                                <span className="whitespace-nowrap">{new Date(item.created_at).toLocaleDateString()}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="flex flex-col items-end gap-2">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                                                ${item.status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                                                    item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                                                {item.status.replace('_', ' ')}
-                                            </span>
-                                            <p className="font-medium text-sm" style={{ color: '#000000' }}>{formatDoctorName(item.doctor?.name || '')}</p>
-                                        </div>
+                                    <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 w-full sm:w-auto pl-16 sm:pl-0">
+                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
+                                            ${item.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                                                item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                            {item.status.replace('_', ' ')}
+                                        </span>
+                                        <p className="font-medium text-xs sm:text-sm" style={{ color: '#000000' }}>{formatDoctorName(item.doctor?.name || '')}</p>
                                     </div>
                                 </div>
                             ))}
@@ -823,16 +821,16 @@ const EnterpriseDashboardMain: React.FC = () => {
             {/* Walk-In Modal */}
             {showWalkInModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-900/50 backdrop-blur-sm transition-opacity duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 transform transition-all duration-200">
-                        <div className="flex justify-between items-center mb-8">
-                            <h3 className="text-2xl font-bold" style={{ color: '#000000' }}>Patient Registration</h3>
-                            <button onClick={handleCloseWalkInModal} className="text-gray-500 hover:text-gray-700 transition-colors focus:outline-none">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 transform transition-all duration-200 overflow-y-auto max-h-[90vh]">
+                        <div className="flex justify-between items-center mb-6 sm:mb-8">
+                            <h3 className="text-xl sm:text-2xl font-bold" style={{ color: '#000000' }}>Patient Registration</h3>
+                            <button onClick={handleCloseWalkInModal} className="text-gray-500 hover:text-gray-700 transition-colors focus:outline-none p-2 hover:bg-gray-100 rounded-full">
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
 
-                        <form onSubmit={handleWalkInSubmit} className="space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={handleWalkInSubmit} className="space-y-4 sm:space-y-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Token #</label>
                                     <input
@@ -881,7 +879,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                     placeholder="Father or Husband Name"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Place</label>
                                     <input

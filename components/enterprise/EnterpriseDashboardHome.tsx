@@ -261,7 +261,7 @@ const EnterpriseDashboardHome: React.FC = () => {
                             <Link
                                 key={item.id}
                                 to={item.path}
-                                className={`group relative bg-white rounded-[2.5rem] p-10 border border-gray-100/60 transition-all duration-500 shadow-sm ${item.hoverShadow} hover:-translate-y-3`}
+                                className={`group relative bg-white rounded-[2.5rem] p-6 sm:p-10 border border-gray-100/60 transition-all duration-500 shadow-sm ${item.hoverShadow} hover:-translate-y-3`}
                             >
                                 <div className={`w-16 h-16 ${item.bgDecoration} rounded-[1.25rem] flex items-center justify-center mb-10 transition-all duration-500 shadow-sm`}>
                                     <div className={`${item.iconColor} transition-transform duration-500`}>{item.icon}</div>

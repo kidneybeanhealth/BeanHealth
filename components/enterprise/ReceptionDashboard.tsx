@@ -606,10 +606,10 @@ const ReceptionDashboard: React.FC = () => {
             {/* Walk-In Modal */}
             {showWalkInModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 overflow-y-auto max-h-[90vh]">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold text-gray-900">Patient Registration</h3>
-                            <button onClick={handleCloseWalkInModal} className="text-gray-500 hover:text-gray-700">
+                            <button onClick={handleCloseWalkInModal} className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -617,7 +617,7 @@ const ReceptionDashboard: React.FC = () => {
                         </div>
 
                         <form onSubmit={handleWalkInSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Token #</label>
                                     <input
@@ -662,7 +662,7 @@ const ReceptionDashboard: React.FC = () => {
                                     placeholder="Father or Husband Name"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Place</label>
                                     <input

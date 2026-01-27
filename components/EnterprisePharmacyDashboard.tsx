@@ -240,21 +240,23 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
     return (
         <div className="max-w-7xl mx-auto px-6 py-12">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-10">
                 <div>
-                    <h2 className="text-4xl font-bold text-gray-900 tracking-tight">Pharmacy</h2>
-                    <p className="text-lg text-gray-700 mt-2">Incoming prescriptions & fulfillment queue</p>
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Pharmacy</h2>
+                    <p className="text-base md:text-lg text-gray-700 mt-2">Incoming prescriptions & fulfillment queue</p>
                 </div>
 
-                <button
-                    onClick={() => fetchPrescriptions()}
-                    className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
-                    title="Reload"
-                >
-                    <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                </button>
+                <div className="flex justify-start md:justify-end">
+                    <button
+                        onClick={() => fetchPrescriptions()}
+                        className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
+                        title="Reload"
+                    >
+                        <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {/* Main Content Area */}
@@ -324,42 +326,44 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                 .map((item) => (
                                     <div
                                         key={item.id}
-                                        className={`p-6 md:p-8 flex items-center justify-between transition-all duration-200
+                                        className={`p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between transition-all duration-200 gap-6
                                             ${item.status === 'dispensed' ? 'bg-gray-50/50' : 'bg-white hover:bg-blue-50/30'}`}
                                     >
-                                        <div className="flex items-center gap-6">
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm
-                                                ${item.status === 'pending' ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
-                                                {item.token_number}
-                                            </div>
-                                            <div>
-                                                <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                                    {item.patient?.name}
-                                                    {item.status === 'dispensed' && (
-                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-md font-bold uppercase">
-                                                            Dispensed
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
+                                            <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
+                                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-sm flex-shrink-0
+                                                    ${item.status === 'pending' ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
+                                                    {item.token_number}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="text-lg font-bold text-gray-900 flex flex-wrap items-center gap-2">
+                                                        {item.patient?.name}
+                                                        {item.status === 'dispensed' && (
+                                                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-md font-bold uppercase">
+                                                                Dispensed
+                                                            </span>
+                                                        )}
+                                                    </h4>
+                                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm font-medium text-gray-700 mt-1">
+                                                        <span className="whitespace-nowrap">Age: {item.patient?.age}</span>
+                                                        <span className="w-1 h-1 bg-gray-300 rounded-full hidden sm:block"></span>
+                                                        <span className="text-gray-900 whitespace-nowrap">
+                                                            {item.doctor?.name?.toLowerCase().startsWith('dr.') ? item.doctor.name : `Dr. ${item.doctor?.name}`}
                                                         </span>
-                                                    )}
-                                                </h4>
-                                                <div className="flex items-center gap-3 text-sm font-medium text-gray-700 mt-1">
-                                                    <span>Age: {item.patient?.age}</span>
-                                                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                    <span className="text-gray-900">
-                                                        {item.doctor?.name?.toLowerCase().startsWith('dr.') ? item.doctor.name : `Dr. ${item.doctor?.name}`}
-                                                    </span>
-                                                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                    <span className="text-gray-500 text-xs">
-                                                        {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
+                                                        <span className="w-1 h-1 bg-gray-300 rounded-full hidden sm:block"></span>
+                                                        <span className="text-gray-500 text-xs whitespace-nowrap">
+                                                            {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
                                             {item.status === 'pending' ? (
                                                 <button
                                                     onClick={() => setSelectedPrescription(item)}
-                                                    className="px-6 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                                                    className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap"
                                                 >
                                                     Review & Dispense
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
@@ -367,7 +371,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                             ) : (
                                                 <button
                                                     onClick={() => setSelectedPrescription(item)}
-                                                    className="px-6 py-3 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all"
+                                                    className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all whitespace-nowrap"
                                                 >
                                                     View Details
                                                 </button>
@@ -385,9 +389,9 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
                     <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] animate-scale-in overflow-hidden">
                         {/* Header */}
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <div className="p-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                             <div>
-                                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
                                     Prescription Details
                                 </h3>
                                 <p className="text-sm font-medium text-gray-700 mt-1">Token: <span className="text-gray-900">{selectedPrescription.token_number}</span></p>
@@ -398,19 +402,19 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                         </div>
 
                         {/* Content */}
-                        <div className="p-8 overflow-y-auto flex-1 font-serif bg-white">
-                            <div className="text-center mb-8 pb-6 border-b border-gray-100">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-1">BeanHealth Hospital</h2>
+                        <div className="p-5 sm:p-8 overflow-y-auto flex-1 font-serif bg-white">
+                            <div className="text-center mb-6 sm:mb-8 pb-4 sm:pb-6 border-b border-gray-100">
+                                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">BeanHealth Hospital</h2>
                                 <p className="text-gray-700 text-sm tracking-wide uppercase">Excellence in Care</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-8 text-sm">
                                 <div className="space-y-1">
                                     <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Patient</p>
                                     <p className="font-bold text-gray-900 text-lg">{selectedPrescription.patient?.name}</p>
                                     <p className="text-gray-800 font-sans">Age: {selectedPrescription.patient?.age}</p>
                                 </div>
-                                <div className="space-y-1 text-right">
+                                <div className="space-y-1 sm:text-right">
                                     <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Doctor</p>
                                     <p className="font-bold text-gray-900 text-lg">
                                         {selectedPrescription.doctor?.name?.toLowerCase().startsWith('dr.') ? selectedPrescription.doctor.name : `Dr. ${selectedPrescription.doctor?.name}`}
@@ -450,10 +454,10 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-4">
+                        <div className="p-5 sm:p-6 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row gap-4">
                             <button
                                 onClick={() => setShowPrintModal(true)}
-                                className="px-6 py-4 bg-white border border-gray-200 text-gray-900 font-bold rounded-2xl hover:bg-gray-50 flex-1 transition-colors shadow-sm"
+                                className="w-full sm:flex-1 px-6 py-3 sm:py-4 bg-white border border-gray-200 text-gray-900 font-bold rounded-2xl hover:bg-gray-50 transition-colors shadow-sm order-2 sm:order-1"
                             >
                                 Print PDF
                             </button>
@@ -461,13 +465,13 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                             {selectedPrescription.status !== 'dispensed' && (
                                 <button
                                     onClick={handleMarkDispensed}
-                                    className="px-6 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 flex-[2] shadow-xl shadow-emerald-600/20 transition-all transform hover:scale-[1.01] active:scale-95"
+                                    className="w-full sm:flex-[2] px-6 py-3 sm:py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 shadow-xl shadow-emerald-600/20 transition-all transform hover:scale-[1.01] active:scale-95 order-1 sm:order-2"
                                 >
                                     Mark as Dispensed
                                 </button>
                             )}
                             {selectedPrescription.status === 'dispensed' && (
-                                <div className="flex-[2] flex items-center justify-center text-emerald-700 font-bold bg-emerald-100 rounded-2xl border border-emerald-200">
+                                <div className="w-full sm:flex-[2] py-3 sm:py-4 flex items-center justify-center text-emerald-700 font-bold bg-emerald-100 rounded-2xl border border-emerald-200 order-1 sm:order-2">
                                     ✓ Already Dispensed
                                 </div>
                             )}

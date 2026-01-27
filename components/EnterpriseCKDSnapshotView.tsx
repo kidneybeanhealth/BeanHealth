@@ -291,31 +291,31 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
                             <div key={patient.id} className="transition-all">
                                 {/* Patient Row */}
                                 <div
-                                    className={`p-6 md:p-8 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors ${expandedPatient === patient.id ? 'bg-purple-50/50' : ''}`}
+                                    className={`p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-gray-50 transition-colors ${expandedPatient === patient.id ? 'bg-purple-50/50' : ''}`}
                                     onClick={() => toggleExpand(patient.id)}
                                 >
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center font-bold text-lg text-purple-600">
+                                    <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
+                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center font-bold text-lg text-purple-600 flex-shrink-0">
                                             {patient.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                         </div>
                                         <div>
                                             <h4 className="text-lg font-bold text-gray-900">{patient.name}</h4>
-                                            <div className="flex items-center gap-3 text-sm text-gray-700 font-medium">
-                                                <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600">Token: {patient.token_number}</span>
-                                                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                <span>{patient.age} yrs</span>
+                                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-gray-700 font-medium">
+                                                <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600 whitespace-nowrap">Token: {patient.token_number}</span>
+                                                <span className="w-1 h-1 bg-gray-300 rounded-full hidden sm:block"></span>
+                                                <span className="whitespace-nowrap">{patient.age} yrs</span>
                                                 {patient.lastVisit && (
                                                     <>
-                                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                        <span>Last: {new Date(patient.lastVisit).toLocaleDateString()}</span>
+                                                        <span className="w-1 h-1 bg-gray-300 rounded-full hidden sm:block"></span>
+                                                        <span className="whitespace-nowrap">Last: {new Date(patient.lastVisit).toLocaleDateString()}</span>
                                                     </>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-sm font-medium text-purple-600">
+                                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pl-16 sm:pl-0">
+                                        <span className="text-sm font-medium text-purple-600 whitespace-nowrap">
                                             {patient.prescriptions.length} Visit{patient.prescriptions.length !== 1 ? 's' : ''}
                                         </span>
                                         <button
