@@ -188,8 +188,8 @@ const EnterpriseDashboardHome: React.FC = () => {
                     <div className="w-full flex items-center justify-between px-3">
                         {/* Left Section - Logo & Title */}
                         <div className="flex items-center gap-2.5 sm:gap-3">
-                            <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-white border border-gray-100/50 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all duration-500 hover:scale-105 hover:rotate-3">
-                                <LogoIcon className="w-10 h-10 sm:w-11 sm:h-11" />
+                            <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-gray-100/50 shadow-[0_4px_15px_rgba(0,0,0,0.08)] transition-all duration-500 hover:scale-105 hover:rotate-3">
+                                <LogoIcon className="w-10 h-10 sm:w-12 sm:h-12" />
                             </div>
                             <div className="flex flex-col justify-center">
                                 <h2 className="text-xl sm:text-2xl font-black leading-none tracking-tight">

@@ -1150,8 +1150,8 @@ const EnterpriseDashboardMain: React.FC = () => {
                     <div className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
                         {/* Left - BeanHealth Logo & Enterprise Tagline */}
                         <div className="flex items-center gap-3 cursor-pointer group active:scale-95 transition-transform">
-                            <div className="h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0 group-hover:shadow-md transition-shadow">
-                                <LogoIcon className="w-9 h-9 md:w-10 md:h-10" />
+                            <div className="h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center flex-shrink-0 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 shadow-[0_2px_10px_rgba(0,0,0,0.05)] group-hover:shadow-md transition-all">
+                                <LogoIcon className="w-7 h-7 md:w-8 md:h-8" />
                             </div>
                             <div className="flex flex-col justify-center">
                                 <h2 className="text-base md:text-xl font-bold leading-none tracking-tight">

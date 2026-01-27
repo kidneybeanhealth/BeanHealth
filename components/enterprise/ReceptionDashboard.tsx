@@ -451,9 +451,9 @@ const ReceptionDashboard: React.FC = () => {
                             </button>
                             <div className="w-px h-8 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
 
-                            <div className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform overflow-hidden">
-                                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
-                                    <LogoIcon className="w-8 h-8 sm:w-10 sm:h-10" />
+                            <div className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform">
+                                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center flex-shrink-0 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all duration-300">
+                                    <LogoIcon className="w-6 h-6 sm:w-8 sm:h-8" />
                                 </div>
                                 <div className="flex flex-col justify-center min-w-0">
                                     <h2 className="text-sm sm:text-lg md:text-xl font-bold leading-none tracking-tight">
