@@ -134,10 +134,35 @@ const ReceptionDashboard: React.FC = () => {
         }
     }, [profile?.id, fetchDoctors, fetchQueue]);
 
-    // Realtime subscription for queue updates with error handling
+    // Fetch single item for realtime inserts
+    const fetchSingleQueueItem = async (id: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('hospital_queues' as any)
+                .select(`
+                    *,
+                    patient:hospital_patients!hospital_queues_patient_id_fkey(*),
+                    doctor:hospital_doctors(*)
+                `)
+                .eq('id', id)
+                .single();
+
+            if (data && !error) {
+                setQueue(prev => {
+                    if (prev.find(item => item.id === data.id)) return prev; // already exists
+                    return [data as any, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching new queue item:', error);
+        }
+    };
+
+    // Realtime subscription for queue updates - Optimized
     useEffect(() => {
         if (!profile?.id) return;
 
+        console.log('Setting up optimized realtime subscription...');
         const channel = supabase
             .channel(`reception-queue-${profile.id}`)
             .on(
@@ -148,9 +173,23 @@ const ReceptionDashboard: React.FC = () => {
                     table: 'hospital_queues',
                     filter: `hospital_id=eq.${profile.id}`
                 },
-                (payload) => {
-                    console.log('Reception queue update:', payload.eventType);
-                    fetchQueue(true);
+                (payload: any) => {
+                    if (payload.eventType === 'INSERT') {
+                        // New item added - fetch details with joins
+                        fetchSingleQueueItem(payload.new.id);
+                        toast.success('New patient registered', { duration: 3000, position: 'bottom-right' });
+                    } else if (payload.eventType === 'UPDATE') {
+                        // Update existing item - merge changes
+                        setQueue(prev => prev.map(item => {
+                            if (item.id === payload.new.id) {
+                                return { ...item, ...payload.new };
+                            }
+                            return item;
+                        }));
+                    } else if (payload.eventType === 'DELETE') {
+                        // Remove item
+                        setQueue(prev => prev.filter(item => item.id !== payload.old.id));
+                    }
                 }
             )
             .on(
@@ -162,51 +201,35 @@ const ReceptionDashboard: React.FC = () => {
                     filter: `hospital_id=eq.${profile.id}`
                 },
                 () => {
-                    console.log('Doctors list updated');
                     fetchDoctors();
                 }
             )
-            .subscribe((status, err) => {
-                console.log('Reception realtime status:', status);
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.error('Reception realtime error:', err);
-                    // Attempt to refetch data after connection error
-                    setTimeout(() => {
-                        fetchQueue(true);
-                        fetchDoctors();
-                    }, 3000);
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    // console.log('Realtime connected');
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('Realtime connection error, falling back to fetch');
+                    fetchQueue(true);
                 }
             });
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [profile?.id, fetchQueue, fetchDoctors]);
+    }, [profile?.id, fetchDoctors]); // Removed fetchQueue dependency to avoid recreation
 
-    // Periodic health check - refresh data every 60 seconds when tab is visible
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'visible' && profile?.id) {
-                console.log('Periodic health check - refreshing reception data...');
-                fetchQueue(true);
-            }
-        }, 60000); // Every 60 seconds
-        return () => clearInterval(interval);
-    }, [profile?.id, fetchQueue]);
-
-    // Refetch when tab becomes visible
+    // Refetch when tab becomes visible (Keep this for consistency/recovery)
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible' && profile?.id) {
-                console.log('Tab visible, refreshing reception data...');
+                // Check if queue is empty or stale? Just quick refresh to be safe.
                 fetchQueue(true);
-                fetchDoctors();
             }
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [profile?.id, fetchQueue, fetchDoctors]);
+    }, [profile?.id, fetchQueue]);
 
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);

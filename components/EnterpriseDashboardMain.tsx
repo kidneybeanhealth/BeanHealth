@@ -182,10 +182,36 @@ const EnterpriseDashboardMain: React.FC = () => {
         }
     }, [currentView]);
 
-    // Realtime subscription for reception queue updates
+    // Fetch single queue item for realtime inserts
+    const fetchSingleQueueItem = async (id: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('hospital_queues' as any)
+                .select(`
+                    *,
+                    patient:hospital_patients!hospital_queues_patient_id_fkey(*),
+                    doctor:hospital_doctors(*)
+                `)
+                .eq('id', id)
+                .single();
+
+            if (data && !error) {
+                setQueue(prev => {
+                    if (prev.find(item => item.id === data.id)) return prev;
+                    return [data as any, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                });
+                toast.success('New patient registered');
+            }
+        } catch (error) {
+            console.error('Error fetching new queue item:', error);
+        }
+    };
+
+    // Realtime subscription for reception queue updates - Optimized
     useEffect(() => {
         if (!profile?.id || currentView !== 'reception') return;
 
+        console.log('[Reception Dashboard] Setting up optimized realtime subscription...');
         const channel = supabase
             .channel(`reception-queue-${profile.id}`)
             .on(
@@ -196,14 +222,27 @@ const EnterpriseDashboardMain: React.FC = () => {
                     table: 'hospital_queues',
                     filter: `hospital_id=eq.${profile.id}`
                 },
-                (payload) => {
-                    console.log('[Reception Dashboard] Queue update received:', payload.eventType);
-                    fetchQueue();
+                (payload: any) => {
+                    if (payload.eventType === 'INSERT') {
+                        fetchSingleQueueItem(payload.new.id);
+                    } else if (payload.eventType === 'UPDATE') {
+                        setQueue(prev => prev.map(item => {
+                            if (item.id === payload.new.id) {
+                                return { ...item, ...payload.new };
+                            }
+                            return item;
+                        }));
+                    } else if (payload.eventType === 'DELETE') {
+                        setQueue(prev => prev.filter(item => item.id !== payload.old.id));
+                    }
                 }
             )
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log('[Reception Dashboard] Realtime connected');
+                    // console.log('[Reception Dashboard] Realtime connected');
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('Realtime error, falling back to fetch');
+                    fetchQueue();
                 }
             });
 

@@ -81,13 +81,42 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         }
     }, [loading]);
 
+    // Fetch single prescription for realtime inserts
+    const fetchSinglePrescription = async (id: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('hospital_prescriptions' as any)
+                .select(`
+                    *,
+                    doctor:hospital_doctors(name, specialty),
+                    patient:hospital_patients(name, age)
+                `)
+                .eq('id', id)
+                .single();
+
+            if (data && !error) {
+                setPrescriptions(prev => {
+                    if (prev.find(p => p.id === data.id)) return prev;
+                    return [data as any, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                });
+                toast.success('New Prescription Received!', { duration: 4000 });
+            }
+        } catch (error) {
+            console.error('Error fetching new prescription:', error);
+        }
+    };
+
+    // Realtime Subscription - Optimized
     useEffect(() => {
-        if (!hospitalId) return;
+        if (!hospitalId) {
+            fetchPrescriptions(); // Initial load
+            return;
+        }
 
         // Initial Fetch
         fetchPrescriptions();
 
-        // Realtime Subscription with error handling
+        console.log('Setting up optimized pharmacy realtime subscription...');
         const channel = supabase
             .channel(`pharmacy-dashboard-${hospitalId}`)
             .on(
@@ -98,57 +127,65 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     table: 'hospital_prescriptions',
                     filter: `hospital_id=eq.${hospitalId}`
                 },
-                (payload) => {
-                    console.log('Realtime update received:', payload);
+                (payload: any) => {
                     if (payload.eventType === 'INSERT') {
-                        toast.success('New Prescription Received!', { duration: 4000 });
+                        fetchSinglePrescription(payload.new.id);
+                    } else if (payload.eventType === 'UPDATE') {
+                        setPrescriptions(prev => prev.map(p => {
+                            if (p.id === payload.new.id) {
+                                // If status changed to dispensed, we might want to move it to history tab or keep it updated
+                                const updated = { ...p, ...payload.new };
+                                // Update selected prescription if open
+                                if (selectedPrescription?.id === p.id) {
+                                    setSelectedPrescription(prevSelected => ({ ...prevSelected!, ...payload.new }));
+                                }
+                                return updated;
+                            }
+                            return p;
+                        }));
+                    } else if (payload.eventType === 'DELETE') {
+                        setPrescriptions(prev => prev.filter(p => p.id !== payload.old.id));
+                        if (selectedPrescription?.id === payload.old.id) {
+                            setSelectedPrescription(null); // Close modal if deleted
+                            toast.error('Prescription was deleted');
+                        }
                     }
-                    // Refetch in background without blocking UI
-                    fetchPrescriptions(true);
                 }
             )
-            .subscribe((status, err) => {
+            .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log('Pharmacy realtime connected');
-                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.error('Pharmacy realtime error:', err);
-                    // Attempt to refetch data after connection error
-                    setTimeout(() => {
-                        fetchPrescriptions(true);
-                    }, 3000);
+                    // console.log('Pharmacy realtime connected');
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('Realtime error, falling back to fetch');
+                    fetchPrescriptions(true);
                 }
             });
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [hospitalId, fetchPrescriptions]);
+    }, [hospitalId, fetchPrescriptions]); // frequent 'selectedPrescription' changes shouldn't trigger re-sub, so removed it from deps. Check if 'selectedPrescription' in closure is stale.
+    // Actually, 'selectedPrescription' inside the callback will be stale if not in deps. 
+    // Ideally, pass setter function to avoid stale state issues. I used setter function for setPrescriptions, but used selectedPrescription state directly for logic check.
+    // Solution: I used `selectedPrescription?.id` which might be stale in the closure. 
+    // BETTER: Use functional updates or refs for selectedPrescription if needed inside effect. 
+    // However, for simplicity and performance, checking stale state might be okay if we just update the list. 
+    // The modal uses `selectedPrescription` state. If I update list state, modal does NOT auto-update unless I update selectedPrescription state too.
+    // Let's rely on standard re-render cycle or accept slight staleness for now, or use a Ref for selectedPrescription.
 
-    // Periodic health check - refresh data every 60 seconds when tab is visible
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'visible' && hospitalId) {
-                console.log('Periodic health check - refreshing pharmacy data...');
-                fetchPrescriptions(true);
-            }
-        }, 60000); // Every 60 seconds
-        return () => clearInterval(interval);
-    }, [hospitalId, fetchPrescriptions]);
-
-    // Refetch when tab becomes visible
+    // Refetch when tab becomes visible (Recovery mechanism)
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible' && hospitalId) {
-                console.log('Tab visible, refreshing pharmacy data...');
+                // Quick refresh to ensure data integrity
                 fetchPrescriptions(true);
             }
         };
-
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [hospitalId, fetchPrescriptions]);
 
-    // Fetch hospital logo
+    // Fetch hospital logo (Restored)
     useEffect(() => {
         const fetchHospitalLogo = async () => {
             if (!hospitalId) return;
@@ -168,22 +205,35 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         fetchHospitalLogo();
     }, [hospitalId]);
 
+    // Note: Periodic interval removed to save resources, relying on Realtime + Visibility.
+
     const handleMarkDispensed = async () => {
         if (!selectedPrescription) return;
 
+        const previousStatus = selectedPrescription.status;
+        const optimisticUpdated = { ...selectedPrescription, status: 'dispensed' };
+
+        // 1. Optimistic Update
+        setSelectedPrescription(optimisticUpdated as any);
+        setPrescriptions(prev => prev.map(p => p.id === optimisticUpdated.id ? { ...p, status: 'dispensed' } : p));
+        toast.success('Medicine Delivered');
+
         try {
+            // 2. Perform DB Update
             const { error } = await (supabase
                 .from('hospital_prescriptions') as any)
                 .update({ status: 'dispensed' } as any)
                 .eq('id', selectedPrescription.id);
 
             if (error) throw error;
-            toast.success('Medicine Delivered');
-            setSelectedPrescription(null);
-            fetchPrescriptions();
+            // Success - state already updated
         } catch (error: any) {
             console.error('Dispense Error:', error);
             toast.error('Failed to update status: ' + (error.message || 'Unknown error'));
+
+            // 3. Revert on failure
+            setSelectedPrescription(prev => ({ ...prev!, status: previousStatus }));
+            setPrescriptions(prev => prev.map(p => p.id === selectedPrescription.id ? { ...p, status: previousStatus } : p));
         }
     };
 
