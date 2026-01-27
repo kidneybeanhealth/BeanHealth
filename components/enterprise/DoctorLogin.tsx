@@ -16,6 +16,30 @@ interface DoctorProfile {
 // Session timeout: 4 hours
 const DOCTOR_SESSION_TIMEOUT = 4 * 60 * 60 * 1000;
 
+// Helper to format doctor name professionally
+const formatDoctorName = (name: string) => {
+    if (!name) return "";
+    // Remove existing Dr prefix and any trailing dots/spaces
+    let cleanName = name.replace(/^(dr\.?\s*)/i, "").trim();
+    // Fix initials formatting (e.g., A.Divakar -> A. Divakar)
+    cleanName = cleanName.replace(/([A-Z])\.(\S)/g, "$1. $2");
+    return `Dr. ${cleanName}`;
+};
+
+// Helper to get initials from doctor name
+const getDoctorInitials = (name: string) => {
+    if (!name) return "Dr";
+    let cleanName = name.replace(/^(dr\.?\s*)/i, "").trim();
+    // Handle cases like A.Divakar
+    cleanName = cleanName.replace(/\./g, " ").trim();
+    const parts = cleanName.split(/\s+/);
+
+    if (parts.length === 0) return "";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
 const DoctorLogin: React.FC = () => {
     const navigate = useNavigate();
     const { doctorId } = useParams<{ doctorId: string }>();
@@ -201,7 +225,7 @@ const DoctorLogin: React.FC = () => {
                                 </svg>
                             </div>
                             <h2 className="text-3xl font-black text-gray-900 tracking-tight">
-                                Hello, Dr. {selectedDoctor.name.split(' ').pop()}
+                                Hello, {formatDoctorName(selectedDoctor.name)}
                             </h2>
                             <p className="text-gray-400 mt-3 font-medium text-[15px]">{selectedDoctor.specialty}</p>
                         </div>
@@ -302,18 +326,18 @@ const DoctorLogin: React.FC = () => {
                 {loading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {[1, 2, 3, 4].map(i => (
-                            <div key={i} className="h-72 bg-gray-100 rounded-2xl animate-pulse"></div>
+                            <div key={i} className="h-[300px] bg-white/50 rounded-3xl animate-pulse border border-white/20 shadow-sm"></div>
                         ))}
                     </div>
                 ) : doctors.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <div className="text-center py-20 bg-white/40 backdrop-blur-md rounded-[3rem] border border-white/50 shadow-sm">
+                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+                            <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Doctors Found</h3>
-                        <p className="text-gray-900">Add doctors to your hospital to get started.</p>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">No Doctors Found</h3>
+                        <p className="text-gray-500 font-medium">Add doctors to your hospital to get started.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -321,19 +345,28 @@ const DoctorLogin: React.FC = () => {
                             <button
                                 key={doctor.id}
                                 onClick={() => handleDoctorClick(doctor)}
-                                className="group bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-primary-100 hover:-translate-y-1 transition-all duration-300 text-center flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                                className="group relative flex flex-col items-center p-8 bg-white/80 backdrop-blur-sm rounded-[2rem] border border-white/60 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-500 ease-out text-center focus:outline-none focus:ring-4 focus:ring-primary-500/20"
                             >
-                                <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300 ring-4 ring-primary-50/50">
-                                    <span className="text-2xl font-bold text-gray-900">
-                                        {doctor.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                                    </span>
+                                <div className="w-24 h-24 mb-6 relative">
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-primary-100 to-primary-50 rounded-full scale-90 group-hover:scale-110 transition-transform duration-500 ease-out opacity-60" />
+                                    <div className="relative w-full h-full rounded-full overflow-hidden border-[4px] border-white shadow-sm flex items-center justify-center bg-gray-50 text-2xl font-bold text-gray-900 group-hover:border-primary-50 transition-colors duration-300">
+                                        {doctor.avatar_url ? (
+                                            <img src={doctor.avatar_url} alt={doctor.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-3xl text-gray-800">
+                                                {getDoctorInitials(doctor.name)}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <h3 className="font-bold text-lg text-gray-900 mb-2">{doctor.name}</h3>
-                                <p className="text-sm font-medium bg-gray-100 px-4 py-1.5 rounded-full text-gray-900 mb-6">
-                                    {doctor.specialty}
-                                </p>
-                                <div className="mt-auto w-full py-3 rounded-xl bg-gray-50 font-semibold text-sm text-gray-900 group-hover:bg-primary-600 group-hover:text-white transition-colors">
-                                    Access Dashboard
+
+                                <h3 className="text-lg font-bold text-gray-900 mb-1 tracking-tight group-hover:text-primary-700 transition-colors">{formatDoctorName(doctor.name)}</h3>
+                                <p className="text-sm font-medium text-gray-500 mb-8 uppercase tracking-wider text-[11px]">{doctor.specialty}</p>
+
+                                <div className="mt-auto pointer-events-none">
+                                    <span className="inline-flex items-center justify-center px-6 py-2.5 bg-gray-50 text-gray-900 text-sm font-bold rounded-full group-hover:bg-primary-600 group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-primary-600/30">
+                                        Access Dashboard
+                                    </span>
                                 </div>
                             </button>
                         ))}

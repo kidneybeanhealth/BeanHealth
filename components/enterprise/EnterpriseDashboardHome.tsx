@@ -245,10 +245,10 @@ const EnterpriseDashboardHome: React.FC = () => {
             </div>
 
             {/* Main Content Area */}
-            <div className="pt-28 pb-20 px-6 relative z-10 transition-all duration-700">
+            <div className="pt-16 sm:pt-24 pb-20 px-6 relative z-10 transition-all duration-700">
                 <div className="max-w-6xl mx-auto">
                     {/* Welcome Section */}
-                    <div className="max-w-2xl mx-auto mb-14 px-4 text-center">
+                    <div className="max-w-2xl mx-auto mb-8 sm:mb-10 px-4 text-center">
                         <p className="text-secondary-500 font-bold tracking-[0.3em] uppercase text-[10px] sm:text-[11px] mb-3">Enterprise Portal</p>
                         <h2 className="text-3xl sm:text-[3rem] font-black text-gray-900 mb-5 tracking-tight leading-[1.2]">
                             {profile?.name || 'Hospital Registry'}
