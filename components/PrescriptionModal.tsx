@@ -332,323 +332,362 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         <div className="flex-1 overflow-y-auto p-2 bg-gray-100">
 
           {/* PRINT PREVIEW AREA - EXACT REPLICA OF PDF */}
-          <div ref={componentRef} className="bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+          <div ref={componentRef} className="bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+            {(() => {
+              const ITEMS_PER_PAGE = 25;
+              const chunks = [];
+              if (medications.length === 0) {
+                chunks.push([]);
+              } else {
+                for (let i = 0; i < medications.length; i += ITEMS_PER_PAGE) {
+                  chunks.push(medications.slice(i, i + ITEMS_PER_PAGE));
+                }
+              }
 
-            {/* Header */}
-            <div className="flex items-center justify-between border-b-2 border-black pb-1 mb-1">
-              <div className="w-16 h-16 relative">
-                <img src={clinicLogo || "/logo.png"} alt="Clinic Logo" className="w-[70px] h-[70px] object-contain absolute -top-1 left-0" />
-              </div>
-              <div className="text-center flex-1">
-                <h1 className="text-lg font-bold text-blue-900 leading-tight">KONGUNAD KIDNEY CENTRE, Coimbatore - 641 012</h1>
-                <h2 className="text-base font-bold text-blue-900 leading-tight">கொங்குநாடு கிட்னி சென்டர், கோயம்புத்தூர் - 641 012</h2>
-              </div>
-            </div>
-
-            {/* Patient Details Grid Box */}
-            <div className="border-2 border-black mb-2 text-xs font-bold" style={{ borderCollapse: 'collapse' }}>
-              {/* Row 1 */}
-              <div className="flex border-b border-black min-h-[24px]">
-                <div className="w-1/2 flex border-r border-black">
-                  <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">பெயர் / NAME</div>
-                  <div className="flex-1 py-1 px-1.5 uppercase flex items-center">{patient.name}</div>
-                </div>
-                <div className="w-1/2 flex">
-                  <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வயது-AGE / ஆ/பெ-M/F</div>
-                  <div className="flex-1 py-1 px-1.5 flex items-center">{patient.age} / {patient.gender || 'M'}</div>
-                </div>
-              </div>
-              {/* Row 2 */}
-              <div className="flex border-b border-black min-h-[24px]">
-                <div className="w-1/2 flex border-r border-black">
-                  <div className="w-32 py-1 px-1.5 text-[10px] border-r border-black bg-gray-50 print:bg-white flex items-center leading-tight">தகப்பன்/கணவன் FATHER/HUSBAND</div>
-                  <input
-                    className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
-                    value={formData.fatherName}
-                    onChange={e => setFormData({ ...formData, fatherName: e.target.value })}
-                  />
-                </div>
-                <div className="w-1/2 flex">
-                  <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">பதிவு எண் / REG. No.</div>
-                  <div className="flex-1 py-1 px-1.5 flex items-center">{patient.token_number}</div>
-                </div>
-              </div>
-              {/* Row 3 */}
-              <div className="flex border-b border-black min-h-[24px]">
-                <div className="w-1/2 flex border-r border-black">
-                  <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">ஊர் / PLACE</div>
-                  <input
-                    className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
-                    value={formData.place}
-                    onChange={e => setFormData({ ...formData, place: e.target.value })}
-                  />
-                </div>
-                <div className="w-1/2 flex">
-                  <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">தேதி / DATE</div>
-                  <div className="flex-1 py-1 px-1.5 flex items-center">{new Date().toLocaleDateString('en-GB')}</div>
-                </div>
-              </div>
-              {/* Row 4 */}
-              <div className="flex border-b border-black min-h-[24px]">
-                <div className="flex-1 flex">
-                  <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">போன் / PHONE</div>
-                  <input
-                    className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
-                    value={formData.phone}
-                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-              </div>
-              {/* Row 5 */}
-              <div className="flex border-b border-black min-h-[24px]">
-                <div className="flex-1 flex">
-                  <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">மருந்து/Drug அலர்ஜி/Allergy</div>
-                  <input
-                    className="flex-1 py-1 px-1.5 outline-none font-normal text-red-600 bg-transparent"
-                    value={formData.allergy}
-                    onChange={e => setFormData({ ...formData, allergy: e.target.value })}
-                  />
-                </div>
-              </div>
-              {/* Row 6 */}
-              <div className="flex min-h-[24px]">
-                <div className="flex-1 flex">
-                  <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / Diagnosis</div>
-                  <input
-                    className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent"
-                    value={formData.diagnosis}
-                    onChange={e => setFormData({ ...formData, diagnosis: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Medicine Table Box */}
-            <div className="border-2 border-black mb-4">
-              <div className="text-center font-bold border-b border-black py-1 text-xs">
-                மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS
-              </div>
-
-              {/* Table Headers */}
-              <div className="flex border-b border-black text-center font-bold text-xs">
-                <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
-                  வ.எ<br />S.N
-                </div>
-                <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
-                  மருந்துக்கள் / DRUGS
-                </div>
-                <div className="w-[340px] shrink-0 flex flex-col">
-                  <div className="border-b border-black py-1">அளவு - Dose</div>
-                  <div className="flex flex-1 items-stretch">
-                    <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                      <span>Dose</span>
-                      <span>அளவு</span>
+              return chunks.map((chunk, pageIndex) => (
+                <div
+                  key={pageIndex}
+                  className="flex flex-col relative bg-white"
+                  style={{
+                    pageBreakAfter: pageIndex < chunks.length - 1 ? 'always' : 'auto',
+                    minHeight: 'auto', // Auto adjust height based on content
+                    marginBottom: pageIndex < chunks.length - 1 ? '20px' : '0' // Visual gap on screen
+                  }}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b-2 border-black pb-1 mb-1">
+                    <div className="w-16 h-16 relative">
+                      <img src={clinicLogo || "/logo.png"} alt="Clinic Logo" className="w-[70px] h-[70px] object-contain absolute -top-1 left-0" />
                     </div>
-                    <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                      <span>Qty</span>
-                      <span>எண்</span>
+                    <div className="text-center flex-1">
+                      <h1 className="text-lg font-bold text-blue-900 leading-tight">KONGUNAD KIDNEY CENTRE, Coimbatore - 641 012</h1>
+                      <h2 className="text-base font-bold text-blue-900 leading-tight">கொங்குநாடு கிட்னி சென்டர், கோயம்புத்தூர் - 641 012</h2>
                     </div>
-                    <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                      <span>M</span>
-                      <span>கா</span>
-                    </div>
-                    <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                      <span>N</span>
-                      <span>ம</span>
-                    </div>
-                    <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                      <span>Nt</span>
-                      <span>இ</span>
-                    </div>
-                    <div className="w-10 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                      <span>B/F</span>
-                      <span>A/F</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Table Body (Rows) */}
-              {medications.map((med, i) => (
-                <div key={i} className="flex border-b border-black text-xs relative group">
-                  <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 border-r border-black py-1 px-1.5 relative min-w-0" ref={el => dropdownRefs.current[i] = el}>
-                    <input
-                      className="w-full outline-none font-bold uppercase text-xs"
-                      placeholder="Type drug name..."
-                      value={med.name}
-                      onChange={e => {
-                        updateMed(i, 'name', e.target.value);
-                        setDrugSearchQuery(e.target.value);
-                        if (!readOnly && allDrugOptions.length > 0) {
-                          setShowDrugDropdown(i);
-                        }
-                      }}
-                      onFocus={() => {
-                        if (!readOnly && allDrugOptions.length > 0) {
-                          setShowDrugDropdown(i);
-                          setDrugSearchQuery(med.name);
-                        }
-                      }}
-                      readOnly={readOnly}
-                    />
-                    {/* Drug Dropdown */}
-                    {!readOnly && showDrugDropdown === i && filteredDrugs.length > 0 && (
-                      <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
-                        {filteredDrugs.map(drug => (
-                          <button
-                            key={drug.id}
-                            type="button"
-                            onClick={() => handleSelectDrug(i, drug)}
-                            className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-900 text-sm">{drug.name}</span>
-                              {drug.isReference && drug.category && (
-                                <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
-                                  {drug.category}
-                                </span>
-                              )}
-                              {!drug.isReference && (
-                                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
-                                  SAVED
-                                </span>
-                              )}
-                            </div>
-                            {drug.genericName && (
-                              <div className="text-xs text-gray-500 mt-0.5">
-                                {drug.genericName}
-                              </div>
-                            )}
-                          </button>
-                        ))}
+                    {/* Page Number Indicator (Optional but helpful for multipage) */}
+                    {chunks.length > 1 && (
+                      <div className="absolute top-0 right-0 text-xs font-bold text-gray-500">
+                        Page {pageIndex + 1} of {chunks.length}
                       </div>
                     )}
-                    {/* Row Controls (Hidden in Print) */}
-                    <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white">
-                      {medications.length > 1 && (
-                        <button onClick={() => removeRow(i)} className="text-red-500 hover:text-red-700 font-bold px-1">×</button>
-                      )}
+                  </div>
+
+                  {/* Patient Details Grid Box */}
+                  <div className="border-2 border-black mb-2 text-xs font-bold" style={{ borderCollapse: 'collapse' }}>
+                    {/* Row 1 */}
+                    <div className="flex border-b border-black min-h-[24px]">
+                      <div className="w-1/2 flex border-r border-black">
+                        <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">பெயர் / NAME</div>
+                        <div className="flex-1 py-1 px-1.5 uppercase flex items-center">{patient.name}</div>
+                      </div>
+                      <div className="w-1/2 flex">
+                        <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வயது-AGE / ஆ/பெ-M/F</div>
+                        <div className="flex-1 py-1 px-1.5 flex items-center">{patient.age} / {patient.gender || 'M'}</div>
+                      </div>
+                    </div>
+                    {/* Row 2 */}
+                    <div className="flex border-b border-black min-h-[24px]">
+                      <div className="w-1/2 flex border-r border-black">
+                        <div className="w-32 py-1 px-1.5 text-[10px] border-r border-black bg-gray-50 print:bg-white flex items-center leading-tight">தகப்பன்/கணவன் FATHER/HUSBAND</div>
+                        <input
+                          className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
+                          value={formData.fatherName}
+                          onChange={e => setFormData({ ...formData, fatherName: e.target.value })}
+                        />
+                      </div>
+                      <div className="w-1/2 flex">
+                        <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">பதிவு எண் / REG. No.</div>
+                        <div className="flex-1 py-1 px-1.5 flex items-center">{patient.token_number}</div>
+                      </div>
+                    </div>
+                    {/* Row 3 */}
+                    <div className="flex border-b border-black min-h-[24px]">
+                      <div className="w-1/2 flex border-r border-black">
+                        <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">ஊர் / PLACE</div>
+                        <input
+                          className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
+                          value={formData.place}
+                          onChange={e => setFormData({ ...formData, place: e.target.value })}
+                        />
+                      </div>
+                      <div className="w-1/2 flex">
+                        <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">தேதி / DATE</div>
+                        <div className="flex-1 py-1 px-1.5 flex items-center">{new Date().toLocaleDateString('en-GB')}</div>
+                      </div>
+                    </div>
+                    {/* Row 4 */}
+                    <div className="flex border-b border-black min-h-[24px]">
+                      <div className="flex-1 flex">
+                        <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">போன் / PHONE</div>
+                        <input
+                          className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
+                          value={formData.phone}
+                          onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    {/* Row 5 */}
+                    <div className="flex border-b border-black min-h-[24px]">
+                      <div className="flex-1 flex">
+                        <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">மருந்து/Drug அலர்ஜி/Allergy</div>
+                        <input
+                          className="flex-1 py-1 px-1.5 outline-none font-normal text-red-600 bg-transparent"
+                          value={formData.allergy}
+                          onChange={e => setFormData({ ...formData, allergy: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    {/* Row 6 */}
+                    <div className="flex min-h-[24px]">
+                      <div className="flex-1 flex">
+                        <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / Diagnosis</div>
+                        <input
+                          className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent"
+                          value={formData.diagnosis}
+                          onChange={e => setFormData({ ...formData, diagnosis: e.target.value })}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="w-[340px] flex shrink-0">
-                    {/* Dose Dropdown */}
-                    <div className="w-20 border-r border-black py-1 px-0.5 flex items-center justify-center shrink-0">
-                      <select
-                        className="w-full text-center outline-none text-[10px] bg-transparent cursor-pointer appearance-none"
-                        value={med.dose}
-                        onChange={e => updateMed(i, 'dose', e.target.value)}
-                        disabled={readOnly}
+
+                  {/* Medicine Table Box */}
+                  <div className="border-2 border-black mb-4">
+                    <div className="text-center font-bold border-b border-black py-1 text-xs">
+                      மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS
+                    </div>
+
+                    {/* Table Headers */}
+                    <div className="flex border-b border-black text-center font-bold text-xs">
+                      <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
+                        வ.எ<br />S.N
+                      </div>
+                      <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
+                        மருந்துக்கள் / DRUGS
+                      </div>
+                      <div className="w-[340px] shrink-0 flex flex-col">
+                        <div className="border-b border-black py-1">அளவு - Dose</div>
+                        <div className="flex flex-1 items-stretch">
+                          <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <span>Dose</span>
+                            <span>அளவு</span>
+                          </div>
+                          <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <span>Qty</span>
+                            <span>எண்</span>
+                          </div>
+                          <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <span>M</span>
+                            <span>கா</span>
+                          </div>
+                          <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <span>N</span>
+                            <span>ம</span>
+                          </div>
+                          <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <span>Nt</span>
+                            <span>இ</span>
+                          </div>
+                          <div className="w-10 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <span>B/F</span>
+                            <span>A/F</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table Body (Rows) */}
+                    {chunk.map((med, localIndex) => {
+                      const globalIndex = pageIndex * ITEMS_PER_PAGE + localIndex;
+                      return (
+                        <div key={globalIndex} className="flex border-b border-black text-xs relative group">
+                          <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
+                            {globalIndex + 1}
+                          </div>
+                          <div className="flex-1 border-r border-black py-1 px-1.5 relative min-w-0" ref={el => { dropdownRefs.current[globalIndex] = el; }}>
+                            <input
+                              className="w-full outline-none font-bold uppercase text-xs"
+                              placeholder="Type drug name..."
+                              value={med.name}
+                              onChange={e => {
+                                updateMed(globalIndex, 'name', e.target.value);
+                                setDrugSearchQuery(e.target.value);
+                                if (!readOnly && allDrugOptions.length > 0) {
+                                  setShowDrugDropdown(globalIndex);
+                                }
+                              }}
+                              onFocus={() => {
+                                if (!readOnly && allDrugOptions.length > 0) {
+                                  setShowDrugDropdown(globalIndex);
+                                  setDrugSearchQuery(med.name);
+                                }
+                              }}
+                              readOnly={readOnly}
+                            />
+                            {/* Drug Dropdown */}
+                            {!readOnly && showDrugDropdown === globalIndex && filteredDrugs.length > 0 && (
+                              <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
+                                {filteredDrugs.map(drug => (
+                                  <button
+                                    key={drug.id}
+                                    type="button"
+                                    onClick={() => handleSelectDrug(globalIndex, drug)}
+                                    className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold text-gray-900 text-sm">{drug.name}</span>
+                                      {drug.isReference && drug.category && (
+                                        <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
+                                          {drug.category}
+                                        </span>
+                                      )}
+                                      {!drug.isReference && (
+                                        <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
+                                          SAVED
+                                        </span>
+                                      )}
+                                    </div>
+                                    {drug.genericName && (
+                                      <div className="text-xs text-gray-500 mt-0.5">
+                                        {drug.genericName}
+                                      </div>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {/* Row Controls (Hidden in Print) */}
+                            <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white">
+                              {medications.length > 1 && (
+                                <button onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1">×</button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="w-[340px] flex shrink-0">
+                            {/* Dose Dropdown */}
+                            <div className="w-20 border-r border-black py-1 px-0.5 flex items-center justify-center shrink-0">
+                              <select
+                                className="w-full text-center outline-none text-[10px] bg-transparent cursor-pointer appearance-none"
+                                value={med.dose}
+                                onChange={e => updateMed(globalIndex, 'dose', e.target.value)}
+                                disabled={readOnly}
+                              >
+                                <option value="">--</option>
+                                <option value="OD">OD</option>
+                                <option value="TD">TD</option>
+                                <option value="TDS">TDS</option>
+                                <option value="QID">QID</option>
+                                <option value="ALT">Alt Day</option>
+                                <option value="WEEKLY">Weekly</option>
+                                <option value="HALF-ALT">½ Alt</option>
+                                <option value="HALF-DAILY">½ Daily</option>
+                              </select>
+                            </div>
+                            {/* Quantity */}
+                            <div className="w-10 border-r border-black py-1 px-0.5 flex items-center justify-center shrink-0">
+                              <input className="w-full text-center outline-none text-xs" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
+                            </div>
+                            {/* Checkboxes for M-N-N */}
+                            <div className="w-10 border-r border-black py-1 flex items-center justify-center cursor-pointer font-bold shrink-0" onClick={() => !readOnly && updateMed(globalIndex, 'morning', !med.morning)}>
+                              {med.morning ? '✓' : ''}
+                            </div>
+                            <div className="w-10 border-r border-black py-1 flex items-center justify-center cursor-pointer font-bold shrink-0" onClick={() => !readOnly && updateMed(globalIndex, 'noon', !med.noon)}>
+                              {med.noon ? '✓' : ''}
+                            </div>
+                            <div className="w-10 border-r border-black py-1 flex items-center justify-center cursor-pointer font-bold shrink-0" onClick={() => !readOnly && updateMed(globalIndex, 'night', !med.night)}>
+                              {med.night ? '✓' : ''}
+                            </div>
+                            {/* Before/After Food Toggle */}
+                            <div
+                              className="w-10 py-1 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]"
+                              onClick={() => !readOnly && updateMed(globalIndex, 'beforeFood', !med.beforeFood)}
+                            >
+                              {med.beforeFood ? 'B/F' : 'A/F'}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Add Row Button (Hidden in Print and ReadOnly) - Only show on last page */}
+                    {pageIndex === chunks.length - 1 && (
+                      <div
+                        className="p-2 text-center border-t border-dashed border-gray-300 flex items-center justify-center gap-4 no-print"
+                        style={{ display: 'flex' }}
                       >
-                        <option value="">--</option>
-                        <option value="OD">OD</option>
-                        <option value="TD">TD</option>
-                        <option value="TDS">TDS</option>
-                        <option value="QID">QID</option>
-                        <option value="ALT">Alt Day</option>
-                        <option value="WEEKLY">Weekly</option>
-                        <option value="HALF-ALT">½ Alt</option>
-                        <option value="HALF-DAILY">½ Daily</option>
-                      </select>
-                    </div>
-                    {/* Quantity */}
-                    <div className="w-10 border-r border-black py-1 px-0.5 flex items-center justify-center shrink-0">
-                      <input className="w-full text-center outline-none text-xs" placeholder="1" value={med.number} onChange={e => updateMed(i, 'number', e.target.value)} readOnly={readOnly} />
-                    </div>
-                    {/* Checkboxes for M-N-N */}
-                    <div className="w-10 border-r border-black py-1 flex items-center justify-center cursor-pointer font-bold shrink-0" onClick={() => !readOnly && updateMed(i, 'morning', !med.morning)}>
-                      {med.morning ? '✓' : ''}
-                    </div>
-                    <div className="w-10 border-r border-black py-1 flex items-center justify-center cursor-pointer font-bold shrink-0" onClick={() => !readOnly && updateMed(i, 'noon', !med.noon)}>
-                      {med.noon ? '✓' : ''}
-                    </div>
-                    <div className="w-10 border-r border-black py-1 flex items-center justify-center cursor-pointer font-bold shrink-0" onClick={() => !readOnly && updateMed(i, 'night', !med.night)}>
-                      {med.night ? '✓' : ''}
-                    </div>
-                    {/* Before/After Food Toggle */}
-                    <div
-                      className="w-10 py-1 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]"
-                      onClick={() => !readOnly && updateMed(i, 'beforeFood', !med.beforeFood)}
-                    >
-                      {med.beforeFood ? 'B/F' : 'A/F'}
-                    </div>
+                        {!readOnly && (
+                          <>
+                            <button onClick={addRow} className="text-emerald-600 text-sm font-bold hover:underline">+ Add Medicine Row</button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              onClick={() => setShowManageDrugsModal(true)}
+                              className="text-purple-600 text-sm font-bold hover:underline flex items-center gap-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              Manage Saved Drugs
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Footer Section - Only on Last Page */}
+                  {pageIndex === chunks.length - 1 && (
+                    <div className="mt-auto">
+                      {/* Footer Review Section */}
+                      <div className="space-y-2 text-sm font-bold mb-4">
+                        <div className="flex gap-2 items-end">
+                          <div>மீண்டும் வரவேண்டிய நாள் <br /> To Come for review on :</div>
+                          <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.reviewDate} onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })} readOnly={readOnly} />
+                        </div>
+                        <div className="flex gap-2 items-end">
+                          <div>மீண்டும் வரும்போது செய்ய வேண்டிய பரிசோதனைகள் <br /> Tests to be done on review :</div>
+                          <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} />
+                        </div>
+                        <div className="flex gap-2 items-end">
+                          <div>மீண்டும் வரும்போது பார்க்க வேண்டிய சிறப்பு டாக்டர்கள் <br /> Specialists to be seen on review :</div>
+                          <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.specialistToReview} onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value })} readOnly={readOnly} />
+                        </div>
+                      </div>
+
+                      {/* Signature */}
+                      <div className="flex justify-end mt-4 mb-2">
+                        <div className="text-center">
+                          <div className="h-6"></div> {/* Space for signature */}
+                          <div className="font-bold border-t border-black px-4 pt-1">
+                            டாக்டர் கையொப்பம். <br /> DOCTOR SIGNATURE.
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dosage Legend */}
+                      <div className="border border-gray-400 rounded p-2 mb-2 bg-gray-50 print:bg-white">
+                        <div className="text-[10px] font-bold mb-1">அளவு விளக்கம் / Dosage Guide:</div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[9px]">
+                          <span><b>OD</b> - Once a day (ஒரு நாளைக்கு ஒரு முறை)</span>
+                          <span><b>TD</b> - Twice a day (ஒரு நாளைக்கு இரண்டு முறை)</span>
+                          <span><b>TDS</b> - Thrice a day (ஒரு நாளைக்கு மூன்று முறை)</span>
+                          <span><b>QID</b> - Every 6 hours (ஒவ்வொரு 6 மணி நேரமும்)</span>
+                          <span><b>Alt Day</b> - Alternate day (ஒரு நாள் விட்டு ஒரு நாள்)</span>
+                          <span><b>B/F</b> - Before Food (சாப்பாட்டுக்கு முன்)</span>
+                          <span><b>A/F</b> - After Food (சாப்பாட்டுக்கு பின்)</span>
+                        </div>
+                      </div>
+
+                      {/* Footer Box */}
+                      <div className="border border-black p-1 text-xs leading-tight">
+                        <p className="font-bold">முன்பதிவு செய்வது சிறப்பு டாக்டர் இருப்பது உறுதிபடுத்தி காலதாமதத்தை குறைக்கும் / Prior registration will confirm availability of the specialist and avoid delay</p>
+                        <p className="font-bold">சிறப்பு டாக்டரை பார்க்க முன் பதிவு ! <span className="font-normal font-sans">For Specialist appointment : 0422 - 2494333, 73588 41555, 73588 41666</span> <span className="font-sans font-bold">நேரம் / Time : 8.00 am to 6.00 pm</span></p>
+                        <p className="font-bold">சிறப்பு சிறுநீரக மருத்துவ நிபுணர் : <span className="font-sans">Dr. A. பிரபாகர் / Dr. A. Prabhakar MD., C.Diab. DNB (Nephro)</span> | <span className="font-sans">Dr. A. திவாகர் / Dr. A. Divakar MS., M.ch., (Uro)</span></p>
+                        <p className="font-bold">அவசர உதவிக்கு / Emergency Contact : <span className="font-sans">0422 4316000</span> | அவசர கேஸ்கள் 24 மணி நேரமும் பார்க்கப்படும் - 24 hrs Service</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-              {/* Add Row Button (Hidden in Print and ReadOnly) */}
-              <div
-                className="p-2 text-center border-t border-dashed border-gray-300 flex items-center justify-center gap-4 no-print"
-                style={{ display: 'flex' }}
-              >
-                {!readOnly && (
-                  <>
-                    <button onClick={addRow} className="text-emerald-600 text-sm font-bold hover:underline">+ Add Medicine Row</button>
-                    <span className="text-gray-300">|</span>
-                    <button
-                      onClick={() => setShowManageDrugsModal(true)}
-                      className="text-purple-600 text-sm font-bold hover:underline flex items-center gap-1"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Manage Saved Drugs
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Footer Review Section */}
-            <div className="space-y-2 text-sm font-bold mb-4">
-              <div className="flex gap-2 items-end">
-                <div>மீண்டும் வரவேண்டிய நாள் <br /> To Come for review on :</div>
-                <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.reviewDate} onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })} readOnly={readOnly} />
-              </div>
-              <div className="flex gap-2 items-end">
-                <div>மீண்டும் வரும்போது செய்ய வேண்டிய பரிசோதனைகள் <br /> Tests to be done on review :</div>
-                <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} />
-              </div>
-              <div className="flex gap-2 items-end">
-                <div>மீண்டும் வரும்போது பார்க்க வேண்டிய சிறப்பு டாக்டர்கள் <br /> Specialists to be seen on review :</div>
-                <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.specialistToReview} onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value })} readOnly={readOnly} />
-              </div>
-            </div>
-
-            {/* Signature */}
-            <div className="flex justify-end mt-4 mb-2">
-              <div className="text-center">
-                <div className="h-6"></div> {/* Space for signature */}
-                <div className="font-bold border-t border-black px-4 pt-1">
-                  டாக்டர் கையொப்பம். <br /> DOCTOR SIGNATURE.
-                </div>
-              </div>
-            </div>
-
-            {/* Dosage Legend */}
-            <div className="border border-gray-400 rounded p-2 mb-2 bg-gray-50 print:bg-white">
-              <div className="text-[10px] font-bold mb-1">அளவு விளக்கம் / Dosage Guide:</div>
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[9px]">
-                <span><b>OD</b> - Once a day (ஒரு நாளைக்கு ஒரு முறை)</span>
-                <span><b>TD</b> - Twice a day (ஒரு நாளைக்கு இரண்டு முறை)</span>
-                <span><b>TDS</b> - Thrice a day (ஒரு நாளைக்கு மூன்று முறை)</span>
-                <span><b>QID</b> - Every 6 hours (ஒவ்வொரு 6 மணி நேரமும்)</span>
-                <span><b>Alt Day</b> - Alternate day (ஒரு நாள் விட்டு ஒரு நாள்)</span>
-                <span><b>B/F</b> - Before Food (சாப்பாட்டுக்கு முன்)</span>
-                <span><b>A/F</b> - After Food (சாப்பாட்டுக்கு பின்)</span>
-              </div>
-            </div>
-
-            {/* Footer Box */}
-            <div className="border border-black p-1 text-xs leading-tight">
-              <p className="font-bold">முன்பதிவு செய்வது சிறப்பு டாக்டர் இருப்பது உறுதிபடுத்தி காலதாமதத்தை குறைக்கும் / Prior registration will confirm availability of the specialist and avoid delay</p>
-              <p className="font-bold">சிறப்பு டாக்டரை பார்க்க முன் பதிவு ! <span className="font-normal font-sans">For Specialist appointment : 0422 - 2494333, 73588 41555, 73588 41666</span> <span className="font-sans font-bold">நேரம் / Time : 8.00 am to 6.00 pm</span></p>
-              <p className="font-bold">சிறப்பு சிறுநீரக மருத்துவ நிபுணர் : <span className="font-sans">Dr. A. பிரபாகர் / Dr. A. Prabhakar MD., C.Diab. DNB (Nephro)</span> | <span className="font-sans">Dr. A. திவாகர் / Dr. A. Divakar MS., M.ch., (Uro)</span></p>
-              <p className="font-bold">அவசர உதவிக்கு / Emergency Contact : <span className="font-sans">0422 4316000</span> | அவசர கேஸ்கள் 24 மணி நேரமும் பார்க்கப்படும் - 24 hrs Service</p>
-            </div>
-
+              ));
+            })()}
           </div>
         </div>
 
