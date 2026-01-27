@@ -201,11 +201,11 @@ const EnterpriseDashboardHome: React.FC = () => {
                         </div>
 
                         {/* Right Section - Hospital Profile (3D Effect) */}
-                        <div className="group relative flex items-center bg-white border border-gray-100 p-1.5 rounded-full transition-all duration-500 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08),0_2px_6px_-2px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border-b-2 border-b-gray-200/50">
+                        <div className="group relative flex items-center bg-white border border-gray-100 p-1 sm:p-1.5 rounded-full transition-all duration-500 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08),0_2px_6px_-2px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border-b-2 border-b-gray-200/50">
                             {/* Hospital Info Area */}
                             <button
                                 onClick={() => { fetchHospitalSettings(); setShowSettingsModal(true); }}
-                                className="flex items-center gap-4 px-3 py-0.5 active:scale-95 transition-transform duration-200"
+                                className="flex items-center gap-2 sm:gap-4 px-2 sm:pl-3 sm:pr-4 py-0.5 active:scale-95 transition-transform duration-200"
                             >
                                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center overflow-hidden border border-gray-100 bg-white shadow-inner transition-transform duration-500 group-hover:scale-95">
                                     {profile?.avatar_url ? (
@@ -221,20 +221,23 @@ const EnterpriseDashboardHome: React.FC = () => {
                                 </span>
                             </button>
 
-                            {/* Divider */}
-                            <div className="w-px h-8 bg-gray-100 scale-y-0 group-hover:scale-y-100 transition-transform duration-500 mx-1" />
+                            {/* Smooth Sliding Drawer for Divider + Sign Out */}
+                            <div className="flex items-center max-w-0 group-hover:max-w-[200px] transition-[max-width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden">
+                                <div className="flex items-center pl-1 sm:pl-2 pr-1">
+                                    {/* Divider */}
+                                    <div className="w-px h-8 bg-gray-100 mx-2 sm:mx-3" />
 
-                            {/* Sign Out Button */}
-                            <div className="flex items-center overflow-hidden max-w-0 group-hover:max-w-[140px] transition-all duration-500 ease-in-out">
-                                <button
-                                    onClick={() => signOut()}
-                                    className="flex items-center gap-2.5 px-5 py-2.5 text-gray-500 hover:text-red-500 rounded-full hover:bg-red-50 transition-all duration-300 whitespace-nowrap mr-1"
-                                >
-                                    <span className="text-sm font-bold">Sign Out</span>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
-                                    </svg>
-                                </button>
+                                    {/* Sign Out Button */}
+                                    <button
+                                        onClick={() => signOut()}
+                                        className="flex items-center gap-2.5 px-3 py-2 text-gray-500 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors duration-300 whitespace-nowrap"
+                                    >
+                                        <span className="text-sm font-bold">Sign Out</span>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

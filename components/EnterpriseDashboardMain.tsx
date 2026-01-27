@@ -1163,7 +1163,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                         {/* Right - Hospital Logo & Name + Sign Out */}
                         <button
                             onClick={() => setShowSettingsModal(true)}
-                            className="flex items-center gap-3 p-1 rounded-xl transition-transform active:scale-95 cursor-pointer group"
+                            className="flex items-center gap-2 sm:gap-3 p-1 rounded-xl transition-transform active:scale-95 cursor-pointer group"
                         >
                             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-transform group-hover:scale-105">
                                 {profile?.avatar_url ? (
@@ -1175,7 +1175,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                                 )}
                             </div>
                             <span className="hidden sm:inline-block text-sm md:text-base font-bold text-gray-900 dark:text-white whitespace-nowrap">{profile?.name}</span>
-                            <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
