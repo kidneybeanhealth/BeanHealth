@@ -108,53 +108,55 @@ export class KKCPDFGenerator {
         this.doc = new jsPDF();
         await this.initTamilFont();
 
+        const medCount = data.medications.filter(m => m.name).length;
         let yPos = this.margin;
         yPos = this.drawHeader(config, yPos);
         yPos = this.drawPatientInfo(data.patient, data.date, yPos);
         yPos = this.drawPrescriptionTitle(yPos);
         yPos = this.drawMedicationsTable(data.medications, yPos);
-        yPos = this.drawFollowUpSection(data.followUp, yPos);
-        this.drawSignatureArea();
-        this.drawFooter(config);
+        yPos = this.drawFollowUpSection(data.followUp, yPos, medCount);
+        this.drawSignatureArea(medCount);
+        this.drawFooter(config, medCount);
         return this.doc;
     }
 
     generatePrescription(data: KKCPrescriptionData): jsPDF {
         const config = data.hospitalConfig || this.config;
         this.doc = new jsPDF();
+        const medCount = data.medications.filter(m => m.name).length;
         let yPos = this.margin;
         yPos = this.drawHeader(config, yPos);
         yPos = this.drawPatientInfo(data.patient, data.date, yPos);
         yPos = this.drawPrescriptionTitle(yPos);
         yPos = this.drawMedicationsTable(data.medications, yPos);
-        yPos = this.drawFollowUpSection(data.followUp, yPos);
-        this.drawSignatureArea();
-        this.drawFooter(config);
+        yPos = this.drawFollowUpSection(data.followUp, yPos, medCount);
+        this.drawSignatureArea(medCount);
+        this.drawFooter(config, medCount);
         return this.doc;
     }
 
     private drawHeader(config: HospitalConfig, yPos: number): number {
         this.doc.setDrawColor(...this.colors.primary);
         this.doc.setLineWidth(1.5);
-        this.doc.circle(22, yPos + 12, 10);
+        this.doc.circle(22, yPos + 10, 9);
         this.doc.setLineWidth(2);
-        this.doc.line(22, yPos + 6, 22, yPos + 18);
-        this.doc.line(16, yPos + 12, 28, yPos + 12);
+        this.doc.line(22, yPos + 5, 22, yPos + 15);
+        this.doc.line(16, yPos + 10, 28, yPos + 10);
 
-        this.doc.setFontSize(18);
+        this.doc.setFontSize(16);
         this.doc.setFont('helvetica', 'bold');
         this.doc.setTextColor(...this.colors.primary);
-        this.doc.text(config.name, 38, yPos + 10);
+        this.doc.text(config.name, 38, yPos + 9);
 
-        this.doc.setFontSize(11);
+        this.doc.setFontSize(10);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(config.address, this.pageWidth - this.margin, yPos + 10, { align: 'right' });
+        this.doc.text(config.address, this.pageWidth - this.margin, yPos + 9, { align: 'right' });
 
-        yPos += 28;
+        yPos += 22;
         this.doc.setDrawColor(0, 0, 0);
         this.doc.setLineWidth(0.5);
         this.doc.line(this.margin, yPos, this.pageWidth - this.margin, yPos);
-        return yPos + 5;
+        return yPos + 3;
     }
 
     private renderLabel(label: { en: string; ta: string }, x: number, y: number): number {
@@ -180,60 +182,60 @@ export class KKCPDFGenerator {
         const leftCol = this.margin;
         const midCol = this.pageWidth / 2 + 5;
         const labelWidth = 40;
-        const lineHeight = 9;
+        const lineHeight = 8;
         const boxStartY = yPos;
 
-        this.doc.setFontSize(9);
+        this.doc.setFontSize(8);
         this.doc.setTextColor(...this.colors.text);
 
-        this.renderLabel(BILINGUAL_LABELS.NAME, leftCol + 2, yPos + 6);
+        this.renderLabel(BILINGUAL_LABELS.NAME, leftCol + 2, yPos + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(patient.name || '', leftCol + labelWidth, yPos + 6);
+        this.doc.text(patient.name || '', leftCol + labelWidth, yPos + 5);
 
         yPos += lineHeight;
-        this.renderLabel(BILINGUAL_LABELS.FATHER_HUSBAND, leftCol + 2, yPos + 6);
+        this.renderLabel(BILINGUAL_LABELS.FATHER_HUSBAND, leftCol + 2, yPos + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(patient.fatherOrHusband || '', leftCol + labelWidth + 20, yPos + 6);
+        this.doc.text(patient.fatherOrHusband || '', leftCol + labelWidth + 20, yPos + 5);
 
         yPos += lineHeight;
-        this.renderLabel(BILINGUAL_LABELS.PLACE, leftCol + 2, yPos + 6);
+        this.renderLabel(BILINGUAL_LABELS.PLACE, leftCol + 2, yPos + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(patient.place || '', leftCol + labelWidth, yPos + 6);
+        this.doc.text(patient.place || '', leftCol + labelWidth, yPos + 5);
 
         yPos += lineHeight;
-        this.renderLabel(BILINGUAL_LABELS.PHONE, leftCol + 2, yPos + 6);
+        this.renderLabel(BILINGUAL_LABELS.PHONE, leftCol + 2, yPos + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(patient.phone || '', leftCol + labelWidth, yPos + 6);
+        this.doc.text(patient.phone || '', leftCol + labelWidth, yPos + 5);
 
         yPos += lineHeight;
-        this.renderLabel(BILINGUAL_LABELS.DRUG_ALLERGY, leftCol + 2, yPos + 6);
+        this.renderLabel(BILINGUAL_LABELS.DRUG_ALLERGY, leftCol + 2, yPos + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(patient.drugAllergy || '', leftCol + labelWidth + 10, yPos + 6);
+        this.doc.text(patient.drugAllergy || '', leftCol + labelWidth + 10, yPos + 5);
 
         yPos += lineHeight;
-        this.renderLabel(BILINGUAL_LABELS.DIAGNOSIS, leftCol + 2, yPos + 6);
+        this.renderLabel(BILINGUAL_LABELS.DIAGNOSIS, leftCol + 2, yPos + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(patient.diagnosis || '', leftCol + labelWidth + 5, yPos + 6);
+        this.doc.text(patient.diagnosis || '', leftCol + labelWidth + 5, yPos + 5);
 
         let rightY = boxStartY;
-        this.renderLabel(BILINGUAL_LABELS.AGE, midCol + 2, rightY + 6);
+        this.renderLabel(BILINGUAL_LABELS.AGE, midCol + 2, rightY + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(`${patient.age} / ${patient.gender}`, midCol + 35, rightY + 6);
+        this.doc.text(`${patient.age} / ${patient.gender}`, midCol + 35, rightY + 5);
 
         rightY += lineHeight;
         this.doc.setFont('helvetica', 'bold');
-        this.doc.text('REG. No.', midCol + 2, rightY + 6);
+        this.doc.text('REG. No.', midCol + 2, rightY + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(patient.regNo || '', midCol + 30, rightY + 6);
+        this.doc.text(patient.regNo || '', midCol + 30, rightY + 5);
 
         rightY += lineHeight;
         const formattedDate = date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
         this.doc.setFont('helvetica', 'bold');
-        this.doc.text('DATE', midCol + 2, rightY + 6);
+        this.doc.text('DATE', midCol + 2, rightY + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(formattedDate, midCol + 30, rightY + 6);
+        this.doc.text(formattedDate, midCol + 30, rightY + 5);
 
-        const boxHeight = lineHeight * 6 + 4;
+        const boxHeight = lineHeight * 6 + 3;
         this.doc.setDrawColor(0, 0, 0);
         this.doc.setLineWidth(0.3);
         this.doc.rect(this.margin, boxStartY, this.pageWidth - 2 * this.margin, boxHeight);
@@ -245,11 +247,11 @@ export class KKCPDFGenerator {
         this.doc.line(this.pageWidth / 2, boxStartY + lineHeight, this.pageWidth - this.margin, boxStartY + lineHeight);
         this.doc.line(this.pageWidth / 2, boxStartY + 2 * lineHeight, this.pageWidth - this.margin, boxStartY + 2 * lineHeight);
 
-        return boxStartY + boxHeight + 8;
+        return boxStartY + boxHeight + 5;
     }
 
     private drawPrescriptionTitle(yPos: number): number {
-        this.doc.setFontSize(11);
+        this.doc.setFontSize(10);
         this.doc.setFont('helvetica', 'bold');
         this.doc.setTextColor(...this.colors.text);
         const title = 'MEDICINES PRESCRIPTION DETAILS';
@@ -257,13 +259,13 @@ export class KKCPDFGenerator {
         const textWidth = this.doc.getTextWidth(title);
         this.doc.setLineWidth(0.5);
         this.doc.line((this.pageWidth - textWidth) / 2, yPos + 1, (this.pageWidth + textWidth) / 2, yPos + 1);
-        return yPos + 8;
+        return yPos + 5;
     }
 
     private drawMedicationsTable(medications: KKCMedication[], yPos: number): number {
         const headers = [['S/No.', 'DRUGS', 'Number', 'Morning', 'Noon', 'Night', 'B/F\nA/F']];
         const tableData: string[][] = [];
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 12; i++) {
             if (i < medications.length && medications[i].name) {
                 const med = medications[i];
                 tableData.push([
@@ -277,9 +279,9 @@ export class KKCPDFGenerator {
 
         autoTable(this.doc, {
             startY: yPos, head: headers, body: tableData, theme: 'grid',
-            styles: { fontSize: 9, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.3, textColor: [0, 0, 0] },
+            styles: { fontSize: 8, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.3, textColor: [0, 0, 0] },
             headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', valign: 'middle' },
-            bodyStyles: { halign: 'center', valign: 'middle', minCellHeight: 8 },
+            bodyStyles: { halign: 'center', valign: 'middle', minCellHeight: 6.5 },
             columnStyles: {
                 0: { cellWidth: 15, halign: 'center' }, 1: { cellWidth: 55, halign: 'left' },
                 2: { cellWidth: 22, halign: 'center' }, 3: { cellWidth: 22, halign: 'center' },
@@ -291,12 +293,14 @@ export class KKCPDFGenerator {
         return (this.doc as any).lastAutoTable.finalY + 5;
     }
 
-    private drawFollowUpSection(followUp: KKCFollowUp, yPos: number): number {
+    private drawFollowUpSection(followUp: KKCFollowUp, yPos: number, medCount: number = 5): number {
         const labelX = this.margin;
         const valueX = 75;
-        const lineHeight = 12;
+        // Updated: Scaling now starts at 5 medications to prevent overflow
+        const lineHeight = medCount <= 4 ? 9 : medCount <= 6 ? 7.5 : medCount <= 8 ? 6.5 : 5.5;
+        const fontSize = medCount <= 4 ? 8 : medCount <= 6 ? 7.5 : medCount <= 8 ? 7 : 6.5;
 
-        this.doc.setFontSize(9);
+        this.doc.setFontSize(fontSize);
         this.doc.setTextColor(...this.colors.text);
 
         this.doc.setFont('helvetica', 'bold');
@@ -323,52 +327,65 @@ export class KKCPDFGenerator {
         this.doc.text(followUp.specialistsToSee || '', valueX + 5, yPos);
         this.doc.line(valueX + 5, yPos + 1, this.pageWidth - this.margin - 60, yPos + 1);
 
-        return yPos + lineHeight + 5;
+        const bottomMargin = medCount <= 5 ? 3 : medCount <= 9 ? 2 : 1.5;
+        return yPos + lineHeight + bottomMargin;
     }
 
-    private drawSignatureArea(): void {
-        const sigX = this.pageWidth - this.margin - 55;
-        const sigY = this.pageHeight - 80;
-        this.doc.setFontSize(9);
+    private drawSignatureArea(medCount: number = 5): void {
+        // Increased signature space for 7-12 medications (baseY)
+        const baseY = medCount <= 4 ? 75 : medCount <= 6 ? 68 : medCount <= 9 ? 65 : 62;
+        const sigX = this.pageWidth - this.margin - 50;
+        const sigY = this.pageHeight - baseY;
+        const fontSize = medCount <= 4 ? 8 : medCount <= 6 ? 7.5 : medCount <= 9 ? 7 : 6.5;
+
+        this.doc.setFontSize(fontSize);
         this.doc.setFont('helvetica', 'normal');
         this.doc.setTextColor(...this.colors.text);
-        this.doc.line(sigX, sigY, sigX + 50, sigY);
+        this.doc.line(sigX, sigY, sigX + 45, sigY);
         this.doc.setFont('helvetica', 'bold');
-        this.doc.text('DOCTOR SIGNATURE', sigX + 25, sigY + 5, { align: 'center' });
+        this.doc.text('DOCTOR SIGNATURE', sigX + 22.5, sigY + 4, { align: 'center' });
     }
 
-    private drawFooter(config: HospitalConfig): void {
-        const footerY = this.pageHeight - 45;
-        this.doc.setFontSize(8);
+    private drawFooter(config: HospitalConfig, medCount: number = 5): void {
+        // Compressed footer slightly more to allot more signature space for 7-12 meds
+        const baseFooterY = medCount <= 4 ? 40 : medCount <= 6 ? 35 : medCount <= 9 ? 28 : 24;
+        const footerY = this.pageHeight - baseFooterY;
+        const mainFontSize = medCount <= 4 ? 7 : medCount <= 6 ? 6.5 : medCount <= 9 ? 6 : 5.5;
+        const lineSpacing = medCount <= 4 ? 4 : medCount <= 6 ? 3.5 : medCount <= 9 ? 2.8 : 2.4;
+        const docSpacing = medCount <= 4 ? 3.5 : medCount <= 6 ? 3 : medCount <= 9 ? 2.3 : 2;
+
+        this.doc.setFontSize(mainFontSize);
         this.doc.setTextColor(...this.colors.text);
         this.doc.setDrawColor(0, 0, 0);
         this.doc.setLineWidth(0.3);
-        this.doc.line(this.margin, footerY - 5, this.pageWidth - this.margin, footerY - 5);
+        this.doc.line(this.margin, footerY - 3, this.pageWidth - this.margin, footerY - 3);
 
         this.doc.setFont('helvetica', 'normal');
         this.doc.text('Prior registration will confirm availability of the specialist and avoid delay', this.pageWidth / 2, footerY, { align: 'center' });
         this.doc.setFont('helvetica', 'bold');
-        this.doc.text(`For Specialist appointment: ${config.phone}`, this.pageWidth / 2, footerY + 5, { align: 'center' });
+        this.doc.text(`For Specialist appointment: ${config.phone}`, this.pageWidth / 2, footerY + lineSpacing, { align: 'center' });
 
         if (config.workingHours) {
             this.doc.setFont('helvetica', 'normal');
-            this.doc.text(`Time: ${config.workingHours}`, this.pageWidth / 2, footerY + 10, { align: 'center' });
+            this.doc.text(`Time: ${config.workingHours}`, this.pageWidth / 2, footerY + lineSpacing * 2, { align: 'center' });
         }
 
         if (config.doctors && config.doctors.length > 0) {
-            let docY = footerY + 16;
+            let docY = footerY + lineSpacing * 3;
             config.doctors.forEach((doc) => {
                 this.doc.text(`${doc.name} ${doc.specialty}`, this.pageWidth / 2, docY, { align: 'center' });
-                docY += 4;
+                docY += docSpacing;
             });
         }
 
         if (config.emergencyPhone) {
             this.doc.setFont('helvetica', 'bold');
-            this.doc.text(`Emergency Contact / Phone: ${config.emergencyPhone}`, this.pageWidth / 2, footerY + 28, { align: 'center' });
+            const emergencyY = footerY + lineSpacing * 3 + docSpacing * 2 + 2;
+            this.doc.text(`Emergency Contact / Phone: ${config.emergencyPhone}`, this.pageWidth / 2, emergencyY, { align: 'center' });
         }
-        this.doc.setFontSize(9);
-        this.doc.text('For Emergency cases 24 hrs Service', this.pageWidth / 2, footerY + 34, { align: 'center' });
+        this.doc.setFontSize(mainFontSize + 0.5);
+        const finalY = footerY + lineSpacing * 3 + docSpacing * 2 + (medCount <= 5 ? 6 : medCount <= 9 ? 5 : 4);
+        this.doc.text('For Emergency cases 24 hrs Service', this.pageWidth / 2, finalY, { align: 'center' });
     }
 
     // Output methods

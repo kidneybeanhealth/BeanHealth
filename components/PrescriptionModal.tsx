@@ -334,7 +334,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
           {/* PRINT PREVIEW AREA - EXACT REPLICA OF PDF */}
           <div ref={componentRef} className="bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
             {(() => {
-              const ITEMS_PER_PAGE = 25;
+              const ITEMS_PER_PAGE = 12;
               const chunks = [];
               if (medications.length === 0) {
                 chunks.push([]);
@@ -633,58 +633,71 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                     )}
                   </div>
 
-                  {/* Footer Section - Only on Last Page */}
-                  {pageIndex === chunks.length - 1 && (
-                    <div className="mt-auto">
-                      {/* Footer Review Section */}
-                      <div className="space-y-2 text-sm font-bold mb-4">
-                        <div className="flex gap-2 items-end">
-                          <div>மீண்டும் வரவேண்டிய நாள் <br /> To Come for review on :</div>
-                          <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.reviewDate} onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })} readOnly={readOnly} />
-                        </div>
-                        <div className="flex gap-2 items-end">
-                          <div>மீண்டும் வரும்போது செய்ய வேண்டிய பரிசோதனைகள் <br /> Tests to be done on review :</div>
-                          <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} />
-                        </div>
-                        <div className="flex gap-2 items-end">
-                          <div>மீண்டும் வரும்போது பார்க்க வேண்டிய சிறப்பு டாக்டர்கள் <br /> Specialists to be seen on review :</div>
-                          <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.specialistToReview} onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value })} readOnly={readOnly} />
-                        </div>
-                      </div>
+                  {/* Footer Section - On Every Page with Dynamic Scaling */}
+                  {(() => {
+                    // Calculate dynamic scaling based on number of medications
+                    const medCount = chunk.length;
+                    const getFooterScale = () => {
+                      // Increased signatureH for medCount 7-12 to provide more physical signature space
+                      if (medCount <= 4) return { textSize: 'text-sm', footerTextSize: 'text-xs', spacing: 'space-y-2', mb: 'mb-4', signatureH: 'h-12', padding: 'p-2', legendMb: 'mb-2', footerP: 'p-1' };
+                      if (medCount <= 6) return { textSize: 'text-xs', footerTextSize: 'text-[11px]', spacing: 'space-y-1.5', mb: 'mb-3', signatureH: 'h-10', padding: 'p-1.5', legendMb: 'mb-1.5', footerP: 'p-0.5' };
+                      if (medCount <= 9) return { textSize: 'text-xs', footerTextSize: 'text-[10px]', spacing: 'space-y-0.8', mb: 'mb-1.5', signatureH: 'h-9', padding: 'p-1', legendMb: 'mb-1', footerP: 'p-0.5' };
+                      return { textSize: 'text-[11px]', footerTextSize: 'text-[9px]', spacing: 'space-y-0.5', mb: 'mb-1', signatureH: 'h-8', padding: 'p-0.5', legendMb: 'mb-0.5', footerP: 'p-0.5' };
+                    };
+                    const scale = getFooterScale();
 
-                      {/* Signature */}
-                      <div className="flex justify-end mt-4 mb-2">
-                        <div className="text-center">
-                          <div className="h-6"></div> {/* Space for signature */}
-                          <div className="font-bold border-t border-black px-4 pt-1">
-                            டாக்டர் கையொப்பம். <br /> DOCTOR SIGNATURE.
+                    return (
+                      <div className="mt-auto">
+                        {/* Footer Review Section */}
+                        <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
+                          <div className="flex gap-2 items-end">
+                            <div>மீண்டும் வரவேண்டிய நாள் <br /> To Come for review on :</div>
+                            <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.reviewDate} onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })} readOnly={readOnly} />
+                          </div>
+                          <div className="flex gap-2 items-end">
+                            <div>மீண்டும் வரும்போது செய்ய வேண்டிய பரிசோதனைகள் <br /> Tests to be done on review :</div>
+                            <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} />
+                          </div>
+                          <div className="flex gap-2 items-end">
+                            <div>மீண்டும் வரும்போது பார்க்க வேண்டிய சிறப்பு டாக்டர்கள் <br /> Specialists to be seen on review :</div>
+                            <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.specialistToReview} onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value })} readOnly={readOnly} />
                           </div>
                         </div>
-                      </div>
 
-                      {/* Dosage Legend */}
-                      <div className="border border-gray-400 rounded p-2 mb-2 bg-gray-50 print:bg-white">
-                        <div className="text-[10px] font-bold mb-1">அளவு விளக்கம் / Dosage Guide:</div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[9px]">
-                          <span><b>OD</b> - Once a day (ஒரு நாளைக்கு ஒரு முறை)</span>
-                          <span><b>TD</b> - Twice a day (ஒரு நாளைக்கு இரண்டு முறை)</span>
-                          <span><b>TDS</b> - Thrice a day (ஒரு நாளைக்கு மூன்று முறை)</span>
-                          <span><b>QID</b> - Every 6 hours (ஒவ்வொரு 6 மணி நேரமும்)</span>
-                          <span><b>Alt Day</b> - Alternate day (ஒரு நாள் விட்டு ஒரு நாள்)</span>
-                          <span><b>B/F</b> - Before Food (சாப்பாட்டுக்கு முன்)</span>
-                          <span><b>A/F</b> - After Food (சாப்பாட்டுக்கு பின்)</span>
+                        {/* Signature */}
+                        <div className={`flex justify-end mt-${medCount <= 5 ? '4' : medCount <= 9 ? '2' : '1'} mb-2`}>
+                          <div className="text-center">
+                            <div className={scale.signatureH}></div> {/* Space for signature */}
+                            <div className={`font-bold border-t border-black px-4 pt-1 ${scale.textSize}`}>
+                              டாக்டர் கையொப்பம். <br /> DOCTOR SIGNATURE.
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Dosage Legend */}
+                        <div className={`border border-gray-400 rounded ${scale.padding} ${scale.legendMb} bg-gray-50 print:bg-white`}>
+                          <div className={`${medCount <= 7 ? 'text-[10px]' : 'text-[9px]'} font-bold ${medCount <= 9 ? 'mb-1' : 'mb-0.5'}`}>அளவு விளக்கம் / Dosage Guide:</div>
+                          <div className={`flex flex-wrap gap-x-${medCount <= 7 ? '4' : '2'} gap-y-0.5 ${medCount <= 7 ? 'text-[9px]' : 'text-[8px]'}`}>
+                            <span><b>OD</b> - Once a day (ஒரு நாளைக்கு ஒரு முறை)</span>
+                            <span><b>TD</b> - Twice a day (ஒரு நாளைக்கு இரண்டு முறை)</span>
+                            <span><b>TDS</b> - Thrice a day (ஒரு நாளைக்கு மூன்று முறை)</span>
+                            <span><b>QID</b> - Every 6 hours (ஒவ்வொரு 6 மணி நேரமும்)</span>
+                            <span><b>Alt Day</b> - Alternate day (ஒரு நாள் விட்டு ஒரு நாள்)</span>
+                            <span><b>B/F</b> - Before Food (சாப்பாட்டுக்கு முன்)</span>
+                            <span><b>A/F</b> - After Food (சாப்பாட்டுக்கு பின்)</span>
+                          </div>
+                        </div>
+
+                        {/* Footer Box */}
+                        <div className={`border border-black ${scale.footerP} ${scale.footerTextSize} leading-tight`}>
+                          <p className="font-bold">முன்பதிவு செய்வது சிறப்பு டாக்டர் இருப்பது உறுதிபடுத்தி காலதாமதத்தை குறைக்கும் / Prior registration will confirm availability of the specialist and avoid delay</p>
+                          <p className="font-bold">சிறப்பு டாக்டரை பார்க்க முன் பதிவு ! <span className="font-normal font-sans">For Specialist appointment : 0422 - 2494333, 73588 41555, 73588 41666</span> <span className="font-sans font-bold">நேரம் / Time : 8.00 am to 6.00 pm</span></p>
+                          <p className="font-bold">சிறப்பு சிறுநீரக மருத்துவ நிபுணர் : <span className="font-sans">Dr. A. பிரபாகர் / Dr. A. Prabhakar MD., C.Diab. DNB (Nephro)</span> | <span className="font-sans">Dr. A. திவாகர் / Dr. A. Divakar MS., M.ch., (Uro)</span></p>
+                          <p className="font-bold">அவசர உதவிக்கு / Emergency Contact : <span className="font-sans">0422 4316000</span> | அவசர கேஸ்கள் 24 மணி நேரமும் பார்க்கப்படும் - 24 hrs Service</p>
                         </div>
                       </div>
-
-                      {/* Footer Box */}
-                      <div className="border border-black p-1 text-xs leading-tight">
-                        <p className="font-bold">முன்பதிவு செய்வது சிறப்பு டாக்டர் இருப்பது உறுதிபடுத்தி காலதாமதத்தை குறைக்கும் / Prior registration will confirm availability of the specialist and avoid delay</p>
-                        <p className="font-bold">சிறப்பு டாக்டரை பார்க்க முன் பதிவு ! <span className="font-normal font-sans">For Specialist appointment : 0422 - 2494333, 73588 41555, 73588 41666</span> <span className="font-sans font-bold">நேரம் / Time : 8.00 am to 6.00 pm</span></p>
-                        <p className="font-bold">சிறப்பு சிறுநீரக மருத்துவ நிபுணர் : <span className="font-sans">Dr. A. பிரபாகர் / Dr. A. Prabhakar MD., C.Diab. DNB (Nephro)</span> | <span className="font-sans">Dr. A. திவாகர் / Dr. A. Divakar MS., M.ch., (Uro)</span></p>
-                        <p className="font-bold">அவசர உதவிக்கு / Emergency Contact : <span className="font-sans">0422 4316000</span> | அவசர கேஸ்கள் 24 மணி நேரமும் பார்க்கப்படும் - 24 hrs Service</p>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               ));
             })()}
