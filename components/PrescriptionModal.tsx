@@ -337,461 +337,482 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
           {/* PRINT PREVIEW AREA - EXACT REPLICA OF PDF */}
           <div ref={componentRef} className="bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
             {(() => {
-              const ITEMS_PER_PAGE = 7;
+              const FIRST_PAGE_ITEMS = 7;
+              const SUBSEQUENT_PAGE_ITEMS = 17; // Increased to 17 to maximize page 2 capacity
+              const totalMeds = medications.length;
               const chunks = [];
-              if (medications.length === 0) {
+
+              if (totalMeds === 0) {
                 chunks.push([]);
+              } else if (totalMeds <= FIRST_PAGE_ITEMS) {
+                // Single page: all tablets with expanded rows + footer
+                chunks.push(medications);
               } else {
-                for (let i = 0; i < medications.length; i += ITEMS_PER_PAGE) {
-                  chunks.push(medications.slice(i, i + ITEMS_PER_PAGE));
+                // Multi-page: First 7 expanded, then chunks of 12 normal rows
+                chunks.push(medications.slice(0, FIRST_PAGE_ITEMS));
+                const remaining = medications.slice(FIRST_PAGE_ITEMS);
+                for (let i = 0; i < remaining.length; i += SUBSEQUENT_PAGE_ITEMS) {
+                  chunks.push(remaining.slice(i, i + SUBSEQUENT_PAGE_ITEMS));
                 }
               }
 
-              return chunks.map((chunk, pageIndex) => (
-                <div
-                  key={pageIndex}
-                  className="flex flex-col relative bg-white"
-                  style={{
-                    pageBreakAfter: pageIndex < chunks.length - 1 ? 'always' : 'auto',
-                    minHeight: '260mm', // Always full height for professional footer placement
-                    marginBottom: '0',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                >
-                  {/* Header - Only on Page 1 */}
-                  {pageIndex === 0 && (
-                    <div className="flex items-center justify-between border-b-2 border-black pb-1 mb-1 relative">
-                      <div className="w-16 h-16 relative">
-                        <img src={clinicLogo || "/logo.png"} alt="Clinic Logo" className="w-[70px] h-[70px] object-contain absolute -top-1 left-0" />
-                      </div>
-                      <div className="text-center flex-1">
-                        <h1 className="text-lg font-bold text-blue-900 leading-tight">KONGUNAD KIDNEY CENTRE, Coimbatore - 641 012</h1>
-                        <h2 className="text-base font-bold text-blue-900 leading-tight">கொங்குநாடு கிட்னி சென்டர், கோயம்புத்தூர் - 641 012</h2>
-                      </div>
-                      {/* Page Number Indicator */}
-                      {chunks.length > 1 && (
-                        <div className="absolute top-0 right-0 text-xs font-bold text-gray-500">
-                          Page {pageIndex + 1} of {chunks.length}
-                        </div>
-                      )}
-                    </div>
-                  )}
+              return chunks.map((chunk, pageIndex) => {
+                const isFirstPage = pageIndex === 0;
+                const isLastPage = pageIndex === chunks.length - 1;
+                const shouldExpand = isFirstPage && totalMeds <= FIRST_PAGE_ITEMS;
+                const isFirstPageMulti = isFirstPage && totalMeds > FIRST_PAGE_ITEMS;
 
-                  {/* Patient Details Grid Box - Only on Page 1 */}
-                  {pageIndex === 0 && (
-                    <div className="border-2 border-black mb-2 text-xs font-bold" style={{ borderCollapse: 'collapse' }}>
-                      {/* Row 1 */}
-                      <div className="flex border-b border-black min-h-[24px]">
-                        <div className="w-1/2 flex border-r border-black">
-                          <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">பெயர் / NAME</div>
-                          <div className="flex-1 py-1 px-1.5 uppercase flex items-center">{patient.name}</div>
+                return (
+                  <div
+                    key={pageIndex}
+                    className="flex flex-col relative bg-white"
+                    style={{
+                      pageBreakAfter: pageIndex < chunks.length - 1 ? 'always' : 'auto',
+                      minHeight: shouldExpand || isLastPage ? '260mm' : 'auto',
+                      marginBottom: '0',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}
+                  >
+                    {/* Header - Only on Page 1 */}
+                    {pageIndex === 0 && (
+                      <div className="flex items-center justify-between border-b-2 border-black pb-1 mb-1 relative">
+                        <div className="w-16 h-16 relative">
+                          <img src={clinicLogo || "/logo.png"} alt="Clinic Logo" className="w-[70px] h-[70px] object-contain absolute -top-1 left-0" />
                         </div>
-                        <div className="w-1/2 flex">
-                          <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வயது-AGE / ஆ/பெ-M/F</div>
-                          <div className="flex-1 py-1 px-1.5 flex items-center">{patient.age} / {patient.gender || 'M'}</div>
+                        <div className="text-center flex-1">
+                          <h1 className="text-lg font-bold text-blue-900 leading-tight">KONGUNAD KIDNEY CENTRE, Coimbatore - 641 012</h1>
+                          <h2 className="text-base font-bold text-blue-900 leading-tight">கொங்குநாடு கிட்னி சென்டர், கோயம்புத்தூர் - 641 012</h2>
                         </div>
-                      </div>
-                      {/* Row 2 */}
-                      <div className="flex border-b border-black min-h-[24px]">
-                        <div className="w-1/2 flex border-r border-black">
-                          <div className="w-32 py-1 px-1.5 text-[10px] border-r border-black bg-gray-50 print:bg-white flex items-center leading-tight">தகப்பன்/கணவன் FATHER/HUSBAND</div>
-                          <input
-                            className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
-                            value={formData.fatherName}
-                            onChange={e => setFormData({ ...formData, fatherName: e.target.value })}
-                          />
-                        </div>
-                        <div className="w-1/2 flex">
-                          <div className="w-24 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">பதிவு எண் / REG. No.</div>
-                          <div className="flex-1 py-1 px-1.5 flex items-center border-r border-black">{patient.token_number}</div>
-                          <div className="w-16 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">MR. NO</div>
-                          <div className="flex-1 py-1 px-1.5 flex items-center">{patient.mr_number || ''}</div>
-                        </div>
-                      </div>
-                      {/* Row 3 */}
-                      <div className="flex border-b border-black min-h-[24px]">
-                        <div className="w-1/2 flex border-r border-black">
-                          <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">ஊர் / PLACE</div>
-                          <input
-                            className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
-                            value={formData.place}
-                            onChange={e => setFormData({ ...formData, place: e.target.value })}
-                          />
-                        </div>
-                        <div className="w-1/2 flex">
-                          <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">தேதி / DATE</div>
-                          <div className="flex-1 py-1 px-1.5 flex items-center">{new Date().toLocaleDateString('en-GB')}</div>
-                        </div>
-                      </div>
-                      {/* Row 4 */}
-                      <div className="flex border-b border-black min-h-[24px]">
-                        <div className="flex-1 flex">
-                          <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">போன் / PHONE</div>
-                          <input
-                            className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
-                            value={formData.phone}
-                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      {/* Row 5 */}
-                      <div className="flex border-b border-black min-h-[24px]">
-                        <div className="flex-1 flex">
-                          <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">மருந்து/Drug அலர்ஜி/Allergy</div>
-                          <input
-                            className="flex-1 py-1 px-1.5 outline-none font-normal text-red-600 bg-transparent"
-                            value={formData.allergy}
-                            onChange={e => setFormData({ ...formData, allergy: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      {/* Row 6 */}
-                      <div className="flex min-h-[24px]">
-                        <div className="flex-1 flex">
-                          <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / Diagnosis</div>
-                          <input
-                            className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent"
-                            value={formData.diagnosis}
-                            onChange={e => setFormData({ ...formData, diagnosis: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Medicine Table Box */}
-                  <div className={`border-2 border-black flex flex-col ${pageIndex < chunks.length - 1 ? 'flex-1 mb-1' : 'mb-4'}`}>
-                    <div className="text-center font-bold border-b border-black py-1 text-xs shrink-0">
-                      மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS
-                    </div>
-
-                    {/* Table Headers */}
-                    <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
-                      <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
-                        வ.எ<br />S.N
-                      </div>
-                      <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
-                        மருந்துக்கள் / DRUGS
-                      </div>
-                      <div className="w-[340px] shrink-0 flex flex-col">
-                        <div className="border-b border-black py-1">அளவு - Dose</div>
-                        <div className="flex flex-1 items-stretch">
-                          <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                            <span>Dose</span>
-                            <span>அளவு</span>
+                        {/* Page Number Indicator */}
+                        {chunks.length > 1 && (
+                          <div className="absolute top-0 right-0 text-xs font-bold text-gray-500">
+                            Page {pageIndex + 1} of {chunks.length}
                           </div>
-                          <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                            <span>Qty</span>
-                            <span>எண்</span>
-                          </div>
-                          <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                            <span>M</span>
-                            <span>கா</span>
-                          </div>
-                          <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                            <span>N</span>
-                            <span>ம</span>
-                          </div>
-                          <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                            <span>Nt</span>
-                            <span>இ</span>
-                          </div>
-                          <div className="w-10 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                            <span>B/F</span>
-                            <span>A/F</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Table Body Container - Flex grow on intermediate pages */}
-                    <div className={pageIndex < chunks.length - 1 ? "flex-1 flex flex-col justify-between" : ""}>
-
-                      {chunk.map((med, localIndex) => {
-                        const globalIndex = pageIndex * ITEMS_PER_PAGE + localIndex;
-                        const isIntermediate = pageIndex < chunks.length - 1;
-                        return (
-                          <div
-                            key={globalIndex}
-                            className={`flex border-b border-black ${isIntermediate ? 'flex-1 items-stretch' : 'py-1'} text-xs relative group`}
-                          >
-                            <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
-                              {globalIndex + 1}
-                            </div>
-                            <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
-                              <input
-                                className="w-full outline-none font-bold uppercase text-xs"
-                                placeholder="Type drug name..."
-                                value={med.name}
-                                onChange={e => {
-                                  updateMed(globalIndex, 'name', e.target.value);
-                                  setDrugSearchQuery(e.target.value);
-                                  if (!readOnly && allDrugOptions.length > 0) {
-                                    setShowDrugDropdown(globalIndex);
-                                  }
-                                }}
-                                onFocus={() => {
-                                  if (!readOnly && allDrugOptions.length > 0) {
-                                    setShowDrugDropdown(globalIndex);
-                                    setDrugSearchQuery(med.name);
-                                  }
-                                }}
-                                readOnly={readOnly}
-                              />
-                              {/* Drug Dropdown */}
-                              {!readOnly && showDrugDropdown === globalIndex && filteredDrugs.length > 0 && (
-                                <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
-                                  {filteredDrugs.map(drug => (
-                                    <button
-                                      key={drug.id}
-                                      type="button"
-                                      onClick={() => handleSelectDrug(globalIndex, drug)}
-                                      className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-gray-900 text-sm">{drug.name}</span>
-                                        {drug.isReference && drug.category && (
-                                          <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
-                                            {drug.category}
-                                          </span>
-                                        )}
-                                        {!drug.isReference && (
-                                          <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
-                                            SAVED
-                                          </span>
-                                        )}
-                                      </div>
-                                      {drug.genericName && (
-                                        <div className="text-xs text-gray-500 mt-0.5">
-                                          {drug.genericName}
-                                        </div>
-                                      )}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                              {/* Row Controls (Hidden in Print) */}
-                              <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white">
-                                {medications.length > 1 && (
-                                  <button onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1">×</button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="w-[340px] flex shrink-0 items-stretch">
-                              {/* Dose Dropdown */}
-                              <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                <select
-                                  className="w-full text-center outline-none text-[10px] bg-transparent cursor-pointer appearance-none"
-                                  value={med.dose}
-                                  onChange={e => updateMed(globalIndex, 'dose', e.target.value)}
-                                  disabled={readOnly}
-                                >
-                                  <option value="">--</option>
-                                  <option value="OD">OD</option>
-                                  <option value="TD">TD</option>
-                                  <option value="TDS">TDS</option>
-                                  <option value="QID">QID</option>
-                                  <option value="ALT">Alt Day</option>
-                                  <option value="WEEKLY">Weekly</option>
-                                  <option value="HALF-ALT">½ Alt</option>
-                                  <option value="HALF-DAILY">½ Daily</option>
-                                </select>
-                              </div>
-                              {/* Quantity */}
-                              <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                <input className="w-full text-center outline-none text-xs" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
-                              </div>
-                              {/* M dosage container */}
-                              <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                <input
-                                  type="text"
-                                  className="w-full text-center text-xs font-bold outline-none bg-transparent"
-                                  placeholder=""
-                                  value={med.morning}
-                                  onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
-                                  readOnly={readOnly}
-                                />
-                              </div>
-                              {/* N dosage container */}
-                              <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                <input
-                                  type="text"
-                                  className="w-full text-center text-xs font-bold outline-none bg-transparent"
-                                  placeholder=""
-                                  value={med.noon}
-                                  onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
-                                  readOnly={readOnly}
-                                />
-                              </div>
-                              {/* Nt dosage container */}
-                              <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                <input
-                                  type="text"
-                                  className="w-full text-center text-xs font-bold outline-none bg-transparent"
-                                  placeholder=""
-                                  value={med.night}
-                                  onChange={e => updateMed(globalIndex, 'night', e.target.value)}
-                                  readOnly={readOnly}
-                                />
-                              </div>
-                              {/* Before/After Food Toggle */}
-                              <div
-                                className="w-10 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]"
-                                onClick={() => !readOnly && updateMed(globalIndex, 'beforeFood', !med.beforeFood)}
-                              >
-                                {med.beforeFood ? 'B/F' : 'A/F'}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Add Row Button (Hidden in Print and ReadOnly) - Only show on last page */}
-                    {pageIndex === chunks.length - 1 && (
-                      <div
-                        className="p-2 text-center border-t border-dashed border-gray-300 flex items-center justify-center gap-4 no-print"
-                        style={{ display: 'flex' }}
-                      >
-                        {!readOnly && (
-                          <>
-                            <button onClick={addRow} className="text-emerald-600 text-sm font-bold hover:underline">+ Add Medicine Row</button>
-                            <span className="text-gray-300">|</span>
-                            <button
-                              onClick={() => setShowManageDrugsModal(true)}
-                              className="text-purple-600 text-sm font-bold hover:underline flex items-center gap-1"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                              Manage Saved Drugs
-                            </button>
-                          </>
                         )}
                       </div>
                     )}
-                  </div>
 
-                  {/* Footer Section - ONLY on the final page */}
-                  {pageIndex === chunks.length - 1 && (() => {
-                    // Calculate dynamic scaling based on number of medications in the current chunk
-                    const medCount = chunk.length;
-                    const getFooterScale = () => {
-                      if (medCount <= 4) return { textSize: 'text-sm', footerTextSize: 'text-xs', spacing: 'space-y-2', mb: 'mb-4', signatureH: 'h-12', padding: 'p-2', legendMb: 'mb-2', footerP: 'p-1' };
-                      if (medCount <= 6) return { textSize: 'text-xs', footerTextSize: 'text-[11px]', spacing: 'space-y-1.5', mb: 'mb-3', signatureH: 'h-10', padding: 'p-1.5', legendMb: 'mb-1.5', footerP: 'p-0.5' };
-                      if (medCount <= 9) return { textSize: 'text-xs', footerTextSize: 'text-[10px]', spacing: 'space-y-0.8', mb: 'mb-1.5', signatureH: 'h-9', padding: 'p-1', legendMb: 'mb-1', footerP: 'p-0.5' };
-                      return { textSize: 'text-[11px]', footerTextSize: 'text-[9px]', spacing: 'space-y-0.5', mb: 'mb-1', signatureH: 'h-8', padding: 'p-0.5', legendMb: 'mb-0.5', footerP: 'p-0.5' };
-                    };
-                    const scale = getFooterScale();
-
-                    return (
-                      <div className="mt-auto">
-                        {/* New Diet & Monitoring Section */}
-                        {/* New Diet & Monitoring Section - Side-by-Side consistently */}
-                        <div className="border-t border-black pt-1 mt-1 mb-1">
-                          <div className="flex text-[10px] leading-tight">
-                            <div className="w-[45%] border-r border-black pr-2 space-y-0.5">
-                              <p className="font-bold underline italic">Diet:</p>
-                              <p className="font-bold">Only fruits: <span className="font-normal italic">apple, pineapple, papaya, orange.</span></p>
-                              <div className="mt-1 text-red-600">
-                                <p className="font-bold underline italic">Avoid:</p>
-                                <p className="font-bold">Green leafy vegetables, Non‑veg</p>
-                              </div>
-                            </div>
-                            <div className="flex-1 pl-2 space-y-1.5">
-                              <p className="font-bold underline italic">To be specified / monitored:</p>
-                              <div className="space-y-1 font-bold">
-                                <div className="flex gap-1 items-baseline">
-                                  <span className="shrink-0 w-20">Salt intake:</span>
-                                  <input
-                                    className="flex-1 border-b border-gray-300 border-dotted outline-none bg-transparent min-w-[30px] text-center"
-                                    value={formData.saltIntake}
-                                    onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
-                                    placeholder="______"
-                                    readOnly={readOnly}
-                                  />
-                                  <span className="shrink-0">gm/day</span>
-                                </div>
-                                <div className="flex gap-1 items-baseline">
-                                  <span className="shrink-0 w-20">Fluid intake:</span>
-                                  <input
-                                    className="flex-1 border-b border-gray-300 border-dotted outline-none bg-transparent min-w-[30px] text-center"
-                                    value={formData.fluidIntake}
-                                    onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
-                                    placeholder="______"
-                                    readOnly={readOnly}
-                                  />
-                                  <span className="shrink-0">lit/day</span>
-                                </div>
-                              </div>
-                            </div>
+                    {/* Patient Details Grid Box - Only on Page 1 */}
+                    {pageIndex === 0 && (
+                      <div className="border-2 border-black mb-2 text-xs font-bold" style={{ borderCollapse: 'collapse' }}>
+                        {/* Row 1 */}
+                        <div className="flex border-b border-black min-h-[24px]">
+                          <div className="w-1/2 flex border-r border-black">
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">பெயர் / NAME</div>
+                            <div className="flex-1 py-1 px-1.5 uppercase flex items-center">{patient.name}</div>
+                          </div>
+                          <div className="w-1/2 flex">
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வயது-AGE / ஆ/பெ-M/F</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center">{patient.age} / {patient.gender || 'M'}</div>
                           </div>
                         </div>
-
-                        {/* Footer Review Section */}
-                        <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
-                          <div className="flex gap-2 items-end">
-                            <div className="shrink-0 w-80 whitespace-nowrap">மீண்டும் வரவேண்டிய நாள் / Review on :</div>
+                        {/* Row 2 */}
+                        <div className="flex border-b border-black min-h-[24px]">
+                          <div className="w-1/2 flex border-r border-black">
+                            <div className="w-32 py-1 px-1.5 text-[10px] border-r border-black bg-gray-50 print:bg-white flex items-center leading-tight">தகப்பன்/கணவன் FATHER/HUSBAND</div>
                             <input
-                              type="date"
-                              className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent"
-                              value={formData.reviewDate}
-                              onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
-                              readOnly={readOnly}
-                              min={new Date().toISOString().split('T')[0]}
+                              className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
+                              value={formData.fatherName}
+                              onChange={e => setFormData({ ...formData, fatherName: e.target.value })}
                             />
                           </div>
-                          <div className="flex gap-2 items-end">
-                            <div className="shrink-0 w-80 whitespace-nowrap">செய்ய வேண்டிய பரிசோதனைகள் / Tests :</div>
-                            <input className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} />
-                          </div>
-                          <div className="flex gap-2 items-end">
-                            <div className="shrink-0 w-80 whitespace-nowrap">பார்க்க வேண்டிய டாக்டர்கள் / Specialists :</div>
-                            <input className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent" value={formData.specialistToReview} onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value })} readOnly={readOnly} />
+                          <div className="w-1/2 flex">
+                            <div className="w-24 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">பதிவு எண் / REG. No.</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center border-r border-black">{patient.token_number}</div>
+                            <div className="w-16 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">MR. NO</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center">{patient.mr_number || ''}</div>
                           </div>
                         </div>
-
-                        {/* Signature */}
-                        <div className="flex justify-end mt-1 mb-1">
-                          <div className="text-center">
-                            <div className="h-8"></div> {/* Space for signature */}
-                            <div className={`font-bold border-t border-black px-4 pt-1 ${scale.textSize}`}>
-                              டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.
-                            </div>
+                        {/* Row 3 */}
+                        <div className="flex border-b border-black min-h-[24px]">
+                          <div className="w-1/2 flex border-r border-black">
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">ஊர் / PLACE</div>
+                            <input
+                              className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
+                              value={formData.place}
+                              onChange={e => setFormData({ ...formData, place: e.target.value })}
+                            />
+                          </div>
+                          <div className="w-1/2 flex">
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">தேதி / DATE</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center">{new Date().toLocaleDateString('en-GB')}</div>
                           </div>
                         </div>
-
-                        {/* Bottom Parallel Section: Dosage Legend + Footer Box */}
-                        <div className="flex gap-1 items-stretch mt-1">
-                          {/* Dosage Legend - Compact */}
-                          <div className="w-[42%] border border-gray-400 rounded p-1 bg-gray-50 print:bg-white text-[9px] leading-tight">
-                            <div className="font-bold border-b border-gray-300 mb-0.5">அளவு விளக்கம் / Dosage Guide:</div>
-                            <div className="grid grid-cols-1 gap-y-0.5">
-                              <span><b>OD/TD/TDS:</b> 1/2/3 times (முறை)</span>
-                              <span><b>QID:</b> Every 6 hrs (6 மணி நேரமும்)</span>
-                              <span><b>Alt Day:</b> Alternate day (நாள் விட்டு நாள்)</span>
-                              <span><b>B/F:</b> Before Food (சாப்பாட்டுக்கு முன்)</span>
-                              <span><b>A/F:</b> After Food (சாப்பாட்டுக்கு பின்)</span>
-                            </div>
+                        {/* Row 4 */}
+                        <div className="flex border-b border-black min-h-[24px]">
+                          <div className="flex-1 flex">
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">போன் / PHONE</div>
+                            <input
+                              className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
+                              value={formData.phone}
+                              onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                            />
                           </div>
-
-                          {/* Footer Box - Parallel */}
-                          <div className="flex-1 border border-black p-1 text-[9px] leading-[1.2] flex flex-col justify-center font-bold">
-                            <p>முன்பதிவு காலதாமதத்தை குறைக்கும் / Prior registration avoids delay</p>
-                            <p>Appt: 0422-2494333, 73588 41555, 41666 | Time: 8am - 6pm</p>
-                            <p className="border-t border-gray-200 mt-0.5 pt-0.5">
-                              Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)
-                            </p>
-                            <p>அவசர உதவிக்கு / Emergency: 0422 4316000 (24 மணி நேரமும் / 24 hrs Service)</p>
+                        </div>
+                        {/* Row 5 */}
+                        <div className="flex border-b border-black min-h-[24px]">
+                          <div className="flex-1 flex">
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">மருந்து/Drug அலர்ஜி/Allergy</div>
+                            <input
+                              className="flex-1 py-1 px-1.5 outline-none font-normal text-red-600 bg-transparent"
+                              value={formData.allergy}
+                              onChange={e => setFormData({ ...formData, allergy: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        {/* Row 6 */}
+                        <div className="flex min-h-[24px]">
+                          <div className="flex-1 flex">
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / Diagnosis</div>
+                            <input
+                              className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent"
+                              value={formData.diagnosis}
+                              onChange={e => setFormData({ ...formData, diagnosis: e.target.value })}
+                            />
                           </div>
                         </div>
                       </div>
-                    );
-                  })()}
-                </div>
-              ));
+                    )}
+
+                    {/* Medicine Table Box */}
+                    <div className={`border-2 border-black flex flex-col ${pageIndex < chunks.length - 1 ? 'flex-1 mb-1' : 'mb-4'}`}>
+                      <div className="text-center font-bold border-b border-black py-1 text-xs shrink-0">
+                        மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS
+                      </div>
+
+                      {/* Table Headers */}
+                      <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
+                        <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
+                          வ.எ<br />S.N
+                        </div>
+                        <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
+                          மருந்துக்கள் / DRUGS
+                        </div>
+                        <div className="w-[340px] shrink-0 flex flex-col">
+                          <div className="border-b border-black py-1">அளவு - Dose</div>
+                          <div className="flex flex-1 items-stretch">
+                            <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <span>Dose</span>
+                              <span>அளவு</span>
+                            </div>
+                            <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <span>Qty</span>
+                              <span>எண்</span>
+                            </div>
+                            <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <span>M</span>
+                              <span>கா</span>
+                            </div>
+                            <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <span>N</span>
+                              <span>ம</span>
+                            </div>
+                            <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <span>Nt</span>
+                              <span>இ</span>
+                            </div>
+                            <div className="w-10 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <span>B/F</span>
+                              <span>A/F</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Table Body Container - Expand on first page if single page */}
+                      <div className={shouldExpand || isFirstPageMulti ? "flex-1 flex flex-col justify-between" : ""}>
+
+                        {chunk.map((med, localIndex) => {
+                          // Calculate correct global index based on page
+                          const globalIndex = pageIndex === 0
+                            ? localIndex
+                            : FIRST_PAGE_ITEMS + (pageIndex - 1) * SUBSEQUENT_PAGE_ITEMS + localIndex;
+
+                          const shouldExpandRow = shouldExpand || isFirstPageMulti;
+
+                          return (
+                            <div
+                              key={globalIndex}
+                              className={`flex border-b border-black ${shouldExpandRow ? 'flex-1 items-stretch' : 'py-1'} text-xs relative group`}
+                            >
+                              <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
+                                {globalIndex + 1}
+                              </div>
+                              <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
+                                <input
+                                  className="w-full outline-none font-bold uppercase text-xs"
+                                  placeholder="Type drug name..."
+                                  value={med.name}
+                                  onChange={e => {
+                                    updateMed(globalIndex, 'name', e.target.value);
+                                    setDrugSearchQuery(e.target.value);
+                                    if (!readOnly && allDrugOptions.length > 0) {
+                                      setShowDrugDropdown(globalIndex);
+                                    }
+                                  }}
+                                  onFocus={() => {
+                                    if (!readOnly && allDrugOptions.length > 0) {
+                                      setShowDrugDropdown(globalIndex);
+                                      setDrugSearchQuery(med.name);
+                                    }
+                                  }}
+                                  readOnly={readOnly}
+                                />
+                                {/* Drug Dropdown */}
+                                {!readOnly && showDrugDropdown === globalIndex && filteredDrugs.length > 0 && (
+                                  <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
+                                    {filteredDrugs.map(drug => (
+                                      <button
+                                        key={drug.id}
+                                        type="button"
+                                        onClick={() => handleSelectDrug(globalIndex, drug)}
+                                        className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-semibold text-gray-900 text-sm">{drug.name}</span>
+                                          {drug.isReference && drug.category && (
+                                            <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
+                                              {drug.category}
+                                            </span>
+                                          )}
+                                          {!drug.isReference && (
+                                            <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
+                                              SAVED
+                                            </span>
+                                          )}
+                                        </div>
+                                        {drug.genericName && (
+                                          <div className="text-xs text-gray-500 mt-0.5">
+                                            {drug.genericName}
+                                          </div>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                {/* Row Controls (Hidden in Print) */}
+                                <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white">
+                                  {medications.length > 1 && (
+                                    <button onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1">×</button>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="w-[340px] flex shrink-0 items-stretch">
+                                {/* Dose Dropdown */}
+                                <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                  <select
+                                    className="w-full text-center outline-none text-[10px] bg-transparent cursor-pointer appearance-none"
+                                    value={med.dose}
+                                    onChange={e => updateMed(globalIndex, 'dose', e.target.value)}
+                                    disabled={readOnly}
+                                  >
+                                    <option value="">--</option>
+                                    <option value="OD">OD</option>
+                                    <option value="TD">TD</option>
+                                    <option value="TDS">TDS</option>
+                                    <option value="QID">QID</option>
+                                    <option value="ALT">Alt Day</option>
+                                    <option value="WEEKLY">Weekly</option>
+                                    <option value="HALF-ALT">½ Alt</option>
+                                    <option value="HALF-DAILY">½ Daily</option>
+                                  </select>
+                                </div>
+                                {/* Quantity */}
+                                <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                  <input className="w-full text-center outline-none text-xs" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
+                                </div>
+                                {/* M dosage container */}
+                                <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
+                                  <input
+                                    type="text"
+                                    className="w-full text-center text-xs font-bold outline-none bg-transparent"
+                                    placeholder=""
+                                    value={med.morning}
+                                    onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
+                                    readOnly={readOnly}
+                                  />
+                                </div>
+                                {/* N dosage container */}
+                                <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
+                                  <input
+                                    type="text"
+                                    className="w-full text-center text-xs font-bold outline-none bg-transparent"
+                                    placeholder=""
+                                    value={med.noon}
+                                    onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
+                                    readOnly={readOnly}
+                                  />
+                                </div>
+                                {/* Nt dosage container */}
+                                <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
+                                  <input
+                                    type="text"
+                                    className="w-full text-center text-xs font-bold outline-none bg-transparent"
+                                    placeholder=""
+                                    value={med.night}
+                                    onChange={e => updateMed(globalIndex, 'night', e.target.value)}
+                                    readOnly={readOnly}
+                                  />
+                                </div>
+                                {/* Before/After Food Toggle */}
+                                <div
+                                  className="w-10 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]"
+                                  onClick={() => !readOnly && updateMed(globalIndex, 'beforeFood', !med.beforeFood)}
+                                >
+                                  {med.beforeFood ? 'B/F' : 'A/F'}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Add Row Button (Hidden in Print and ReadOnly) - Only show on last page */}
+                      {pageIndex === chunks.length - 1 && (
+                        <div
+                          className="p-2 text-center border-t border-dashed border-gray-300 flex items-center justify-center gap-4 no-print"
+                          style={{ display: 'flex' }}
+                        >
+                          {!readOnly && (
+                            <>
+                              <button onClick={addRow} className="text-emerald-600 text-sm font-bold hover:underline">+ Add Medicine Row</button>
+                              <span className="text-gray-300">|</span>
+                              <button
+                                onClick={() => setShowManageDrugsModal(true)}
+                                className="text-purple-600 text-sm font-bold hover:underline flex items-center gap-1"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Manage Saved Drugs
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer Section - ONLY on the final page */}
+                    {isLastPage && (() => {
+                      // Calculate dynamic scaling based on number of medications in the current chunk
+                      const medCount = chunk.length;
+                      const getFooterScale = () => {
+                        if (medCount <= 4) return { textSize: 'text-sm', footerTextSize: 'text-xs', spacing: 'space-y-2', mb: 'mb-4', signatureH: 'h-12', padding: 'p-2', legendMb: 'mb-2', footerP: 'p-1' };
+                        if (medCount <= 6) return { textSize: 'text-xs', footerTextSize: 'text-[11px]', spacing: 'space-y-1.5', mb: 'mb-3', signatureH: 'h-10', padding: 'p-1.5', legendMb: 'mb-1.5', footerP: 'p-0.5' };
+                        if (medCount <= 9) return { textSize: 'text-xs', footerTextSize: 'text-[10px]', spacing: 'space-y-0.8', mb: 'mb-1.5', signatureH: 'h-9', padding: 'p-1', legendMb: 'mb-1', footerP: 'p-0.5' };
+                        return { textSize: 'text-[11px]', footerTextSize: 'text-[9px]', spacing: 'space-y-0.5', mb: 'mb-1', signatureH: 'h-8', padding: 'p-0.5', legendMb: 'mb-0.5', footerP: 'p-0.5' };
+                      };
+                      const scale = getFooterScale();
+
+                      return (
+                        <div className="mt-auto">
+                          {/* New Diet & Monitoring Section */}
+                          {/* New Diet & Monitoring Section - Side-by-Side consistently */}
+                          <div className="border-t border-black pt-1 mt-1 mb-1">
+                            <div className="flex text-[10px] leading-tight">
+                              <div className="w-[45%] border-r border-black pr-2 space-y-0.5">
+                                <p className="font-bold underline italic">Diet:</p>
+                                <p className="font-bold">Only fruits: <span className="font-normal italic">apple, pineapple, papaya, orange.</span></p>
+                                <div className="mt-1 text-red-600">
+                                  <p className="font-bold underline italic">Avoid:</p>
+                                  <p className="font-bold">Green leafy vegetables, Non‑veg</p>
+                                </div>
+                              </div>
+                              <div className="flex-1 pl-2 space-y-1.5">
+                                <p className="font-bold underline italic">To be specified / monitored:</p>
+                                <div className="space-y-1 font-bold">
+                                  <div className="flex gap-1 items-baseline">
+                                    <span className="shrink-0 w-20">Salt intake:</span>
+                                    <input
+                                      className="flex-1 border-b border-gray-300 border-dotted outline-none bg-transparent min-w-[30px] text-center"
+                                      value={formData.saltIntake}
+                                      onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
+                                      placeholder="______"
+                                      readOnly={readOnly}
+                                    />
+                                    <span className="shrink-0">gm/day</span>
+                                  </div>
+                                  <div className="flex gap-1 items-baseline">
+                                    <span className="shrink-0 w-20">Fluid intake:</span>
+                                    <input
+                                      className="flex-1 border-b border-gray-300 border-dotted outline-none bg-transparent min-w-[30px] text-center"
+                                      value={formData.fluidIntake}
+                                      onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
+                                      placeholder="______"
+                                      readOnly={readOnly}
+                                    />
+                                    <span className="shrink-0">lit/day</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Footer Review Section */}
+                          <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
+                            <div className="flex gap-2 items-end">
+                              <div className="shrink-0 w-80 whitespace-nowrap">மீண்டும் வரவேண்டிய நாள் / Review on :</div>
+                              <input
+                                type="date"
+                                className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent"
+                                value={formData.reviewDate}
+                                onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
+                                readOnly={readOnly}
+                                min={new Date().toISOString().split('T')[0]}
+                              />
+                            </div>
+                            <div className="flex gap-2 items-end">
+                              <div className="shrink-0 w-80 whitespace-nowrap">செய்ய வேண்டிய பரிசோதனைகள் / Tests :</div>
+                              <input className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} />
+                            </div>
+                            <div className="flex gap-2 items-end">
+                              <div className="shrink-0 w-80 whitespace-nowrap">பார்க்க வேண்டிய டாக்டர்கள் / Specialists :</div>
+                              <input className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent" value={formData.specialistToReview} onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value })} readOnly={readOnly} />
+                            </div>
+                          </div>
+
+                          {/* Signature */}
+                          <div className="flex justify-end mt-1 mb-1">
+                            <div className="text-center">
+                              <div className="h-8"></div> {/* Space for signature */}
+                              <div className={`font-bold border-t border-black px-4 pt-1 ${scale.textSize}`}>
+                                டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Bottom Parallel Section: Dosage Legend + Footer Box */}
+                          <div className="flex gap-1 items-stretch mt-1">
+                            {/* Dosage Legend - Compact */}
+                            <div className="w-[42%] border border-gray-400 rounded p-1 bg-gray-50 print:bg-white text-[9px] leading-tight">
+                              <div className="font-bold border-b border-gray-300 mb-0.5">அளவு விளக்கம் / Dosage Guide:</div>
+                              <div className="grid grid-cols-1 gap-y-0.5">
+                                <span><b>OD/TD/TDS:</b> 1/2/3 times (முறை)</span>
+                                <span><b>QID:</b> Every 6 hrs (6 மணி நேரமும்)</span>
+                                <span><b>Alt Day:</b> Alternate day (நாள் விட்டு நாள்)</span>
+                                <span><b>B/F:</b> Before Food (சாப்பாட்டுக்கு முன்)</span>
+                                <span><b>A/F:</b> After Food (சாப்பாட்டுக்கு பின்)</span>
+                              </div>
+                            </div>
+
+                            {/* Footer Box - Parallel */}
+                            <div className="flex-1 border border-black p-1 text-[9px] leading-[1.2] flex flex-col justify-center font-bold">
+                              <p>முன்பதிவு காலதாமதத்தை குறைக்கும் / Prior registration avoids delay</p>
+                              <p>Appt: 0422-2494333, 73588 41555, 41666 | Time: 8am - 6pm</p>
+                              <p className="border-t border-gray-200 mt-0.5 pt-0.5">
+                                Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)
+                              </p>
+                              <p>அவசர உதவிக்கு / Emergency: 0422 4316000 (24 மணி நேரமும் / 24 hrs Service)</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              });
             })()}
           </div>
         </div>
