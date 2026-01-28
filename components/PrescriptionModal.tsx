@@ -47,7 +47,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   });
 
   const [medications, setMedications] = useState([
-    { name: '', number: '', dose: '', morning: false, noon: false, night: false, beforeFood: false }
+    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false }
   ]);
 
   // Saved Drugs State
@@ -245,9 +245,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
             name: m.name,
             number: (m.dosage || '').replace(' tab', ''),
             dose: m.dose || '',
-            morning: freqs[0] === '1',
-            noon: freqs[1] === '1',
-            night: freqs[2] === '1',
+            morning: freqs[0] !== '0' ? freqs[0] : '',
+            noon: freqs[1] !== '0' ? freqs[1] : '',
+            night: freqs[2] !== '0' ? freqs[2] : '',
             beforeFood: (m.instruction || '').toLowerCase().includes('before')
           };
         });
@@ -286,7 +286,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   // Medicine Handlers
   const addRow = () => {
     if (readOnly) return;
-    setMedications([...medications, { name: '', number: '', dose: '', morning: false, noon: false, night: false, beforeFood: false }]);
+    setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false }]);
   };
 
   const removeRow = (index: number) => {
@@ -308,7 +308,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     if (readOnly) return;
     // Convert to pharmacy format
     const pharmacyMeds = medications.filter(m => m.name).map(m => {
-      const freq = `${m.morning ? '1' : '0'}-${m.noon ? '1' : '0'}-${m.night ? '1' : '0'}`;
+      const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}`;
       return {
         name: m.name,
         dosage: m.number + ' tab',
@@ -585,16 +585,31 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                             <div className="w-10 border-r border-black py-1 px-0.5 flex items-center justify-center shrink-0">
                               <input className="w-full text-center outline-none text-xs" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
                             </div>
-                            {/* Checkboxes for M-N-N */}
-                            <div className="w-10 border-r border-black py-1 flex items-center justify-center cursor-pointer font-bold shrink-0" onClick={() => !readOnly && updateMed(globalIndex, 'morning', !med.morning)}>
-                              {med.morning ? '✓' : ''}
-                            </div>
-                            <div className="w-10 border-r border-black py-1 flex items-center justify-center cursor-pointer font-bold shrink-0" onClick={() => !readOnly && updateMed(globalIndex, 'noon', !med.noon)}>
-                              {med.noon ? '✓' : ''}
-                            </div>
-                            <div className="w-10 border-r border-black py-1 flex items-center justify-center cursor-pointer font-bold shrink-0" onClick={() => !readOnly && updateMed(globalIndex, 'night', !med.night)}>
-                              {med.night ? '✓' : ''}
-                            </div>
+                            {/* Text inputs for M-N-N dosage */}
+                            <input
+                              type="text"
+                              className="w-10 border-r border-black py-1 text-center text-xs font-bold outline-none bg-transparent shrink-0"
+                              placeholder=""
+                              value={med.morning}
+                              onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
+                              readOnly={readOnly}
+                            />
+                            <input
+                              type="text"
+                              className="w-10 border-r border-black py-1 text-center text-xs font-bold outline-none bg-transparent shrink-0"
+                              placeholder=""
+                              value={med.noon}
+                              onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
+                              readOnly={readOnly}
+                            />
+                            <input
+                              type="text"
+                              className="w-10 border-r border-black py-1 text-center text-xs font-bold outline-none bg-transparent shrink-0"
+                              placeholder=""
+                              value={med.night}
+                              onChange={e => updateMed(globalIndex, 'night', e.target.value)}
+                              readOnly={readOnly}
+                            />
                             {/* Before/After Food Toggle */}
                             <div
                               className="w-10 py-1 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]"
@@ -652,7 +667,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                         <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
                           <div className="flex gap-2 items-end">
                             <div>மீண்டும் வரவேண்டிய நாள் <br /> To Come for review on :</div>
-                            <input className="flex-1 border-b border-black border-dashed outline-none px-2" value={formData.reviewDate} onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })} readOnly={readOnly} />
+                            <input
+                              type="date"
+                              className="flex-1 border-b border-black border-dashed outline-none px-2 cursor-pointer"
+                              value={formData.reviewDate}
+                              onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
+                              readOnly={readOnly}
+                              min={new Date().toISOString().split('T')[0]}
+                            />
                           </div>
                           <div className="flex gap-2 items-end">
                             <div>மீண்டும் வரும்போது செய்ய வேண்டிய பரிசோதனைகள் <br /> Tests to be done on review :</div>
