@@ -32,6 +32,9 @@ const PharmacyLogin = React.lazy(() =>
 const PharmacyDashboard = React.lazy(() =>
     import('../components/enterprise').then(m => ({ default: m.PharmacyDashboard }))
 );
+const PharmacyQueueDisplay = React.lazy(() =>
+    import('../components/enterprise').then(m => ({ default: m.PharmacyQueueDisplay }))
+);
 const DoctorLogin = React.lazy(() =>
     import('../components/enterprise').then(m => ({ default: m.DoctorLogin }))
 );
@@ -293,6 +296,15 @@ const AppRoutes: React.FC = () => {
                             <DepartmentProtectedRoute department="pharmacy">
                                 <PharmacyDashboard />
                             </DepartmentProtectedRoute>
+                        </ProtectedRoute>
+                    }
+                />
+                {/* Pharmacy Queue Display - for patient waiting area */}
+                <Route
+                    path="/enterprise-dashboard/pharmacy/display"
+                    element={
+                        <ProtectedRoute allowedRoles={['enterprise']}>
+                            <PharmacyQueueDisplay />
                         </ProtectedRoute>
                     }
                 />
