@@ -24,10 +24,15 @@ const PharmacyQueueDisplay: React.FC = () => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [audioEnabled, setAudioEnabled] = useState(false);
+    const [speakingToken, setSpeakingToken] = useState<string | null>(null);
+    const [audioStatus, setAudioStatus] = useState(voiceService.status);
 
     // Update time every second
     useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+            setAudioStatus({ ...voiceService.status });
+        }, 1000);
         return () => clearInterval(timer);
     }, []);
 
@@ -102,7 +107,11 @@ const PharmacyQueueDisplay: React.FC = () => {
                         playNotificationSound();
                         // Delay voice announcement slightly after the beep
                         setTimeout(() => {
-                            voiceService.announcePatientCall(payload.new.token_number);
+                            const tokenNum = payload.new.token_number;
+                            setSpeakingToken(tokenNum);
+                            voiceService.announcePatientCall(tokenNum);
+                            // Hide subtitles after 5 seconds
+                            setTimeout(() => setSpeakingToken(null), 5000);
                         }, 800);
                     }
                     fetchQueue();
@@ -174,11 +183,13 @@ const PharmacyQueueDisplay: React.FC = () => {
     };
 
     const handleTestAudio = () => {
-        toast.success("Testing Tamil Voice Announcement...", {
+        toast.success("Testing Audio Announcement...", {
             icon: '🔊',
             duration: 3000
         });
+        setSpeakingToken("99");
         voiceService.announcePatientCall("99", 1);
+        setTimeout(() => setSpeakingToken(null), 3000);
     };
 
     return (
@@ -362,8 +373,39 @@ const PharmacyQueueDisplay: React.FC = () => {
                 </div>
             </main>
 
+            {/* Voice Status Bar - Diagnostic */}
+            {audioEnabled && (
+                <div className="bg-gray-50 border-t border-gray-100 px-6 py-2 flex items-center justify-between text-[10px] font-medium text-gray-400 uppercase tracking-widest">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5">
+                            <div className={`w-1.5 h-1.5 rounded-full ${audioStatus.engine === 'SPEECH' ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                            ENGINE: {audioStatus.engine}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className={`w-1.5 h-1.5 rounded-full ${audioStatus.voiceCount > 0 ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                            VOICES: {audioStatus.voiceCount}
+                        </div>
+                    </div>
+                    {audioStatus.error && (
+                        <div className="flex items-center gap-1.5 text-red-500 animate-pulse">
+                            ⚠️ {audioStatus.error}
+                        </div>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                        {audioStatus.lastSpoken ? `LAST: "${audioStatus.lastSpoken}"` : 'READY'}
+                    </div>
+                </div>
+            )}
+
             {/* BeanHealth Branding - Prominent */}
-            <footer className="flex-shrink-0 px-5 pb-4">
+            <footer className="flex-shrink-0 px-5 pb-4 relative">
+                {/* Voice Subtitles Overlay */}
+                {speakingToken && (
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white px-8 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10 backdrop-blur-md animate-in slide-in-from-bottom-4 fade-in duration-300">
+                        <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="text-xl font-bold tracking-tight">Speaking: Token <span className="text-emerald-400">{speakingToken}</span></span>
+                    </div>
+                )}
                 <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500 rounded-2xl shadow-lg p-4">
                     <div className="flex items-center justify-center gap-4">
                         <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
