@@ -58,7 +58,8 @@ const ReceptionDashboard: React.FC = () => {
         phone: '',
         department: '',
         doctorId: '',
-        tokenNumber: ''
+        tokenNumber: '',
+        mrNumber: ''
     });
 
     // Settings Modal
@@ -233,7 +234,7 @@ const ReceptionDashboard: React.FC = () => {
 
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
-        setWalkInForm({ name: '', age: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '' });
+        setWalkInForm({ name: '', age: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '' });
     };
 
     const fetchHospitalSettings = async () => {
@@ -376,6 +377,7 @@ const ReceptionDashboard: React.FC = () => {
                     name: walkInForm.name,
                     age: parseInt(walkInForm.age),
                     token_number: tokenNumber,
+                    mr_number: walkInForm.mrNumber || null,
                     father_husband_name: walkInForm.fatherHusbandName || null,
                     place: walkInForm.place || null,
                     phone: walkInForm.phone || null
@@ -630,6 +632,18 @@ const ReceptionDashboard: React.FC = () => {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">MR. NO</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.mrNumber}
+                                        onChange={e => setWalkInForm({ ...walkInForm, mrNumber: e.target.value })}
+                                        placeholder="MR-12345"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Age</label>
                                     <input
                                         type="number"
@@ -640,17 +654,17 @@ const ReceptionDashboard: React.FC = () => {
                                         placeholder="Years"
                                     />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Full Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                    value={walkInForm.name}
-                                    onChange={e => setWalkInForm({ ...walkInForm, name: e.target.value })}
-                                    placeholder="Patient Name"
-                                />
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Full Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.name}
+                                        onChange={e => setWalkInForm({ ...walkInForm, name: e.target.value })}
+                                        placeholder="Patient Name"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Father/Husband Name</label>

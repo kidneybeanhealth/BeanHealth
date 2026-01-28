@@ -27,6 +27,7 @@ interface Prescription {
         age: number;
         gender?: string;
         phone?: string;
+        mr_number?: string;
     };
 }
 
@@ -49,7 +50,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select(`
                     *,
                     doctor:hospital_doctors(name, specialty),
-                    patient:hospital_patients(name, age)
+                    patient:hospital_patients(name, age, mr_number)
                 `)
                 .eq('hospital_id', hospitalId)
                 .in('status', ['pending', 'dispensed'])
@@ -89,7 +90,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select(`
                     *,
                     doctor:hospital_doctors(name, specialty),
-                    patient:hospital_patients(name, age)
+                    patient:hospital_patients(name, age, mr_number)
                 `)
                 .eq('id', id)
                 .single();
@@ -412,7 +413,12 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                 <div className="space-y-1">
                                     <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Patient</p>
                                     <p className="font-bold text-gray-900 text-lg">{selectedPrescription.patient?.name}</p>
-                                    <p className="text-gray-800 font-sans">Age: {selectedPrescription.patient?.age}</p>
+                                    <p className="text-gray-800 font-sans">
+                                        Age: {selectedPrescription.patient?.age}
+                                        {selectedPrescription.patient?.mr_number && (
+                                            <span className="ml-2 text-gray-600">| MR: {selectedPrescription.patient.mr_number}</span>
+                                        )}
+                                    </p>
                                 </div>
                                 <div className="space-y-1 sm:text-right">
                                     <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Doctor</p>

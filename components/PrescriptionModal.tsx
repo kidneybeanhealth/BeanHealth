@@ -395,8 +395,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                         />
                       </div>
                       <div className="w-1/2 flex">
-                        <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">பதிவு எண் / REG. No.</div>
-                        <div className="flex-1 py-1 px-1.5 flex items-center">{patient.token_number}</div>
+                        <div className="w-24 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">பதிவு எண் / REG. No.</div>
+                        <div className="flex-1 py-1 px-1.5 flex items-center border-r border-black">{patient.token_number}</div>
+                        <div className="w-16 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">MR. NO</div>
+                        <div className="flex-1 py-1 px-1.5 flex items-center">{patient.mr_number || ''}</div>
                       </div>
                     </div>
                     {/* Row 3 */}
