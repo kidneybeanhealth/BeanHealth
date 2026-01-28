@@ -61,18 +61,36 @@ class VoiceAnnouncementService {
 
     /**
      * Get list of available audio output devices
+     * No microphone permission needed - only queries output devices
      */
     async getAudioDevices(): Promise<MediaDeviceInfo[]> {
         try {
-            // First we need to request permission to see labels
-            await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Enumerate devices without requesting microphone permission
             const devices = await navigator.mediaDevices.enumerateDevices();
-            return devices.filter(d => d.kind === 'audiooutput');
+            const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+
+            // If no devices found or labels are empty, return default device
+            if (audioOutputs.length === 0 || !audioOutputs[0].label) {
+                return [{
+                    deviceId: 'default',
+                    groupId: '',
+                    kind: 'audiooutput',
+                    label: 'System Default Speaker',
+                    toJSON: () => ({})
+                } as MediaDeviceInfo];
+            }
+
+            return audioOutputs;
         } catch (e) {
             console.error('[Voice] Could not enumerate devices', e);
-            // Some browsers don't need getUserMedia for labels if already granted
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            return devices.filter(d => d.kind === 'audiooutput');
+            // Fallback to default device
+            return [{
+                deviceId: 'default',
+                groupId: '',
+                kind: 'audiooutput',
+                label: 'System Default Speaker (Detected)',
+                toJSON: () => ({})
+            } as MediaDeviceInfo];
         }
     }
 
@@ -103,6 +121,7 @@ class VoiceAnnouncementService {
 
     /**
      * Initialize the master audio channel (user-triggered)
+     * Optimized for TV browsers - works with default speakers
      */
     async initializeChannel(): Promise<boolean> {
         console.log('[Voice] Initializing channel...');
@@ -112,7 +131,7 @@ class VoiceAnnouncementService {
         const SILENT_SOUND = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhAAQACABAAAABkYXRhAgAAAAEA';
 
         try {
-            // Unlocking Speech
+            // Unlocking Speech API
             if (this.synth) {
                 this.synth.cancel();
                 const utter = new SpeechSynthesisUtterance('');
@@ -126,27 +145,30 @@ class VoiceAnnouncementService {
                 this.masterPlayer.volume = 1.0;
             }
 
-            // Route to selected device if supported
-            if (this.selectedDeviceId && (this.masterPlayer as any).setSinkId) {
+            // Route to selected device if supported (Chrome/Edge only)
+            if (this.selectedDeviceId && this.selectedDeviceId !== 'default' && (this.masterPlayer as any).setSinkId) {
                 try {
                     await (this.masterPlayer as any).setSinkId(this.selectedDeviceId);
-                    console.log(`[Voice] Route confirmed: ${this.selectedDeviceId}`);
+                    console.log(`[Voice] Route confirmed: ${this.status.selectedDeviceLabel}`);
                 } catch (sinkError) {
-                    console.error('[Voice] setSinkId failed, using default', sinkError);
+                    console.warn('[Voice] setSinkId not supported, using default speaker', sinkError);
+                    this.selectedDeviceId = 'default';
+                    this.status.selectedDeviceLabel = 'Default Speaker';
                 }
             }
 
-            // Play/Pause once to "unlock" with a 3-second timeout
+            // Play/Pause silent audio to "unlock" the audio context
             const unlockPromise = (async () => {
                 this.masterPlayer!.src = SILENT_SOUND;
                 await this.masterPlayer!.play();
                 this.masterPlayer!.pause();
+                this.masterPlayer!.currentTime = 0;
                 return true;
             })();
 
-            // 3 second timeout for hardware handshake
+            // 5 second timeout for hardware handshake
             const timeoutPromise = new Promise<boolean>((_, reject) =>
-                setTimeout(() => reject(new Error('Hardware timeout')), 3000)
+                setTimeout(() => reject(new Error('Hardware timeout')), 5000)
             );
 
             await Promise.race([unlockPromise, timeoutPromise]);
@@ -156,9 +178,10 @@ class VoiceAnnouncementService {
             return true;
         } catch (e: any) {
             console.error('[Voice] Initialization failed', e);
-            // If native speech is working, we can still call it a success on Mac
+            // If native speech is working, we can still call it a success
             if (this.status.engine === 'SPEECH' && this.voices.length > 0) {
                 this.status.error = null;
+                console.log('[Voice] Fallback to native speech engine');
                 return true;
             }
             this.status.error = `Setup Error: ${e.message || 'Check speaker connection'}`;

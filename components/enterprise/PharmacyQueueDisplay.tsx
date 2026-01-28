@@ -421,45 +421,67 @@ const PharmacyQueueDisplay: React.FC = () => {
             <main className="flex-1 flex gap-5 p-5 min-h-0">
                 {/* LEFT: Now Serving - 60% */}
                 <div className="w-3/5 flex flex-col">
-                    <div className="text-center mb-3">
-                        <span className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-700 text-sm font-bold">
-                            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
-                            NOW SERVING
+                    <div className="text-center mb-4">
+                        <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-emerald-200 rounded-xl shadow-sm">
+                            <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                            </span>
+                            <span className="text-gray-700 text-base font-semibold">NOW SERVING / இப்போது</span>
                         </span>
                     </div>
 
                     {currentPatient ? (
-                        <div className="flex-1 bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden">
-                            {/* Decorative gradient */}
-                            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-400 via-teal-400 to-blue-400"></div>
+                        <div className="flex-1 bg-white rounded-3xl shadow-lg border border-gray-200 flex flex-col items-center justify-center relative overflow-hidden">
+                            {/* Subtle top accent */}
+                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
 
-                            <div className="text-center px-8">
-                                <span className="text-gray-500 text-lg font-semibold tracking-widest">TOKEN</span>
-                                <p className="text-[10rem] leading-none font-black bg-gradient-to-br from-blue-600 to-blue-700 bg-clip-text text-transparent" style={{ lineHeight: '0.9' }}>
-                                    {currentPatient.token_number.replace(/^[A-Za-z-]+/, '')}
-                                </p>
-                            </div>
-                            <div className="border-t border-gray-100 pt-5 mt-4 w-full text-center px-8">
-                                <p className="text-4xl font-bold text-gray-900 uppercase tracking-wide truncate">
-                                    {currentPatient.patient_name}
-                                </p>
-                                <p className="text-emerald-600 text-xl mt-3 font-medium flex items-center justify-center gap-2">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                    </svg>
-                                    Please proceed to Pharmacy Counter
-                                </p>
+                            {/* Content */}
+                            <div className="flex flex-col items-center justify-center w-full px-12 py-12">
+                                {/* Token Label */}
+                                <div className="mb-8 text-center">
+                                    <span className="text-gray-400 text-lg font-medium tracking-wider uppercase">Token Number</span>
+                                    <div className="text-gray-400 text-sm mt-1">டோக்கன் எண்</div>
+                                </div>
+
+                                {/* Token Number - Clean & Large */}
+                                <div className="mb-10">
+                                    <p className="text-[12rem] leading-none font-black text-gray-900 tracking-tight">
+                                        {currentPatient.token_number.replace(/^[A-Za-z-]+/, '')}
+                                    </p>
+                                </div>
+
+                                {/* Patient Name */}
+                                <div className="w-full border-t border-gray-100 pt-8 space-y-6">
+                                    <div className="bg-gray-50 rounded-xl px-8 py-4">
+                                        <p className="text-4xl font-bold text-gray-900 uppercase tracking-wide text-center truncate">
+                                            {currentPatient.patient_name}
+                                        </p>
+                                    </div>
+
+                                    {/* Call to Action - Simple */}
+                                    <div className="flex flex-col items-center gap-2 pt-2">
+                                        <div className="flex items-center gap-2 text-emerald-600">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                            </svg>
+                                            <p className="text-xl font-semibold">Please Proceed to Pharmacy</p>
+                                        </div>
+                                        <p className="text-lg font-medium text-emerald-700">தயவுசெய்து மருந்தகத்திற்கு செல்லவும்</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="flex-1 bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 flex flex-col items-center justify-center">
-                            <div className="w-24 h-24 mb-6 bg-blue-50 rounded-full flex items-center justify-center">
-                                <svg className="w-12 h-12 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="flex-1 bg-white rounded-3xl shadow-lg border border-gray-200 flex flex-col items-center justify-center">
+                            <div className="w-24 h-24 mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <p className="text-3xl font-bold text-gray-300">No Patient Being Served</p>
-                            <p className="text-gray-400 text-lg mt-2">Waiting for next patient...</p>
+                            <p className="text-3xl font-semibold text-gray-400">No Patient Being Served</p>
+                            <p className="text-xl text-gray-400 mt-1">நோயாளி இல்லை</p>
+                            <p className="text-gray-400 mt-4">Waiting for next patient...</p>
                         </div>
                     )}
                 </div>
