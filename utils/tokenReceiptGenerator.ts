@@ -36,6 +36,7 @@ const COMMANDS = {
     FEED_LINES_5: [ESC, 0x64, 0x05],      // Feed 5 lines
     PAPER_CUT: [GS, 0x56, 0x00],          // Full cut
     PARTIAL_CUT: [GS, 0x56, 0x01],        // Partial cut
+    CHAR_SPACING: [ESC, 0x20],            // Character spacing (ESC SP n)
 };
 
 /**
@@ -83,7 +84,13 @@ export function generateTokenReceipt(data: TokenData): Uint8Array {
     addCommand(COMMANDS.CENTER);
     addCommand(COMMANDS.QUADRUPLE_SIZE);
     addCommand(COMMANDS.BOLD_ON);
-    addText(tokenNumberOnly + '\n');
+    // Add character spacing (32 dots) to prevent overlap in HUGE size
+    addCommand([...COMMANDS.CHAR_SPACING, 0x20]);
+    // Split digits and join with multiple spaces for forceful separation
+    const spacedToken = tokenNumberOnly.split('').join('   ');
+    addText(spacedToken + '\n');
+    // Reset character spacing (0 dots)
+    addCommand([...COMMANDS.CHAR_SPACING, 0x00]);
     addCommand(COMMANDS.NORMAL_SIZE);
     addCommand(COMMANDS.BOLD_OFF);
 
