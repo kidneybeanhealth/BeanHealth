@@ -66,6 +66,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
   const [isSavingDrug, setIsSavingDrug] = useState(false);
 
+  // Saved Diagnosis State
+  const [savedDiagnoses, setSavedDiagnoses] = useState<{ id: string, name: string }[]>([]);
+  const [showDiagnosisDropdown, setShowDiagnosisDropdown] = useState(false);
+  const [showManageDiagnosisModal, setShowManageDiagnosisModal] = useState(false);
+  const [newDiagnosisName, setNewDiagnosisName] = useState('');
+  const [editingDiagnosis, setEditingDiagnosis] = useState<{ id: string, name: string } | null>(null);
+  const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false);
+
   // Refs for printing
   const componentRef = useRef<HTMLDivElement>(null);
   const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
@@ -76,6 +84,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
       fetchReferenceDrugs();
       if (doctor?.id) {
         fetchSavedDrugs();
+        fetchSavedDiagnoses();
       }
     }
   }, [doctor?.id, readOnly]);
@@ -106,6 +115,88 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
       setSavedDrugs(data || []);
     } catch (error) {
       console.error('Error fetching saved drugs:', error);
+    }
+  };
+
+  const fetchSavedDiagnoses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('hospital_doctor_diagnoses' as any)
+        .select('*')
+        .eq('doctor_id', doctor.id)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setSavedDiagnoses(data || []);
+    } catch (error) {
+      console.error('Error fetching saved diagnoses:', error);
+    }
+  };
+
+  const handleSaveDiagnosis = async () => {
+    if (!newDiagnosisName.trim()) {
+      toast.error('Diagnosis name is required');
+      return;
+    }
+
+    setIsSavingDiagnosis(true);
+    try {
+      if (editingDiagnosis) {
+        const { error } = await (supabase
+          .from('hospital_doctor_diagnoses') as any)
+          .update({
+            name: newDiagnosisName.toUpperCase().trim(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingDiagnosis.id);
+
+        if (error) throw error;
+        toast.success('Diagnosis updated successfully');
+      } else {
+        const { error } = await (supabase
+          .from('hospital_doctor_diagnoses') as any)
+          .insert({
+            doctor_id: doctor.id,
+            name: newDiagnosisName.toUpperCase().trim(),
+            created_at: new Date().toISOString()
+          });
+
+        if (error) {
+          if (error.code === '23505') {
+            toast.error('This diagnosis already exists');
+            return;
+          }
+          throw error;
+        }
+        toast.success('Diagnosis saved successfully');
+      }
+
+      setNewDiagnosisName('');
+      setEditingDiagnosis(null);
+      fetchSavedDiagnoses();
+    } catch (error: any) {
+      console.error('Error saving diagnosis:', error);
+      toast.error(error.message || 'Failed to save diagnosis');
+    } finally {
+      setIsSavingDiagnosis(false);
+    }
+  };
+
+  const handleDeleteDiagnosis = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this diagnosis?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('hospital_doctor_diagnoses' as any)
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Diagnosis deleted');
+      fetchSavedDiagnoses();
+    } catch (error: any) {
+      console.error('Error deleting diagnosis:', error);
+      toast.error('Failed to delete diagnosis');
     }
   };
 
@@ -311,6 +402,33 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     setMedications(newMeds);
   };
 
+  const handleDoseChange = (index: number, value: string) => {
+    if (readOnly) return;
+    const newMeds = [...medications];
+    newMeds[index].dose = value.toUpperCase();
+
+    // Auto-population logic
+    if (value.toUpperCase() === 'OD') {
+      newMeds[index].morning = '1';
+      newMeds[index].noon = '0';
+      newMeds[index].night = '0';
+    } else if (value.toUpperCase() === 'TD') {
+      newMeds[index].morning = '1';
+      newMeds[index].noon = '0';
+      newMeds[index].night = '1';
+    } else if (value.toUpperCase() === 'TDS') {
+      newMeds[index].morning = '1';
+      newMeds[index].noon = '1';
+      newMeds[index].night = '1';
+    } else if (value.toUpperCase() === 'HS') {
+      newMeds[index].morning = '0';
+      newMeds[index].noon = '0';
+      newMeds[index].night = '1';
+    }
+
+    setMedications(newMeds);
+  };
+
   const handleSend = () => {
     if (readOnly) return;
     // Convert to pharmacy format
@@ -339,7 +457,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         <div className="flex-1 overflow-y-auto p-2 bg-gray-100">
 
           {/* PRINT PREVIEW AREA - EXACT REPLICA OF PDF */}
-          <div ref={componentRef} className="bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+          <div
+            ref={componentRef}
+            className="bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full print-content"
+            style={{
+              fontFamily: '"Times New Roman", Times, serif',
+              minHeight: '100%',
+              backgroundColor: 'white'
+            }}
+          >
             {(() => {
               const FIRST_PAGE_ITEMS = 15;
               const SUBSEQUENT_PAGE_ITEMS = 25; // High capacity for additional pages if needed
@@ -472,14 +598,63 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           </div>
                         </div>
                         {/* Row 6 */}
-                        <div className="flex min-h-[24px]">
-                          <div className="flex-1 flex">
-                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / Diagnosis</div>
-                            <input
-                              className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent"
-                              value={formData.diagnosis}
-                              onChange={e => setFormData({ ...formData, diagnosis: e.target.value })}
-                            />
+                        <div className="flex min-h-[32px]">
+                          <div className="flex-1 flex relative">
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center justify-between">
+                              <span>வியாதிகள் / Diagnosis</span>
+                              {!readOnly && (
+                                <button
+                                  onClick={() => setShowManageDiagnosisModal(true)}
+                                  className="p-1 hover:bg-gray-200 rounded print:hidden transition-colors"
+                                  title="Manage Saved Diagnoses"
+                                >
+                                  <svg className="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex-1 flex flex-col relative">
+                              <textarea
+                                className="w-full h-full py-1 px-1.5 outline-none font-normal bg-transparent resize-none overflow-hidden"
+                                value={formData.diagnosis}
+                                rows={1}
+                                onChange={e => {
+                                  setFormData({ ...formData, diagnosis: e.target.value });
+                                  if (!readOnly && e.target.value.length > 0) setShowDiagnosisDropdown(true);
+                                }}
+                                onFocus={() => {
+                                  if (!readOnly && formData.diagnosis.length > 0) setShowDiagnosisDropdown(true);
+                                }}
+                                onInput={(e) => {
+                                  const target = e.target as HTMLTextAreaElement;
+                                  target.style.height = 'auto';
+                                  target.style.height = `${target.scrollHeight}px`;
+                                }}
+                                readOnly={readOnly}
+                              />
+                              {/* Diagnosis Autocomplete Dropdown */}
+                              {!readOnly && showDiagnosisDropdown && (
+                                <div className="absolute left-0 top-full z-[100] w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto print:hidden">
+                                  {savedDiagnoses
+                                    .filter(d => d.name.toLowerCase().includes(formData.diagnosis.toLowerCase()))
+                                    .map(d => (
+                                      <button
+                                        key={d.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setFormData({ ...formData, diagnosis: d.name });
+                                          setShowDiagnosisDropdown(false);
+                                        }}
+                                        className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0 text-sm"
+                                      >
+                                        {d.name}
+                                      </button>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -510,19 +685,19 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                               <span>Qty</span>
                               <span>எண்</span>
                             </div>
-                            <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-[60px] border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>M</span>
                               <span>கா</span>
                             </div>
-                            <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-[60px] border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>N</span>
                               <span>ம</span>
                             </div>
-                            <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-[60px] border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>Nt</span>
                               <span>இ</span>
                             </div>
-                            <div className="w-10 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-8 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>B/F</span>
                               <span>A/F</span>
                             </div>
@@ -611,66 +786,92 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                               <div className="w-[340px] flex shrink-0 items-stretch">
                                 {/* Dose Dropdown */}
                                 <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                  <select
-                                    className="w-full text-center outline-none text-[10px] bg-transparent cursor-pointer appearance-none"
+                                  <input
+                                    list="dose-options"
+                                    className="w-full text-center outline-none text-[10px] bg-transparent font-bold"
                                     value={med.dose}
-                                    onChange={e => updateMed(globalIndex, 'dose', e.target.value)}
-                                    disabled={readOnly}
-                                  >
-                                    <option value="">--</option>
+                                    onChange={e => handleDoseChange(globalIndex, e.target.value)}
+                                    placeholder="--"
+                                    readOnly={readOnly}
+                                  />
+                                  <datalist id="dose-options">
                                     <option value="OD">OD</option>
                                     <option value="TD">TD</option>
                                     <option value="TDS">TDS</option>
+                                    <option value="HS">HS</option>
                                     <option value="QID">QID</option>
                                     <option value="ALT">Alt Day</option>
                                     <option value="WEEKLY">Weekly</option>
                                     <option value="HALF-ALT">½ Alt</option>
                                     <option value="HALF-DAILY">½ Daily</option>
-                                  </select>
+                                  </datalist>
                                 </div>
                                 {/* Quantity */}
                                 <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0">
                                   <input className="w-full text-center outline-none text-xs" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
                                 </div>
                                 {/* M dosage container */}
-                                <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                  <input
-                                    type="text"
-                                    className="w-full text-center text-xs font-bold outline-none bg-transparent"
+                                <div className="w-[60px] border-r border-black flex items-center justify-center shrink-0">
+                                  <textarea
+                                    className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none overflow-hidden py-1"
+                                    rows={1}
                                     placeholder=""
                                     value={med.morning}
                                     onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
                                     readOnly={readOnly}
+                                    onInput={(e) => {
+                                      const target = e.target as HTMLTextAreaElement;
+                                      target.style.height = 'auto';
+                                      target.style.height = `${target.scrollHeight}px`;
+                                    }}
                                   />
                                 </div>
                                 {/* N dosage container */}
-                                <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                  <input
-                                    type="text"
-                                    className="w-full text-center text-xs font-bold outline-none bg-transparent"
+                                <div className="w-[60px] border-r border-black flex items-center justify-center shrink-0">
+                                  <textarea
+                                    className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none overflow-hidden py-1"
+                                    rows={1}
                                     placeholder=""
                                     value={med.noon}
                                     onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
                                     readOnly={readOnly}
+                                    onInput={(e) => {
+                                      const target = e.target as HTMLTextAreaElement;
+                                      target.style.height = 'auto';
+                                      target.style.height = `${target.scrollHeight}px`;
+                                    }}
                                   />
                                 </div>
                                 {/* Nt dosage container */}
-                                <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                  <input
-                                    type="text"
-                                    className="w-full text-center text-xs font-bold outline-none bg-transparent"
+                                <div className="w-[60px] border-r border-black flex items-center justify-center shrink-0">
+                                  <textarea
+                                    className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none overflow-hidden py-1"
+                                    rows={1}
                                     placeholder=""
                                     value={med.night}
                                     onChange={e => updateMed(globalIndex, 'night', e.target.value)}
                                     readOnly={readOnly}
+                                    onInput={(e) => {
+                                      const target = e.target as HTMLTextAreaElement;
+                                      target.style.height = 'auto';
+                                      target.style.height = `${target.scrollHeight}px`;
+                                    }}
                                   />
                                 </div>
-                                {/* Before/After Food Toggle */}
-                                <div
-                                  className="w-10 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]"
-                                  onClick={() => !readOnly && updateMed(globalIndex, 'beforeFood', !med.beforeFood)}
-                                >
-                                  {med.beforeFood ? 'B/F' : 'A/F'}
+                                {/* Instruction (A/F, B/F, SC, etc.) */}
+                                <div className="w-8 flex items-center justify-center font-bold shrink-0 text-[10px]">
+                                  <select
+                                    className="w-full text-center outline-none bg-transparent cursor-pointer appearance-none px-0.5"
+                                    value={med.instruction}
+                                    onChange={e => updateMed(globalIndex, 'instruction', e.target.value)}
+                                    disabled={readOnly}
+                                  >
+                                    <option value="nil">nil</option>
+                                    <option value="A/F">A/F</option>
+                                    <option value="B/F">B/F</option>
+                                    <option value="SC">SC</option>
+                                    <option value="SC/BF">SC/BF</option>
+                                  </select>
                                 </div>
                               </div>
                             </div>
@@ -939,6 +1140,122 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                 className="px-6 py-2 bg-gray-900 text-white rounded-lg font-semibold text-sm hover:bg-black"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Manage Diagnosis Modal */}
+      {showManageDiagnosisModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-50/50 rounded-t-2xl">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Manage Saved Diagnoses</h3>
+                <p className="text-sm text-gray-500 mt-1">Add or edit diagnoses for quick selection</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowManageDiagnosisModal(false);
+                  setEditingDiagnosis(null);
+                  setNewDiagnosisName('');
+                }}
+                className="p-2 hover:bg-white rounded-full transition-colors shadow-sm"
+              >
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Save Form */}
+            <div className="p-6 bg-white border-b border-gray-100">
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Diagnosis Name</label>
+                  <input
+                    type="text"
+                    className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 focus:border-emerald-500 focus:ring-0 transition-all font-medium placeholder-gray-300"
+                    placeholder="E.G., TYPE 2 DIABETES MELLITUS"
+                    value={newDiagnosisName}
+                    onChange={e => setNewDiagnosisName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSaveDiagnosis()}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleSaveDiagnosis}
+                    disabled={isSavingDiagnosis}
+                    className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:shadow-none flex items-center gap-2"
+                  >
+                    {isSavingDiagnosis ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                    )}
+                    {editingDiagnosis ? 'Update' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+              {savedDiagnoses.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1.724 1.724 0 001.066.257c1.756.426 1.756 2.924 0 3.35" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500 font-medium">No diagnoses saved yet</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  {savedDiagnoses.map(diag => (
+                    <div
+                      key={diag.id}
+                      className="group flex items-center justify-between p-4 bg-white hover:bg-emerald-50/30 border border-gray-100 rounded-2xl transition-all hover:shadow-md"
+                    >
+                      <span className="font-bold text-gray-900">{diag.name}</span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => {
+                            setEditingDiagnosis(diag);
+                            setNewDiagnosisName(diag.name);
+                          }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDiagnosis(diag.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-white border-t border-gray-100 rounded-b-2xl flex justify-between items-center text-xs">
+              <span className="text-gray-500 font-medium">{savedDiagnoses.length} diagnoses saved</span>
+              <button
+                onClick={() => setShowManageDiagnosisModal(false)}
+                className="px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>

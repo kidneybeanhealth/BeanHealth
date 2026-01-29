@@ -38,6 +38,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
     const [showPrintModal, setShowPrintModal] = useState(false);
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const fetchPrescriptions = useCallback(async (isBackground = false) => {
         if (!hospitalId) return;
@@ -165,14 +166,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [hospitalId, fetchPrescriptions]); // frequent 'selectedPrescription' changes shouldn't trigger re-sub, so removed it from deps. Check if 'selectedPrescription' in closure is stale.
-    // Actually, 'selectedPrescription' inside the callback will be stale if not in deps. 
-    // Ideally, pass setter function to avoid stale state issues. I used setter function for setPrescriptions, but used selectedPrescription state directly for logic check.
-    // Solution: I used `selectedPrescription?.id` which might be stale in the closure. 
-    // BETTER: Use functional updates or refs for selectedPrescription if needed inside effect. 
-    // However, for simplicity and performance, checking stale state might be okay if we just update the list. 
-    // The modal uses `selectedPrescription` state. If I update list state, modal does NOT auto-update unless I update selectedPrescription state too.
-    // Let's rely on standard re-render cycle or accept slight staleness for now, or use a Ref for selectedPrescription.
+    }, [hospitalId, fetchPrescriptions]);
 
     // Refetch when tab becomes visible (Recovery mechanism)
     useEffect(() => {
@@ -205,8 +199,6 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         };
         fetchHospitalLogo();
     }, [hospitalId]);
-
-    // Note: Periodic interval removed to save resources, relying on Realtime + Visibility.
 
     const handleMarkDispensed = async () => {
         if (!selectedPrescription) return;
@@ -327,8 +319,8 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .eq('status', 'calling');
 
             // Find next waiting patient (oldest first)
-            const { data: nextPatient } = await supabase
-                .from('hospital_pharmacy_queue')
+            const { data: nextPatient } = await (supabase
+                .from('hospital_pharmacy_queue' as any) as any)
                 .select('*')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'waiting')
@@ -505,6 +497,32 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                             History Log
                         </button>
                     </div>
+
+                    {/* Search Input */}
+                    <div className="relative w-full sm:w-72 mt-4 sm:mt-0">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search name or MR number..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="block w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {loading ? (
@@ -514,7 +532,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-50">
-                        {prescriptions.filter(p => activeTab === 'queue' ? p.status === 'pending' : p.status === 'dispensed').length === 0 ? (
+                        {prescriptions.filter(p => {
+                            const matchesTab = activeTab === 'queue' ? p.status === 'pending' : p.status === 'dispensed';
+                            const searchLower = searchQuery.toLowerCase();
+                            const matchesSearch =
+                                p.patient?.name?.toLowerCase().includes(searchLower) ||
+                                p.patient?.mr_number?.toLowerCase().includes(searchLower);
+                            return matchesTab && matchesSearch;
+                        }).length === 0 ? (
                             <div className="p-24 text-center flex flex-col items-center justify-center">
                                 <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 text-gray-600">
                                     {activeTab === 'queue' ? (
@@ -541,7 +566,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                             </div>
                         ) : (
                             prescriptions
-                                .filter(p => activeTab === 'queue' ? p.status === 'pending' : p.status === 'dispensed')
+                                .filter(p => {
+                                    const matchesTab = activeTab === 'queue' ? p.status === 'pending' : p.status === 'dispensed';
+                                    const searchLower = searchQuery.toLowerCase();
+                                    const matchesSearch =
+                                        p.patient?.name?.toLowerCase().includes(searchLower) ||
+                                        p.patient?.mr_number?.toLowerCase().includes(searchLower);
+                                    return matchesTab && matchesSearch;
+                                })
                                 .map((item) => (
                                     <div
                                         key={item.id}
@@ -557,6 +589,11 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                                 <div className="flex-1">
                                                     <h4 className="text-lg font-bold text-gray-900 flex flex-wrap items-center gap-2">
                                                         {item.patient?.name}
+                                                        {item.patient?.mr_number && (
+                                                            <span className="text-sm font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100">
+                                                                #{item.patient.mr_number}
+                                                            </span>
+                                                        )}
                                                         {item.status === 'dispensed' && (
                                                             <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-md font-bold uppercase">
                                                                 Dispensed
@@ -581,17 +618,6 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
                                             {item.status === 'pending' ? (
                                                 <>
-                                                    {/* Add to Queue Button */}
-                                                    <button
-                                                        onClick={() => handleAddToQueue(item)}
-                                                        className="px-3 py-3 text-sm font-bold text-purple-600 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-all flex items-center gap-1.5 whitespace-nowrap"
-                                                        title="Add to waiting queue"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                        </svg>
-                                                        <span className="hidden sm:inline">Queue</span>
-                                                    </button>
                                                     {/* Call In Button */}
                                                     <button
                                                         onClick={() => handleCallPatient(item)}
