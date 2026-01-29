@@ -77,6 +77,32 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   // Refs for printing
   const componentRef = useRef<HTMLDivElement>(null);
   const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Scaling Logic
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        const availableWidth = containerRef.current.clientWidth;
+        // 210mm is approx 794px. We use 800px as the target breakpoint including padding.
+        const targetWidth = 800;
+
+        if (availableWidth < targetWidth) {
+          // Calculate scale to fit
+          const newScale = (availableWidth - 32) / targetWidth; // 32px buffer for margins
+          setScale(Math.max(newScale, 0.3)); // prevent too small
+        } else {
+          setScale(1);
+        }
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch saved drugs and reference drugs on mount
   useEffect(() => {
@@ -454,16 +480,28 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
       <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden animate-scale-in">
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto p-2 bg-gray-100">
+        <div className="flex-1 overflow-y-auto p-2 bg-gray-100" ref={containerRef}>
+
+          <style>{`
+            @media print {
+              .print-content {
+                transform: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                min-width: 0 !important;
+              }
+            }
+          `}</style>
 
           {/* PRINT PREVIEW AREA - EXACT REPLICA OF PDF */}
           <div
             ref={componentRef}
-            className="bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full print-content"
+            className="print-content bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full origin-top"
             style={{
               fontFamily: '"Times New Roman", Times, serif',
-              minHeight: '100%',
-              backgroundColor: 'white'
+              minWidth: '210mm',
+              transform: `scale(${scale})`,
+              marginBottom: scale < 1 ? `-${(1 - scale) * 100}%` : '0' // Attempt to reduce bottom whitespace
             }}
           >
             {(() => {
