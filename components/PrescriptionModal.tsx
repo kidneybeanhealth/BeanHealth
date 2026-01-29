@@ -49,6 +49,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   });
 
   const [medications, setMedications] = useState([
+    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
+    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
+    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
+    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
     { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false }
   ]);
 
@@ -337,30 +341,36 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
           {/* PRINT PREVIEW AREA - EXACT REPLICA OF PDF */}
           <div ref={componentRef} className="bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
             {(() => {
-              const FIRST_PAGE_ITEMS = 7;
-              const SUBSEQUENT_PAGE_ITEMS = 17; // Increased to 17 to maximize page 2 capacity
+              const FIRST_PAGE_ITEMS = 15;
+              const SUBSEQUENT_PAGE_ITEMS = 25; // High capacity for additional pages if needed
               const totalMeds = medications.length;
               const chunks = [];
 
               if (totalMeds === 0) {
-                chunks.push([]);
+                chunks.push([]); // Page 1
+                chunks.push([]); // Page 2 (footer)
               } else if (totalMeds <= FIRST_PAGE_ITEMS) {
-                // Single page: all tablets with expanded rows + footer
-                chunks.push(medications);
+                chunks.push(medications); // Page 1
+                chunks.push([]); // Page 2 (footer)
               } else {
-                // Multi-page: First 7 expanded, then chunks of 12 normal rows
+                // Page 1: First 15
                 chunks.push(medications.slice(0, FIRST_PAGE_ITEMS));
                 const remaining = medications.slice(FIRST_PAGE_ITEMS);
                 for (let i = 0; i < remaining.length; i += SUBSEQUENT_PAGE_ITEMS) {
                   chunks.push(remaining.slice(i, i + SUBSEQUENT_PAGE_ITEMS));
                 }
+                // If it ended exactly at the end of a chunk, we still need a footer page? 
+                // Actually the current logic puts footer on isLastPage.
+                // If the last chunk is very full, it might push footer to a new page in actual print, 
+                // but here we are forcing chunks.
               }
 
               return chunks.map((chunk, pageIndex) => {
                 const isFirstPage = pageIndex === 0;
                 const isLastPage = pageIndex === chunks.length - 1;
-                const shouldExpand = isFirstPage && totalMeds <= FIRST_PAGE_ITEMS;
-                const isFirstPageMulti = isFirstPage && totalMeds > FIRST_PAGE_ITEMS;
+                // Standardize expansion for the first page to fill space beautifully
+                const shouldExpand = isFirstPage;
+                const isFirstPageMulti = false; // Deprecated by new logic
 
                 return (
                   <div
@@ -368,7 +378,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                     className="flex flex-col relative bg-white"
                     style={{
                       pageBreakAfter: pageIndex < chunks.length - 1 ? 'always' : 'auto',
-                      minHeight: shouldExpand || isLastPage ? '260mm' : 'auto',
+                      minHeight: '260mm',
                       marginBottom: '0',
                       display: 'flex',
                       flexDirection: 'column'
@@ -724,23 +734,23 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 <p className="font-bold underline italic">To be specified / monitored:</p>
                                 <div className="space-y-1 font-bold">
                                   <div className="flex gap-1 items-baseline">
-                                    <span className="shrink-0 w-20">Salt intake:</span>
+                                    <span className="shrink-0 w-36">Salt intake (உப்பு):</span>
                                     <input
-                                      className="flex-1 border-b border-gray-300 border-dotted outline-none bg-transparent min-w-[30px] text-center"
+                                      className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
                                       value={formData.saltIntake}
                                       onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
-                                      placeholder="______"
+                                      placeholder="____"
                                       readOnly={readOnly}
                                     />
                                     <span className="shrink-0">gm/day</span>
                                   </div>
                                   <div className="flex gap-1 items-baseline">
-                                    <span className="shrink-0 w-20">Fluid intake:</span>
+                                    <span className="shrink-0 w-36">Fluid intake (நீர்/திரவம்):</span>
                                     <input
-                                      className="flex-1 border-b border-gray-300 border-dotted outline-none bg-transparent min-w-[30px] text-center"
+                                      className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
                                       value={formData.fluidIntake}
                                       onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
-                                      placeholder="______"
+                                      placeholder="____"
                                       readOnly={readOnly}
                                     />
                                     <span className="shrink-0">lit/day</span>

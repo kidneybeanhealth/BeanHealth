@@ -688,15 +688,12 @@ const ReceptionDashboard: React.FC = () => {
                                 .map((item) => (
                                     <div key={item.id} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
                                         <div className="flex items-center gap-5">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg
-                                                ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
-                                                    item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                {item.queue_number}
+                                            <div className="w-16 h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2">
+                                                {item.patient?.token_number || 'N/A'}
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-gray-900">{item.patient?.name}</h4>
                                                 <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-800">Token: {item.patient?.token_number}</span>
                                                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
