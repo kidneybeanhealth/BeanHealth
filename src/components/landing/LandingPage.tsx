@@ -172,7 +172,16 @@ const LandingPage = () => {
         <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/10 blur-[100px] animate-pulse delay-1000" />
       </div>
       {/* Logo Section - Separate and Prominent */}
-      <div className="logo-section cursor-pointer" onClick={scrollToTop} style={{ zIndex: 1000 }}>
+      <div
+        className="logo-section cursor-pointer"
+        onClick={scrollToTop}
+        style={{
+          zIndex: 1000,
+          opacity: isMobileMenuOpen ? 0 : 1,
+          pointerEvents: isMobileMenuOpen ? 'none' : 'auto',
+          transition: 'opacity 0.3s ease-in-out',
+        }}
+      >
         <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full pl-1.5 pr-4 py-1.5 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
           <img src="/logo.png" alt="BeanHealth Logo" className="w-10 h-10 sm:w-11 sm:h-11 object-contain" />
           <h2 className="text-xl sm:text-2xl font-black leading-none tracking-tight">
