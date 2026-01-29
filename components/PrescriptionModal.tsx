@@ -718,44 +718,31 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
                       return (
                         <div className="mt-auto">
-                          {/* New Diet & Monitoring Section */}
-                          {/* New Diet & Monitoring Section - Side-by-Side consistently */}
-                          <div className="border-t border-black pt-1 mt-1 mb-1">
-                            <div className="flex text-[10px] leading-tight">
-                              <div className="w-[45%] border-r border-black pr-2 space-y-0.5">
-                                <p className="font-bold underline italic">Diet:</p>
-                                <p className="font-bold">Only fruits: <span className="font-normal italic">apple, pineapple, papaya, orange.</span></p>
-                                <div className="mt-1 text-red-600">
-                                  <p className="font-bold underline italic">Avoid:</p>
-                                  <p className="font-bold">Green leafy vegetables, Non‑veg</p>
-                                </div>
+                          {/* Salt and Fluid Intake - Parallel Layout */}
+                          <div className="border-t border-black pt-2 mt-1 mb-2">
+                            <p className="font-bold underline italic text-[10px] mb-1.5">To be specified / monitored:</p>
+                            <div className="flex gap-6 text-[10px] font-bold">
+                              <div className="flex gap-1 items-baseline">
+                                <span className="shrink-0">Salt intake (உப்பு):</span>
+                                <input
+                                  className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
+                                  value={formData.saltIntake}
+                                  onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
+                                  placeholder="____"
+                                  readOnly={readOnly}
+                                />
+                                <span className="shrink-0">gm/day</span>
                               </div>
-                              <div className="flex-1 pl-2 space-y-1.5">
-                                <p className="font-bold underline italic">To be specified / monitored:</p>
-                                <div className="space-y-1 font-bold">
-                                  <div className="flex gap-1 items-baseline">
-                                    <span className="shrink-0 w-36">Salt intake (உப்பு):</span>
-                                    <input
-                                      className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
-                                      value={formData.saltIntake}
-                                      onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
-                                      placeholder="____"
-                                      readOnly={readOnly}
-                                    />
-                                    <span className="shrink-0">gm/day</span>
-                                  </div>
-                                  <div className="flex gap-1 items-baseline">
-                                    <span className="shrink-0 w-36">Fluid intake (நீர்/திரவம்):</span>
-                                    <input
-                                      className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
-                                      value={formData.fluidIntake}
-                                      onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
-                                      placeholder="____"
-                                      readOnly={readOnly}
-                                    />
-                                    <span className="shrink-0">lit/day</span>
-                                  </div>
-                                </div>
+                              <div className="flex gap-1 items-baseline">
+                                <span className="shrink-0">Fluid intake (நீர்/திரவம்):</span>
+                                <input
+                                  className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
+                                  value={formData.fluidIntake}
+                                  onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
+                                  placeholder="____"
+                                  readOnly={readOnly}
+                                />
+                                <span className="shrink-0">lit/day</span>
                               </div>
                             </div>
                           </div>
@@ -793,33 +780,25 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                             </div>
                           </div>
 
-                          {/* Bottom Parallel Section: Dosage Legend + Footer Box */}
-                          <div className="flex gap-1 items-stretch mt-1">
-                            {/* Dosage Legend - Compact */}
-                            <div className="w-[42%] border border-gray-400 rounded p-1 bg-gray-50 print:bg-white text-[9px] leading-tight">
-                              <div className="font-bold border-b border-gray-300 mb-0.5">அளவு விளக்கம் / Dosage Guide:</div>
-                              <div className="grid grid-cols-1 gap-y-0.5">
-                                <span><b>OD/TD/TDS:</b> 1/2/3 times (முறை)</span>
-                                <span><b>QID:</b> Every 6 hrs (6 மணி நேரமும்)</span>
-                                <span><b>Alt Day:</b> Alternate day (நாள் விட்டு நாள்)</span>
-                                <span><b>B/F:</b> Before Food (சாப்பாட்டுக்கு முன்)</span>
-                                <span><b>A/F:</b> After Food (சாப்பாட்டுக்கு பின்)</span>
-                              </div>
-                            </div>
-
-                            {/* Footer Box - Parallel */}
-                            <div className="flex-1 border border-black p-1 text-[9px] leading-[1.2] flex flex-col justify-center font-bold">
-                              <p>முன்பதிவு காலதாமதத்தை குறைக்கும் / Prior registration avoids delay</p>
-                              <p>Appt: 0422-2494333, 73588 41555, 41666 | Time: 8am - 6pm</p>
-                              <p className="border-t border-gray-200 mt-0.5 pt-0.5">
-                                Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)
-                              </p>
-                              <p>அவசர உதவிக்கு / Emergency: 0422 4316000 (24 மணி நேரமும் / 24 hrs Service)</p>
-                            </div>
+                          {/* Footer Box - Full Width with Larger Font */}
+                          <div className="w-full border-2 border-black p-2 text-[12px] leading-[1.5] flex flex-col justify-center font-bold mt-2 bg-gray-50 print:bg-white">
+                            <p className="text-center mb-1.5">முன்பதிவு காலதாமதத்தை குறைக்கும் / Prior registration avoids delay</p>
+                            <p className="text-center mb-1">Appt: 0422-2494333, 73588 41555, 41666 | Time: 8am - 6pm</p>
+                            <p className="text-center border-t border-gray-300 mt-1.5 pt-1.5">
+                              Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)
+                            </p>
+                            <p className="text-center mt-1">அவசர உதவிக்கு / Emergency: 0422 4316000 (24 மணி நேரமும் / 24 hrs Service)</p>
                           </div>
                         </div>
                       );
                     })()}
+
+                    {/* PTO (Please Turn Over) - Only show on non-final pages */}
+                    {!isLastPage && (
+                      <div className="text-right mt-4 mb-2 text-sm font-bold text-gray-700 italic">
+                        தொடர்ச்சி அடுத்த பக்கத்தில் / PTO (Please Turn Over)
+                      </div>
+                    )}
                   </div>
                 );
               });
