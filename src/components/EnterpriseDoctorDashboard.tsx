@@ -392,7 +392,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
 
             <div className="max-w-7xl mx-auto px-6 py-8">
                 {/* Title & Controls Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-10">
+                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 md:mb-10">
                     <div>
                         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
                             {formatDoctorName(doctor.name)}
@@ -400,11 +400,11 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                         <p className="text-base md:text-lg text-gray-700 mt-2">Manage your patient queue and consultations</p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 md:gap-4">
-                        {/* Rainbow CKD Snapshot Button */}
+                    <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full lg:w-auto">
+                        {/* Action Group 1: CKD Snapshot (Prominent) */}
                         <button
                             onClick={() => setViewMode('ckd_snapshot')}
-                            className="relative group overflow-hidden rounded-xl flex-1 sm:flex-none"
+                            className="relative group overflow-hidden rounded-xl w-full sm:w-auto"
                             style={{
                                 background: 'linear-gradient(135deg, #9333ea, #ec4899)',
                                 padding: '2px'
@@ -420,39 +420,41 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                     zIndex: 0
                                 }}
                             />
-                            <div className="relative flex items-center justify-center gap-2 px-4 md:px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[10px] text-white font-bold text-sm z-10 whitespace-nowrap">
+                            <div className="relative flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[10px] text-white font-bold text-sm z-10 whitespace-nowrap">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
-                                <span className="uppercase tracking-wide hidden sm:inline">View</span>
-                                <span>CKD Snapshot</span>
+                                <span className="uppercase tracking-wide">View CKD Snapshot</span>
                             </div>
                         </button>
 
-                        <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm flex flex-1 sm:flex-none">
+                        {/* Action Group 2: Tabs + Refresh */}
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                            <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm flex flex-1 sm:flex-none">
+                                <button
+                                    onClick={() => setViewMode('queue')}
+                                    className={`flex-1 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                >
+                                    Active Queue
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('history')}
+                                    className={`flex-1 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'history' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                >
+                                    History Log
+                                </button>
+                            </div>
+
                             <button
-                                onClick={() => setViewMode('queue')}
-                                className={`flex-1 sm:flex-none px-4 md:px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'queue' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                onClick={() => viewMode === 'queue' ? fetchQueue() : fetchHistory()}
+                                className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm shrink-0"
+                                title="Reload"
                             >
-                                Active Queue
-                            </button>
-                            <button
-                                onClick={() => setViewMode('history')}
-                                className={`flex-1 sm:flex-none px-4 md:px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'history' ? 'bg-black text-white shadow-md transform scale-105' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
-                            >
-                                History Log
+                                <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
                             </button>
                         </div>
-
-                        <button
-                            onClick={() => viewMode === 'queue' ? fetchQueue() : fetchHistory()}
-                            className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
-                            title="Reload"
-                        >
-                            <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                        </button>
                     </div>
                 </div>
 
@@ -511,11 +513,11 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end">
+                                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
                                                     {item.status === 'pending' && (
                                                         <button
                                                             onClick={() => handleUpdateStatus(item.id, 'in_progress')}
-                                                            className="flex-1 sm:flex-none px-4 md:px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 whitespace-nowrap"
+                                                            className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 whitespace-nowrap"
                                                         >
                                                             Call In
                                                         </button>
@@ -526,15 +528,16 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                                             setSelectedPatient(item.patient);
                                                             setShowRxModal(true);
                                                         }}
-                                                        className="flex-1 sm:flex-none px-4 md:px-5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                                                        className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                        Prescribe
+                                                        <span className="hidden xs:inline">Prescribe</span>
+                                                        <span className="xs:hidden">Prescribe</span>
                                                     </button>
 
                                                     <button
                                                         onClick={() => handleUpdateStatus(item.id, 'completed')}
-                                                        className="px-4 md:px-5 py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors whitespace-nowrap"
+                                                        className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors whitespace-nowrap"
                                                     >
                                                         Mark Done
                                                     </button>
@@ -620,7 +623,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     />
                 )}
             </div>
-        </div>
+        </div >
     );
 };
 
