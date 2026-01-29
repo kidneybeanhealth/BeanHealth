@@ -80,21 +80,33 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Scaling Logic
-  const [scale, setScale] = useState(1);
+  const [layoutState, setLayoutState] = useState({ scale: 1, marginLeft: 0 });
 
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
         const availableWidth = containerRef.current.clientWidth;
-        // 210mm is approx 794px. We use 800px as the target breakpoint including padding.
+        // 210mm is approx 794px. We use 800px as the target breakpoint.
         const targetWidth = 800;
 
         if (availableWidth < targetWidth) {
-          // Calculate scale to fit
-          const newScale = (availableWidth - 32) / targetWidth; // 32px buffer for margins
-          setScale(Math.max(newScale, 0.3)); // prevent too small
+          // Calculate scale with 5% Zoom Boost for readability
+          const fitScale = availableWidth / targetWidth;
+          const newScale = Math.max(fitScale * 1.05, 0.5);
+
+          // Calculate Margins to Center
+          const scaledWidth = targetWidth * newScale;
+          let marginLeft = 0;
+
+          if (scaledWidth < availableWidth) {
+            marginLeft = (availableWidth - scaledWidth) / 2;
+          }
+          // If overflows, marginLeft stays 0 (left aligned scrolling)
+
+          setLayoutState({ scale: newScale, marginLeft });
         } else {
-          setScale(1);
+          const marginLeft = Math.max(0, (availableWidth - targetWidth) / 2);
+          setLayoutState({ scale: 1, marginLeft });
         }
       }
     };
@@ -496,12 +508,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
           {/* PRINT PREVIEW AREA - EXACT REPLICA OF PDF */}
           <div
             ref={componentRef}
-            className="print-content bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full origin-top"
+            className="print-content bg-white shadow-sm p-4 max-w-[210mm] text-black w-full origin-top-left"
             style={{
               fontFamily: '"Times New Roman", Times, serif',
               minWidth: '210mm',
-              transform: `scale(${scale})`,
-              marginBottom: scale < 1 ? `-${(1 - scale) * 100}%` : '0' // Attempt to reduce bottom whitespace
+              transform: `scale(${layoutState.scale})`,
+              marginLeft: layoutState.marginLeft,
+              marginBottom: layoutState.scale < 1 ? `-${(1 - layoutState.scale) * 100}%` : '0' // Attempt to reduce bottom whitespace
             }}
           >
             {(() => {
@@ -1046,26 +1059,28 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         </div>
 
         {/* Footer Controls */}
-        <div className="bg-white p-6 border-t border-gray-100 flex justify-end gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-          <button onClick={onClose} className="px-6 py-3 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors">
+        <div className="bg-white p-4 sm:p-6 border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+          <button onClick={onClose} className="w-full sm:w-auto px-6 py-3 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors order-2 sm:order-1">
             Cancel
           </button>
-          <button
-            onClick={handlePrint}
-            className="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black flex items-center gap-2 shadow-lg transition-all active:scale-95"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-            Print PDF
-          </button>
-          {!readOnly && (
+          <div className="flex flex-1 sm:flex-none gap-3 order-1 sm:order-2">
             <button
-              onClick={handleSend}
-              className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+              onClick={handlePrint}
+              className="flex-1 sm:flex-none px-4 sm:px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 whitespace-nowrap"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-              Send to Pharmacy
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+              <span>Print PDF</span>
             </button>
-          )}
+            {!readOnly && (
+              <button
+                onClick={handleSend}
+                className="flex-1 sm:flex-none px-4 sm:px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95 whitespace-nowrap"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                <span>Send to Pharmacy</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
