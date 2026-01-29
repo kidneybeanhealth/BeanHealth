@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 interface SavedDrug {
@@ -82,12 +82,13 @@ const PrescriptionPage: React.FC = () => {
             setLoading(true);
             try {
                 // Fetch Doctor
-                const { data: docData, error: docError } = await supabase
+                const { data: docData, error: docError } = await (supabase as any)
                     .from('hospital_doctor_profiles')
                     .select('*')
                     .eq('id', doctorId)
                     .single();
                 if (docError) throw docError;
+                if (!docData) throw new Error("Doctor profile not found");
                 setDoctor(docData);
 
                 // Fetch Hospital Logo
@@ -103,12 +104,13 @@ const PrescriptionPage: React.FC = () => {
                 if (prescriptionId) {
                     // HISTORY MODE
                     setReadOnly(true);
-                    const { data: rxData, error: rxError } = await supabase
-                        .from('hospital_prescriptions' as any)
+                    const { data: rxData, error: rxError } = await (supabase as any)
+                        .from('hospital_prescriptions')
                         .select('*, patient:patients(*)')
                         .eq('id', prescriptionId)
                         .single();
                     if (rxError) throw rxError;
+                    if (!rxData) throw new Error("Prescription not found");
 
                     setExistingData(rxData);
                     setPatient({
@@ -118,7 +120,7 @@ const PrescriptionPage: React.FC = () => {
                 } else if (patientId) {
                     // NEW PRESCRIBE MODE
                     setReadOnly(false);
-                    const { data: patData, error: patError } = await supabase
+                    const { data: patData, error: patError } = await (supabase as any)
                         .from('patients')
                         .select('*')
                         .eq('id', patientId)
@@ -159,8 +161,8 @@ const PrescriptionPage: React.FC = () => {
     ).slice(0, 20);
 
     const fetchSavedDrugs = async (id: string) => {
-        const { data } = await supabase
-            .from('hospital_doctor_drugs' as any)
+        const { data } = await (supabase as any)
+            .from('hospital_doctor_drugs')
             .select('*')
             .eq('doctor_id', id)
             .order('name', { ascending: true });
@@ -168,8 +170,8 @@ const PrescriptionPage: React.FC = () => {
     };
 
     const fetchReferenceDrugs = async () => {
-        const { data } = await supabase
-            .from('reference_drugs' as any)
+        const { data } = await (supabase as any)
+            .from('reference_drugs')
             .select('*')
             .order('category', { ascending: true });
         setReferenceDrugs(data || []);
@@ -244,8 +246,8 @@ const PrescriptionPage: React.FC = () => {
             // We need to implement it here or expose it.
             // For now, let's replicate the core logic:
 
-            const { data: prescriptionData, error: rxError } = await supabase
-                .from('hospital_prescriptions' as any)
+            const { data: prescriptionData, error: rxError } = await (supabase as any)
+                .from('hospital_prescriptions')
                 .insert({
                     hospital_id: doctor.hospital_id,
                     doctor_id: doctor.id,
@@ -259,9 +261,10 @@ const PrescriptionPage: React.FC = () => {
                 .single();
 
             if (rxError) throw rxError;
+            if (!prescriptionData) throw new Error("Failed to create prescription");
 
             // Add to Pharmacy Queue
-            await supabase.from('hospital_pharmacy_queue').insert({
+            await (supabase as any).from('hospital_pharmacy_queue').insert({
                 hospital_id: doctor.hospital_id,
                 prescription_id: prescriptionData.id,
                 patient_name: patient.name,
