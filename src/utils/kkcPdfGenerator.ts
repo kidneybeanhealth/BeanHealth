@@ -20,7 +20,7 @@ export const KKC_HOSPITAL_CONFIG: HospitalConfig = {
     name: 'KONGUNAD KIDNEY CENTRE',
     address: 'Coimbatore - 641 012',
     phone: '0422 - 2494333, 73588 41555, 73588 41666',
-    emergencyPhone: '0422 4316000',
+    emergencyPhone: '0422 - 2494333',
     workingHours: '8:00 am to 6:00 pm',
     doctors: [
         { name: 'Dr. A. Prabhakar', specialty: 'MD., C.Diab. DNB (Nephro)' },

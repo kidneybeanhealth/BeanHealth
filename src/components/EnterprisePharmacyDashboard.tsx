@@ -27,6 +27,7 @@ interface Prescription {
         age: number;
         gender?: string;
         phone?: string;
+        mr_number?: string;
     };
 }
 
@@ -49,7 +50,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select(`
                     *,
                     doctor:hospital_doctors(name, specialty),
-                    patient:hospital_patients(name, age)
+                    patient:hospital_patients(name, age, mr_number)
                 `)
                 .eq('hospital_id', hospitalId)
                 .in('status', ['pending', 'dispensed'])
@@ -89,7 +90,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select(`
                     *,
                     doctor:hospital_doctors(name, specialty),
-                    patient:hospital_patients(name, age)
+                    patient:hospital_patients(name, age, mr_number)
                 `)
                 .eq('id', id)
                 .single();
@@ -237,6 +238,178 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         }
     };
 
+    // Call patient to pharmacy counter (adds to display queue)
+    const handleCallPatient = async (prescription: Prescription) => {
+        try {
+            // First, mark any currently "calling" patients as "waiting" (demote back to queue)
+            await supabase
+                .from('hospital_pharmacy_queue')
+                .update({ status: 'waiting' })
+                .eq('hospital_id', hospitalId)
+                .eq('status', 'calling');
+
+            // Check if patient is already in queue
+            const { data: existing } = await supabase
+                .from('hospital_pharmacy_queue')
+                .select('id')
+                .eq('prescription_id', prescription.id)
+                .in('status', ['waiting', 'calling'])
+                .single();
+
+            if (existing) {
+                // Update existing entry to "calling"
+                await supabase
+                    .from('hospital_pharmacy_queue')
+                    .update({ status: 'calling', called_at: new Date().toISOString() })
+                    .eq('id', existing.id);
+            } else {
+                // Insert new entry with "calling" status
+                await supabase
+                    .from('hospital_pharmacy_queue')
+                    .insert({
+                        hospital_id: hospitalId,
+                        prescription_id: prescription.id,
+                        patient_name: prescription.patient?.name || 'Unknown',
+                        token_number: prescription.token_number,
+                        status: 'calling',
+                        called_at: new Date().toISOString()
+                    });
+            }
+
+            toast.success(`📢 Calling ${prescription.patient?.name}!`);
+        } catch (error: any) {
+            console.error('Error calling patient:', error);
+            toast.error('Failed to call patient');
+        }
+    };
+
+    // Add patient to waiting queue
+    const handleAddToQueue = async (prescription: Prescription) => {
+        try {
+            // Check if already in queue
+            const { data: existing } = await supabase
+                .from('hospital_pharmacy_queue')
+                .select('id, status')
+                .eq('prescription_id', prescription.id)
+                .in('status', ['waiting', 'calling'])
+                .single();
+
+            if (existing) {
+                toast('Patient already in queue', { icon: 'ℹ️' });
+                return;
+            }
+
+            await supabase
+                .from('hospital_pharmacy_queue')
+                .insert({
+                    hospital_id: hospitalId,
+                    prescription_id: prescription.id,
+                    patient_name: prescription.patient?.name || 'Unknown',
+                    token_number: prescription.token_number,
+                    status: 'waiting'
+                });
+
+            toast.success(`➕ ${prescription.patient?.name} added to queue!`);
+        } catch (error: any) {
+            console.error('Error adding to queue:', error);
+            toast.error('Failed to add to queue');
+        }
+    };
+
+    // Call next patient in queue
+    const handleCallNext = async () => {
+        try {
+            // First, mark current "calling" patient as "dispensed"
+            await supabase
+                .from('hospital_pharmacy_queue')
+                .update({ status: 'dispensed' })
+                .eq('hospital_id', hospitalId)
+                .eq('status', 'calling');
+
+            // Find next waiting patient (oldest first)
+            const { data: nextPatient } = await supabase
+                .from('hospital_pharmacy_queue')
+                .select('*')
+                .eq('hospital_id', hospitalId)
+                .eq('status', 'waiting')
+                .order('created_at', { ascending: true })
+                .limit(1)
+                .single();
+
+            if (nextPatient) {
+                await supabase
+                    .from('hospital_pharmacy_queue')
+                    .update({ status: 'calling', called_at: new Date().toISOString() })
+                    .eq('id', nextPatient.id);
+
+                toast.success(`📢 Calling ${nextPatient.patient_name}!`);
+            } else {
+                toast('No patients in queue', { icon: '✅' });
+            }
+        } catch (error: any) {
+            console.error('Error calling next:', error);
+            toast.error('Failed to call next patient');
+        }
+    };
+
+    // Skip current patient
+    const handleSkipCurrent = async () => {
+        try {
+            // Mark current "calling" patient as "skipped"
+            const { data: current } = await supabase
+                .from('hospital_pharmacy_queue')
+                .select('patient_name')
+                .eq('hospital_id', hospitalId)
+                .eq('status', 'calling')
+                .single();
+
+            if (current) {
+                await supabase
+                    .from('hospital_pharmacy_queue')
+                    .update({ status: 'skipped' })
+                    .eq('hospital_id', hospitalId)
+                    .eq('status', 'calling');
+
+                toast(`⏩ Skipped ${current.patient_name}`);
+            }
+
+            // Call next patient
+            await handleCallNext();
+        } catch (error: any) {
+            console.error('Error skipping:', error);
+            toast.error('Failed to skip patient');
+        }
+    };
+
+    // Done dispensing, call next
+    const handleDoneAndNext = async () => {
+        try {
+            // Mark current "calling" patient as "dispensed"
+            const { data: current } = await supabase
+                .from('hospital_pharmacy_queue')
+                .select('patient_name')
+                .eq('hospital_id', hospitalId)
+                .eq('status', 'calling')
+                .single();
+
+            if (current) {
+                await supabase
+                    .from('hospital_pharmacy_queue')
+                    .update({ status: 'dispensed' })
+                    .eq('hospital_id', hospitalId)
+                    .eq('status', 'calling');
+
+                toast.success(`✅ ${current.patient_name} done!`);
+            }
+
+            // Call next patient
+            await handleCallNext();
+        } catch (error: any) {
+            console.error('Error:', error);
+            toast.error('Failed to complete');
+        }
+    };
+
     return (
         <div className="max-w-7xl mx-auto px-6 py-12">
             {/* Header */}
@@ -246,7 +419,53 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     <p className="text-base md:text-lg text-gray-700 mt-2">Incoming prescriptions & fulfillment queue</p>
                 </div>
 
-                <div className="flex justify-start md:justify-end">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-start md:justify-end">
+                    {/* Quick Queue Actions */}
+                    <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1.5">
+                        <button
+                            onClick={handleCallNext}
+                            className="px-3 py-2 text-sm font-bold text-blue-600 bg-white rounded-lg hover:bg-blue-50 transition-all shadow-sm flex items-center gap-1.5"
+                            title="Call next patient in queue"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            </svg>
+                            Next
+                        </button>
+                        <button
+                            onClick={handleSkipCurrent}
+                            className="px-3 py-2 text-sm font-bold text-orange-600 bg-white rounded-lg hover:bg-orange-50 transition-all shadow-sm flex items-center gap-1.5"
+                            title="Skip current patient"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
+                            </svg>
+                            Skip
+                        </button>
+                        <button
+                            onClick={handleDoneAndNext}
+                            className="px-3 py-2 text-sm font-bold text-green-600 bg-white rounded-lg hover:bg-green-50 transition-all shadow-sm flex items-center gap-1.5"
+                            title="Mark done and call next"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Done
+                        </button>
+                    </div>
+
+                    {/* Open Queue Display Button */}
+                    <button
+                        onClick={() => window.open('/enterprise-dashboard/pharmacy/display', '_blank')}
+                        className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+                        title="Open Queue Display for patient waiting area"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span className="hidden sm:inline">Display</span>
+                    </button>
+                    {/* Refresh Button */}
                     <button
                         onClick={() => fetchPrescriptions()}
                         className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
@@ -359,15 +578,40 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+                                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
                                             {item.status === 'pending' ? (
-                                                <button
-                                                    onClick={() => setSelectedPrescription(item)}
-                                                    className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap"
-                                                >
-                                                    Review & Dispense
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                                                </button>
+                                                <>
+                                                    {/* Add to Queue Button */}
+                                                    <button
+                                                        onClick={() => handleAddToQueue(item)}
+                                                        className="px-3 py-3 text-sm font-bold text-purple-600 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-all flex items-center gap-1.5 whitespace-nowrap"
+                                                        title="Add to waiting queue"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                        </svg>
+                                                        <span className="hidden sm:inline">Queue</span>
+                                                    </button>
+                                                    {/* Call In Button */}
+                                                    <button
+                                                        onClick={() => handleCallPatient(item)}
+                                                        className="px-3 py-3 text-sm font-bold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition-all flex items-center gap-1.5 whitespace-nowrap"
+                                                        title="Call patient to counter now"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                                                        </svg>
+                                                        <span className="hidden sm:inline">Call In</span>
+                                                    </button>
+                                                    {/* Review & Dispense Button */}
+                                                    <button
+                                                        onClick={() => setSelectedPrescription(item)}
+                                                        className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap"
+                                                    >
+                                                        Review & Dispense
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                                                    </button>
+                                                </>
                                             ) : (
                                                 <button
                                                     onClick={() => setSelectedPrescription(item)}
@@ -412,7 +656,12 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                 <div className="space-y-1">
                                     <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Patient</p>
                                     <p className="font-bold text-gray-900 text-lg">{selectedPrescription.patient?.name}</p>
-                                    <p className="text-gray-800 font-sans">Age: {selectedPrescription.patient?.age}</p>
+                                    <p className="text-gray-800 font-sans">
+                                        Age: {selectedPrescription.patient?.age}
+                                        {selectedPrescription.patient?.mr_number && (
+                                            <span className="ml-2 text-gray-600">| MR: {selectedPrescription.patient.mr_number}</span>
+                                        )}
+                                    </p>
                                 </div>
                                 <div className="space-y-1 sm:text-right">
                                     <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Doctor</p>

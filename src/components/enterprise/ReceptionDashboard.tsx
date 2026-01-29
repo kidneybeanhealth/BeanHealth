@@ -4,6 +4,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { LogoIcon } from '../icons/LogoIcon';
+import PrinterSetupModal from '../PrinterSetupModal';
+import { printerService } from '../../services/BluetoothPrinterService';
+import { generateTokenReceipt, createTokenData } from '../../utils/tokenReceiptGenerator';
 
 interface DoctorProfile {
     id: string;
@@ -58,7 +61,8 @@ const ReceptionDashboard: React.FC = () => {
         phone: '',
         department: '',
         doctorId: '',
-        tokenNumber: ''
+        tokenNumber: '',
+        mrNumber: ''
     });
 
     // Settings Modal
@@ -73,6 +77,19 @@ const ReceptionDashboard: React.FC = () => {
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+    // Printer state
+    const [showPrinterSetup, setShowPrinterSetup] = useState(false);
+    const [printerConnected, setPrinterConnected] = useState(false);
+    const [showPrintDialog, setShowPrintDialog] = useState(false);
+    const [lastRegisteredPatient, setLastRegisteredPatient] = useState<{
+        tokenNumber: string;
+        name: string;
+        mrNumber?: string;
+        doctorName: string;
+        department: string;
+    } | null>(null);
+    const [isPrintingToken, setIsPrintingToken] = useState(false);
 
     // Memoized fetch functions
     const fetchDoctors = useCallback(async () => {
@@ -233,7 +250,7 @@ const ReceptionDashboard: React.FC = () => {
 
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
-        setWalkInForm({ name: '', age: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '' });
+        setWalkInForm({ name: '', age: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '' });
     };
 
     const fetchHospitalSettings = async () => {
@@ -376,6 +393,7 @@ const ReceptionDashboard: React.FC = () => {
                     name: walkInForm.name,
                     age: parseInt(walkInForm.age),
                     token_number: tokenNumber,
+                    mr_number: walkInForm.mrNumber || null,
                     father_husband_name: walkInForm.fatherHusbandName || null,
                     place: walkInForm.place || null,
                     phone: walkInForm.phone || null
@@ -416,12 +434,91 @@ const ReceptionDashboard: React.FC = () => {
                 throw new Error(queueError.message);
             }
 
+            // Find the selected doctor for the print dialog
+            const selectedDoctor = doctors.find(d => d.id === walkInForm.doctorId);
+
             toast.success(`Patient registered! Token: ${tokenNumber}`, { id: toastId });
+
+            // Store patient info for printing and show print dialog
+            setLastRegisteredPatient({
+                tokenNumber,
+                name: walkInForm.name,
+                mrNumber: walkInForm.mrNumber || undefined,
+                doctorName: selectedDoctor?.name || '',
+                department: walkInForm.department
+            });
+            setShowPrintDialog(true);
             handleCloseWalkInModal();
             fetchQueue();
         } catch (error: any) {
             console.error('Registration Error:', error);
             toast.error(`Failed: ${error.message || 'Unknown error'}`, { id: toastId });
+        }
+    };
+
+    // Print token handler
+    const handlePrintToken = async () => {
+        if (!lastRegisteredPatient) return;
+
+        setIsPrintingToken(true);
+        try {
+            const tokenData = createTokenData({
+                tokenNumber: lastRegisteredPatient.tokenNumber,
+                patientName: lastRegisteredPatient.name,
+                mrNumber: lastRegisteredPatient.mrNumber,
+                doctorName: lastRegisteredPatient.doctorName,
+                department: lastRegisteredPatient.department
+            });
+
+            const receiptData = generateTokenReceipt(tokenData);
+            await printerService.print(receiptData);
+
+            toast.success('Token printed successfully!');
+            setShowPrintDialog(false);
+            setLastRegisteredPatient(null);
+        } catch (error: any) {
+            console.error('Print error:', error);
+            toast.error(error.message || 'Failed to print token');
+        } finally {
+            setIsPrintingToken(false);
+        }
+    };
+
+    // Check printer connection status periodically
+    useEffect(() => {
+        const checkPrinterStatus = () => {
+            setPrinterConnected(printerService.isConnected());
+        };
+
+        checkPrinterStatus();
+        const interval = setInterval(checkPrinterStatus, 2000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Reprint token for a patient from the queue
+    const handleReprintFromQueue = async (queueItem: QueueItem) => {
+        if (!printerConnected) {
+            toast.error('Please connect printer first');
+            return;
+        }
+
+        const toastId = toast.loading('Printing token...');
+        try {
+            const tokenData = createTokenData({
+                tokenNumber: queueItem.patient?.token_number || String(queueItem.queue_number),
+                patientName: queueItem.patient?.name || 'Unknown',
+                mrNumber: undefined, // MR number not available in queue item
+                doctorName: queueItem.doctor?.name || '',
+                department: queueItem.doctor?.specialty || ''
+            });
+
+            const receiptData = generateTokenReceipt(tokenData);
+            await printerService.print(receiptData);
+
+            toast.success('Token reprinted!', { id: toastId });
+        } catch (error: any) {
+            console.error('Reprint error:', error);
+            toast.error(error.message || 'Failed to reprint', { id: toastId });
         }
     };
 
@@ -503,6 +600,25 @@ const ReceptionDashboard: React.FC = () => {
                         <p className="text-gray-700 mt-1">Manage patient check-ins and appointments</p>
                     </div>
                     <div className="flex items-center gap-3">
+                        {/* Printer Status Button */}
+                        <button
+                            onClick={() => setShowPrinterSetup(true)}
+                            className={`p-3 rounded-xl border transition-all shadow-sm flex items-center gap-2 ${printerConnected
+                                ? 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
+                                : 'bg-white text-gray-400 border-gray-200 hover:text-gray-900 hover:border-gray-300'
+                                }`}
+                            title={printerConnected ? 'Printer Connected' : 'Connect Printer'}
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            <span className={`hidden sm:inline text-sm font-medium ${printerConnected ? 'text-green-700' : 'text-gray-600'}`}>
+                                {printerConnected ? 'Connected' : 'Printer'}
+                            </span>
+                            {printerConnected && (
+                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                            )}
+                        </button>
                         <button
                             onClick={() => fetchQueue()}
                             className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
@@ -572,26 +688,39 @@ const ReceptionDashboard: React.FC = () => {
                                 .map((item) => (
                                     <div key={item.id} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
                                         <div className="flex items-center gap-5">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg
-                                                ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
-                                                    item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                {item.queue_number}
+                                            <div className="w-16 h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2">
+                                                {item.patient?.token_number || 'N/A'}
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-gray-900">{item.patient?.name}</h4>
                                                 <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-800">Token: {item.patient?.token_number}</span>
                                                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase
-                                                ${item.status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                                                    item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                                                {item.status.replace('_', ' ')}
-                                            </span>
-                                            <p className="font-medium text-sm text-gray-800 mt-1">{formatDoctorName(item.doctor?.name || '')}</p>
+                                        <div className="flex items-center gap-3">
+                                            {/* Reprint Token Button */}
+                                            <button
+                                                onClick={() => handleReprintFromQueue(item)}
+                                                disabled={!printerConnected}
+                                                className={`p-2.5 rounded-xl border transition-all ${printerConnected
+                                                    ? 'bg-white text-gray-500 border-gray-200 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50'
+                                                    : 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
+                                                    }`}
+                                                title={printerConnected ? 'Reprint Token' : 'Connect printer first'}
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                </svg>
+                                            </button>
+                                            <div className="text-right">
+                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase
+                                                    ${item.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                                                        item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                                    {item.status.replace('_', ' ')}
+                                                </span>
+                                                <p className="font-medium text-sm text-gray-800 mt-1">{formatDoctorName(item.doctor?.name || '')}</p>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -630,6 +759,18 @@ const ReceptionDashboard: React.FC = () => {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">MR. NO</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.mrNumber}
+                                        onChange={e => setWalkInForm({ ...walkInForm, mrNumber: e.target.value })}
+                                        placeholder="MR-12345"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Age</label>
                                     <input
                                         type="number"
@@ -640,17 +781,17 @@ const ReceptionDashboard: React.FC = () => {
                                         placeholder="Years"
                                     />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Full Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                    value={walkInForm.name}
-                                    onChange={e => setWalkInForm({ ...walkInForm, name: e.target.value })}
-                                    placeholder="Patient Name"
-                                />
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Full Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.name}
+                                        onChange={e => setWalkInForm({ ...walkInForm, name: e.target.value })}
+                                        placeholder="Patient Name"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Father/Husband Name</label>
@@ -837,6 +978,116 @@ const ReceptionDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* Print Token Dialog */}
+            {showPrintDialog && lastRegisteredPatient && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-scale-in">
+                        {/* Header */}
+                        <div className="px-6 py-5 bg-green-50 border-b border-green-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">Patient Registered!</h3>
+                                    <p className="text-sm text-gray-600">Token created successfully</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-4">
+                            <div className="text-center py-4 bg-gray-50 rounded-xl">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Token Number</p>
+                                <p className="text-4xl font-bold text-gray-900">{lastRegisteredPatient.tokenNumber}</p>
+                            </div>
+
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Patient</span>
+                                    <span className="font-semibold text-gray-900">{lastRegisteredPatient.name}</span>
+                                </div>
+                                {lastRegisteredPatient.mrNumber && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">MR. NO</span>
+                                        <span className="font-semibold text-gray-900">{lastRegisteredPatient.mrNumber}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Doctor</span>
+                                    <span className="font-semibold text-gray-900">{formatDoctorName(lastRegisteredPatient.doctorName)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Department</span>
+                                    <span className="font-semibold text-gray-900">{lastRegisteredPatient.department}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="px-6 pb-6 flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowPrintDialog(false);
+                                    setLastRegisteredPatient(null);
+                                }}
+                                className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+                            >
+                                Skip
+                            </button>
+                            <button
+                                onClick={handlePrintToken}
+                                disabled={isPrintingToken || !printerConnected}
+                                className={`flex-1 py-3 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all ${printerConnected
+                                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/25'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    }`}
+                            >
+                                {isPrintingToken ? (
+                                    <>
+                                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Printing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                        Print Token
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {!printerConnected && (
+                            <div className="px-6 pb-6 pt-0">
+                                <button
+                                    onClick={() => {
+                                        setShowPrintDialog(false);
+                                        setShowPrinterSetup(true);
+                                    }}
+                                    className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                    Connect printer first →
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Printer Setup Modal */}
+            <PrinterSetupModal
+                isOpen={showPrinterSetup}
+                onClose={() => setShowPrinterSetup(false)}
+                onConnected={() => setPrinterConnected(true)}
+            />
         </div>
     );
 };
