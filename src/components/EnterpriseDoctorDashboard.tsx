@@ -298,7 +298,8 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         const toastId = toast.loading('Sending to pharmacy...');
 
         try {
-            const { error } = await supabase
+            // 1. Insert Prescription
+            const { data: prescriptionData, error: prescriptionError } = await supabase
                 .from('hospital_prescriptions' as any)
                 .insert({
                     hospital_id: doctor.hospital_id,
@@ -308,17 +309,36 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     medications: prescriptionMeds,
                     notes: prescriptionNotes,
                     status: 'pending'
-                } as any);
+                } as any)
+                .select()
+                .single();
 
-            if (error) {
-                console.error('Supabase Insert Error:', error);
-                throw error;
+            if (prescriptionError) {
+                console.error('Supabase Prescription Insert Error:', prescriptionError);
+                throw prescriptionError;
             }
 
-            console.log('Prescription sent successfully:', { prescriptionMeds, prescriptionNotes });
+            // 2. Automatically add to Pharmacy Queue (Waiting Status)
+            const { error: queueError } = await supabase
+                .from('hospital_pharmacy_queue')
+                .insert({
+                    hospital_id: doctor.hospital_id,
+                    prescription_id: prescriptionData.id,
+                    patient_name: selectedPatient.name,
+                    token_number: selectedPatient.token_number,
+                    status: 'waiting'
+                });
+
+            if (queueError) {
+                console.warn('Silent failure: Prescription sent but could not auto-add to pharmacy queue:', queueError);
+                // We don't throw here to avoid confusing the doctor, since the prescription is already saved
+            }
+
+            console.log('Prescription sent and queued successfully');
             toast.success('Prescription sent to Pharmacy!', { id: toastId });
             setShowRxModal(false);
-            // Update queue status
+
+            // 3. Update Consultation Queue status to completed
             handleUpdateStatus(queue.find(q => q.patient.id === selectedPatient.id)?.id || '', 'completed');
         } catch (error: any) {
             console.error('Full Error Object:', error);
@@ -501,13 +521,11 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0
                                                     ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
                                                             item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                        {item.queue_number}
+                                                        {item.patient.token_number}
                                                     </div>
                                                     <div>
                                                         <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
                                                         <div className="flex items-center gap-2 text-sm text-gray-700 font-medium whitespace-nowrap">
-                                                            <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-800">Token: {item.patient.token_number}</span>
-                                                            <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                                             <span>{item.patient.age} yrs</span>
                                                         </div>
                                                     </div>

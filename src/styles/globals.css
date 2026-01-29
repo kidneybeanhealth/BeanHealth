@@ -771,19 +771,29 @@ a:hover .bg-gradient-to-br {
     background: transparent !important;
   }
 
-  /* Fix flex layouts for print */
-  .flex {
-    display: flex !important;
-  }
-
-  /* Ensure min-height for consistent row heights */
-  .min-h-\[24px\] {
-    min-height: 24px !important;
+  /* Force full content visibility for fixed/absolute containers (Fixes mobile/tablet "snapshot" issue) */
+  body, html, #root, .min-h-screen, .fixed, .absolute {
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
   }
 
   /* Prevent page breaks inside table rows */
   .border-b {
     break-inside: avoid !important;
+  }
+
+  /* Specific fix for Prescription Modal visibility */
+  .fixed.inset-0 {
+    display: block !important;
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+
+  .shadow-2xl, .shadow-xl, .shadow-lg, .shadow-md, .shadow-sm {
+    box-shadow: none !important;
   }
 }
 
