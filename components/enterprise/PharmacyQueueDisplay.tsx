@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { LogoIcon } from '../icons/LogoIcon';
 import { toast } from 'react-hot-toast';
+import { voiceService } from '../../services/VoiceAnnouncementService';
 
 interface QueueItem {
     id: string;
@@ -100,8 +101,8 @@ const PharmacyQueueDisplay: React.FC = () => {
                 },
                 (payload) => {
                     if (payload.eventType === 'UPDATE' && payload.new.status === 'calling') {
-                        // Play beep sound twice
-                        playBeepSound();
+                        // Use voice service to announce the token with custom audio file
+                        voiceService.announceTokenFormatted(payload.new.token_number);
                     }
                     fetchQueue();
                 }
@@ -155,12 +156,18 @@ const PharmacyQueueDisplay: React.FC = () => {
 
 
 
-    const handleTestAudio = () => {
-        toast.success("Testing Beep Sound...", {
-            icon: '🔊',
-            duration: 3000
-        });
-        playBeepSound();
+    const handleTestAudio = async () => {
+        const initialized = await voiceService.initializeChannel();
+        if (initialized) {
+            toast.success("Testing Announcement (Token 1)", {
+                icon: '🔊',
+                duration: 3000
+            });
+            // Test with Token 1 to verify file playback
+            voiceService.announceTokenFormatted('1');
+        } else {
+            toast.error("Audio initialization failed");
+        }
     };
 
     return (

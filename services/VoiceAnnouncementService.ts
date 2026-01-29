@@ -189,6 +189,84 @@ class VoiceAnnouncementService {
         }
     }
 
+    /**
+     * Plays a specific audio file for a token number (1-60).
+     * Files should be located in /public/audio/tokens/token-{number}.mp3
+     */
+    announceTokenFormatted(tokenNumber: string, repeat: number = 2) {
+        // Extract the numeric part (e.g., "A-123" -> 123)
+        const match = tokenNumber.match(/\d+/);
+        if (!match) {
+            // Fallback: Use standard announcement/beep if no number found
+            this.announcePatientCall(tokenNumber, repeat);
+            return;
+        }
+
+        const number = parseInt(match[0], 10);
+
+        // Check if we have a file for this number (1 to 60)
+        // All files are normalized to .mp3
+        if (number >= 1 && number <= 60) {
+            const audioPath = `/audio/tokens/token-${number}.mp3`;
+            console.log(`[Voice] Attempting to play local file: ${audioPath} (Repeat: ${repeat})`);
+            this.playLocalFile(audioPath, tokenNumber, repeat);
+        } else {
+            // Fallback for > 60: Play existing beep sound
+            console.log('[Voice] Token outside 1-60 range, playing standard beep');
+            this.playStandardBeep();
+        }
+    }
+
+    private playStandardBeep() {
+        try {
+            const beep = new Audio('/Announcement sound effect.mp3');
+            beep.volume = 1.0;
+
+            beep.play().catch(e => console.warn('[Voice] Beep failed', e));
+
+            // Play second beep for attention (matching original UI behavior)
+            beep.onended = () => {
+                const beep2 = new Audio('/Announcement sound effect.mp3');
+                beep2.volume = 1.0;
+                beep2.play().catch(e => console.warn('[Voice] Second beep failed', e));
+            };
+        } catch (e) {
+            console.error('[Voice] Standard beep error', e);
+        }
+    }
+
+    private playLocalFile(path: string, fallbackText: string, repeatCount: number) {
+        if (!this.masterPlayer) this.masterPlayer = new Audio();
+
+        let currentRepeat = 0;
+
+        // Safety: If the file fails to load/play, fallback to Standard Beep (not TTS)
+        const fallback = () => {
+            console.warn(`[Voice] Local file failed (${path}), falling back to Standard Beep`);
+            this.playStandardBeep();
+        };
+
+        const playNext = () => {
+            if (currentRepeat >= repeatCount) return;
+
+            this.masterPlayer!.src = path;
+            this.masterPlayer!.onerror = fallback;
+
+            this.masterPlayer!.onended = () => {
+                currentRepeat++;
+                // Add a small delay between repeats (e.g. 1 second)
+                setTimeout(playNext, 1000);
+            };
+
+            this.masterPlayer!.play().catch(e => {
+                console.error('[Voice] Playback failed', e);
+                fallback();
+            });
+        };
+
+        playNext();
+    }
+
     announcePatientCall(tokenNumber: string, repeat: number = 2): void {
         const numStr = tokenNumber.replace(/^[A-Za-z-]+/, '').trim();
         const digits = numStr.split('').join(' ');

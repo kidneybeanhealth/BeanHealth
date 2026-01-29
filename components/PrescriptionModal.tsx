@@ -787,7 +787,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                             <p className="text-center border-t border-gray-300 mt-1.5 pt-1.5">
                               Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)
                             </p>
-                            <p className="text-center mt-1">அவசர உதவிக்கு / Emergency: 0422 4316000 (24 மணி நேரமும் / 24 hrs Service)</p>
+                            <p className="text-center mt-1">அவசர உதவிக்கு / Emergency: 0422 - 2494333 (24 மணி நேரமும் / 24 hrs Service)</p>
                           </div>
                         </div>
                       );
