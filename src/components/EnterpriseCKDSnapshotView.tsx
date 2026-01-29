@@ -341,7 +341,7 @@ const EnterpriseCKDSnapshotView: React.FC<EnterpriseCKDSnapshotViewProps> = ({ d
                                                     </div>
 
                                                     {/* Toggle Buttons */}
-                                                    <div className="flex gap-2">
+                                                    <div className="flex flex-wrap gap-2">
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setPatientSection(patient.id, 'snapshot'); }}
                                                             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${getActiveSection(patient.id) === 'snapshot'

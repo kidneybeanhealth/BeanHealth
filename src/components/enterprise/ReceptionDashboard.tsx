@@ -165,9 +165,9 @@ const ReceptionDashboard: React.FC = () => {
                 .single();
 
             if (data && !error) {
-                setQueue(prev => {
+                setQueue((prev: any[]) => {
                     if (prev.find(item => item.id === data.id)) return prev; // already exists
-                    return [data as any, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                    return [data, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 });
             }
         } catch (error) {
@@ -630,12 +630,13 @@ const ReceptionDashboard: React.FC = () => {
                         </button>
                         <button
                             onClick={() => setShowWalkInModal(true)}
-                            className="px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-semibold shadow-lg shadow-orange-500/20 hover:shadow-xl transition-all flex items-center gap-2"
+                            className="px-4 sm:px-6 py-2.5 sm:py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-semibold shadow-lg shadow-orange-500/20 hover:shadow-xl transition-all flex items-center gap-2 text-sm sm:text-base whitespace-nowrap"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
-                            New Registration
+                            <span className="hidden sm:inline">New Registration</span>
+                            <span className="inline sm:hidden">Register</span>
                         </button>
                     </div>
                 </div>
@@ -686,24 +687,25 @@ const ReceptionDashboard: React.FC = () => {
                             {queue
                                 .filter(item => activeTab === 'queue' ? (item.status === 'pending' || item.status === 'in_progress') : true)
                                 .map((item) => (
-                                    <div key={item.id} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                                        <div className="flex items-center gap-5">
-                                            <div className="w-16 h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2">
+                                    <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
+                                        <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
+                                            <div className="w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2 shrink-0">
                                                 {item.patient?.token_number || 'N/A'}
                                             </div>
-                                            <div>
-                                                <h4 className="font-bold text-gray-900">{item.patient?.name}</h4>
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-gray-900 truncate pr-2">{item.patient?.name}</h4>
                                                 <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
                                                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
+
+                                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pl-[4.5rem] sm:pl-0">
                                             {/* Reprint Token Button */}
                                             <button
                                                 onClick={() => handleReprintFromQueue(item)}
                                                 disabled={!printerConnected}
-                                                className={`p-2.5 rounded-xl border transition-all ${printerConnected
+                                                className={`p-2 rounded-xl border transition-all ${printerConnected
                                                     ? 'bg-white text-gray-500 border-gray-200 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50'
                                                     : 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
                                                     }`}
@@ -714,12 +716,12 @@ const ReceptionDashboard: React.FC = () => {
                                                 </svg>
                                             </button>
                                             <div className="text-right">
-                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase
                                                     ${item.status === 'pending' ? 'bg-orange-100 text-orange-700' :
                                                         item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                                                     {item.status.replace('_', ' ')}
                                                 </span>
-                                                <p className="font-medium text-sm text-gray-800 mt-1">{formatDoctorName(item.doctor?.name || '')}</p>
+                                                <p className="font-medium text-xs sm:text-sm text-gray-800 mt-1">{formatDoctorName(item.doctor?.name || '')}</p>
                                             </div>
                                         </div>
                                     </div>

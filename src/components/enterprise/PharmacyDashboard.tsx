@@ -231,7 +231,7 @@ const PharmacyDashboard: React.FC = () => {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveSettings} className="p-8 space-y-6">
+                        <form onSubmit={handleSaveSettings} className="p-6 sm:p-8 space-y-6">
                             {/* Avatar Upload */}
                             <div className="flex flex-col items-center mb-6">
                                 <div className="relative group">
