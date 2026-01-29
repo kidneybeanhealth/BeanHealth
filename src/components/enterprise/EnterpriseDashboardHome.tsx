@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { LogoIcon } from '../icons/LogoIcon';
@@ -179,8 +179,25 @@ const EnterpriseDashboardHome: React.FC = () => {
     ];
 
     const [isExpanded, setIsExpanded] = useState(false);
+    const pillRef = useRef<HTMLDivElement>(null);
 
-    // Close pill on navigate or click outside could be added, but minimal first
+    // Close pill when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            if (pillRef.current && !pillRef.current.contains(event.target as Node)) {
+                setIsExpanded(false);
+            }
+        };
+
+        if (isExpanded) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isExpanded]);
 
     return (
         <div className="min-h-screen bg-gray-50/50 font-sans selection:bg-primary-100 selection:text-primary-900">
@@ -191,22 +208,23 @@ const EnterpriseDashboardHome: React.FC = () => {
                 <header className="pointer-events-auto relative mt-2 sm:mt-6 w-full max-w-[95%] sm:max-w-[1500px] h-20 sm:h-22 bg-white/70 backdrop-blur-3xl saturate-150 rounded-[2rem] sm:rounded-[2.5rem] border border-white/40 flex items-center transition-all duration-500 shadow-xl shadow-gray-200/30">
                     <div className="w-full flex items-center justify-between px-3">
                         {/* Left Section - Logo & Title */}
-                        <div className="flex items-center gap-2.5 sm:gap-3 overflow-hidden min-w-0">
+                        <div className={`flex items-center gap-2.5 sm:gap-3 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isExpanded ? 'overflow-hidden max-w-0 opacity-0 px-0 sm:max-w-none sm:opacity-100 sm:px-0' : 'max-w-[500px] opacity-100'}`}>
                             <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-gray-100/50 shadow-[0_4px_15px_rgba(0,0,0,0.08)] transition-all duration-500 hover:scale-105 hover:rotate-3">
                                 <LogoIcon className="w-10 h-10 sm:w-12 sm:h-12" />
                             </div>
                             <div className="flex flex-col justify-center min-w-0">
-                                <h2 className="text-xl sm:text-2xl font-black leading-none tracking-tight truncate">
-                                    <span className="text-primary-500">Bean</span>
-                                    <span className="text-secondary-500">Health</span>
+                                <h2 className="text-xl sm:text-2xl font-black leading-none tracking-tight truncate pl-1">
+                                    <span className="text-[#3A2524]">Bean</span>
+                                    <span className="text-[#8AC43C]">Health</span>
                                 </h2>
-                                <p className="text-[10px] sm:text-[10px] font-bold text-gray-400 tracking-[0.2em] mt-1.5 uppercase leading-none truncate">Enterprise Portal</p>
+                                <p className="text-[10px] sm:text-[10px] font-bold text-gray-400 tracking-[0.2em] mt-1.5 uppercase leading-none truncate pl-1">Enterprise Portal</p>
                             </div>
                         </div>
 
                         {/* Right Section - Hospital Profile (3D Effect) */}
                         <div
-                            className={`group relative flex items-center bg-white border border-gray-100 p-1 sm:p-1.5 rounded-full transition-all duration-500 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08),0_2px_6px_-2px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border-b-2 border-b-gray-200/50 flex-shrink-0 ml-2 ${isExpanded ? 'shadow-lg ring-2 ring-gray-100' : ''}`}
+                            ref={pillRef}
+                            className={`group relative flex items-center bg-white border border-gray-100 p-1 sm:p-1.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08),0_2px_6px_-2px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border-b-2 border-b-gray-200/50 ${isExpanded ? 'ml-0 shadow-lg ring-2 ring-gray-100 flex-1 w-full justify-between' : 'ml-2 flex-shrink-0'}`}
                             onClick={() => {
                                 // Toggle on click for wrapper (redundant if button catches it, but safe)
                             }}
@@ -217,31 +235,21 @@ const EnterpriseDashboardHome: React.FC = () => {
                                     const isMobile = window.innerWidth < 640;
                                     if (isMobile) {
                                         // On mobile: Toggle expansion
-                                        // If we want to allow opening settings, we could say: if expanded, open settings.
-                                        // But for now, let's prioritize the Expand/Collapse as requested.
-                                        // "Make it like on click it expands"
                                         if (!isExpanded) {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setIsExpanded(true);
                                             return;
                                         }
-                                        // If already expanded, let it fall through to settings?
-                                        // Or toggle close? Let's toggle close if they click the logo again to allow closing.
-                                        if (isExpanded) {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setIsExpanded(false);
-                                            return;
-                                        }
+                                        // If already expanded, let it fall through to settings
                                     }
-                                    // Desktop or otherwise
+                                    // Desktop or Mobile (Expanded) -> Open Settings
                                     fetchHospitalSettings();
                                     setShowSettingsModal(true);
                                 }}
-                                className="flex items-center gap-2 sm:gap-4 px-2 sm:pl-3 sm:pr-4 py-0.5 active:scale-95 transition-transform duration-200"
+                                className={`flex items-center gap-2 sm:gap-4 px-2 sm:pl-3 sm:pr-4 py-0.5 active:scale-95 transition-transform duration-200 ${isExpanded ? 'flex-1 min-w-0' : ''}`}
                             >
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center overflow-hidden border border-gray-100 bg-white shadow-inner transition-transform duration-500 group-hover:scale-95">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center overflow-hidden border border-gray-100 bg-white shadow-inner transition-transform duration-500 group-hover:scale-95 flex-shrink-0">
                                     {profile?.avatar_url ? (
                                         <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                                     ) : (
@@ -250,7 +258,7 @@ const EnterpriseDashboardHome: React.FC = () => {
                                         </span>
                                     )}
                                 </div>
-                                <span className="hidden sm:inline-block text-base sm:text-[16px] font-black text-gray-800 tracking-tight whitespace-nowrap">
+                                <span className={`${isExpanded ? 'inline-block' : 'hidden'} sm:inline-block text-base sm:text-[16px] font-black text-gray-800 tracking-tight whitespace-nowrap overflow-hidden text-ellipsis`}>
                                     {profile?.name || 'Hospital Admin'}
                                 </span>
                             </button>
