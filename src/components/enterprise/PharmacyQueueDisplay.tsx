@@ -24,6 +24,7 @@ const PharmacyQueueDisplay: React.FC = () => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [audioEnabled, setAudioEnabled] = useState(true);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // Update time every second
     useEffect(() => {
@@ -169,6 +170,47 @@ const PharmacyQueueDisplay: React.FC = () => {
             toast.error("Audio initialization failed");
         }
     };
+
+    const handleInitialize = async () => {
+        const success = await voiceService.initializeChannel();
+        if (success) {
+            setIsInitialized(true);
+            toggleFullscreen();
+            toast.success('Display Started & Audio Enabled');
+        } else {
+            toast.error('Audio setup failed (Check browser permissions)');
+            setIsInitialized(true); // Let them proceed anyway
+        }
+    };
+
+    if (!isInitialized) {
+        return (
+            <div className="h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 p-4">
+                <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full text-center space-y-6 animate-in zoom-in-50 duration-300">
+                    <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-10 h-10 text-blue-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Pharmacy Display</h1>
+                        <p className="text-gray-500 text-sm">Click start to enable audio announcements and fullscreen mode.</p>
+                    </div>
+
+                    <button
+                        onClick={handleInitialize}
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:scale-[1.02] active:scale-95"
+                    >
+                        Start Display
+                    </button>
+
+                    <p className="text-xs text-gray-400">Powered by BeanHealth</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col overflow-hidden">
