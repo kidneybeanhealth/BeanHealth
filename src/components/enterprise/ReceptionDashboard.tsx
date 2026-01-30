@@ -120,6 +120,7 @@ const ReceptionDashboard: React.FC = () => {
                     doctor:hospital_doctors(*)
                 `)
                 .eq('hospital_id', profile.id)
+                .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -166,7 +167,7 @@ const ReceptionDashboard: React.FC = () => {
 
             if (data && !error) {
                 setQueue((prev: any[]) => {
-                    if (prev.find(item => item.id === data.id)) return prev; // already exists
+                    if (prev.find((item: any) => item.id === data.id)) return prev; // already exists
                     return [data, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 });
             }
@@ -644,7 +645,7 @@ const ReceptionDashboard: React.FC = () => {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Total Visits</p>
+                        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Total Visits (Today)</p>
                         <p className="text-4xl font-bold text-gray-900">{queue.length}</p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
