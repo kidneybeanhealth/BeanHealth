@@ -1,0 +1,238 @@
+/**
+ * Hybrid Voice Announcement Service
+ * Engine 1: Native Speech (SpeechSynthesis) - Reliable on Mac/Chrome
+ * Engine 2: Audio Stream (MP3) - Reliable for Smart TVs/Speakers
+ * 
+ * Automatically selects the best engine based on browser capabilities.
+ */
+
+class VoiceAnnouncementService {
+    private synth: SpeechSynthesis | null = null;
+    private masterPlayer: HTMLAudioElement | null = null;
+    private voices: SpeechSynthesisVoice[] = [];
+    private selectedDeviceId: string | null = null;
+
+    // Status for UI dashboard
+    public status: {
+        engine: 'NONE' | 'SPEECH' | 'AUDIO';
+        voiceCount: number;
+        lastSpoken: string;
+        error: string | null;
+        selectedDeviceLabel: string;
+    } = {
+            engine: 'NONE',
+            voiceCount: 0,
+            lastSpoken: '',
+            error: null,
+            selectedDeviceLabel: 'Default Speaker'
+        };
+
+    constructor() {
+        if (typeof window !== 'undefined') {
+            this.synth = window.speechSynthesis;
+            this.initNativeVoices();
+            // Load saved device if any
+            this.selectedDeviceId = localStorage.getItem('bh_selected_audio_device');
+            this.status.selectedDeviceLabel = localStorage.getItem('bh_selected_audio_label') || 'Default Speaker';
+        }
+    }
+
+    private initNativeVoices() {
+        if (!this.synth) return;
+
+        const loadVoices = () => {
+            this.voices = this.synth!.getVoices();
+            this.status.voiceCount = this.voices.length;
+
+            if (this.voices.length > 0) {
+                this.status.engine = 'SPEECH';
+                console.log(`[Voice] Native engine ready with ${this.voices.length} voices`);
+            } else {
+                this.status.engine = 'AUDIO';
+                console.log('[Voice] No native voices detected. Switching to AUDIO engine.');
+            }
+        };
+
+        loadVoices();
+        if (this.synth.onvoiceschanged !== undefined) {
+            this.synth.onvoiceschanged = loadVoices;
+        }
+    }
+
+    /**
+     * Get list of available audio output devices
+     */
+    async getAudioDevices(): Promise<MediaDeviceInfo[]> {
+        try {
+            // First we need to request permission to see labels
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            return devices.filter(d => d.kind === 'audiooutput');
+        } catch (e) {
+            console.error('[Voice] Could not enumerate devices', e);
+            // Some browsers don't need getUserMedia for labels if already granted
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            return devices.filter(d => d.kind === 'audiooutput');
+        }
+    }
+
+    /**
+     * Select a specific audio output device
+     */
+    async setAudioDevice(deviceId: string, label: string) {
+        this.selectedDeviceId = deviceId;
+        this.status.selectedDeviceLabel = label;
+        localStorage.setItem('bh_selected_audio_device', deviceId);
+        localStorage.setItem('bh_selected_audio_label', label);
+
+        // If we have a master player, route it now
+        if (this.masterPlayer && (this.masterPlayer as any).setSinkId) {
+            try {
+                await (this.masterPlayer as any).setSinkId(deviceId);
+                console.log(`[Voice] Audio routed to: ${label}`);
+            } catch (e) {
+                console.error('[Voice] Failed to route audio to device', e);
+            }
+        }
+    }
+
+    private getTtsUrl(text: string): string {
+        const encodedText = encodeURIComponent(text);
+        return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=en&client=tw-ob`;
+    }
+
+    /**
+     * Initialize the master audio channel (user-triggered)
+     */
+    async initializeChannel(): Promise<boolean> {
+        console.log('[Voice] Initializing channel...');
+        this.status.error = 'Connecting...';
+
+        // Base64 1-second silent WAV to unlock audio without hitting Google TTS
+        const SILENT_SOUND = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhAAQACABAAAABkYXRhAgAAAAEA';
+
+        try {
+            // Unlocking Speech
+            if (this.synth) {
+                this.synth.cancel();
+                const utter = new SpeechSynthesisUtterance('');
+                this.synth.speak(utter);
+            }
+
+            // Creating Master Player (HTMLAudioElement)
+            if (!this.masterPlayer) {
+                this.masterPlayer = new Audio();
+                this.masterPlayer.autoplay = false;
+                this.masterPlayer.volume = 1.0;
+            }
+
+            // Route to selected device if supported
+            if (this.selectedDeviceId && (this.masterPlayer as any).setSinkId) {
+                try {
+                    await (this.masterPlayer as any).setSinkId(this.selectedDeviceId);
+                    console.log(`[Voice] Route confirmed: ${this.selectedDeviceId}`);
+                } catch (sinkError) {
+                    console.error('[Voice] setSinkId failed, using default', sinkError);
+                }
+            }
+
+            // Play/Pause once to "unlock" with a 3-second timeout
+            const unlockPromise = (async () => {
+                this.masterPlayer!.src = SILENT_SOUND;
+                await this.masterPlayer!.play();
+                this.masterPlayer!.pause();
+                return true;
+            })();
+
+            // 3 second timeout for hardware handshake
+            const timeoutPromise = new Promise<boolean>((_, reject) =>
+                setTimeout(() => reject(new Error('Hardware timeout')), 3000)
+            );
+
+            await Promise.race([unlockPromise, timeoutPromise]);
+
+            this.status.error = null;
+            console.log('[Voice] Channel unlocked successfully');
+            return true;
+        } catch (e: any) {
+            console.error('[Voice] Initialization failed', e);
+            // If native speech is working, we can still call it a success on Mac
+            if (this.status.engine === 'SPEECH' && this.voices.length > 0) {
+                this.status.error = null;
+                return true;
+            }
+            this.status.error = `Setup Error: ${e.message || 'Check speaker connection'}`;
+            return false;
+        }
+    }
+
+    announcePatientCall(tokenNumber: string, repeat: number = 2): void {
+        const numStr = tokenNumber.replace(/^[A-Za-z-]+/, '').trim();
+        const digits = numStr.split('').join(' ');
+        const message = `Token number ${digits}`;
+
+        this.status.lastSpoken = message;
+
+        // Use native if voices are available, otherwise use MP3
+        if (this.status.engine === 'SPEECH' && this.synth) {
+            this.speakNative(message, repeat);
+        } else {
+            this.playAudio(message, repeat);
+        }
+    }
+
+    private speakNative(text: string, repeatCount: number): void {
+        if (!this.synth) return;
+        this.synth.cancel();
+
+        const speak = (count: number) => {
+            if (count >= repeatCount) return;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-IN';
+            utterance.rate = 0.9;
+            utterance.onend = () => setTimeout(() => speak(count + 1), 1200);
+            this.synth!.speak(utterance);
+        };
+        speak(0);
+    }
+
+    private playAudio(text: string, repeatCount: number): void {
+        if (!this.masterPlayer) return;
+
+        let currentRepeat = 0;
+        const url = this.getTtsUrl(text);
+
+        const playNext = async () => {
+            if (currentRepeat >= repeatCount) return;
+
+            try {
+                this.masterPlayer!.src = url;
+                this.masterPlayer!.onended = () => {
+                    currentRepeat++;
+                    setTimeout(playNext, 1500);
+                };
+                await this.masterPlayer!.play();
+            } catch (err) {
+                console.error('[Voice] Master player playback failed', err);
+                this.status.error = 'Speaker blocked. Re-activate in settings.';
+            }
+        };
+
+        playNext();
+    }
+
+    stop(): void {
+        if (this.synth) this.synth.cancel();
+        if (this.masterPlayer) {
+            this.masterPlayer.pause();
+            this.masterPlayer.src = '';
+        }
+    }
+
+    getEngineStatus() {
+        return this.status;
+    }
+}
+
+export const voiceService = new VoiceAnnouncementService();
+export default VoiceAnnouncementService;
