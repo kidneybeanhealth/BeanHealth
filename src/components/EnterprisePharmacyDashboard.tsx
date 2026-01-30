@@ -624,17 +624,6 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
                                             {item.status === 'pending' ? (
                                                 <>
-                                                    {/* Add to Queue Button */}
-                                                    <button
-                                                        onClick={() => handleAddToQueue(item)}
-                                                        className="px-3 py-3 text-sm font-bold text-purple-600 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-all flex items-center gap-1.5 whitespace-nowrap"
-                                                        title="Add to waiting queue"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                        </svg>
-                                                        <span className="hidden sm:inline">Queue</span>
-                                                    </button>
                                                     {/* Call In Button */}
                                                     <button
                                                         onClick={() => handleCallPatient(item)}

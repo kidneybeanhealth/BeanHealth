@@ -112,8 +112,21 @@ const DoctorLogin: React.FC = () => {
                 console.error('[DoctorLogin] Error fetching doctors:', error);
                 throw error;
             }
-            console.log('[DoctorLogin] Found doctors:', data?.length);
-            setDoctors(data || []);
+
+            // Custom sort: Prabhakar first, Divakar second, others after
+            const sortedDoctors = (data || []).sort((a, b) => {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+
+                if (nameA.includes('prabhakar')) return -1;
+                if (nameB.includes('prabhakar')) return 1;
+                if (nameA.includes('divakar')) return -1;
+                if (nameB.includes('divakar')) return 1;
+                return 0;
+            });
+
+            console.log('[DoctorLogin] Found doctors:', sortedDoctors.length);
+            setDoctors(sortedDoctors);
         } catch (error) {
             console.error('[DoctorLogin] Error fetching doctors:', error);
             toast.error('Failed to load doctors list');
@@ -298,8 +311,8 @@ const DoctorLogin: React.FC = () => {
             }}
         >
             <div className="max-w-7xl mx-auto w-full">
-                <div className="flex flex-col items-center justify-center mb-16 animate-fade-in text-center w-full">
-                    <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 relative transition-transform duration-700 hover:scale-105 mb-8">
+                <div className="flex flex-col items-center justify-center mb-10 sm:mb-16 animate-fade-in text-center w-full">
+                    <div className="w-20 h-20 sm:w-32 sm:h-32 flex-shrink-0 relative transition-transform duration-700 hover:scale-105 mb-6 sm:mb-8">
                         <img
                             src="/logo.png"
                             alt="BeanHealth Logo"
@@ -307,39 +320,39 @@ const DoctorLogin: React.FC = () => {
                         />
                     </div>
 
-                    <div className="flex items-center w-full">
-                        <div className="flex-1 flex justify-end pr-5">
-                            <div className="flex text-3xl sm:text-4xl font-black tracking-tight leading-none">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-0 w-full max-w-2xl">
+                        <div className="sm:flex-1 flex justify-center sm:justify-end sm:pr-8">
+                            <div className="flex text-2xl sm:text-4xl font-black tracking-tight leading-none">
                                 <span className="text-[#3d2e2a]">Bean</span>
                                 <span className="text-secondary-500">Health</span>
                             </div>
                         </div>
-                        <div className="h-10 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
-                        <div className="flex-1 flex justify-start pl-5 text-left">
-                            <span className="text-[#3d2e2a] text-2xl sm:text-3xl font-black leading-none tracking-tight">
+                        <div className="hidden sm:block h-10 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
+                        <div className="sm:flex-1 flex justify-center sm:justify-start sm:pl-8">
+                            <span className="text-[#3d2e2a] text-xl sm:text-3xl font-black leading-tight tracking-tight px-4 sm:px-0">
                                 {profile?.name || 'Hospital Registry'}
                             </span>
                         </div>
                     </div>
-                    <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-[0.3em] uppercase opacity-80 mt-8">Medical Staff Access</p>
+                    <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-[0.3em] uppercase opacity-80 mt-6 sm:mt-8">Medical Staff Access</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12 px-2">
-                    <div>
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6 mb-8 sm:mb-12 px-2">
+                    <div className="w-full">
                         <button
                             onClick={() => navigate('/enterprise-dashboard')}
-                            className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors group"
+                            className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-4 sm:mb-6 transition-colors group"
                         >
-                            <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
-                            <span className="font-medium">Back to Dashboard</span>
+                            <span className="text-sm sm:font-medium">Back to Dashboard</span>
                         </button>
-                        <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-gray-900 mb-2">
+                        <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-gray-900 mb-1 sm:mb-2">
                             Medical Staff
                         </h2>
-                        <p className="text-lg text-gray-500 font-medium">
-                            Select your profile to access your clinical dashboard.
+                        <p className="text-base sm:text-lg text-gray-500 font-medium">
+                            Select your profile to access your dashboard.
                         </p>
                     </div>
                 </div>
@@ -366,26 +379,26 @@ const DoctorLogin: React.FC = () => {
                             <button
                                 key={doctor.id}
                                 onClick={() => handleDoctorClick(doctor)}
-                                className="group relative flex flex-col items-center p-8 bg-white/80 backdrop-blur-sm rounded-[2rem] border border-white/60 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-500 ease-out text-center focus:outline-none focus:ring-4 focus:ring-primary-500/20"
+                                className="group relative flex flex-col items-center p-6 sm:p-8 bg-white/80 backdrop-blur-sm rounded-[1.5rem] sm:rounded-[2rem] border border-white/60 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-500 ease-out text-center focus:outline-none focus:ring-4 focus:ring-primary-500/20"
                             >
-                                <div className="w-24 h-24 mb-6 relative">
+                                <div className="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-6 relative">
                                     <div className="absolute inset-0 bg-gradient-to-tr from-primary-100 to-primary-50 rounded-full scale-90 group-hover:scale-110 transition-transform duration-500 ease-out opacity-60" />
-                                    <div className="relative w-full h-full rounded-full overflow-hidden border-[4px] border-white shadow-sm flex items-center justify-center bg-gray-50 text-2xl font-bold text-gray-900 group-hover:border-primary-50 transition-colors duration-300">
+                                    <div className="relative w-full h-full rounded-full overflow-hidden border-[3px] sm:border-[4px] border-white shadow-sm flex items-center justify-center bg-gray-50 text-xl sm:text-2xl font-bold text-gray-900 group-hover:border-primary-50 transition-colors duration-300">
                                         {doctor.avatar_url ? (
                                             <img src={doctor.avatar_url} alt={doctor.name} className="w-full h-full object-cover" />
                                         ) : (
-                                            <span className="text-3xl text-gray-800">
+                                            <span className="text-2xl sm:text-3xl text-gray-800">
                                                 {getDoctorInitials(doctor.name)}
                                             </span>
                                         )}
                                     </div>
                                 </div>
 
-                                <h3 className="text-lg font-bold text-gray-900 mb-1 tracking-tight group-hover:text-primary-700 transition-colors">{formatDoctorName(doctor.name)}</h3>
-                                <p className="text-sm font-medium text-gray-500 mb-8 uppercase tracking-wider text-[11px]">{doctor.specialty}</p>
+                                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 tracking-tight group-hover:text-primary-700 transition-colors line-clamp-1">{formatDoctorName(doctor.name)}</h3>
+                                <p className="text-[10px] sm:text-sm font-medium text-gray-500 mb-6 sm:mb-8 uppercase tracking-wider">{doctor.specialty || 'GENERAL MEDICINE'}</p>
 
-                                <div className="mt-auto pointer-events-none">
-                                    <span className="inline-flex items-center justify-center px-6 py-2.5 bg-gray-50 text-gray-900 text-sm font-bold rounded-full group-hover:bg-primary-600 group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-primary-600/30">
+                                <div className="mt-auto pointer-events-none w-full">
+                                    <span className="inline-flex w-full items-center justify-center px-4 sm:px-6 py-2 sm:py-2.5 bg-gray-50 text-gray-900 text-xs sm:text-sm font-bold rounded-xl sm:rounded-full group-hover:bg-primary-600 group-hover:text-white transition-all duration-300 shadow-sm">
                                         Access Dashboard
                                     </span>
                                 </div>

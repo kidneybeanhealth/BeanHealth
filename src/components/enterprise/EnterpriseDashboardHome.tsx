@@ -321,30 +321,33 @@ const EnterpriseDashboardHome: React.FC = () => {
                             <Link
                                 key={item.id}
                                 to={item.path}
-                                className={`group relative bg-white rounded-[2.5rem] p-6 sm:p-10 border border-gray-100/60 transition-all duration-500 shadow-sm ${item.hoverShadow} hover:-translate-y-3`}
+                                className={`group relative bg-white rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-10 border border-gray-100/60 transition-all duration-500 shadow-sm ${item.hoverShadow} hover:-translate-y-3 flex flex-col h-full`}
                             >
-                                <div className={`w-16 h-16 ${item.bgDecoration} rounded-[1.25rem] flex items-center justify-center mb-10 transition-all duration-500 shadow-sm`}>
-                                    <div className={`${item.iconColor} transition-transform duration-500`}>{item.icon}</div>
+                                <div className="flex items-center gap-4 mb-4 sm:mb-10 sm:flex-col sm:items-start">
+                                    <div className={`w-12 h-12 sm:w-16 sm:h-16 ${item.bgDecoration} rounded-[1rem] sm:rounded-[1.25rem] flex items-center justify-center transition-all duration-500 shadow-sm shrink-0`}>
+                                        <div className={`${item.iconColor} w-6 h-6 sm:w-auto sm:h-auto transition-transform duration-500`}>{item.icon}</div>
+                                    </div>
+
+                                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight leading-none group-hover:text-primary-600 transition-colors">
+                                        {item.title}
+                                    </h3>
                                 </div>
 
-                                <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight leading-none group-hover:text-primary-600 transition-colors">
-                                    {item.title}
-                                </h3>
-                                <p className="text-gray-400 leading-relaxed mb-10 text-[15px] font-medium">
+                                <p className="text-gray-400 leading-relaxed mb-6 sm:mb-10 text-[13px] sm:text-[15px] font-medium line-clamp-2 sm:line-clamp-none">
                                     {item.desc}
                                 </p>
 
-                                <div className="flex items-center text-[13px] font-black text-gray-900 uppercase tracking-widest mt-auto">
+                                <div className="flex items-center text-[10px] sm:text-[13px] font-black text-gray-900 uppercase tracking-widest mt-auto">
                                     <span className="group-hover:mr-4 transition-all duration-500">Enter Workspace</span>
-                                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-50 flex items-center justify-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500">
+                                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                                         </svg>
                                     </div>
                                 </div>
 
                                 {/* Subtle Hover Background Accent */}
-                                <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-white via-white to-gray-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
+                                <div className="absolute inset-0 rounded-[1.5rem] sm:rounded-[2.5rem] bg-gradient-to-br from-white via-white to-gray-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
                             </Link>
                         ))}
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { LogoIcon } from '../icons/LogoIcon';
@@ -23,40 +23,39 @@ const PharmacyQueueDisplay: React.FC = () => {
     const [hospitalName, setHospitalName] = useState<string>('');
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [audioEnabled, setAudioEnabled] = useState(true);
     const [isInitialized, setIsInitialized] = useState(false);
+    const lastCalledTokenRef = useRef<string | null>(null);
 
     // Update time every second
     useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 1000);
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
 
     // Fetch hospital name
     useEffect(() => {
-        const fetchHospitalName = async () => {
-            if (!profile?.id) return;
+        if (!profile?.id) return;
+        (async () => {
             const { data } = await supabase
                 .from('users')
                 .select('name')
                 .eq('id', profile.id)
                 .single();
             const userData = data as { name: string } | null;
-            if (userData?.name) {
-                setHospitalName(userData.name);
-            }
-        };
-        fetchHospitalName();
+            if (userData?.name) setHospitalName(userData.name);
+        })();
     }, [profile?.id]);
 
-    // Fetch queue data
+    // Main fetch function
     const fetchQueue = useCallback(async () => {
-        if (!profile?.id) return;
+        if (!profile?.id) {
+            console.log('[QueueDisplay] No profile.id, skipping fetch');
+            return;
+        }
 
         try {
-            const { data: callingData } = await supabase
+            // Fetch currently calling patient
+            const { data: callingData, error: callingError } = await supabase
                 .from('hospital_pharmacy_queue')
                 .select('*')
                 .eq('hospital_id', profile.id)
@@ -64,79 +63,56 @@ const PharmacyQueueDisplay: React.FC = () => {
                 .order('called_at', { ascending: false })
                 .limit(1);
 
-            if (callingData && callingData.length > 0) {
-                setCurrentPatient(callingData[0] as QueueItem);
-            } else {
-                setCurrentPatient(null);
+            if (callingError) {
+                console.error('[QueueDisplay] Error fetching calling:', callingError);
             }
 
-            const { data: waitingData } = await supabase
+            const newCalling = callingData && callingData.length > 0 ? callingData[0] as QueueItem : null;
+
+            // Announce if new patient is being called
+            if (newCalling && newCalling.token_number !== lastCalledTokenRef.current) {
+                console.log('[QueueDisplay] New patient calling:', newCalling.token_number);
+                lastCalledTokenRef.current = newCalling.token_number;
+                voiceService.announceTokenFormatted(newCalling.token_number);
+            }
+
+            setCurrentPatient(newCalling);
+
+            // Fetch waiting queue
+            const { data: waitingData, error: waitingError } = await supabase
                 .from('hospital_pharmacy_queue')
                 .select('*')
                 .eq('hospital_id', profile.id)
                 .eq('status', 'waiting')
                 .order('created_at', { ascending: true })
-                .limit(6);
+                .limit(10);
 
+            if (waitingError) {
+                console.error('[QueueDisplay] Error fetching waiting:', waitingError);
+            }
+
+            console.log('[QueueDisplay] Fetched:', { calling: newCalling?.token_number || 'none', waiting: waitingData?.length || 0 });
             setWaitingQueue((waitingData || []) as QueueItem[]);
         } catch (error) {
-            console.error('Error fetching queue:', error);
+            console.error('[QueueDisplay] Fetch error:', error);
         }
     }, [profile?.id]);
 
-    // Initial fetch and realtime subscription
+    // Main polling effect - runs every 5 seconds
     useEffect(() => {
-        if (!profile?.id) return;
+        if (!profile?.id || !isInitialized) return;
 
-        fetchQueue();
+        console.log('[QueueDisplay] Starting polling for hospital:', profile.id);
+        fetchQueue(); // Initial fetch
 
-        const channel = supabase
-            .channel(`pharmacy-queue-display-${profile.id}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'hospital_pharmacy_queue',
-                    filter: `hospital_id=eq.${profile.id}`
-                },
-                (payload) => {
-                    if (payload.eventType === 'UPDATE' && payload.new.status === 'calling') {
-                        // Use voice service to announce the token with custom audio file
-                        voiceService.announceTokenFormatted(payload.new.token_number);
-                    }
-                    fetchQueue();
-                }
-            )
-            .subscribe();
+        const pollInterval = setInterval(() => {
+            fetchQueue();
+        }, 5000);
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [profile?.id, fetchQueue]);
+        return () => clearInterval(pollInterval);
+    }, [profile?.id, isInitialized, fetchQueue]);
 
-    // Play beep sound twice using the announcement sound effect
-    const playBeepSound = () => {
-        try {
-            // Import the audio file from project root
-            const beepAudio = new Audio('/Announcement sound effect.mp3');
-            beepAudio.volume = 1.0;
-
-            // Play the sound
-            beepAudio.play().catch(err => console.log('Audio playback failed:', err));
-
-            // Play again after the first one ends
-            beepAudio.onended = () => {
-                const secondBeep = new Audio('/Announcement sound effect.mp3');
-                secondBeep.volume = 1.0;
-                secondBeep.play().catch(err => console.log('Second beep failed:', err));
-            };
-        } catch (e) {
-            console.log('Beep sound not supported:', e);
-        }
-    };
-
-    // Toggle fullscreen
+    // Fullscreen handlers
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen();
@@ -148,23 +124,15 @@ const PharmacyQueueDisplay: React.FC = () => {
     };
 
     useEffect(() => {
-        const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
-        };
+        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
-
-
     const handleTestAudio = async () => {
         const initialized = await voiceService.initializeChannel();
         if (initialized) {
-            toast.success("Testing Announcement (Token 1)", {
-                icon: '🔊',
-                duration: 3000
-            });
-            // Test with Token 1 to verify file playback
+            toast.success("Testing Announcement (Token 1)", { icon: '🔊', duration: 3000 });
             voiceService.announceTokenFormatted('1');
         } else {
             toast.error("Audio initialization failed");
@@ -173,38 +141,35 @@ const PharmacyQueueDisplay: React.FC = () => {
 
     const handleInitialize = async () => {
         const success = await voiceService.initializeChannel();
+        setIsInitialized(true);
         if (success) {
-            setIsInitialized(true);
             toast.success('Display Started & Audio Enabled');
         } else {
             toast.error('Audio setup failed (Check browser permissions)');
-            setIsInitialized(true); // Let them proceed anyway
         }
     };
 
+    // Initialization screen
     if (!isInitialized) {
         return (
             <div className="h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 p-4">
-                <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full text-center space-y-6 animate-in zoom-in-50 duration-300">
+                <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full text-center space-y-6">
                     <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg className="w-10 h-10 text-blue-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 mb-2">Pharmacy Display</h1>
-                        <p className="text-gray-500 text-sm">Click start to enable audio announcements and fullscreen mode.</p>
+                        <p className="text-gray-500 text-sm">Click start to enable audio announcements.</p>
                     </div>
-
                     <button
                         onClick={handleInitialize}
-                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:scale-[1.02] active:scale-95"
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-95"
                     >
                         Start Display
                     </button>
-
                     <p className="text-xs text-gray-400">Powered by BeanHealth</p>
                 </div>
             </div>
@@ -213,9 +178,7 @@ const PharmacyQueueDisplay: React.FC = () => {
 
     return (
         <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col overflow-hidden">
-
-
-            {/* Header - White with shadow */}
+            {/* Header */}
             <header className="flex-shrink-0 bg-white shadow-sm border-b border-gray-100">
                 <div className="flex items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-4">
@@ -242,36 +205,28 @@ const PharmacyQueueDisplay: React.FC = () => {
                             <button
                                 onClick={handleTestAudio}
                                 className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-sm font-bold transition-all flex items-center gap-2 border border-blue-100"
-                                title="Test Voice Announcement"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                 </svg>
-                                Test Sound
+                                Test
                             </button>
                             <button
                                 onClick={toggleFullscreen}
                                 className="p-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
-                                title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
                             >
-                                {isFullscreen ? (
-                                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                                    </svg>
-                                )}
+                                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
                             </button>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Main Content - Side by Side */}
+            {/* Main Content */}
             <main className="flex-1 flex gap-5 p-5 min-h-0">
-                {/* LEFT: Now Serving - 60% */}
+                {/* NOW SERVING - Left 60% */}
                 <div className="w-3/5 flex flex-col">
                     <div className="text-center mb-4">
                         <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-emerald-200 rounded-xl shadow-sm">
@@ -284,41 +239,25 @@ const PharmacyQueueDisplay: React.FC = () => {
                     </div>
 
                     {currentPatient ? (
-                        <div
-                            key={currentPatient.id}
-                            className="flex-1 bg-white rounded-3xl shadow-lg border border-gray-200 flex flex-col items-center justify-center relative overflow-hidden animate-in fade-in zoom-in-95 duration-500"
-                        >
-                            {/* Animated top accent with pulse */}
+                        <div className="flex-1 bg-white rounded-3xl shadow-lg border border-gray-200 flex flex-col items-center justify-center relative overflow-hidden">
                             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-emerald-500 animate-pulse"></div>
-
-                            {/* Animated glow effect */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 animate-pulse"></div>
-
-                            {/* Content */}
-                            <div className="flex flex-col items-center justify-center w-full px-12 py-12 relative z-10">
-                                {/* Token Label */}
-                                <div className="mb-8 text-center animate-in slide-in-from-top-4 fade-in duration-700">
+                            <div className="flex flex-col items-center justify-center w-full px-12 py-12">
+                                <div className="mb-8 text-center">
                                     <span className="text-gray-400 text-lg font-medium tracking-wider uppercase">Token Number</span>
                                     <div className="text-gray-400 text-sm mt-1">டோக்கன் எண்</div>
                                 </div>
-
-                                {/* Token Number - Clean & Large with attention-grabbing animation */}
-                                <div className="mb-10 animate-in zoom-in-50 fade-in duration-700 delay-150">
-                                    <p className="text-[12rem] leading-none font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 tracking-tight drop-shadow-sm animate-pulse">
+                                <div className="mb-10">
+                                    <p className="text-[12rem] leading-none font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 tracking-tight animate-pulse">
                                         {currentPatient.token_number.replace(/^[A-Za-z-]+/, '')}
                                     </p>
                                 </div>
-
-                                {/* Patient Name */}
-                                <div className="w-full border-t border-gray-100 pt-8 space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-700 delay-300">
+                                <div className="w-full border-t border-gray-100 pt-8 space-y-6">
                                     <div className="bg-gray-50 rounded-xl px-8 py-4">
                                         <p className="text-4xl font-bold text-gray-900 uppercase tracking-wide text-center truncate">
                                             {currentPatient.patient_name}
                                         </p>
                                     </div>
-
-                                    {/* Call to Action - Simple */}
-                                    <div className="flex flex-col items-center gap-2 pt-2 animate-in slide-in-from-bottom-2 fade-in duration-700 delay-500">
+                                    <div className="flex flex-col items-center gap-2 pt-2">
                                         <div className="flex items-center gap-2 text-emerald-600">
                                             <svg className="w-6 h-6 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -344,7 +283,7 @@ const PharmacyQueueDisplay: React.FC = () => {
                     )}
                 </div>
 
-                {/* RIGHT: Queue - 40% */}
+                {/* UP NEXT - Right 40% */}
                 <div className="w-2/5 flex flex-col min-h-0">
                     <div className="text-center mb-3">
                         <span className="text-gray-500 text-sm font-bold tracking-widest uppercase">
@@ -358,31 +297,22 @@ const PharmacyQueueDisplay: React.FC = () => {
                                 {waitingQueue.map((item, index) => (
                                     <div
                                         key={item.id}
-                                        className={`flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-b-0 ${index === 0 ? 'bg-gradient-to-r from-blue-50 to-transparent' : ''
-                                            }`}
+                                        className={`flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-b-0 ${index === 0 ? 'bg-gradient-to-r from-blue-50 to-transparent' : ''}`}
                                     >
-                                        {/* Position */}
-                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-400'
-                                            }`}>
+                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-400'}`}>
                                             {index + 1}
                                         </div>
-
-                                        {/* Token */}
-                                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl ${index === 0 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'bg-gray-100 text-gray-600'
-                                            }`}>
+                                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl ${index === 0 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'bg-gray-100 text-gray-600'}`}>
                                             {item.token_number.replace(/^[A-Za-z-]+/, '')}
                                         </div>
-
-                                        {/* Name */}
                                         <div className="flex-1 min-w-0">
-                                            <p className={`font-bold truncate ${index === 0 ? 'text-gray-900 text-lg' : 'text-gray-600'
-                                                }`}>
+                                            <p className={`font-bold truncate ${index === 0 ? 'text-gray-900 text-lg' : 'text-gray-600'}`}>
                                                 {item.patient_name}
                                             </p>
                                             {index === 0 && (
                                                 <span className="text-yellow-600 text-xs font-semibold flex items-center gap-1.5 mt-0.5">
                                                     <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-                                                    Preparing...
+                                                    Next in line
                                                 </span>
                                             )}
                                         </div>
@@ -398,9 +328,8 @@ const PharmacyQueueDisplay: React.FC = () => {
                 </div>
             </main>
 
-
-
-            <footer className="flex-shrink-0 px-5 pb-4 relative">
+            {/* Footer */}
+            <footer className="flex-shrink-0 px-5 pb-4">
                 <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500 rounded-2xl shadow-lg p-4">
                     <div className="flex items-center justify-center gap-4">
                         <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">

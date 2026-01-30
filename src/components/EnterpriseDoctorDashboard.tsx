@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import PrescriptionModal from './modals/PrescriptionModal';
+import ManageDrugsModal from './modals/ManageDrugsModal';
+import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
 import EnterpriseCKDSnapshotView from './EnterpriseCKDSnapshotView';
 import { LogoIcon } from './icons/LogoIcon';
 import DoctorSettingsModal from './modals/DoctorSettingsModal';
@@ -65,6 +67,8 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     const [historyList, setHistoryList] = useState<any[]>([]);
 
     const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [showManageDrugsModal, setShowManageDrugsModal] = useState(false);
+    const [showManageDiagnosesModal, setShowManageDiagnosesModal] = useState(false);
     // Local doctor state to handle updates (e.g. after signature upload)
     const [currentDoctor, setCurrentDoctor] = useState<DoctorProfile>(doctor);
 
@@ -323,7 +327,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         const toastId = toast.loading('Sending to pharmacy...');
 
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('hospital_prescriptions' as any)
                 .insert({
                     hospital_id: doctor.hospital_id,
@@ -333,11 +337,29 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     medications: prescriptionMeds,
                     notes: prescriptionNotes,
                     status: 'pending'
-                } as any);
+                } as any)
+                .select()
+                .single();
 
             if (error) {
                 console.error('Supabase Insert Error:', error);
                 throw error;
+            }
+
+            // Sync with Pharmacy Queue Display (Bridge logic)
+            console.log('Syncing with pharmacy queue for token:', selectedPatient.token_number);
+            const { error: queueError } = await (supabase as any)
+                .from('hospital_pharmacy_queue')
+                .insert({
+                    hospital_id: currentDoctor.hospital_id,
+                    prescription_id: (data as any)?.id || '',
+                    patient_name: selectedPatient.name,
+                    token_number: selectedPatient.token_number,
+                    status: 'waiting'
+                });
+
+            if (queueError) {
+                console.error('Pharmacy Queue sync failed:', queueError);
             }
 
             console.log('Prescription sent successfully:', { prescriptionMeds, prescriptionNotes });
@@ -453,8 +475,8 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                             </div>
                         </button>
 
-                        {/* Action Group 2: Tabs + Refresh */}
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                        {/* Action Group 2: Tabs + Settings + Refresh */}
+                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                             <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm flex flex-1 sm:flex-none">
                                 <button
                                     onClick={() => setViewMode('queue')}
@@ -470,31 +492,31 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                 </button>
                             </div>
 
-                        </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setShowSettingsModal(true)}
+                                    className={`p-2.5 sm:p-3 bg-white text-gray-500 hover:text-blue-600 rounded-2xl border border-gray-200 hover:border-blue-200 transition-all shadow-sm shrink-0 ${currentDoctor.signature_url ? '' : 'animate-pulse ring-2 ring-blue-500/20'}`}
+                                    title="Doctor Settings & Signature"
+                                >
+                                    <div className="relative">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        {!currentDoctor.signature_url && (
+                                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white"></span>
+                                        )}
+                                    </div>
+                                </button>
 
-                        {/* Signatures & Settings */}
-                        <button
-                            onClick={() => setShowSettingsModal(true)}
-                            className={`p-3 bg-white text-gray-500 hover:text-blue-600 rounded-2xl border border-gray-200 hover:border-blue-200 transition-all shadow-sm shrink-0 ${currentDoctor.signature_url ? '' : 'animate-pulse ring-2 ring-blue-500/20'}`}
-                            title="Doctor Settings & Signature"
-                        >
-                            <div className="relative">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                {!currentDoctor.signature_url && (
-                                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white"></span>
-                                )}
+                                <button
+                                    onClick={() => viewMode === 'queue' ? fetchQueue() : fetchHistory()}
+                                    className="p-2.5 sm:p-3 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm shrink-0"
+                                    title="Reload"
+                                >
+                                    <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </button>
                             </div>
-                        </button>
-
-                        <button
-                            onClick={() => viewMode === 'queue' ? fetchQueue() : fetchHistory()}
-                            className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm shrink-0"
-                            title="Reload"
-                        >
-                            <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -516,9 +538,33 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
                     {viewMode === 'queue' ? (
                         <>
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                                <h3 className="font-bold text-gray-900">Current Queue</h3>
-                                <span className="text-sm font-medium text-gray-700">{queue.length} Patients Waiting</span>
+                            <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-gray-900 text-lg">Current Queue</h3>
+                                    <span className="text-sm font-medium text-gray-700 sm:hidden">{queue.length} waiting</span>
+                                </div>
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                    <button
+                                        onClick={() => setShowManageDrugsModal(true)}
+                                        className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/25 transition-all hover:-translate-y-0.5 flex items-center gap-1.5 sm:gap-2 shrink-0"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <span className="hidden xs:inline">Manage</span> <span className="hidden sm:inline">Saved</span> Drugs
+                                    </button>
+                                    <button
+                                        onClick={() => setShowManageDiagnosesModal(true)}
+                                        className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 flex items-center gap-1.5 sm:gap-2 shrink-0"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span className="hidden xs:inline">Manage</span> <span className="hidden sm:inline">Saved</span> Diag
+                                    </button>
+                                    <span className="hidden sm:inline text-sm font-medium text-gray-700">{queue.length} Patients Waiting</span>
+                                </div>
                             </div>
 
                             {loading ? (
@@ -670,6 +716,23 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     doctor={currentDoctor}
                     onClose={() => setShowSettingsModal(false)}
                     onUpdate={refreshDoctorProfile}
+                />
+            )}
+
+            {/* Manage Drugs Modal */}
+            {showManageDrugsModal && (
+                <ManageDrugsModal
+                    doctorId={currentDoctor.id}
+                    hospitalId={currentDoctor.hospital_id}
+                    onClose={() => setShowManageDrugsModal(false)}
+                />
+            )}
+
+            {showManageDiagnosesModal && (
+                <ManageDiagnosesModal
+                    doctorId={currentDoctor.id}
+                    hospitalId={currentDoctor.hospital_id}
+                    onClose={() => setShowManageDiagnosesModal(false)}
                 />
             )}
         </div>

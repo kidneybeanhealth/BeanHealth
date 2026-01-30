@@ -24,6 +24,25 @@ interface DrugOption {
     isReference?: boolean;
 }
 
+// Dose mappings for auto-populate
+const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; night: string }> = {
+    'OD': { morning: '1', noon: '0', night: '0' },
+    'TD': { morning: '1', noon: '0', night: '1' },
+    'TDS': { morning: '1', noon: '1', night: '1' },
+    'HS': { morning: '0', noon: '0', night: '1' },
+    'QID': { morning: '1', noon: '1', night: '2' },
+    '1/2 OD': { morning: '1/2', noon: '0', night: '0' },
+    '1/2 TD': { morning: '1/2', noon: '0', night: '1/2' },
+    '1/2 TDS': { morning: '1/2', noon: '1/2', night: '1/2' },
+    '1/2 HS': { morning: '0', noon: '0', night: '1/2' },
+};
+
+const DOSE_OPTIONS = Object.keys(DOSE_MAPPINGS);
+
+const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'SC', 'SC A/F'];
+
+const TIMING_VALUE_OPTIONS = ['0', '1/2', '1', '1 + 1/2', '2'];
+
 const PrescriptionPage: React.FC = () => {
     const { doctorId, patientId, prescriptionId } = useParams<{
         doctorId: string;
@@ -55,11 +74,11 @@ const PrescriptionPage: React.FC = () => {
     });
 
     const [medications, setMedications] = useState([
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false }
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' }
     ]);
 
     // Drug Search States
@@ -71,6 +90,11 @@ const PrescriptionPage: React.FC = () => {
     const [newDrugName, setNewDrugName] = useState('');
     const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
     const [isSavingDrug, setIsSavingDrug] = useState(false);
+
+    // Dose & Timing Dropdown States
+    const [showDoseDropdown, setShowDoseDropdown] = useState<number | null>(null);
+    const [doseSearchQuery, setDoseSearchQuery] = useState('');
+    const [showFoodTimingDropdown, setShowFoodTimingDropdown] = useState<number | null>(null);
 
     const componentRef = useRef<HTMLDivElement>(null);
     const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
@@ -236,7 +260,7 @@ const PrescriptionPage: React.FC = () => {
                     dose: m.dose,
                     frequency: freq,
                     duration: 'See Review Date',
-                    instruction: m.beforeFood ? 'Before Food' : 'After Food'
+                    instruction: m.foodTiming === 'B/F' ? 'Before Food' : m.foodTiming === 'nil' ? '' : m.foodTiming || 'After Food'
                 };
             });
 
@@ -264,13 +288,26 @@ const PrescriptionPage: React.FC = () => {
             if (!prescriptionData) throw new Error("Failed to create prescription");
 
             // Add to Pharmacy Queue
-            await (supabase as any).from('hospital_pharmacy_queue').insert({
+            console.log('[PrescriptionPage] Inserting into pharmacy queue:', {
+                hospital_id: doctor.hospital_id,
+                prescription_id: prescriptionData.id,
+                patient_name: patient.name,
+                token_number: patient.token_number
+            });
+
+            const { error: queueError } = await (supabase as any).from('hospital_pharmacy_queue').insert({
                 hospital_id: doctor.hospital_id,
                 prescription_id: prescriptionData.id,
                 patient_name: patient.name,
                 token_number: patient.token_number,
                 status: 'waiting'
             });
+
+            if (queueError) {
+                console.error('[PrescriptionPage] Queue insert error:', queueError);
+            } else {
+                console.log('[PrescriptionPage] Successfully added to queue');
+            }
 
             toast.success('Prescription sent to Pharmacy!', { id: toastId });
             setTimeout(() => window.close(), 1500); // Auto-close tab on success
@@ -279,12 +316,21 @@ const PrescriptionPage: React.FC = () => {
         }
     };
 
-    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false }]);
+    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' }]);
     const removeRow = (i: number) => !readOnly && medications.length > 1 && setMedications(medications.filter((_, idx) => idx !== i));
     const updateMed = (i: number, f: string, v: any) => {
         if (readOnly) return;
         const newMeds = [...medications];
         (newMeds[i] as any)[f] = v;
+
+        // Auto-populate morning/noon/night when dose is selected
+        if (f === 'dose' && DOSE_MAPPINGS[v]) {
+            const mapping = DOSE_MAPPINGS[v];
+            (newMeds[i] as any).morning = mapping.morning;
+            (newMeds[i] as any).noon = mapping.noon;
+            (newMeds[i] as any).night = mapping.night;
+        }
+
         setMedications(newMeds);
     };
 
@@ -421,15 +467,15 @@ const PrescriptionPage: React.FC = () => {
                                         <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
                                             <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">வ.எ<br />S.N</div>
                                             <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">மருந்துக்கள் / DRUGS</div>
-                                            <div className="w-[340px] shrink-0 flex flex-col">
+                                            <div className="w-[360px] shrink-0 flex flex-col">
                                                 <div className="border-b border-black py-1">அளவு - Dose</div>
                                                 <div className="flex flex-1 items-stretch">
                                                     <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Dose / அளவு</div>
                                                     <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Qty / எண்</div>
-                                                    <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">M / கா</div>
-                                                    <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">N / ம</div>
-                                                    <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Nt / இ</div>
-                                                    <div className="w-10 py-1 text-[10px] flex flex-col items-center justify-center shrink-0">B/F A/F</div>
+                                                    <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">M / கா</div>
+                                                    <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">N / ம</div>
+                                                    <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Nt / இ</div>
+                                                    <div className="w-14 py-1 text-[9px] flex flex-col items-center justify-center shrink-0">B/F A/F</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -456,26 +502,62 @@ const PrescriptionPage: React.FC = () => {
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="w-[340px] flex shrink-0 items-stretch">
-                                                            <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                                                <select className="w-full text-center outline-none text-[10px] appearance-none" value={med.dose} onChange={e => updateMed(globalI, 'dose', e.target.value)} disabled={readOnly}>
-                                                                    <option value="">--</option><option value="OD">OD</option><option value="TD">TD</option><option value="TDS">TDS</option><option value="QID">QID</option>
-                                                                </select>
+                                                        <div className="w-[360px] flex shrink-0 items-stretch">
+                                                            {/* Dose - Searchable ComboBox */}
+                                                            <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
+                                                                <input
+                                                                    className="w-full text-center outline-none text-[10px] font-bold uppercase"
+                                                                    value={med.dose}
+                                                                    onChange={e => { updateMed(globalI, 'dose', e.target.value.toUpperCase()); setDoseSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowDoseDropdown(globalI); }}
+                                                                    onFocus={() => !readOnly && (setShowDoseDropdown(globalI), setDoseSearchQuery(''))}
+                                                                    onBlur={() => setTimeout(() => setShowDoseDropdown(null), 150)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder="--"
+                                                                />
+                                                                {!readOnly && showDoseDropdown === globalI && (
+                                                                    <div className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
+                                                                        {DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery)).map(opt => (
+                                                                            <button key={opt} onMouseDown={() => { updateMed(globalI, 'dose', opt); setShowDoseDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-xs font-bold border-b border-gray-50 last:border-0">
+                                                                                {opt}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
+                                                            {/* Qty */}
                                                             <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0">
                                                                 <input className="w-full text-center outline-none text-xs" value={med.number} onChange={e => updateMed(globalI, 'number', e.target.value)} readOnly={readOnly} />
                                                             </div>
-                                                            <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                                                <input className="w-full text-center text-xs font-bold outline-none" value={med.morning} onChange={e => updateMed(globalI, 'morning', e.target.value)} readOnly={readOnly} />
+                                                            {/* Morning */}
+                                                            <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
+                                                                <input className="w-full text-center text-xs font-bold outline-none" value={med.morning} onChange={e => updateMed(globalI, 'morning', e.target.value)} readOnly={readOnly} placeholder="0" />
                                                             </div>
-                                                            <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                                                <input className="w-full text-center text-xs font-bold outline-none" value={med.noon} onChange={e => updateMed(globalI, 'noon', e.target.value)} readOnly={readOnly} />
+                                                            {/* Noon */}
+                                                            <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
+                                                                <input className="w-full text-center text-xs font-bold outline-none" value={med.noon} onChange={e => updateMed(globalI, 'noon', e.target.value)} readOnly={readOnly} placeholder="0" />
                                                             </div>
-                                                            <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                                                <input className="w-full text-center text-xs font-bold outline-none" value={med.night} onChange={e => updateMed(globalI, 'night', e.target.value)} readOnly={readOnly} />
+                                                            {/* Night */}
+                                                            <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
+                                                                <input className="w-full text-center text-xs font-bold outline-none" value={med.night} onChange={e => updateMed(globalI, 'night', e.target.value)} readOnly={readOnly} placeholder="0" />
                                                             </div>
-                                                            <div className="w-10 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]" onClick={() => !readOnly && updateMed(globalI, 'beforeFood', !med.beforeFood)}>
-                                                                {med.beforeFood ? 'B/F' : 'A/F'}
+                                                            {/* Food Timing Dropdown */}
+                                                            <div className="w-14 flex items-center justify-center shrink-0 relative">
+                                                                <button
+                                                                    className="w-full text-center font-bold text-[9px] outline-none cursor-pointer hover:bg-gray-100 py-1"
+                                                                    onClick={() => !readOnly && setShowFoodTimingDropdown(showFoodTimingDropdown === globalI ? null : globalI)}
+                                                                    disabled={readOnly}
+                                                                >
+                                                                    {med.foodTiming || 'A/F'}
+                                                                </button>
+                                                                {!readOnly && showFoodTimingDropdown === globalI && (
+                                                                    <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden print:hidden">
+                                                                        {FOOD_TIMING_OPTIONS.map(opt => (
+                                                                            <button key={opt} onClick={() => { updateMed(globalI, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-[10px] font-bold border-b border-gray-50 last:border-0">
+                                                                                {opt}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>

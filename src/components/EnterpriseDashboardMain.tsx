@@ -276,7 +276,20 @@ const EnterpriseDashboardMain: React.FC = () => {
                 .eq('is_active', true);
 
             if (error) throw error;
-            setDoctors(data || []);
+
+            // Custom sort: Prabhakar first, Divakar second, others after
+            const sortedDoctors = (data || []).sort((a, b) => {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+
+                if (nameA.includes('prabhakar')) return -1;
+                if (nameB.includes('prabhakar')) return 1;
+                if (nameA.includes('divakar')) return -1;
+                if (nameB.includes('divakar')) return 1;
+                return 0;
+            });
+
+            setDoctors(sortedDoctors);
         } catch (error) {
             console.error('Error fetching doctors:', error);
             toast.error('Failed to load doctors list');
@@ -579,23 +592,23 @@ const EnterpriseDashboardMain: React.FC = () => {
 
     // Renderers
     const renderSelectionScreen = () => (
-        <div className="max-w-7xl mx-auto px-6 py-20 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 py-10 sm:py-20 relative overflow-hidden">
             {/* Background Decoration */}
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-primary-50/40 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
-            <div className="text-center mb-16 max-w-3xl mx-auto relative z-10">
-                <span className="inline-block text-primary-600 font-bold tracking-widest text-xs uppercase mb-4 bg-primary-50 px-3 py-1 rounded-full border border-primary-100">
+            <div className="text-center mb-10 sm:mb-16 max-w-3xl mx-auto relative z-10">
+                <span className="inline-block text-primary-600 font-bold tracking-widest text-[10px] sm:text-xs uppercase mb-3 sm:mb-4 bg-primary-50 px-3 py-1 rounded-full border border-primary-100">
                     Enterprise Portal
                 </span>
-                <h2 className="text-4xl sm:text-5xl font-bold mb-6 text-gray-900 tracking-tight">
+                <h2 className="text-2xl sm:text-5xl font-bold mb-4 sm:mb-6 text-gray-900 tracking-tight px-4">
                     {profile?.name || 'Select your workspace'}
                 </h2>
-                <p className="text-xl text-gray-500 leading-relaxed font-light">
-                    Welcome to the BeanHealth Enterprise Suite. Secure, efficient, and integrated management for your healthcare facility.
+                <p className="text-sm sm:text-xl text-gray-500 leading-relaxed font-light px-6">
+                    Welcome to the BeanHealth Enterprise Suite. Secure and integrated management for your facility.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative z-10">
                 {[
                     {
                         id: 'reception',
@@ -643,18 +656,20 @@ const EnterpriseDashboardMain: React.FC = () => {
                     <button
                         key={item.id}
                         onClick={() => handleDeptClick(item.id as any)}
-                        className={`group bg-white p-10 rounded-[2rem] border border-gray-100 transition-all duration-300 ease-out text-left flex flex-col h-full ${item.hoverShadow} ${item.borderColor} hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-gray-100`}
+                        className={`group bg-white p-4 sm:p-10 rounded-[1.25rem] sm:rounded-[2rem] border border-gray-100 transition-all duration-300 ease-out text-left flex flex-col h-full ${item.hoverShadow} ${item.borderColor} hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-gray-100 shadow-sm`}
                     >
-                        <div className={`w-16 h-16 ${item.bgDecoration} rounded-2xl flex items-center justify-center mb-8 transition-transform duration-300 group-hover:scale-110`}>
-                            <div className={item.iconColor}>{item.icon}</div>
+                        <div className="flex items-center gap-3 mb-3 sm:mb-8 sm:flex-col sm:items-start">
+                            <div className={`w-10 h-10 sm:w-16 sm:h-16 ${item.bgDecoration} rounded-lg sm:rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shrink-0`}>
+                                <div className={`${item.iconColor} w-5 h-5 sm:w-6 sm:h-6`}>{item.icon}</div>
+                            </div>
+                            <h3 className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight">{item.title}</h3>
                         </div>
 
-                        <h3 className="text-2xl font-bold mb-3 text-gray-900">{item.title}</h3>
-                        <p className="text-gray-500 leading-relaxed mb-8 font-light">{item.desc}</p>
+                        <p className="text-xs sm:text-lg text-gray-500 leading-relaxed mb-4 sm:mb-8 font-light line-clamp-2 sm:line-clamp-none">{item.desc}</p>
 
-                        <div className="mt-auto flex items-center text-sm font-bold text-gray-900 group-hover:opacity-100 transition-opacity">
+                        <div className="mt-auto flex items-center text-[10px] sm:text-sm font-bold text-gray-900 group-hover:opacity-100 transition-opacity uppercase tracking-wider">
                             <span className="group-hover:mr-2 transition-all">Enter Workspace</span>
-                            <svg className="w-4 h-4 ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1 sm:ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                             </svg>
                         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
+import MobilePrescriptionInput from './MobilePrescriptionInput';
 
 interface SavedDrug {
   id: string;
@@ -33,6 +34,25 @@ interface PrescriptionModalProps {
   clinicLogo?: string;
 }
 
+// Dose mappings for auto-populate
+const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; night: string }> = {
+  'OD': { morning: '1', noon: '0', night: '0' },
+  'TD': { morning: '1', noon: '0', night: '1' },
+  'TDS': { morning: '1', noon: '1', night: '1' },
+  'HS': { morning: '0', noon: '0', night: '1' },
+  'QID': { morning: '1', noon: '1', night: '2' },
+  '1/2 OD': { morning: '1/2', noon: '0', night: '0' },
+  '1/2 TD': { morning: '1/2', noon: '0', night: '1/2' },
+  '1/2 TDS': { morning: '1/2', noon: '1/2', night: '1/2' },
+  '1/2 HS': { morning: '0', noon: '0', night: '1/2' },
+};
+
+const DOSE_OPTIONS = Object.keys(DOSE_MAPPINGS);
+
+const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'SC', 'SC A/F'];
+
+const TIME_OPTIONS = ['6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'];
+
 const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, onClose, onSendToPharmacy, readOnly = false, existingData = null, clinicLogo }) => {
   // Form States matching the PDF structure
   const [formData, setFormData] = useState({
@@ -49,12 +69,18 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   });
 
   const [medications, setMedications] = useState([
-    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
-    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
-    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
-    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false },
-    { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false }
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' }
   ]);
+
+  // Time options for timing dropdowns (removed internal constant, uses outside one)
+
+  // Medication and Mobile States
+  const [isMobile, setIsMobile] = useState(false);
+  const [showPrintView, setShowPrintView] = useState(false);
 
   // Saved Drugs State
   const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
@@ -66,6 +92,18 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
   const [isSavingDrug, setIsSavingDrug] = useState(false);
 
+  // Saved Diagnosis State
+  const [savedDiagnoses, setSavedDiagnoses] = useState<any[]>([]);
+  const [showDiagnosisDropdown, setShowDiagnosisDropdown] = useState(false);
+  const [diagnosisSearchQuery, setDiagnosisSearchQuery] = useState('');
+  // Dose & Timing Dropdown States
+  const [showDoseDropdown, setShowDoseDropdown] = useState<number | null>(null);
+  const [doseSearchQuery, setDoseSearchQuery] = useState('');
+  const [showFoodTimingDropdown, setShowFoodTimingDropdown] = useState<number | null>(null);
+  const [foodTimingSearchQuery, setFoodTimingSearchQuery] = useState('');
+  const [showTimeDropdown, setShowTimeDropdown] = useState<{ index: number, field: string } | null>(null);
+  const [timeSearchQuery, setTimeSearchQuery] = useState('');
+
   // Refs for printing
   const componentRef = useRef<HTMLDivElement>(null);
   const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
@@ -76,6 +114,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
   useEffect(() => {
     const handleResize = () => {
+      // Logic for mobile view detection
+      const totalWidth = window.innerWidth;
+      setIsMobile(totalWidth < 768);
+
       if (containerRef.current) {
         const availableWidth = containerRef.current.clientWidth;
         // 210mm is approx 794px. We use 800px as the target breakpoint.
@@ -114,6 +156,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
       fetchReferenceDrugs();
       if (doctor?.id) {
         fetchSavedDrugs();
+        fetchSavedDiagnoses();
       }
     }
   }, [doctor?.id, readOnly]);
@@ -161,6 +204,20 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
       setReferenceDrugs(data || []);
     } catch (error) {
       console.error('Error fetching reference drugs:', error);
+    }
+  };
+
+  const fetchSavedDiagnoses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('hospital_doctor_diagnoses' as any)
+        .select('*')
+        .eq('doctor_id', doctor.id)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      setSavedDiagnoses(data || []);
+    } catch (error) {
+      console.error('Error fetching saved diagnoses:', error);
     }
   };
 
@@ -286,14 +343,25 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         // medications
         const parsedMeds = (existingData.medications || []).map((m: any) => {
           const freqs = (m.frequency || '0-0-0').split('-');
+          // Parse instruction to foodTiming
+          const instruction = (m.instruction || '').toLowerCase();
+          let foodTiming = 'A/F';
+          if (instruction.includes('before')) foodTiming = 'B/F';
+          else if (instruction.includes('sc a/f') || instruction.includes('sc af')) foodTiming = 'SC A/F';
+          else if (instruction.includes('sc')) foodTiming = 'SC';
+          else if (instruction === '' || instruction.includes('nil')) foodTiming = 'nil';
+
           return {
             name: m.name,
             number: (m.dosage || '').replace(' tab', ''),
             dose: m.dose || '',
             morning: freqs[0] !== '0' ? freqs[0] : '',
+            morningTime: '',
             noon: freqs[1] !== '0' ? freqs[1] : '',
+            noonTime: '',
             night: freqs[2] !== '0' ? freqs[2] : '',
-            beforeFood: (m.instruction || '').toLowerCase().includes('before')
+            nightTime: '',
+            foodTiming
           };
         });
         if (parsedMeds.length > 0) setMedications(parsedMeds);
@@ -331,7 +399,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   // Medicine Handlers
   const addRow = () => {
     if (readOnly) return;
-    setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', night: '', beforeFood: false }]);
+    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' }]);
   };
 
   const removeRow = (index: number) => {
@@ -346,6 +414,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     if (readOnly) return;
     const newMeds = [...medications];
     (newMeds[index] as any)[field] = value;
+
+    // Auto-populate morning/noon/night when dose is selected
+    if (field === 'dose' && DOSE_MAPPINGS[value]) {
+      const mapping = DOSE_MAPPINGS[value];
+      (newMeds[index] as any).morning = mapping.morning;
+      (newMeds[index] as any).noon = mapping.noon;
+      (newMeds[index] as any).night = mapping.night;
+    }
+
     setMedications(newMeds);
   };
 
@@ -360,7 +437,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         dose: m.dose,
         frequency: freq,
         duration: 'See Review Date',
-        instruction: m.beforeFood ? 'Before Food' : 'After Food'
+        instruction: m.foodTiming === 'B/F' ? 'Before Food' : m.foodTiming === 'nil' ? '' : m.foodTiming || 'After Food'
       };
     });
 
@@ -369,9 +446,56 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     if (onSendToPharmacy) onSendToPharmacy(pharmacyMeds, notes);
   };
 
+  if (isMobile && !showPrintView) {
+    return (
+      <MobilePrescriptionInput
+        doctor={doctor}
+        patient={patient}
+        medications={medications}
+        updateMed={updateMed}
+        addRow={addRow}
+        removeRow={removeRow}
+        formData={formData}
+        setFormData={setFormData}
+        onClose={onClose}
+        onPrint={() => setShowPrintView(true)}
+        onSend={handleSend}
+        readOnly={readOnly}
+        savedDiagnoses={savedDiagnoses}
+        diagnosisSearchQuery={diagnosisSearchQuery}
+        setDiagnosisSearchQuery={setDiagnosisSearchQuery}
+        showDiagnosisDropdown={showDiagnosisDropdown}
+        setShowDiagnosisDropdown={setShowDiagnosisDropdown}
+        DOSE_OPTIONS={DOSE_OPTIONS}
+        DOSE_MAPPINGS={DOSE_MAPPINGS}
+        FOOD_TIMING_OPTIONS={FOOD_TIMING_OPTIONS}
+        TIME_OPTIONS={TIME_OPTIONS}
+        drugSearchQuery={drugSearchQuery}
+        setDrugSearchQuery={setDrugSearchQuery}
+        filteredDrugs={filteredDrugs}
+        handleSelectDrug={handleSelectDrug}
+        showDrugDropdown={showDrugDropdown}
+        setShowDrugDropdown={setShowDrugDropdown}
+      />
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto animate-fade-in">
       <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden animate-scale-in">
+
+        {/* Mobile View Toggle (Floating back button when in print preview on mobile) */}
+        {isMobile && showPrintView && (
+          <div className="sticky top-0 z-[70] bg-white/80 backdrop-blur-md p-4 border-b border-gray-100 flex items-center justify-between">
+            <button
+              onClick={() => setShowPrintView(false)}
+              className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl flex items-center gap-2"
+            >
+              ← Back to Edit
+            </button>
+            <span className="font-bold text-gray-900">Print Preview</span>
+          </div>
+        )}
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-2 bg-gray-100" ref={containerRef}>
@@ -387,7 +511,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
             }
           `}</style>
 
-          {/* PRINT PREVIEW AREA - EXACT REPLICA OF PDF */}
+
           <div
             ref={componentRef}
             className="print-content bg-white shadow-sm p-4 max-w-[210mm] text-black w-full origin-top-left"
@@ -531,14 +655,42 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           </div>
                         </div>
                         {/* Row 6 */}
-                        <div className="flex min-h-[24px]">
-                          <div className="flex-1 flex">
+                        <div className="flex min-h-[48px]">
+                          <div className="flex-1 flex relative">
                             <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / Diagnosis</div>
-                            <input
-                              className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent"
-                              value={formData.diagnosis}
-                              onChange={e => setFormData({ ...formData, diagnosis: e.target.value })}
-                            />
+                            <div className="flex-1 relative flex">
+                              <textarea
+                                className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent resize-none leading-tight"
+                                value={formData.diagnosis}
+                                onChange={e => {
+                                  setFormData({ ...formData, diagnosis: e.target.value.toUpperCase() });
+                                  setDiagnosisSearchQuery(e.target.value);
+                                  setShowDiagnosisDropdown(true);
+                                }}
+                                onFocus={() => setShowDiagnosisDropdown(true)}
+                                onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
+                                rows={2}
+                              />
+                              {showDiagnosisDropdown && savedDiagnoses.filter(d => d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase())).length > 0 && (
+                                <div className="absolute left-0 right-0 top-full z-[100] bg-white border-2 border-black shadow-xl max-h-48 overflow-y-auto">
+                                  {savedDiagnoses
+                                    .filter(d => d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase()))
+                                    .map(diag => (
+                                      <button
+                                        key={diag.id}
+                                        type="button"
+                                        className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-xs font-bold border-b border-gray-100 last:border-0"
+                                        onMouseDown={() => {
+                                          setFormData({ ...formData, diagnosis: diag.name });
+                                          setShowDiagnosisDropdown(false);
+                                        }}
+                                      >
+                                        {diag.name}
+                                      </button>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -558,7 +710,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                         <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
                           மருந்துக்கள் / DRUGS
                         </div>
-                        <div className="w-[340px] shrink-0 flex flex-col">
+                        <div className="w-[380px] shrink-0 flex flex-col">
                           <div className="border-b border-black py-1">அளவு - Dose</div>
                           <div className="flex flex-1 items-stretch">
                             <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
@@ -569,19 +721,19 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                               <span>Qty</span>
                               <span>எண்</span>
                             </div>
-                            <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-16 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>M</span>
                               <span>கா</span>
                             </div>
-                            <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-16 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>N</span>
                               <span>ம</span>
                             </div>
-                            <div className="w-10 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-16 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>Nt</span>
                               <span>இ</span>
                             </div>
-                            <div className="w-10 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-10 py-1 text-[9px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>B/F</span>
                               <span>A/F</span>
                             </div>
@@ -598,7 +750,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                             ? localIndex
                             : FIRST_PAGE_ITEMS + (pageIndex - 1) * SUBSEQUENT_PAGE_ITEMS + localIndex;
 
-                          const shouldExpandRow = shouldExpand || isFirstPageMulti;
+                          const shouldExpandRow = shouldExpand;
 
                           return (
                             <div
@@ -661,75 +813,161 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                   </div>
                                 )}
                                 {/* Row Controls (Hidden in Print) */}
-                                <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white">
+                                <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white gap-1">
+                                  {/* Add row button - only on last medication */}
+                                  {!readOnly && globalIndex === medications.length - 1 && (
+                                    <button onClick={addRow} className="text-emerald-500 hover:text-emerald-700 font-bold text-lg px-1" title="Add medication">+</button>
+                                  )}
                                   {medications.length > 1 && (
-                                    <button onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1">×</button>
+                                    <button onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1" title="Remove">×</button>
                                   )}
                                 </div>
                               </div>
-                              <div className="w-[340px] flex shrink-0 items-stretch">
-                                {/* Dose Dropdown */}
-                                <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                  <select
-                                    className="w-full text-center outline-none text-[10px] bg-transparent cursor-pointer appearance-none"
+                              <div className="w-[380px] flex shrink-0 items-stretch">
+                                {/* Dose - Searchable ComboBox */}
+                                <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
+                                  <input
+                                    className="w-full text-center outline-none text-[10px] font-bold uppercase bg-transparent"
                                     value={med.dose}
-                                    onChange={e => updateMed(globalIndex, 'dose', e.target.value)}
-                                    disabled={readOnly}
-                                  >
-                                    <option value="">--</option>
-                                    <option value="OD">OD</option>
-                                    <option value="TD">TD</option>
-                                    <option value="TDS">TDS</option>
-                                    <option value="QID">QID</option>
-                                    <option value="ALT">Alt Day</option>
-                                    <option value="WEEKLY">Weekly</option>
-                                    <option value="HALF-ALT">½ Alt</option>
-                                    <option value="HALF-DAILY">½ Daily</option>
-                                  </select>
+                                    onChange={e => { updateMed(globalIndex, 'dose', e.target.value.toUpperCase()); setDoseSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowDoseDropdown(globalIndex); }}
+                                    onFocus={() => !readOnly && (setShowDoseDropdown(globalIndex), setDoseSearchQuery(''))}
+                                    onBlur={() => setTimeout(() => setShowDoseDropdown(null), 150)}
+                                    readOnly={readOnly}
+                                    placeholder="--"
+                                  />
+                                  {!readOnly && showDoseDropdown === globalIndex && (
+                                    <div className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
+                                      {DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery)).map(opt => (
+                                        <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'dose', opt); setShowDoseDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-xs font-bold border-b border-gray-50 last:border-0">
+                                          {opt}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                                 {/* Quantity */}
                                 <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                  <input className="w-full text-center outline-none text-xs" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
+                                  <input className="w-full text-center outline-none text-xs bg-transparent" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
                                 </div>
-                                {/* M dosage container */}
-                                <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
+                                {/* M dosage container - Split: Top value, Bottom time */}
+                                <div className="w-16 border-r border-black flex flex-col shrink-0 relative">
+                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[18px]">
+                                    <textarea
+                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                      placeholder="0"
+                                      value={med.morning}
+                                      onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
+                                      readOnly={readOnly}
+                                      rows={1}
+                                    />
+                                  </div>
+                                  <div className="flex-1 flex items-center justify-center min-h-[16px] relative">
+                                    <input
+                                      className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                      placeholder=""
+                                      value={(med as any).morningTime || ''}
+                                      onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value); setTimeSearchQuery(e.target.value); }}
+                                      onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'morningTime' })}
+                                      onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                      readOnly={readOnly}
+                                    />
+                                    {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime' && (
+                                      <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                        {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
+                                          <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'morningTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
+                                            {t}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                {/* N dosage container - Split: Top value, Bottom time */}
+                                <div className="w-16 border-r border-black flex flex-col shrink-0 relative">
+                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[18px]">
+                                    <textarea
+                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                      placeholder="0"
+                                      value={med.noon}
+                                      onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
+                                      readOnly={readOnly}
+                                      rows={1}
+                                    />
+                                  </div>
+                                  <div className="flex-1 flex items-center justify-center min-h-[16px] relative">
+                                    <input
+                                      className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                      placeholder=""
+                                      value={(med as any).noonTime || ''}
+                                      onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value); setTimeSearchQuery(e.target.value); }}
+                                      onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'noonTime' })}
+                                      onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                      readOnly={readOnly}
+                                    />
+                                    {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime' && (
+                                      <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                        {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
+                                          <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'noonTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
+                                            {t}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                {/* Nt dosage container - Split: Top value, Bottom time */}
+                                <div className="w-16 border-r border-black flex flex-col shrink-0 relative">
+                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[18px]">
+                                    <textarea
+                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                      placeholder="0"
+                                      value={med.night}
+                                      onChange={e => updateMed(globalIndex, 'night', e.target.value)}
+                                      readOnly={readOnly}
+                                      rows={1}
+                                    />
+                                  </div>
+                                  <div className="flex-1 flex items-center justify-center min-h-[16px] relative">
+                                    <input
+                                      className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                      placeholder=""
+                                      value={(med as any).nightTime || ''}
+                                      onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); }}
+                                      onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'nightTime' })}
+                                      onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                      readOnly={readOnly}
+                                    />
+                                    {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime' && (
+                                      <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                        {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
+                                          <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'nightTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
+                                            {t}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                {/* Food Timing - Searchable Combobox */}
+                                <div className="w-10 flex items-center justify-center shrink-0 relative">
                                   <input
-                                    type="text"
-                                    className="w-full text-center text-xs font-bold outline-none bg-transparent"
-                                    placeholder=""
-                                    value={med.morning}
-                                    onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
+                                    className="w-full h-full text-center font-bold text-[8px] outline-none bg-transparent uppercase"
+                                    value={med.foodTiming}
+                                    onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
+                                    onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''))}
+                                    onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
                                     readOnly={readOnly}
+                                    placeholder="A/F"
                                   />
-                                </div>
-                                {/* N dosage container */}
-                                <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                  <input
-                                    type="text"
-                                    className="w-full text-center text-xs font-bold outline-none bg-transparent"
-                                    placeholder=""
-                                    value={med.noon}
-                                    onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
-                                    readOnly={readOnly}
-                                  />
-                                </div>
-                                {/* Nt dosage container */}
-                                <div className="w-10 border-r border-black flex items-center justify-center shrink-0">
-                                  <input
-                                    type="text"
-                                    className="w-full text-center text-xs font-bold outline-none bg-transparent"
-                                    placeholder=""
-                                    value={med.night}
-                                    onChange={e => updateMed(globalIndex, 'night', e.target.value)}
-                                    readOnly={readOnly}
-                                  />
-                                </div>
-                                {/* Before/After Food Toggle */}
-                                <div
-                                  className="w-10 flex items-center justify-center cursor-pointer font-bold shrink-0 text-[10px]"
-                                  onClick={() => !readOnly && updateMed(globalIndex, 'beforeFood', !med.beforeFood)}
-                                >
-                                  {med.beforeFood ? 'B/F' : 'A/F'}
+                                  {!readOnly && showFoodTimingDropdown === globalIndex && (
+                                    <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
+                                      {FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery)).map(opt => (
+                                        <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-[10px] font-bold border-b border-gray-50 last:border-0">
+                                          {opt}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -737,30 +975,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                         })}
                       </div>
 
-                      {/* Add Row Button (Hidden in Print and ReadOnly) - Only show on last page */}
-                      {pageIndex === chunks.length - 1 && (
-                        <div
-                          className="p-2 text-center border-t border-dashed border-gray-300 flex items-center justify-center gap-4 no-print"
-                          style={{ display: 'flex' }}
-                        >
-                          {!readOnly && (
-                            <>
-                              <button onClick={addRow} className="text-emerald-600 text-sm font-bold hover:underline">+ Add Medicine Row</button>
-                              <span className="text-gray-300">|</span>
-                              <button
-                                onClick={() => setShowManageDrugsModal(true)}
-                                className="text-purple-600 text-sm font-bold hover:underline flex items-center gap-1"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                Manage Saved Drugs
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )}
+                      {/* Empty space - Add button now on last row, Manage Drugs moved to dashboard */}
                     </div>
 
                     {/* Footer Section - ONLY on the final page */}
@@ -867,7 +1082,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
                     {/* PTO (Please Turn Over) - Only show on non-final pages */}
                     {!isLastPage && (
-                      <div className="text-right mt-4 mb-2 text-sm font-bold text-gray-700 italic">
+                      <div className="text-right mt-auto pb-2 text-xs font-bold text-gray-700 italic">
                         தொடர்ச்சி அடுத்த பக்கத்தில் / PTO (Please Turn Over)
                       </div>
                     )}
@@ -902,123 +1117,102 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
             )}
           </div>
         </div>
-      </div>
-
-      {/* Manage Saved Drugs Modal */}
-      {showManageDrugsModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-white">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Manage Saved Drugs</h3>
-                <p className="text-sm text-gray-500">Add or edit your commonly prescribed medications</p>
-              </div>
-              <button
-                onClick={() => {
-                  setShowManageDrugsModal(false);
-                  setEditingDrug(null);
-                  setNewDrugName('');
-                }}
-                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Add/Edit Form */}
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-              <div className="text-sm font-semibold text-gray-700 mb-3">
-                {editingDrug ? 'Edit Drug' : 'Add New Drug'}
-              </div>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  placeholder="Drug name (e.g., PARACETAMOL 500MG)"
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm uppercase"
-                  value={newDrugName}
-                  onChange={e => setNewDrugName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSaveDrug()}
-                />
-                <button
-                  onClick={handleSaveDrug}
-                  disabled={isSavingDrug || !newDrugName.trim()}
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSavingDrug ? '...' : editingDrug ? 'Update' : 'Add'}
-                </button>
-              </div>
-              {editingDrug && (
+        {/* Manage Saved Drugs Modal */}
+        {showManageDrugsModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-white">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Manage Saved Drugs</h3>
+                  <p className="text-sm text-gray-500">Add or edit your commonly prescribed medications</p>
+                </div>
                 <button
                   onClick={() => {
+                    setShowManageDrugsModal(false);
                     setEditingDrug(null);
                     setNewDrugName('');
                   }}
-                  className="mt-2 text-sm text-gray-500 hover:text-gray-700"
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
                 >
-                  Cancel editing
-                </button>
-              )}
-            </div>
-
-            {/* Drug List */}
-            <div className="flex-1 overflow-y-auto">
-              {savedDrugs.length === 0 ? (
-                <div className="p-12 text-center text-gray-400">
-                  <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  <p className="font-medium">No saved drugs yet</p>
-                  <p className="text-sm">Add your commonly prescribed medications above</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {savedDrugs.map(drug => (
-                    <div key={drug.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 group">
-                      <div className="font-semibold text-gray-900">{drug.name}</div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => {
-                            setEditingDrug(drug);
-                            setNewDrugName(drug.name);
-                          }}
-                          className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDrug(drug.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                </button>
+              </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
-              <span className="text-sm text-gray-500">{savedDrugs.length} drugs saved</span>
-              <button
-                onClick={() => setShowManageDrugsModal(false)}
-                className="px-6 py-2 bg-gray-900 text-white rounded-lg font-semibold text-sm hover:bg-black"
-              >
-                Done
-              </button>
+              {/* Add/Edit Form */}
+              <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                <div className="text-sm font-semibold text-gray-700 mb-3">
+                  {editingDrug ? 'Edit Drug' : 'Add New Drug'}
+                </div>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    placeholder="Drug name (e.g., PARACETAMOL 500MG)"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm uppercase"
+                    value={newDrugName}
+                    onChange={e => setNewDrugName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSaveDrug()}
+                  />
+                  <button
+                    onClick={handleSaveDrug}
+                    disabled={isSavingDrug || !newDrugName.trim()}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSavingDrug ? '...' : editingDrug ? 'Update' : 'Add'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Drug List */}
+              <div className="flex-1 overflow-y-auto">
+                {savedDrugs.length === 0 ? (
+                  <div className="p-12 text-center text-gray-400">
+                    <p className="font-medium">No saved drugs yet</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {savedDrugs.map(drug => (
+                      <div key={drug.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 group">
+                        <div className="font-semibold text-gray-900">{drug.name}</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingDrug(drug);
+                              setNewDrugName(drug.name);
+                            }}
+                            className="p-2 text-gray-400 hover:text-purple-600 rounded-lg"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDrug(drug.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 rounded-lg"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <button
+                  onClick={() => setShowManageDrugsModal(false)}
+                  className="px-6 py-2 bg-gray-900 text-white rounded-lg font-semibold text-sm hover:bg-black"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </div >
   );
 };
 
