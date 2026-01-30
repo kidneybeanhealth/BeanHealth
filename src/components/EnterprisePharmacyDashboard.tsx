@@ -316,6 +316,35 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         }
     };
 
+    // Clear the display (stop calling current patient/reset to waiting)
+    const handleClearDisplay = async () => {
+        try {
+            // Find current "calling" patient
+            const { data: current } = await supabase
+                .from('hospital_pharmacy_queue')
+                .select('patient_name')
+                .eq('hospital_id', hospitalId)
+                .eq('status', 'calling')
+                .single();
+
+            if (current) {
+                // Set back to waiting
+                await supabase
+                    .from('hospital_pharmacy_queue')
+                    .update({ status: 'waiting' })
+                    .eq('hospital_id', hospitalId)
+                    .eq('status', 'calling');
+
+                toast.success('Display Cleared (Patient returned to queue)');
+            } else {
+                toast('Display is already empty', { icon: 'ℹ️' });
+            }
+        } catch (error: any) {
+            console.error('Error clearing display:', error);
+            toast.error('Failed to clear display');
+        }
+    };
+
     // Call next patient in queue
     const handleCallNext = async () => {
         try {
@@ -455,16 +484,30 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     </div>
 
                     {/* Open Queue Display Button */}
-                    <button
-                        onClick={() => window.open('/enterprise-dashboard/pharmacy/display', '_blank')}
-                        className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
-                        title="Open Queue Display for patient waiting area"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <span className="hidden sm:inline">Display</span>
-                    </button>
+                    {/* Display Controls Group */}
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
+                        <button
+                            onClick={() => window.open('/enterprise-dashboard/pharmacy/display', '_blank')}
+                            className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-lg hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md shadow-emerald-500/20 flex items-center gap-2"
+                            title="Open Queue Display for patient waiting area"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span className="hidden sm:inline">Display</span>
+                        </button>
+                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                        <button
+                            onClick={handleClearDisplay}
+                            className="px-3 py-2 text-sm font-bold text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex items-center gap-1.5"
+                            title="Clear display content (reset to waiting)"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="hidden sm:inline">Clear</span>
+                        </button>
+                    </div>
                     {/* Refresh Button */}
                     <button
                         onClick={() => fetchPrescriptions()}

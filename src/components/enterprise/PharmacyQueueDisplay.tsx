@@ -175,7 +175,6 @@ const PharmacyQueueDisplay: React.FC = () => {
         const success = await voiceService.initializeChannel();
         if (success) {
             setIsInitialized(true);
-            toggleFullscreen();
             toast.success('Display Started & Audio Enabled');
         } else {
             toast.error('Audio setup failed (Check browser permissions)');
