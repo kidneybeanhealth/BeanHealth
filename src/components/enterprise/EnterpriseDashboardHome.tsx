@@ -321,33 +321,43 @@ const EnterpriseDashboardHome: React.FC = () => {
                             <Link
                                 key={item.id}
                                 to={item.path}
-                                className={`group relative bg-white rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-10 border border-gray-100/60 transition-all duration-500 shadow-sm ${item.hoverShadow} hover:-translate-y-3 flex flex-col h-full`}
+                                className={`group relative flex flex-col h-full p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] transition-all duration-300 ease-out border border-gray-100 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.03)] ${item.hoverShadow} hover:border-gray-200 hover:scale-[1.01] hover:-translate-y-1 overflow-hidden`}
                             >
-                                <div className="flex items-center gap-4 mb-4 sm:mb-10 sm:flex-col sm:items-start">
-                                    <div className={`w-12 h-12 sm:w-16 sm:h-16 ${item.bgDecoration} rounded-[1rem] sm:rounded-[1.25rem] flex items-center justify-center transition-all duration-500 shadow-sm shrink-0`}>
-                                        <div className={`${item.iconColor} w-6 h-6 sm:w-auto sm:h-auto transition-transform duration-500`}>{item.icon}</div>
+                                {/* Subtle Background Glow on Hover */}
+                                <div className={`absolute -top-12 -right-12 w-40 h-40 rounded-full ${item.bgDecoration} blur-3xl opacity-0 group-hover:opacity-30 transition-opacity duration-700`} />
+
+                                <div className="relative z-10 flex flex-col h-full">
+                                    {/* Header Section: Icon + Title (Concise row on mobile, col on desktop) */}
+                                    <div className="flex items-center gap-4 mb-4 sm:mb-8 sm:flex-col sm:items-start">
+                                        <div className={`w-14 h-14 sm:w-16 sm:h-16 ${item.bgDecoration} rounded-[1.1rem] sm:rounded-[1.25rem] flex items-center justify-center shadow-sm border border-white`}>
+                                            <div className={`${item.iconColor} flex items-center justify-center [&>svg]:w-7 [&>svg]:h-7 sm:[&>svg]:w-8 sm:[&>svg]:h-8`}>
+                                                {item.icon}
+                                            </div>
+                                        </div>
+                                        <h3 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight group-hover:text-primary-900 transition-colors">
+                                            {item.title}
+                                        </h3>
                                     </div>
 
-                                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight leading-none group-hover:text-primary-600 transition-colors">
-                                        {item.title}
-                                    </h3>
-                                </div>
+                                    {/* Content Area */}
+                                    <div className="mb-6">
+                                        <p className="text-[14px] leading-relaxed font-medium text-gray-500 group-hover:text-gray-700 transition-colors">
+                                            {item.desc}
+                                        </p>
+                                    </div>
 
-                                <p className="text-gray-400 leading-relaxed mb-6 sm:mb-10 text-[13px] sm:text-[15px] font-medium line-clamp-2 sm:line-clamp-none">
-                                    {item.desc}
-                                </p>
-
-                                <div className="flex items-center text-[10px] sm:text-[13px] font-black text-gray-900 uppercase tracking-widest mt-auto">
-                                    <span className="group-hover:mr-4 transition-all duration-500">Enter Workspace</span>
-                                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-50 flex items-center justify-center opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500">
-                                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                        </svg>
+                                    {/* Action Footer */}
+                                    <div className="mt-auto pt-6 flex items-center justify-between border-t border-gray-50 group-hover:border-gray-100 transition-colors">
+                                        <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-[0.2em] text-gray-900 transition-colors duration-300">
+                                            Enter Workspace
+                                        </span>
+                                        <div className={`w-8 h-8 rounded-full ${item.bgDecoration} flex items-center justify-center opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500`}>
+                                            <svg className={`w-3.5 h-3.5 ${item.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                                            </svg>
+                                        </div>
                                     </div>
                                 </div>
-
-                                {/* Subtle Hover Background Accent */}
-                                <div className="absolute inset-0 rounded-[1.5rem] sm:rounded-[2.5rem] bg-gradient-to-br from-white via-white to-gray-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
                             </Link>
                         ))}
                     </div>
