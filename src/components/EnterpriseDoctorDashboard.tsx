@@ -585,16 +585,14 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                     {queue.map((item) => (
                                         <div key={item.id} className="p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors group gap-4">
                                             <div className="flex items-center gap-4 sm:gap-6">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0
+                                                <div className={`w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-bold text-base shadow-sm flex-shrink-0 px-2
                                                     ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
                                                         item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                    {item.queue_number}
+                                                    {item.patient.token_number}
                                                 </div>
                                                 <div>
                                                     <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
                                                     <div className="flex items-center gap-2 text-sm text-gray-700 font-medium whitespace-nowrap">
-                                                        <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-800">Token: {item.patient.token_number}</span>
-                                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                                         <span>{item.patient.age} yrs</span>
                                                     </div>
                                                 </div>
