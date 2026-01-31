@@ -22,8 +22,8 @@ const TrialCodeVerification: React.FC<TrialCodeVerificationProps> = ({ onVerifie
         // Simulate brief verification delay for better UX
         setTimeout(() => {
             if (validCodes.includes(code.trim())) {
-                // Store verification in localStorage (optional - prevents re-entry)
-                localStorage.setItem('beanhealth_trial_verified', 'true');
+                // Store verification in sessionStorage (clears when tab closes)
+                sessionStorage.setItem('beanhealth_trial_verified', 'true');
                 onVerified();
             } else {
                 setError('Invalid trial code. Please check your code and try again.');
@@ -80,8 +80,8 @@ const TrialCodeVerification: React.FC<TrialCodeVerificationProps> = ({ onVerifie
                     type="submit"
                     disabled={!code.trim() || isVerifying}
                     className={`w-full py-3.5 rounded-full font-bold text-base transition-all duration-200 ${code.trim() && !isVerifying
-                            ? 'bg-secondary-500 hover:bg-secondary-600 text-white shadow-lg hover:shadow-xl'
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        ? 'bg-secondary-500 hover:bg-secondary-600 text-white shadow-lg hover:shadow-xl'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                         }`}
                 >
                     {isVerifying ? (

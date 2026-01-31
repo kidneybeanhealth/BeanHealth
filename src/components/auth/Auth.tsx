@@ -26,6 +26,17 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
     setView(initialView);
   }, [initialView]);
 
+  // Protect /login route - redirect if trial code not verified
+  useEffect(() => {
+    if (initialView === 'login') {
+      const isVerified = sessionStorage.getItem('beanhealth_trial_verified');
+      if (!isVerified) {
+        // Redirect to /start if trying to access /login directly without trial code
+        navigate('/start');
+      }
+    }
+  }, [initialView, navigate]);
+
   // Dynamic document title based on view
   const getTitle = () => {
     switch (view) {
