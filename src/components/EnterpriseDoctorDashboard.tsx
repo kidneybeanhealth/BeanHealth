@@ -63,7 +63,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     const [notes, setNotes] = useState('');
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
 
-    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot'>('queue');
+    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records'>('queue');
     const [historyList, setHistoryList] = useState<any[]>([]);
 
     const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -91,6 +91,13 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         }
     };
 
+    // Helper to get today's ISO date
+    const getTodayISO = () => {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        return date.toISOString();
+    };
+
     // Memoized fetch functions for background updates
     const fetchQueue = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
@@ -104,6 +111,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 `)
                 .eq('doctor_id', doctor.id)
                 .in('status', ['pending', 'in_progress'])
+                .gte('created_at', getTodayISO()) // Filter: Today only
                 .order('queue_number', { ascending: true });
 
             if (error) throw error;
@@ -127,6 +135,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 `)
                 .eq('doctor_id', doctor.id)
                 .eq('status', 'completed')
+                .gte('created_at', getTodayISO()) // Filter: Today only
                 .order('updated_at', { ascending: false });
 
             if (error) throw error;
@@ -138,6 +147,72 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
             if (!isBackground) setLoading(false);
         }
     }, [doctor.id]);
+
+    // Past Records State
+    const [pastRecords, setPastRecords] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const fetchPastRecords = useCallback(async (isBackground = false) => {
+        if (!isBackground) setLoading(true);
+        try {
+            let query = supabase
+                .from('hospital_queues' as any)
+                .select(`
+                    *,
+                    patient:hospital_patients!hospital_queues_patient_id_fkey(*)
+                `)
+                .eq('doctor_id', doctor.id)
+                .lt('created_at', getTodayISO()) // Filter: Before Today
+                .order('created_at', { ascending: false })
+                .limit(50); // Default limit
+
+            // If a search query exists, we use a different approach (since we can't easily join-filter with simple Supabase client in one go efficiently without inner join tricks that might exclude valid rows if not careful)
+            // But simpler: just fetch recent past. 
+            // REAL SEARCH: We'll rely on the separate search handler for specific queries.
+
+            const { data, error } = await query;
+
+            if (error) throw error;
+            setPastRecords(data || []);
+        } catch (error) {
+            console.error('Error fetching past records:', error);
+            if (!isBackground) toast.error('Failed to load past records');
+        } finally {
+            if (!isBackground) setLoading(false);
+        }
+    }, [doctor.id]);
+
+    const handleSearchPastRecords = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            if (!searchQuery.trim()) {
+                await fetchPastRecords();
+                return;
+            }
+
+            // Search by patient name in the joined table
+            const { data, error } = await supabase
+                .from('hospital_queues' as any)
+                .select(`
+                    *,
+                    patient:hospital_patients!hospital_queues_patient_id_fkey!inner(*)
+                `)
+                .eq('doctor_id', doctor.id)
+                .lt('created_at', getTodayISO())
+                .ilike('patient.name', `%${searchQuery}%`)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+            setPastRecords(data || []);
+        } catch (err) {
+            console.error(err);
+            toast.error('Search failed');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Loading timeout - prevents infinite loading state
     useEffect(() => {
@@ -156,8 +231,10 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
             fetchQueue();
         } else if (viewMode === 'history') {
             fetchHistory();
+        } else if (viewMode === 'past_records') {
+            fetchPastRecords();
         }
-    }, [doctor.id, viewMode, fetchQueue, fetchHistory]);
+    }, [doctor.id, viewMode, fetchQueue, fetchHistory, fetchPastRecords]);
 
     // Realtime subscription for queue updates with error handling
     useEffect(() => {
@@ -176,27 +253,28 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 (payload) => {
                     console.log('Queue update received:', payload.eventType);
                     if (payload.eventType === 'INSERT') {
-                        toast.success('New patient added to queue!', { duration: 3000 });
+                        // Check if it's for today
+                        if (new Date(payload.new.created_at) >= new Date(new Date().setHours(0, 0, 0, 0))) {
+                            toast.success('New patient added to queue!', { duration: 3000 });
+                        }
                     }
-                    // Refetch in background
+                    // Refetch in background based on viewMode
                     if (viewMode === 'queue') {
                         fetchQueue(true);
                     } else if (viewMode === 'history') {
                         fetchHistory(true);
+                    } else if (viewMode === 'past_records') {
+                        // Past records usually don't change by self-updates unless we modify them, strict reload might not be needed but safe
                     }
                 }
             )
             .subscribe((status, err) => {
-                console.log('Doctor queue realtime status:', status);
                 if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
                     console.error('Doctor realtime error:', err);
-                    // Attempt to refetch data after connection error
                     setTimeout(() => {
-                        if (viewMode === 'queue') {
-                            fetchQueue(true);
-                        } else if (viewMode === 'history') {
-                            fetchHistory(true);
-                        }
+                        if (viewMode === 'queue') fetchQueue(true);
+                        else if (viewMode === 'history') fetchHistory(true);
+                        else if (viewMode === 'past_records') fetchPastRecords(true);
                     }, 3000);
                 }
             });
@@ -204,39 +282,33 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [doctor.id, viewMode, fetchQueue, fetchHistory]);
+    }, [doctor.id, viewMode, fetchQueue, fetchHistory, fetchPastRecords]);
 
     // Periodic health check - refresh data every 60 seconds when tab is visible
     useEffect(() => {
         const interval = setInterval(() => {
             if (document.visibilityState === 'visible') {
-                console.log('Periodic health check - refreshing doctor data...');
-                if (viewMode === 'queue') {
-                    fetchQueue(true);
-                } else if (viewMode === 'history') {
-                    fetchHistory(true);
-                }
+                if (viewMode === 'queue') fetchQueue(true);
+                else if (viewMode === 'history') fetchHistory(true);
+                else if (viewMode === 'past_records') fetchPastRecords(true);
             }
         }, 60000); // Every 60 seconds
         return () => clearInterval(interval);
-    }, [viewMode, fetchQueue, fetchHistory]);
+    }, [viewMode, fetchQueue, fetchHistory, fetchPastRecords]);
 
     // Refetch when tab becomes visible (handles browser tab switching)
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                console.log('Tab became visible, refreshing data...');
-                if (viewMode === 'queue') {
-                    fetchQueue(true);
-                } else if (viewMode === 'history') {
-                    fetchHistory(true);
-                }
+                if (viewMode === 'queue') fetchQueue(true);
+                else if (viewMode === 'history') fetchHistory(true);
+                else if (viewMode === 'past_records') fetchPastRecords(true);
             }
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [viewMode, fetchQueue, fetchHistory]);
+    }, [viewMode, fetchQueue, fetchHistory, fetchPastRecords]);
 
     // Fetch hospital logo
     useEffect(() => {
@@ -351,7 +423,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
             const { error: queueError } = await (supabase as any)
                 .from('hospital_pharmacy_queue')
                 .insert({
-                    hospital_id: currentDoctor.hospital_id,
+                    hospital_id: doctor.hospital_id,
                     prescription_id: (data as any)?.id || '',
                     patient_name: selectedPatient.name,
                     token_number: selectedPatient.token_number,
@@ -489,6 +561,12 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                     className={`flex-1 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'history' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     History Log
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('past_records')}
+                                    className={`flex-1 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                >
+                                    Past Records
                                 </button>
                             </div>
 
@@ -632,31 +710,30 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                 </div>
                             )}
                         </>
-                    ) : (
+                    ) : viewMode === 'history' ? (
                         <>
                             <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                                <h3 className="font-bold text-gray-900">Consultation History</h3>
-                                <span className="text-sm font-medium text-gray-700">Past Records</span>
+                                <h3 className="font-bold text-gray-900">Today's History</h3>
+                                <span className="text-sm font-medium text-gray-700">{historyList.length} Completed</span>
                             </div>
 
                             {loading ? (
                                 <div className="p-20 text-center text-gray-700">Loading history...</div>
                             ) : historyList.length === 0 ? (
                                 <div className="p-24 text-center flex flex-col items-center justify-center">
-                                    <p className="text-gray-700 font-medium">No prior consultations found</p>
+                                    <p className="text-gray-700 font-medium">No completed patients today</p>
                                 </div>
                             ) : (
                                 <div className="divide-y divide-gray-50">
                                     {historyList.map((item) => (
                                         <div key={item.id} className="p-5 sm:p-6 md:p-8 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
-                                            {/* Stacked Layout on Mobile, Grid on Tablet+ */}
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="flex flex-col gap-1">
                                                     <div className="font-bold text-base sm:text-lg text-gray-900">{item.patient?.name}</div>
                                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                                         <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 text-xs">#{item.patient?.token_number}</span>
                                                         <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                        <span>{new Date(item.updated_at || item.created_at).toLocaleDateString()}</span>
+                                                        <span>{new Date(item.updated_at || item.created_at).toLocaleTimeString()}</span>
                                                     </div>
                                                 </div>
 
@@ -671,6 +748,77 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                         View PDF
                                                     </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <h3 className="font-bold text-gray-900 whitespace-nowrap">Past Records</h3>
+                                <form onSubmit={handleSearchPastRecords} className="relative w-full sm:max-w-md">
+                                    <input
+                                        type="text"
+                                        placeholder="Search past patients..."
+                                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                    <button
+                                        type="submit"
+                                        className="absolute right-1.5 top-1.5 px-3 py-1 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-black transition-colors"
+                                    >
+                                        Search
+                                    </button>
+                                </form>
+                            </div>
+
+                            {loading ? (
+                                <div className="p-20 text-center text-gray-700">Loading past records...</div>
+                            ) : pastRecords.length === 0 ? (
+                                <div className="p-24 text-center flex flex-col items-center justify-center">
+                                    <p className="text-gray-700 font-medium">No past records found</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-gray-50">
+                                    {pastRecords.map((item) => (
+                                        <div key={item.id} className="p-5 sm:p-6 md:p-8 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="font-bold text-base sm:text-lg text-gray-900">{item.patient?.name}</div>
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 text-xs">#{item.patient?.token_number}</span>
+                                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                        <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                        <span className={`capitalize ${item.status === 'completed' ? 'text-green-600' :
+                                                            item.status === 'pending' ? 'text-orange-600' : 'text-blue-600'
+                                                            }`}>
+                                                            {item.status.replace('_', ' ')}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+                                                    {item.status === 'completed' ? (
+                                                        <button
+                                                            onClick={() => handleViewPrescription(item)}
+                                                            className="px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 flex items-center gap-1 transition-colors whitespace-nowrap"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                            View PDF
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                                                            Actions Unavailable
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

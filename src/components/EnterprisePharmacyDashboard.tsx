@@ -37,7 +37,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
     const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
     const [showPrintModal, setShowPrintModal] = useState(false);
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
+    const [activeTab, setActiveTab] = useState<'queue' | 'history' | 'past_records'>('queue');
+
+    // Helper to get today's ISO date
+    const getTodayISO = () => {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        return date.toISOString();
+    };
 
     const fetchPrescriptions = useCallback(async (isBackground = false) => {
         if (!hospitalId) return;
@@ -54,6 +61,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 `)
                 .eq('hospital_id', hospitalId)
                 .in('status', ['pending', 'dispensed'])
+                .gte('created_at', getTodayISO()) // Filter: Today
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -70,6 +78,68 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
             if (!isBackground) setLoading(false);
         }
     }, [hospitalId]);
+
+    // Past Records
+    const [pastRecords, setPastRecords] = useState<Prescription[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const fetchPastRecords = useCallback(async (isBackground = false) => {
+        if (!hospitalId) return;
+        if (!isBackground) setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('hospital_prescriptions' as any)
+                .select(`
+                    *,
+                    doctor:hospital_doctors(name, specialty),
+                    patient:hospital_patients(name, age, mr_number)
+                `)
+                .eq('hospital_id', hospitalId)
+                .lt('created_at', getTodayISO()) // Filter: Before Today
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (error) throw error;
+            setPastRecords(data || []);
+        } catch (error) {
+            console.error('Error fetching past records:', error);
+            if (!isBackground) toast.error('Failed to load past records');
+        } finally {
+            if (!isBackground) setLoading(false);
+        }
+    }, [hospitalId]);
+
+    const handleSearchPastRecords = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            if (!searchQuery.trim()) {
+                await fetchPastRecords();
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('hospital_prescriptions' as any)
+                .select(`
+                    *,
+                    doctor:hospital_doctors(name, specialty),
+                    patient:hospital_patients!inner(name, age, mr_number)
+                `)
+                .eq('hospital_id', hospitalId)
+                .lt('created_at', getTodayISO())
+                .ilike('patient.name', `%${searchQuery}%`)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+            setPastRecords(data || []);
+        } catch (err) {
+            console.error(err);
+            toast.error('Search failed');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Loading timeout - prevents infinite loading state
     useEffect(() => {
@@ -191,11 +261,11 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         const fetchHospitalLogo = async () => {
             if (!hospitalId) return;
             try {
-                const { data } = await (supabase
-                    .from('users') as any)
+                const { data } = await supabase
+                    .from('users')
                     .select('avatar_url')
                     .eq('id', hospitalId)
-                    .single() as { data: { avatar_url?: string } | null };
+                    .single<any>();
                 if (data?.avatar_url) {
                     setHospitalLogo(data.avatar_url);
                 }
@@ -229,9 +299,10 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
             if (error) throw error;
 
             // 3. Also update the display queue to mark as dispensed
-            await supabase
-                .from('hospital_pharmacy_queue')
-                .update({ status: 'dispensed' })
+            // 3. Also update the display queue to mark as dispensed
+            await (supabase
+                .from('hospital_pharmacy_queue' as any) as any)
+                .update({ status: 'dispensed' } as any)
                 .eq('prescription_id', selectedPrescription.id);
 
             // Success - state already updated
@@ -249,15 +320,16 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
     const handleCallPatient = async (prescription: Prescription) => {
         try {
             // First, mark any currently "calling" patients as "waiting" (demote back to queue)
-            await supabase
-                .from('hospital_pharmacy_queue')
-                .update({ status: 'waiting' })
+            // First, mark any currently "calling" patients as "waiting" (demote back to queue)
+            await (supabase
+                .from('hospital_pharmacy_queue' as any) as any)
+                .update({ status: 'waiting' } as any)
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling');
 
             // Check if patient is already in queue
             const { data: existing } = await supabase
-                .from('hospital_pharmacy_queue')
+                .from('hospital_pharmacy_queue' as any)
                 .select('id')
                 .eq('prescription_id', prescription.id)
                 .in('status', ['waiting', 'calling'])
@@ -265,14 +337,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
 
             if (existing) {
                 // Update existing entry to "calling"
-                await supabase
-                    .from('hospital_pharmacy_queue')
-                    .update({ status: 'calling', called_at: new Date().toISOString() })
+                await (supabase
+                    .from('hospital_pharmacy_queue' as any) as any)
+                    .update({ status: 'calling', called_at: new Date().toISOString() } as any)
                     .eq('id', existing.id);
             } else {
                 // Insert new entry with "calling" status
-                await supabase
-                    .from('hospital_pharmacy_queue')
+                await (supabase
+                    .from('hospital_pharmacy_queue' as any) as any)
                     .insert({
                         hospital_id: hospitalId,
                         prescription_id: prescription.id,
@@ -280,7 +352,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                         token_number: prescription.token_number,
                         status: 'calling',
                         called_at: new Date().toISOString()
-                    });
+                    } as any);
             }
 
             toast.success(`📢 Calling ${prescription.patient?.name}!`);
@@ -295,7 +367,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         try {
             // Check if already in queue
             const { data: existing } = await supabase
-                .from('hospital_pharmacy_queue')
+                .from('hospital_pharmacy_queue' as any)
                 .select('id, status')
                 .eq('prescription_id', prescription.id)
                 .in('status', ['waiting', 'calling'])
@@ -306,15 +378,15 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 return;
             }
 
-            await supabase
-                .from('hospital_pharmacy_queue')
+            await (supabase
+                .from('hospital_pharmacy_queue' as any) as any)
                 .insert({
                     hospital_id: hospitalId,
                     prescription_id: prescription.id,
                     patient_name: prescription.patient?.name || 'Unknown',
                     token_number: prescription.token_number,
                     status: 'waiting'
-                });
+                } as any);
 
             toast.success(`➕ ${prescription.patient?.name} added to queue!`);
         } catch (error: any) {
@@ -328,7 +400,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         try {
             // Find current "calling" patient
             const { data: current } = await supabase
-                .from('hospital_pharmacy_queue')
+                .from('hospital_pharmacy_queue' as any)
                 .select('patient_name')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling')
@@ -336,9 +408,9 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
 
             if (current) {
                 // Set back to waiting
-                await supabase
-                    .from('hospital_pharmacy_queue')
-                    .update({ status: 'waiting' })
+                await (supabase
+                    .from('hospital_pharmacy_queue' as any) as any)
+                    .update({ status: 'waiting' } as any)
                     .eq('hospital_id', hospitalId)
                     .eq('status', 'calling');
 
@@ -356,15 +428,15 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
     const handleCallNext = async () => {
         try {
             // First, mark current "calling" patient as "dispensed"
-            await supabase
-                .from('hospital_pharmacy_queue')
-                .update({ status: 'dispensed' })
+            await (supabase
+                .from('hospital_pharmacy_queue' as any) as any)
+                .update({ status: 'dispensed' } as any)
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling');
 
             // Find next waiting patient (oldest first)
             const { data: nextPatient } = await supabase
-                .from('hospital_pharmacy_queue')
+                .from('hospital_pharmacy_queue' as any)
                 .select('*')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'waiting')
@@ -373,9 +445,9 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .single();
 
             if (nextPatient) {
-                await supabase
-                    .from('hospital_pharmacy_queue')
-                    .update({ status: 'calling', called_at: new Date().toISOString() })
+                await (supabase
+                    .from('hospital_pharmacy_queue' as any) as any)
+                    .update({ status: 'calling', called_at: new Date().toISOString() } as any)
                     .eq('id', nextPatient.id);
 
                 toast.success(`📢 Calling ${nextPatient.patient_name}!`);
@@ -393,16 +465,16 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         try {
             // Mark current "calling" patient as "skipped"
             const { data: current } = await supabase
-                .from('hospital_pharmacy_queue')
+                .from('hospital_pharmacy_queue' as any)
                 .select('patient_name')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling')
                 .single();
 
             if (current) {
-                await supabase
-                    .from('hospital_pharmacy_queue')
-                    .update({ status: 'skipped' })
+                await (supabase
+                    .from('hospital_pharmacy_queue' as any) as any)
+                    .update({ status: 'skipped' } as any)
                     .eq('hospital_id', hospitalId)
                     .eq('status', 'calling');
 
@@ -422,16 +494,16 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         try {
             // Mark current "calling" patient as "dispensed"
             const { data: current } = await supabase
-                .from('hospital_pharmacy_queue')
+                .from('hospital_pharmacy_queue' as any)
                 .select('patient_name')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling')
                 .single();
 
             if (current) {
-                await supabase
-                    .from('hospital_pharmacy_queue')
-                    .update({ status: 'dispensed' })
+                await (supabase
+                    .from('hospital_pharmacy_queue' as any) as any)
+                    .update({ status: 'dispensed' } as any)
                     .eq('hospital_id', hospitalId)
                     .eq('status', 'calling');
 
@@ -554,6 +626,15 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                         >
                             History Log
                         </button>
+                        <button
+                            onClick={() => { setActiveTab('past_records'); fetchPastRecords(); }}
+                            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === 'past_records'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            Past Records
+                        </button>
                     </div>
                 </div>
 
@@ -564,7 +645,49 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-50">
-                        {prescriptions.filter(p => activeTab === 'queue' ? p.status === 'pending' : p.status === 'dispensed').length === 0 ? (
+                        {activeTab === 'past_records' ? (
+                            <>
+                                <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+                                    <form onSubmit={handleSearchPastRecords} className="relative w-full">
+                                        <input
+                                            type="text"
+                                            placeholder="Search past prescriptions..."
+                                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                        />
+                                        <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </form>
+                                </div>
+                                {pastRecords.length === 0 ? (
+                                    <div className="p-24 text-center text-gray-600">No past records found</div>
+                                ) : (
+                                    pastRecords.map(item => (
+                                        <div key={item.id} className="p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between transition-all duration-200 gap-6 bg-white hover:bg-gray-50/50 border-b border-gray-50 last:border-0">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
+                                                <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0 bg-gray-100 text-gray-500`}>
+                                                        {item.token_number}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-lg font-bold text-gray-900">{item.patient?.name}</h4>
+                                                        <div className="text-sm text-gray-500">{new Date(item.created_at).toLocaleDateString()} - <span className="capitalize">{item.status}</span></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setSelectedPrescription(item)}
+                                                className="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50"
+                                            >
+                                                View Details
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </>
+                        ) : prescriptions.filter(p => activeTab === 'queue' ? p.status === 'pending' : p.status === 'dispensed').length === 0 ? (
                             <div className="p-24 text-center flex flex-col items-center justify-center">
                                 <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 text-gray-600">
                                     {activeTab === 'queue' ? (

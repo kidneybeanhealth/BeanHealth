@@ -216,6 +216,8 @@ const DoctorSettingsModal: React.FC<DoctorSettingsModalProps> = ({ doctor, onClo
                                     ref={videoRef}
                                     autoPlay
                                     playsInline
+                                    muted
+                                    onLoadedMetadata={() => videoRef.current?.play()}
                                     className="w-full h-full object-cover"
                                 />
                             </div>

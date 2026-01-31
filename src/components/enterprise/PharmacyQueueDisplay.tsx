@@ -54,12 +54,16 @@ const PharmacyQueueDisplay: React.FC = () => {
         }
 
         try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
             // Fetch currently calling patient
-            const { data: callingData, error: callingError } = await supabase
-                .from('hospital_pharmacy_queue')
+            const { data: callingData, error: callingError } = await (supabase
+                .from('hospital_pharmacy_queue' as any) as any)
                 .select('*')
                 .eq('hospital_id', profile.id)
                 .eq('status', 'calling')
+                .gte('created_at', today.toISOString())
                 .order('called_at', { ascending: false })
                 .limit(1);
 
@@ -79,11 +83,12 @@ const PharmacyQueueDisplay: React.FC = () => {
             setCurrentPatient(newCalling);
 
             // Fetch waiting queue
-            const { data: waitingData, error: waitingError } = await supabase
-                .from('hospital_pharmacy_queue')
+            const { data: waitingData, error: waitingError } = await (supabase
+                .from('hospital_pharmacy_queue' as any) as any)
                 .select('*')
                 .eq('hospital_id', profile.id)
                 .eq('status', 'waiting')
+                .gte('created_at', today.toISOString())
                 .order('created_at', { ascending: true })
                 .limit(10);
 

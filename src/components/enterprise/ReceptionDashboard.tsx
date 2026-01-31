@@ -49,7 +49,7 @@ const ReceptionDashboard: React.FC = () => {
     const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
     const [queue, setQueue] = useState<QueueItem[]>([]);
     const [isLoadingQueue, setIsLoadingQueue] = useState(false);
-    const [activeTab, setActiveTab] = useState<'queue' | 'patients'>('queue');
+    const [activeTab, setActiveTab] = useState<'queue' | 'patients' | 'past_records'>('queue');
 
     // Walk-in Modal
     const [showWalkInModal, setShowWalkInModal] = useState(false);
@@ -132,6 +132,74 @@ const ReceptionDashboard: React.FC = () => {
             if (!isBackground) setIsLoadingQueue(false);
         }
     }, [profile?.id]);
+
+    // Past Records State
+    const [pastRecords, setPastRecords] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const fetchPastRecords = useCallback(async (isBackground = false) => {
+        if (!profile?.id) return;
+        if (!isBackground) setIsLoadingQueue(true);
+        try {
+            const date = new Date();
+            date.setHours(0, 0, 0, 0);
+
+            const { data, error } = await supabase
+                .from('hospital_queues' as any)
+                .select(`
+                    *,
+                    patient:hospital_patients!hospital_queues_patient_id_fkey(*),
+                    doctor:hospital_doctors(*)
+                `)
+                .eq('hospital_id', profile.id)
+                .lt('created_at', date.toISOString())
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (error) throw error;
+            setPastRecords(data || []);
+        } catch (error) {
+            console.error('Error fetching past records:', error);
+            if (!isBackground) toast.error('Failed to load past records');
+        } finally {
+            if (!isBackground) setIsLoadingQueue(false);
+        }
+    }, [profile?.id]);
+
+    const handleSearchPastRecords = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoadingQueue(true);
+        try {
+            if (!searchQuery.trim()) {
+                await fetchPastRecords();
+                return;
+            }
+
+            const date = new Date();
+            date.setHours(0, 0, 0, 0);
+
+            const { data, error } = await supabase
+                .from('hospital_queues' as any)
+                .select(`
+                    *,
+                    patient:hospital_patients!hospital_queues_patient_id_fkey!inner(*),
+                    doctor:hospital_doctors(*)
+                `)
+                .eq('hospital_id', profile.id)
+                .lt('created_at', date.toISOString())
+                .ilike('patient.name', `%${searchQuery}%`)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+            setPastRecords(data || []);
+        } catch (err) {
+            console.error(err);
+            toast.error('Search failed');
+        } finally {
+            setIsLoadingQueue(false);
+        }
+    };
 
     // Loading timeout - prevents infinite loading state
     useEffect(() => {
@@ -528,6 +596,15 @@ const ReceptionDashboard: React.FC = () => {
         navigate('/enterprise-dashboard/reception');
     };
 
+    // Patient Details Modal State
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [selectedPatientDetails, setSelectedPatientDetails] = useState<any>(null);
+
+    const handleViewDetails = (patient: any) => {
+        setSelectedPatientDetails(patient);
+        setShowDetailsModal(true);
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-black font-sans selection:bg-secondary-100 selection:text-secondary-900">
             {/* Nav - Floating Glassmorphism Header */}
@@ -674,11 +751,81 @@ const ReceptionDashboard: React.FC = () => {
                             >
                                 History Log
                             </button>
+                            <button
+                                onClick={() => { setActiveTab('past_records'); fetchPastRecords(); }}
+                                className={`px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'past_records' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'}`}
+                            >
+                                Past Records
+                            </button>
                         </div>
                     </div>
 
                     {isLoadingQueue ? (
-                        <div className="p-16 text-center text-gray-700">Loading queue...</div>
+                        <div className="p-16 text-center text-gray-700">Loading...</div>
+                    ) : activeTab === 'past_records' ? (
+                        <>
+                            <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100">
+                                <form onSubmit={handleSearchPastRecords} className="relative w-full max-w-md">
+                                    <input
+                                        type="text"
+                                        placeholder="Search past patient records..."
+                                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </form>
+                            </div>
+                            {pastRecords.length === 0 ? (
+                                <div className="p-20 text-center">
+                                    <p className="text-gray-700 font-medium">No past records found</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-gray-50">
+                                    {pastRecords.map((item) => (
+                                        <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
+                                            <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
+                                                <div className="w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-black text-base bg-gray-100 text-gray-600 border border-gray-200 shadow-sm px-2 shrink-0">
+                                                    {item.patient?.token_number || 'N/A'}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h4 className="font-bold text-gray-900 truncate pr-2">{item.patient?.name}</h4>
+                                                    <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
+                                                        <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pl-[4.5rem] sm:pl-0">
+                                                <div className="text-right">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase
+                                                        ${item.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                                                            item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                                                item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                        {item.status.replace('_', ' ')}
+                                                    </span>
+                                                    <p className="font-medium text-xs sm:text-sm text-gray-800 mt-1">{formatDoctorName(item.doctor?.name || '')}</p>
+                                                </div>
+
+                                                {/* View Details Button */}
+                                                <button
+                                                    onClick={() => handleViewDetails(item.patient)}
+                                                    className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100"
+                                                    title="View Patient Details"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
                     ) : queue.length === 0 ? (
                         <div className="p-20 text-center">
                             <p className="text-gray-700 font-medium">No records found</p>
@@ -686,7 +833,7 @@ const ReceptionDashboard: React.FC = () => {
                     ) : (
                         <div className="divide-y divide-gray-50">
                             {queue
-                                .filter(item => activeTab === 'queue' ? (item.status === 'pending' || item.status === 'in_progress') : true)
+                                .filter(item => activeTab === 'queue' ? (item.status === 'pending' || item.status === 'in_progress') : (item.status === 'completed' || item.status === 'cancelled'))
                                 .map((item) => (
                                     <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
                                         <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
@@ -870,6 +1017,73 @@ const ReceptionDashboard: React.FC = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+
+
+            {/* View Patient Details Modal */}
+            {showDetailsModal && selectedPatientDetails && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-scale-in">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-xl font-bold text-gray-900">Patient Details</h3>
+                            <button
+                                onClick={() => setShowDetailsModal(false)}
+                                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase">Token Number</label>
+                                    <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.token_number || '--'}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase">MR. NO</label>
+                                    <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.mr_number || '--'}</p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase">Patient Name</label>
+                                <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.name}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase">Age</label>
+                                    <p className="font-medium text-gray-900">{selectedPatientDetails.age ? `${selectedPatientDetails.age} Years` : '--'}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase">Phone</label>
+                                    <p className="font-medium text-gray-900">{selectedPatientDetails.phone || '--'}</p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase">Father/Husband Name</label>
+                                <p className="font-medium text-gray-900">{selectedPatientDetails.father_husband_name || '--'}</p>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase">Place</label>
+                                <p className="font-medium text-gray-900">{selectedPatientDetails.place || '--'}</p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100 bg-gray-50">
+                            <button
+                                onClick={() => setShowDetailsModal(false)}
+                                className="w-full py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-sm"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
