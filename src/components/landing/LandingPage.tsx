@@ -100,6 +100,7 @@ const LandingPage = () => {
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
 
   // Initialize scroll animations
   useScrollAnimation();
@@ -198,6 +199,7 @@ const LandingPage = () => {
           <a href="#problem" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200">Problem</a>
           <a href="#solution" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200">Solution</a>
           <a href="#features" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200">Features</a>
+          <a href="#pricing" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200">Pricing</a>
           <a href="#founder" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200">Founder</a>
           <a href="#demo-section" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200">Contact</a>
         </div>
@@ -239,6 +241,7 @@ const LandingPage = () => {
               <a href="#problem" className="mobile-menu-link" onClick={closeMobileMenu}>Problem</a>
               <a href="#solution" className="mobile-menu-link" onClick={closeMobileMenu}>Solution</a>
               <a href="#features" className="mobile-menu-link" onClick={closeMobileMenu}>Features</a>
+              <a href="#pricing" className="mobile-menu-link" onClick={closeMobileMenu}>Pricing</a>
               <a href="#founder" className="mobile-menu-link" onClick={closeMobileMenu}>Founder</a>
               <a href="#demo-section" className="mobile-menu-link" onClick={closeMobileMenu}>Contact</a>
             </div>
@@ -1218,6 +1221,299 @@ const LandingPage = () => {
                   <span style={{ fontSize: '0.9rem', color: 'var(--text-body)' }}>Patient consent management</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="section-container" style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)' }}>
+        <div className="container">
+          <div className="text-center mb-10 scroll-fade-up">
+            <h2 className="heading-2 section-header-modern section-header-center" style={{ display: 'inline-block' }}>
+              Clinic Subscription Plans
+            </h2>
+            <p className="body-large mt-4" style={{ color: 'var(--text-secondary)', maxWidth: '600px', margin: '1rem auto 0' }}>
+              Flexible plans for nephrology and dialysis centers
+            </p>
+
+            {/* Billing Toggle */}
+            <div className="flex items-center justify-center gap-4 mt-8">
+              <span style={{
+                fontSize: '0.9rem',
+                fontWeight: billingCycle === 'yearly' ? '600' : '500',
+                color: billingCycle === 'yearly' ? 'var(--accent-text)' : 'var(--text-secondary)'
+              }}>
+                Billed Annually <span style={{ color: 'var(--accent-text)', fontWeight: '600' }}>(Save 20%)</span>
+              </span>
+              <button
+                onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
+                style={{
+                  width: '56px',
+                  height: '28px',
+                  borderRadius: '14px',
+                  background: billingCycle === 'monthly' ? 'var(--gradient-button)' : '#e5e7eb',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  border: 'none',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <span style={{
+                  position: 'absolute',
+                  top: '2px',
+                  left: billingCycle === 'monthly' ? '30px' : '2px',
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  background: 'white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  transition: 'left 0.3s ease'
+                }}></span>
+              </button>
+              <span style={{
+                fontSize: '0.9rem',
+                fontWeight: billingCycle === 'monthly' ? '600' : '500',
+                color: billingCycle === 'monthly' ? 'var(--text-primary)' : 'var(--text-secondary)'
+              }}>
+                Billed Monthly
+              </span>
+            </div>
+          </div>
+
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto scroll-fade-up">
+            {/* Plan 1: Prescription & Hospital Workflow */}
+            <div style={{
+              background: 'white',
+              borderRadius: '20px',
+              padding: '2rem',
+              border: '2px solid var(--accent-text)',
+              boxShadow: '0 10px 40px rgba(27, 67, 50, 0.12)',
+              position: 'relative'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-12px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'var(--gradient-button)',
+                color: 'white',
+                padding: '6px 20px',
+                borderRadius: '20px',
+                fontSize: '0.75rem',
+                fontWeight: '700',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>Most Popular</div>
+
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '1rem', marginTop: '0.5rem' }}>
+                Prescription + Hospital Workflow
+              </h3>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <span style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                  ₹{billingCycle === 'yearly' ? '1,20,000' : '12,000'}
+                </span>
+                <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                  / {billingCycle === 'yearly' ? 'year' : 'month'}
+                </span>
+              </div>
+
+              {billingCycle === 'yearly' && (
+                <div style={{
+                  display: 'inline-block',
+                  background: 'var(--accent-wash)',
+                  color: 'var(--accent-text)',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: '600',
+                  marginBottom: '1.5rem'
+                }}>₹10,000 / month</div>
+              )}
+
+              <ul style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+                {['Digital Prescriptions', 'Pharmacy Queue Management', 'Medication Dropdown', 'Clinic-Branded Printouts', 'Support Included'].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3" style={{ padding: '0.5rem 0' }}>
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--accent-text)' }} />
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-body)' }}>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <a
+                href="#demo-section"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '14px 24px',
+                  background: 'var(--gradient-button)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  fontWeight: '700',
+                  fontSize: '0.95rem',
+                  textAlign: 'center',
+                  textDecoration: 'none',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 4px 15px rgba(27, 67, 50, 0.3)'
+                }}
+              >
+                Request Pilot
+              </a>
+            </div>
+
+            {/* Plan 2: Prescription + CKD Snapshot */}
+            <div style={{
+              background: 'white',
+              borderRadius: '20px',
+              padding: '2rem',
+              border: '1px solid var(--border-light)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)'
+            }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '1rem' }}>
+                Hospital Workflow + CKD Snapshot
+              </h3>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <span style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                  ₹{billingCycle === 'yearly' ? '1,70,000' : '17,000'}
+                </span>
+                <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                  / {billingCycle === 'yearly' ? 'year' : 'month'}
+                </span>
+              </div>
+
+              {billingCycle === 'yearly' && (
+                <div style={{
+                  display: 'inline-block',
+                  background: 'rgba(99, 102, 241, 0.1)',
+                  color: '#6366f1',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: '600',
+                  marginBottom: '1.5rem'
+                }}>₹14,167 / month</div>
+              )}
+
+              <ul style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+                {['All Prescription Features', 'CKD Follow-up Dashboard', 'Lab Trend Monitoring', 'Patient App Access', 'Follow-up Alerts'].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3" style={{ padding: '0.5rem 0' }}>
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: '#6366f1' }} />
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-body)' }}>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <a
+                href="#demo-section"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '14px 24px',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  fontWeight: '700',
+                  fontSize: '0.95rem',
+                  textAlign: 'center',
+                  textDecoration: 'none',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)'
+                }}
+              >
+                Request Pilot
+              </a>
+            </div>
+          </div>
+
+          {/* Integration CTA */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mt-6 scroll-fade-up">
+            {/* Already have EMR */}
+            <div style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              border: '1px solid var(--border-light)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Database className="w-6 h-6" style={{ color: 'white' }} />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                  Already have an EMR or prescription system?
+                </h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Integrate the CKD Snapshot module with your existing workflow
+                </p>
+              </div>
+            </div>
+
+            {/* CKD Snapshot Integration */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.08) 100%)',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              border: '1px solid rgba(99, 102, 241, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.95rem', fontWeight: '600', color: '#6366f1' }}>
+                  + CKD Snapshot <span style={{ fontWeight: '400', color: 'var(--text-secondary)' }}>(Integration Mode)</span>
+                </span>
+              </div>
+              <a
+                href="#demo-section"
+                style={{
+                  padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  color: 'white',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  fontSize: '0.85rem',
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                }}
+              >
+                Request Integration
+              </a>
+            </div>
+          </div>
+
+          {/* Footer Notes */}
+          <div className="flex flex-wrap justify-center gap-6 mt-8 scroll-fade-up" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--accent-text)' }} />
+              <span>Pricing is per clinic</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--accent-text)' }} />
+              <span>No setup or development fees</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--accent-text)' }} />
+              <span>Free 7-day pilot for clinics</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--accent-text)' }} />
+              <span>Snapshot module enabled after doctor approval</span>
             </div>
           </div>
         </div>
