@@ -341,7 +341,7 @@ const EnterpriseDashboardHome: React.FC = () => {
 
                                     {/* Content Area */}
                                     <div className="mb-6">
-                                        <p className="text-[14px] leading-relaxed font-medium text-gray-500 group-hover:text-gray-700 transition-colors">
+                                        <p className="text-[14px] leading-relaxed font-medium text-gray-400 group-hover:text-gray-600 transition-colors">
                                             {item.desc}
                                         </p>
                                     </div>
