@@ -4,10 +4,11 @@ import Login from './Login';
 import EnterpriseLogin from './EnterpriseLogin';
 import AdminLogin from './AdminLogin';
 import AuthChooser from './AuthChooser';
+import TrialCodeVerification from './TrialCodeVerification';
 import TermsAndConditionsModal from '../modals/TermsAndConditionsModal';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
-type AuthView = 'chooser' | 'login' | 'admin-login' | 'enterprise-login';
+type AuthView = 'chooser' | 'trial-code' | 'login' | 'admin-login' | 'enterprise-login';
 
 interface AuthProps {
   initialView?: AuthView;
@@ -18,6 +19,7 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
   const location = useLocation();
   const [view, setView] = useState<AuthView>(initialView);
   const [showTerms, setShowTerms] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | null>(null);
 
   // Sync view with initialView prop when it changes
   useEffect(() => {
@@ -27,6 +29,7 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
   // Dynamic document title based on view
   const getTitle = () => {
     switch (view) {
+      case 'trial-code': return 'Trial Code';
       case 'login': return 'Sign In';
       case 'admin-login': return 'Admin Portal';
       case 'enterprise-login': return 'Enterprise Portal';
@@ -41,6 +44,15 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
     navigate('/');
   };
 
+  const handleRoleSelected = (role: 'patient' | 'doctor') => {
+    setSelectedRole(role);
+    setView('trial-code');
+  };
+
+  const handleTrialCodeVerified = () => {
+    navigate('/login');
+  };
+
   const handleGoToLogin = () => {
     navigate('/login');
   };
@@ -51,6 +63,14 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
 
   const renderView = () => {
     switch (view) {
+      case 'trial-code':
+        return (
+          <TrialCodeVerification
+            role={selectedRole || 'patient'}
+            onVerified={handleTrialCodeVerified}
+            onBack={handleSwitchToChooser}
+          />
+        );
       case 'login':
         return <Login onSwitchToChooser={handleSwitchToChooser} />;
       case 'admin-login':
@@ -59,7 +79,7 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
         return <EnterpriseLogin onSwitchToChooser={handleSwitchToChooser} />;
       case 'chooser':
       default:
-        return <AuthChooser onNext={handleGoToLogin} onEnterpriseLogin={handleGoToEnterprise} />;
+        return <AuthChooser onNext={handleRoleSelected} onEnterpriseLogin={handleGoToEnterprise} />;
     }
   }
 

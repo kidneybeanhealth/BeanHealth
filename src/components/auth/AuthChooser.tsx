@@ -4,7 +4,7 @@ import { UserIcon } from '../icons/UserIcon';
 
 
 interface AuthChooserProps {
-    onNext: () => void;
+    onNext: (role: 'patient' | 'doctor') => void;
     onEnterpriseLogin?: () => void;
 }
 
@@ -17,7 +17,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: on
 
     const handleContinue = () => {
         if (selectedRole) {
-            onNext();
+            onNext(selectedRole);
         }
     };
 
