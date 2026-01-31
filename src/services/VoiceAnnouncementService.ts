@@ -204,9 +204,9 @@ class VoiceAnnouncementService {
 
         const number = parseInt(match[0], 10);
 
-        // Check if we have a file for this number (1 to 60)
+        // Check if we have a file for this number (1 to 90)
         // All files are normalized to .mp3
-        if (number >= 1 && number <= 60) {
+        if (number >= 1 && number <= 90) {
             const audioPath = `/audio/tokens/token-${number}.mp3`;
             console.log(`[Voice] Attempting to play local file: ${audioPath} (Repeat: ${repeat})`);
             this.playLocalFile(audioPath, tokenNumber, repeat);
