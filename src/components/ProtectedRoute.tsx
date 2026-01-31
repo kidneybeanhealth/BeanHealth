@@ -30,10 +30,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     useEffect(() => {
         if (isInitialized && !loading) {
             // Small delay to ensure auth state is fully stable
-            // This prevents premature redirects during token refresh
+            // Reduced to 50ms for faster transitions
             const timer = setTimeout(() => {
                 setIsStable(true);
-            }, 100);
+            }, 50);
             return () => clearTimeout(timer);
         } else {
             setIsStable(false);

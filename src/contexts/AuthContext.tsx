@@ -318,7 +318,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (newSession?.user) {
       isProcessingAuthRef.current = true;
       const newSessionId = newSession.access_token?.substring(0, 20) || 'no-token';
-      
+
       try {
         // For TOKEN_REFRESHED when already stable, don't show loading or reprocess profile
         if (event === 'TOKEN_REFRESHED' && isStableRef.current && lastSessionIdRef.current) {
@@ -336,7 +336,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setLoading(true);
         }
         await processSession(newSession);
-        
+
         // Mark as stable after successful processing
         lastSessionIdRef.current = newSessionId;
         isStableRef.current = true;
@@ -350,7 +350,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // No session - reset stability
       isStableRef.current = false;
       lastSessionIdRef.current = null;
-      
+
       if (isMountedRef.current) {
         setUser(null);
         setSession(null);
@@ -376,13 +376,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleVisibilityChange = () => {
       isTabVisibleRef.current = !document.hidden;
       console.log(`[AuthContext][${tabId}] Tab visibility:`, !document.hidden);
-      
+
       // When tab becomes visible and is stable, just verify session is valid
       if (!document.hidden && isStableRef.current && isInitializedRef.current) {
         console.log(`[AuthContext][${tabId}] Tab visible - session is stable, no reload needed`);
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Debounced auth state handler to prevent rapid-fire changes
@@ -546,10 +546,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   /**
-   * Sign out
+   * Sign out - clears all auth state including enterprise department sessions
    */
   const signOut = useCallback(async () => {
     setLoading(true);
+
+    // Reset stability flags to ensure clean state
+    isStableRef.current = false;
+    lastSessionIdRef.current = null;
+
     try {
       await AuthService.signOut();
 
@@ -559,10 +564,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
+        setNeedsOnboarding(false);
+        setNeedsTermsAcceptance(false);
       }
 
-      // Clear auth view state to reset flow
-      sessionStorage.removeItem('authView');
+      // PRODUCTION FIX: Clear all enterprise-related session data
+      try {
+        sessionStorage.removeItem('authView');
+        sessionStorage.removeItem('enterprise_reception_authenticated');
+        sessionStorage.removeItem('enterprise_pharmacy_authenticated');
+        // Clear all doctor sessions
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.startsWith('enterprise_doctor_session_')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('[AuthContext] Could not clear session storage:', e);
+      }
 
       showSuccessToast('Signed out successfully');
     } catch (error) {
@@ -574,9 +593,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setProfile(null);
         setNeedsProfileSetup(false);
+        setNeedsOnboarding(false);
+        setNeedsTermsAcceptance(false);
       }
 
-      sessionStorage.removeItem('authView');
+      // Still clear enterprise sessions on error
+      try {
+        sessionStorage.removeItem('authView');
+        sessionStorage.removeItem('enterprise_reception_authenticated');
+        sessionStorage.removeItem('enterprise_pharmacy_authenticated');
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.startsWith('enterprise_doctor_session_')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        // Ignore storage errors
+      }
+
       showSuccessToast('Signed out successfully');
     } finally {
       if (isMountedRef.current) {

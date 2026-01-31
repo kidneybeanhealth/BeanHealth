@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 
 interface EnterpriseLoginProps {
@@ -7,9 +9,32 @@ interface EnterpriseLoginProps {
 }
 
 const EnterpriseLogin: React.FC<EnterpriseLoginProps> = ({ onSwitchToChooser }) => {
+    const navigate = useNavigate();
+    const { user, profile, isInitialized, loading: authLoading } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const hasNavigatedRef = useRef(false);
+
+    // Effect to navigate when auth state updates after successful login
+    useEffect(() => {
+        // Only navigate if:
+        // 1. Auth is initialized and not loading
+        // 2. We have a user and profile
+        // 3. Profile role is enterprise
+        // 4. We haven't already navigated
+        if (
+            isInitialized &&
+            !authLoading &&
+            user &&
+            profile?.role === 'enterprise' &&
+            !hasNavigatedRef.current
+        ) {
+            console.log('[EnterpriseLogin] Auth state updated, navigating to dashboard');
+            hasNavigatedRef.current = true;
+            navigate('/enterprise-dashboard', { replace: true });
+        }
+    }, [isInitialized, authLoading, user, profile, navigate]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,23 +44,106 @@ const EnterpriseLogin: React.FC<EnterpriseLoginProps> = ({ onSwitchToChooser }) 
         }
 
         setLoading(true);
+        const toastId = toast.loading('Signing in...');
+
         try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
+            // PRODUCTION FIX: Clear any stale enterprise session data before new login
+            // This prevents cached data from interfering with fresh logins
+            try {
+                sessionStorage.removeItem('enterprise_reception_authenticated');
+                sessionStorage.removeItem('enterprise_pharmacy_authenticated');
+                // Clear any doctor sessions (pattern: enterprise_doctor_session_*)
+                Object.keys(sessionStorage).forEach(key => {
+                    if (key.startsWith('enterprise_doctor_session_')) {
+                        sessionStorage.removeItem(key);
+                    }
+                });
+            } catch (e) {
+                console.warn('[EnterpriseLogin] Could not clear session storage:', e);
+            }
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email.trim().toLowerCase(),
                 password,
             });
 
-            if (error) throw error;
+            if (error) {
+                // Handle specific Supabase auth errors
+                if (error.message?.includes('Invalid login credentials')) {
+                    throw new Error('Invalid email or password');
+                }
+                if (error.message?.includes('Email not confirmed')) {
+                    throw new Error('Please verify your email before logging in');
+                }
+                throw error;
+            }
 
-            // Successful login will be handled by AuthContext state change
-            toast.success('Welcome to Enterprise Portal');
+            if (!data.user || !data.session) {
+                throw new Error('Login failed - please try again');
+            }
+
+            // PRODUCTION FIX: Wait a moment for Supabase to fully establish the session
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Verify user has enterprise role before showing success
+            // Use retry logic for production reliability
+            let userProfile: { role: string } | null = null;
+            let retryCount = 0;
+            const maxRetries = 3;
+
+            while (retryCount < maxRetries) {
+                const { data: profileData, error: profileError } = await supabase
+                    .from('users')
+                    .select('role')
+                    .eq('id', data.user.id)
+                    .single();
+
+                if (!profileError && profileData) {
+                    userProfile = profileData as { role: string };
+                    break;
+                }
+
+                if (profileError?.code === 'PGRST116') {
+                    // No profile found - user needs setup
+                    throw new Error('Account setup incomplete. Please contact support.');
+                }
+
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
+                }
+            }
+
+            if (!userProfile) {
+                console.error('Profile fetch failed after retries');
+                throw new Error('Failed to verify account - please try again');
+            }
+
+            if (userProfile.role !== 'enterprise') {
+                // Sign out immediately if not enterprise
+                await supabase.auth.signOut();
+                throw new Error('This account is not an Enterprise account. Please use the correct login portal.');
+            }
+
+            // Success - show toast and let the useEffect handle navigation
+            toast.success('Welcome to Enterprise Portal', { id: toastId });
+
+            // Force navigation after a short delay if useEffect doesn't catch it
+            setTimeout(() => {
+                if (!hasNavigatedRef.current) {
+                    console.log('[EnterpriseLogin] Forcing navigation after timeout');
+                    hasNavigatedRef.current = true;
+                    navigate('/enterprise-dashboard', { replace: true });
+                }
+            }, 500);
 
         } catch (error: any) {
             console.error('Enterprise login error:', error);
-            toast.error(error.message || 'Failed to sign in');
-        } finally {
+            toast.error(error.message || 'Failed to sign in', { id: toastId });
             setLoading(false);
+            hasNavigatedRef.current = false; // Reset navigation flag on error
         }
+        // Note: Don't set loading to false on success - let the navigation happen
     };
 
     return (
