@@ -220,19 +220,26 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         toast.success('Medicine Delivered');
 
         try {
-            // 2. Perform DB Update
+            // 2. Update prescription status
             const { error } = await (supabase
                 .from('hospital_prescriptions') as any)
                 .update({ status: 'dispensed' } as any)
                 .eq('id', selectedPrescription.id);
 
             if (error) throw error;
+
+            // 3. Also update the display queue to mark as dispensed
+            await supabase
+                .from('hospital_pharmacy_queue')
+                .update({ status: 'dispensed' })
+                .eq('prescription_id', selectedPrescription.id);
+
             // Success - state already updated
         } catch (error: any) {
             console.error('Dispense Error:', error);
             toast.error('Failed to update status: ' + (error.message || 'Unknown error'));
 
-            // 3. Revert on failure
+            // 4. Revert on failure
             setSelectedPrescription(prev => ({ ...prev!, status: previousStatus }));
             setPrescriptions(prev => prev.map(p => p.id === selectedPrescription.id ? { ...p, status: previousStatus } : p));
         }
