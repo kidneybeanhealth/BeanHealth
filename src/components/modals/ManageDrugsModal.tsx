@@ -46,26 +46,53 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
     const handleSaveDrug = async () => {
         if (!newDrugName.trim()) return;
+
+        const normalizedName = newDrugName.trim().toUpperCase();
+
+        // Check for duplicates locally first (better UX)
+        const isDuplicate = savedDrugs.some(
+            drug => drug.name.toUpperCase() === normalizedName && drug.id !== editingDrug?.id
+        );
+
+        if (isDuplicate) {
+            toast.error(`"${normalizedName}" already exists in your saved drugs`, {
+                icon: '⚠️',
+                duration: 3000
+            });
+            return;
+        }
+
         setIsSaving(true);
         try {
             if (editingDrug) {
                 // Update existing drug
                 const { error } = await supabase
                     .from('hospital_doctor_drugs' as any)
-                    .update({ name: newDrugName.toUpperCase() } as any)
+                    .update({ name: normalizedName } as any)
                     .eq('id', editingDrug.id);
                 if (error) throw error;
                 toast.success('Drug updated!');
-                setSavedDrugs(savedDrugs.map(d => d.id === editingDrug.id ? { ...d, name: newDrugName.toUpperCase() } : d));
+                setSavedDrugs(savedDrugs.map(d => d.id === editingDrug.id ? { ...d, name: normalizedName } : d));
             } else {
                 // Add new drug
                 const { data, error } = await supabase
                     .from('hospital_doctor_drugs' as any)
-                    .insert({ name: newDrugName.toUpperCase(), doctor_id: doctorId, hospital_id: hospitalId } as any)
+                    .insert({ name: normalizedName, doctor_id: doctorId, hospital_id: hospitalId } as any)
                     .select()
                     .single();
-                if (error) throw error;
-                toast.success('Drug added!');
+
+                if (error) {
+                    // Handle duplicate constraint error gracefully
+                    if (error.code === '23505') {
+                        toast.error(`"${normalizedName}" already exists in your saved drugs`, {
+                            icon: '⚠️',
+                            duration: 3000
+                        });
+                        return;
+                    }
+                    throw error;
+                }
+                toast.success('Drug added!', { icon: '💊' });
                 setSavedDrugs([...savedDrugs, data as SavedDrug]);
             }
             setNewDrugName('');
