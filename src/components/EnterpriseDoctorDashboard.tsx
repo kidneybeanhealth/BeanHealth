@@ -115,7 +115,14 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 .order('queue_number', { ascending: true });
 
             if (error) throw error;
-            setQueue(data || []);
+
+            // Sort by token_number numerically (not lexicographically)
+            const sortedData = (data || []).sort((a: any, b: any) => {
+                const numA = parseInt(a.patient?.token_number?.replace(/\D/g, '') || '0', 10);
+                const numB = parseInt(b.patient?.token_number?.replace(/\D/g, '') || '0', 10);
+                return numA - numB;
+            });
+            setQueue(sortedData);
         } catch (error) {
             console.error('Error fetching queue:', error);
             if (!isBackground) toast.error('Failed to load patient list');
