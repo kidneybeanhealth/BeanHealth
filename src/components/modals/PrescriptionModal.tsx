@@ -7,6 +7,7 @@ import MobilePrescriptionInput from './MobilePrescriptionInput';
 interface SavedDrug {
   id: string;
   name: string;
+  drug_type?: string;
 }
 
 interface ReferenceDrug {
@@ -21,8 +22,19 @@ interface DrugOption {
   name: string;            // The display name (brand or saved drug name)
   genericName?: string;    // Generic name for reference drugs
   category?: string;
+  drugType?: string;       // TAB, CAP, INJ, SYP
   isReference?: boolean;
 }
+
+// Drug type icons helper
+const getDrugTypeIcon = (type?: string): string => {
+  switch (type) {
+    case 'CAP': return '🔶';
+    case 'INJ': return '💉';
+    case 'SYP': return '🧴';
+    default: return '💊';
+  }
+};
 
 interface PrescriptionModalProps {
   doctor: any;
@@ -308,6 +320,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     ...savedDrugs.map(d => ({
       id: d.id,
       name: d.name,
+      drugType: d.drug_type || 'TAB',
       isReference: false
     })),
     // Reference drugs (now with brand_name as primary)
@@ -791,6 +804,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                         className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
                                       >
                                         <div className="flex items-center gap-2">
+                                          {!drug.isReference && (
+                                            <span className="text-sm">{getDrugTypeIcon(drug.drugType)}</span>
+                                          )}
                                           <span className="font-semibold text-gray-900 text-sm">{drug.name}</span>
                                           {drug.isReference && drug.category && (
                                             <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
@@ -799,7 +815,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                           )}
                                           {!drug.isReference && (
                                             <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
-                                              SAVED
+                                              {drug.drugType || 'TAB'}
                                             </span>
                                           )}
                                         </div>

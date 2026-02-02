@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
+
+// Drug types with icons
+const DRUG_TYPES = [
+    { value: 'TAB', label: 'TAB', icon: '💊', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    { value: 'CAP', label: 'CAP', icon: '🔶', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+    { value: 'INJ', label: 'INJ', icon: '💉', color: 'bg-red-100 text-red-700 border-red-200' },
+    { value: 'SYP', label: 'SYP', icon: '🧴', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+];
 
 interface SavedDrug {
     id: string;
     name: string;
+    drug_type?: string;
     doctor_id: string;
     hospital_id: string;
 }
@@ -18,9 +27,16 @@ interface ManageDrugsModalProps {
 const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalId, onClose }) => {
     const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
     const [newDrugName, setNewDrugName] = useState('');
+    const [newDrugType, setNewDrugType] = useState('TAB');
     const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    // Autocomplete state
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [filteredDrugs, setFilteredDrugs] = useState<SavedDrug[]>([]);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Fetch saved drugs
     useEffect(() => {
@@ -44,22 +60,59 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
         fetchDrugs();
     }, [doctorId]);
 
+    // Filter drugs as user types
+    useEffect(() => {
+        if (newDrugName.trim().length > 0) {
+            const query = newDrugName.toLowerCase();
+            const filtered = savedDrugs.filter(drug =>
+                drug.name.toLowerCase().includes(query)
+            ).slice(0, 10); // Limit to 10 suggestions
+            setFilteredDrugs(filtered);
+            setShowDropdown(filtered.length > 0 && !editingDrug);
+        } else {
+            setFilteredDrugs([]);
+            setShowDropdown(false);
+        }
+    }, [newDrugName, savedDrugs, editingDrug]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+                inputRef.current && !inputRef.current.contains(e.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSelectSuggestion = (drug: SavedDrug) => {
+        // Populate input for editing
+        setNewDrugName(drug.name);
+        setNewDrugType(drug.drug_type || 'TAB');
+        setEditingDrug(drug);
+        setShowDropdown(false);
+        inputRef.current?.focus();
+    };
+
     const handleSaveDrug = async () => {
         if (!newDrugName.trim()) return;
 
         const normalizedName = newDrugName.trim().toUpperCase();
 
-        // Check for duplicates locally first (better UX)
-        const isDuplicate = savedDrugs.some(
-            drug => drug.name.toUpperCase() === normalizedName && drug.id !== editingDrug?.id
-        );
-
-        if (isDuplicate) {
-            toast.error(`"${normalizedName}" already exists in your saved drugs`, {
-                icon: '⚠️',
-                duration: 3000
-            });
-            return;
+        // Check for duplicates (only if adding new, not editing)
+        if (!editingDrug) {
+            const isDuplicate = savedDrugs.some(
+                drug => drug.name.toUpperCase() === normalizedName
+            );
+            if (isDuplicate) {
+                toast.error(`"${normalizedName}" already exists. Click it to edit.`, {
+                    icon: '⚠️',
+                    duration: 3000
+                });
+                return;
+            }
         }
 
         setIsSaving(true);
@@ -68,26 +121,29 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                 // Update existing drug
                 const { error } = await supabase
                     .from('hospital_doctor_drugs' as any)
-                    .update({ name: normalizedName } as any)
+                    .update({ name: normalizedName, drug_type: newDrugType } as any)
                     .eq('id', editingDrug.id);
                 if (error) throw error;
-                toast.success('Drug updated!');
-                setSavedDrugs(savedDrugs.map(d => d.id === editingDrug.id ? { ...d, name: normalizedName } : d));
+                toast.success('Drug updated!', { icon: '✅' });
+                setSavedDrugs(savedDrugs.map(d =>
+                    d.id === editingDrug.id ? { ...d, name: normalizedName, drug_type: newDrugType } : d
+                ));
             } else {
                 // Add new drug
                 const { data, error } = await supabase
                     .from('hospital_doctor_drugs' as any)
-                    .insert({ name: normalizedName, doctor_id: doctorId, hospital_id: hospitalId } as any)
+                    .insert({
+                        name: normalizedName,
+                        drug_type: newDrugType,
+                        doctor_id: doctorId,
+                        hospital_id: hospitalId
+                    } as any)
                     .select()
                     .single();
 
                 if (error) {
-                    // Handle duplicate constraint error gracefully
                     if (error.code === '23505') {
-                        toast.error(`"${normalizedName}" already exists in your saved drugs`, {
-                            icon: '⚠️',
-                            duration: 3000
-                        });
+                        toast.error(`"${normalizedName}" already exists`, { icon: '⚠️' });
                         return;
                     }
                     throw error;
@@ -96,6 +152,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                 setSavedDrugs([...savedDrugs, data as SavedDrug]);
             }
             setNewDrugName('');
+            setNewDrugType('TAB');
             setEditingDrug(null);
         } catch (err: any) {
             console.error('Error saving drug:', err);
@@ -120,6 +177,10 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
         }
     };
 
+    const getDrugTypeInfo = (type: string) => {
+        return DRUG_TYPES.find(t => t.value === type) || DRUG_TYPES[0];
+    };
+
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -127,7 +188,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-white">
                     <div>
                         <h3 className="text-xl font-bold text-gray-900">Manage Saved Drugs</h3>
-                        <p className="text-sm text-gray-500">Add or edit your commonly prescribed medications</p>
+                        <p className="text-sm text-gray-500">{savedDrugs.length} drugs saved • Type to search & edit</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -141,32 +202,99 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
                 {/* Add/Edit Form */}
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-                    <div className="text-sm font-semibold text-gray-700 mb-3">
-                        {editingDrug ? 'Edit Drug' : 'Add New Drug'}
+                    <div className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        {editingDrug ? (
+                            <>
+                                <span className="text-blue-600">✏️ Editing:</span>
+                                <span className="text-gray-500">{editingDrug.name}</span>
+                            </>
+                        ) : (
+                            'Add New Drug (or type to search existing)'
+                        )}
                     </div>
-                    <div className="flex gap-3">
-                        <input
-                            type="text"
-                            placeholder="Drug name (e.g., PARACETAMOL 500MG)"
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm uppercase"
-                            value={newDrugName}
-                            onChange={e => setNewDrugName(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleSaveDrug()}
-                        />
+
+                    <div className="flex gap-2">
+                        {/* Drug Type Selector */}
+                        <div className="flex bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            {DRUG_TYPES.map(type => (
+                                <button
+                                    key={type.value}
+                                    onClick={() => setNewDrugType(type.value)}
+                                    className={`px-3 py-2 text-xs font-bold transition-all ${newDrugType === type.value
+                                            ? type.color + ' border-b-2'
+                                            : 'bg-white text-gray-400 hover:text-gray-600'
+                                        }`}
+                                    title={type.label}
+                                >
+                                    <span className="text-base">{type.icon}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Drug Name Input with Autocomplete */}
+                        <div className="flex-1 relative">
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                placeholder="Type drug name to search or add new..."
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm uppercase"
+                                value={newDrugName}
+                                onChange={e => setNewDrugName(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSaveDrug();
+                                    if (e.key === 'Escape') setShowDropdown(false);
+                                }}
+                                onFocus={() => {
+                                    if (filteredDrugs.length > 0 && !editingDrug) {
+                                        setShowDropdown(true);
+                                    }
+                                }}
+                            />
+
+                            {/* Autocomplete Dropdown */}
+                            {showDropdown && (
+                                <div
+                                    ref={dropdownRef}
+                                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto"
+                                >
+                                    <div className="p-2 text-xs text-gray-500 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+                                        Click to edit spelling or type
+                                    </div>
+                                    {filteredDrugs.map(drug => {
+                                        const typeInfo = getDrugTypeInfo(drug.drug_type || 'TAB');
+                                        return (
+                                            <button
+                                                key={drug.id}
+                                                onClick={() => handleSelectSuggestion(drug)}
+                                                className="w-full px-4 py-3 text-left hover:bg-purple-50 flex items-center gap-3 border-b border-gray-50 last:border-0 transition-colors"
+                                            >
+                                                <span className="text-lg">{typeInfo.icon}</span>
+                                                <span className="font-medium text-gray-900 text-sm flex-1">{drug.name}</span>
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${typeInfo.color}`}>
+                                                    {drug.drug_type || 'TAB'}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
                         <button
                             onClick={handleSaveDrug}
                             disabled={isSaving || !newDrugName.trim()}
-                            className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                         >
                             {isSaving ? '...' : editingDrug ? 'Update' : 'Add'}
                         </button>
                     </div>
+
                     {editingDrug && (
                         <button
-                            onClick={() => { setEditingDrug(null); setNewDrugName(''); }}
+                            onClick={() => { setEditingDrug(null); setNewDrugName(''); setNewDrugType('TAB'); }}
                             className="text-xs text-purple-600 hover:underline mt-2"
                         >
-                            Cancel Edit
+                            ✕ Cancel Edit
                         </button>
                     )}
                 </div>
@@ -187,32 +315,42 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            {savedDrugs.map(drug => (
-                                <div
-                                    key={drug.id}
-                                    className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 hover:bg-gray-100 transition-colors group"
-                                >
-                                    <span className="font-medium text-gray-900 text-sm">{drug.name}</span>
-                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => { setEditingDrug(drug); setNewDrugName(drug.name); }}
-                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteDrug(drug.id)}
-                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
+                            {savedDrugs.map(drug => {
+                                const typeInfo = getDrugTypeInfo(drug.drug_type || 'TAB');
+                                return (
+                                    <div
+                                        key={drug.id}
+                                        className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 hover:bg-gray-100 transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-xs px-2 py-1 rounded-lg font-bold ${typeInfo.color}`}>
+                                                {typeInfo.icon} {drug.drug_type || 'TAB'}
+                                            </span>
+                                            <span className="font-medium text-gray-900 text-sm">{drug.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => handleSelectSuggestion(drug)}
+                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                                title="Edit"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteDrug(drug.id)}
+                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                                                title="Delete"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
