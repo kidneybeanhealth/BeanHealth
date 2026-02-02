@@ -49,12 +49,12 @@ interface PrescriptionModalProps {
 // Dose mappings for auto-populate
 const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; night: string }> = {
   'OD': { morning: '1', noon: '0', night: '0' },
-  'TD': { morning: '1', noon: '0', night: '1' },
+  'BD': { morning: '1', noon: '0', night: '1' },
   'TDS': { morning: '1', noon: '1', night: '1' },
   'HS': { morning: '0', noon: '0', night: '1' },
   'QID': { morning: '1', noon: '1', night: '2' },
   '1/2 OD': { morning: '1/2', noon: '0', night: '0' },
-  '1/2 TD': { morning: '1/2', noon: '0', night: '1/2' },
+  '1/2 BD': { morning: '1/2', noon: '0', night: '1/2' },
   '1/2 TDS': { morning: '1/2', noon: '1/2', night: '1/2' },
   '1/2 HS': { morning: '0', noon: '0', night: '1/2' },
 };
