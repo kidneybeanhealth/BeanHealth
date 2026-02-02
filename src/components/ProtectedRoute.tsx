@@ -13,9 +13,10 @@ interface ProtectedRouteProps {
  * Redirects unauthenticated users to login, and unauthorized users to their appropriate dashboard.
  * 
  * Enhanced for enterprise stability:
- * - Waits for auth to be fully stable before making redirect decisions
+ * - Waits for auth AND profile to be fully stable before making redirect decisions
  * - Prevents flash of loading/redirect during auth state changes
  * - Uses stable ready state to avoid infinite loops
+ * - Properly handles the transition period after login where profile is being loaded
  */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     children,
@@ -26,22 +27,29 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const location = useLocation();
     const [isStable, setIsStable] = useState(false);
 
-    // Wait for auth to stabilize before making any decisions
+    // Wait for auth AND profile to stabilize before making any decisions
+    // This prevents race conditions where components try to access profile before it's loaded
     useEffect(() => {
-        if (isInitialized && !loading) {
-            // Small delay to ensure auth state is fully stable
-            // Reduced to 50ms for faster transitions
+        // Only consider stable when:
+        // 1. Auth is initialized and not loading
+        // 2. Either we have a profile OR we don't have a user (logged out)
+        const isProfileReady = !user || !!profile;
+
+        if (isInitialized && !loading && isProfileReady) {
+            // Delay to ensure auth state is fully stable after login
+            // Increased to 100ms to handle slower profile fetches
             const timer = setTimeout(() => {
                 setIsStable(true);
-            }, 50);
+            }, 100);
             return () => clearTimeout(timer);
         } else {
             setIsStable(false);
         }
-    }, [isInitialized, loading]);
+    }, [isInitialized, loading, user, profile]);
 
-    // Show loading while auth is initializing or stabilizing
-    if (loading || !isInitialized || !isStable) {
+    // Show loading while auth is initializing, loading, or profile is pending
+    // This is the key fix - we wait for profile to be available for authenticated users
+    if (loading || !isInitialized || !isStable || (user && !profile)) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
                 <div className="text-center">

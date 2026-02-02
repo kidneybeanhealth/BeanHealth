@@ -10,19 +10,26 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  retryCount: number;
 }
 
+// Maximum automatic retries for transient errors
+const MAX_AUTO_RETRIES = 1;
+
 class ErrorBoundary extends Component<Props, State> {
+  private retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
   constructor(props: Props) {
     super(props);
     this.state = {
       hasError: false,
       error: null,
       errorInfo: null,
+      retryCount: 0,
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
       error,
@@ -36,6 +43,26 @@ class ErrorBoundary extends Component<Props, State> {
       error,
       errorInfo,
     });
+
+    // Auto-retry for transient errors (common after login during auth state transitions)
+    // This handles race conditions where profile isn't loaded yet
+    if (this.state.retryCount < MAX_AUTO_RETRIES) {
+      console.log('[ErrorBoundary] Attempting automatic recovery, retry:', this.state.retryCount + 1);
+      this.retryTimeoutId = setTimeout(() => {
+        this.setState(prevState => ({
+          hasError: false,
+          error: null,
+          errorInfo: null,
+          retryCount: prevState.retryCount + 1,
+        }));
+      }, 500); // Wait 500ms for auth state to stabilize
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId);
+    }
   }
 
   handleReset = () => {
@@ -43,6 +70,7 @@ class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      retryCount: 0, // Reset retry count on manual reset
     });
     window.location.reload();
   };
@@ -59,11 +87,11 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="flex items-center justify-center w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full mx-auto mb-4">
               <AlertIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
-            
+
             <h2 className="text-xl font-semibold text-center text-gray-900 dark:text-white mb-2">
               Something went wrong
             </h2>
-            
+
             <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
               We're sorry, but something unexpected happened. Please try refreshing the page.
             </p>
