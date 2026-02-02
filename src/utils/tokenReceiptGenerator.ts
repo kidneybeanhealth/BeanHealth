@@ -86,8 +86,8 @@ export function generateTokenReceipt(data: TokenData): Uint8Array {
     addCommand(COMMANDS.BOLD_ON);
     // Add character spacing (32 dots) to prevent overlap in HUGE size
     addCommand([...COMMANDS.CHAR_SPACING, 0x20]);
-    // Split digits and join with multiple spaces for forceful separation
-    const spacedToken = tokenNumberOnly.split('').join('   ');
+    // Split digits and join without manual spaces (ESC SP command handles spacing)
+    const spacedToken = tokenNumberOnly.split('').join('');
     addText(spacedToken + '\n');
     // Reset character spacing (0 dots)
     addCommand([...COMMANDS.CHAR_SPACING, 0x00]);
