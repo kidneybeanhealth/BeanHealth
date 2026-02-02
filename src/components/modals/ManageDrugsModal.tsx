@@ -2,20 +2,36 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
-// Drug types with icons
+// Drug types with icons and prefixes
 const DRUG_TYPES = [
-    { value: 'TAB', label: 'TAB', icon: '💊', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-    { value: 'CAP', label: 'CAP', icon: '🔶', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-    { value: 'INJ', label: 'INJ', icon: '💉', color: 'bg-red-100 text-red-700 border-red-200' },
-    { value: 'SYP', label: 'SYP', icon: '🧴', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    { value: 'TAB', label: 'TAB', prefix: 'TAB.', icon: '💊', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    { value: 'CAP', label: 'CAP', prefix: 'CAP.', icon: '🔶', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+    { value: 'INJ', label: 'INJ', prefix: 'INJ.', icon: '💉', color: 'bg-red-100 text-red-700 border-red-200' },
+    { value: 'SYP', label: 'SYP', prefix: 'SYP.', icon: '🧴', color: 'bg-purple-100 text-purple-700 border-purple-200' },
 ];
 
 interface SavedDrug {
     id: string;
     name: string;
     drug_type?: string;
-    doctor_id: string;
-    hospital_id: string;
+    doctor_id?: string;
+    hospital_id?: string;
+}
+
+interface ReferenceDrug {
+    id: string;
+    brand_name: string;
+    generic_name: string;
+    category: string;
+}
+
+interface DrugOption {
+    id: string;
+    name: string;
+    category?: string;
+    genericName?: string;
+    isReference: boolean;
+    isSaved: boolean;
 }
 
 interface ManageDrugsModalProps {
@@ -26,6 +42,7 @@ interface ManageDrugsModalProps {
 
 const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalId, onClose }) => {
     const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
+    const [referenceDrugs, setReferenceDrugs] = useState<ReferenceDrug[]>([]);
     const [newDrugName, setNewDrugName] = useState('');
     const [newDrugType, setNewDrugType] = useState('TAB');
     const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
@@ -34,46 +51,80 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
     // Autocomplete state
     const [showDropdown, setShowDropdown] = useState(false);
-    const [filteredDrugs, setFilteredDrugs] = useState<SavedDrug[]>([]);
+    const [filteredDrugs, setFilteredDrugs] = useState<DrugOption[]>([]);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Fetch saved drugs
+    // Fetch saved drugs AND reference drugs
     useEffect(() => {
-        const fetchDrugs = async () => {
+        const fetchAllDrugs = async () => {
             try {
-                const { data, error } = await supabase
+                // Fetch doctor's saved drugs
+                const { data: savedData, error: savedError } = await supabase
                     .from('hospital_doctor_drugs' as any)
                     .select('*')
                     .eq('doctor_id', doctorId)
                     .order('name', { ascending: true });
 
-                if (error) throw error;
-                setSavedDrugs(data || []);
+                if (savedError) throw savedError;
+                setSavedDrugs(savedData || []);
+
+                // Fetch reference drugs (the 300+ master list)
+                const { data: refData, error: refError } = await supabase
+                    .from('reference_drugs' as any)
+                    .select('*')
+                    .order('brand_name', { ascending: true });
+
+                if (!refError && refData) {
+                    setReferenceDrugs(refData);
+                }
             } catch (err) {
-                console.error('Error fetching saved drugs:', err);
-                toast.error('Failed to load saved drugs');
+                console.error('Error fetching drugs:', err);
+                toast.error('Failed to load drugs');
             } finally {
                 setLoading(false);
             }
         };
-        fetchDrugs();
+        fetchAllDrugs();
     }, [doctorId]);
+
+    // Combine saved drugs and reference drugs for autocomplete
+    const allDrugOptions: DrugOption[] = [
+        // Reference drugs first (the 300+ master list)
+        ...referenceDrugs.map(d => ({
+            id: d.id,
+            name: d.brand_name,
+            genericName: d.generic_name,
+            category: d.category,
+            isReference: true,
+            isSaved: savedDrugs.some(s => s.name.toUpperCase() === d.brand_name.toUpperCase())
+        })),
+        // Then doctor's saved drugs that aren't in reference list
+        ...savedDrugs
+            .filter(s => !referenceDrugs.some(r => r.brand_name.toUpperCase() === s.name.toUpperCase()))
+            .map(d => ({
+                id: d.id,
+                name: d.name,
+                isReference: false,
+                isSaved: true
+            }))
+    ];
 
     // Filter drugs as user types
     useEffect(() => {
         if (newDrugName.trim().length > 0) {
             const query = newDrugName.toLowerCase();
-            const filtered = savedDrugs.filter(drug =>
-                drug.name.toLowerCase().includes(query)
-            ).slice(0, 10); // Limit to 10 suggestions
+            const filtered = allDrugOptions.filter(drug =>
+                drug.name.toLowerCase().includes(query) ||
+                (drug.genericName && drug.genericName.toLowerCase().includes(query))
+            ).slice(0, 15); // Show 15 suggestions
             setFilteredDrugs(filtered);
             setShowDropdown(filtered.length > 0 && !editingDrug);
         } else {
             setFilteredDrugs([]);
             setShowDropdown(false);
         }
-    }, [newDrugName, savedDrugs, editingDrug]);
+    }, [newDrugName, savedDrugs, referenceDrugs, editingDrug]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -87,12 +138,47 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleSelectSuggestion = (drug: SavedDrug) => {
-        // Populate input for editing
-        setNewDrugName(drug.name);
-        setNewDrugType(drug.drug_type || 'TAB');
-        setEditingDrug(drug);
+    // Handle selecting a drug type - add prefix to name
+    const handleTypeChange = (type: string) => {
+        const typeInfo = DRUG_TYPES.find(t => t.value === type);
+        const oldTypeInfo = DRUG_TYPES.find(t => t.value === newDrugType);
+
+        // Remove old prefix if exists
+        let cleanName = newDrugName;
+        if (oldTypeInfo && cleanName.startsWith(oldTypeInfo.prefix)) {
+            cleanName = cleanName.slice(oldTypeInfo.prefix.length).trim();
+        }
+
+        // Add new prefix
+        if (typeInfo && cleanName && !cleanName.startsWith(typeInfo.prefix)) {
+            setNewDrugName(`${typeInfo.prefix}${cleanName}`);
+        }
+
+        setNewDrugType(type);
+    };
+
+    const handleSelectSuggestion = (drug: DrugOption) => {
+        // Get current type prefix
+        const typeInfo = DRUG_TYPES.find(t => t.value === newDrugType);
+        const prefix = typeInfo?.prefix || '';
+
+        // Add prefix if not already present
+        let drugName = drug.name;
+        const hasAnyPrefix = DRUG_TYPES.some(t => drugName.toUpperCase().startsWith(t.prefix));
+        if (!hasAnyPrefix && prefix) {
+            drugName = `${prefix}${drugName}`;
+        }
+
+        setNewDrugName(drugName);
         setShowDropdown(false);
+
+        // If it's an existing saved drug, set it for editing
+        const existingSaved = savedDrugs.find(s => s.name.toUpperCase() === drug.name.toUpperCase());
+        if (existingSaved) {
+            setEditingDrug(existingSaved);
+            setNewDrugType(existingSaved.drug_type || 'TAB');
+        }
+
         inputRef.current?.focus();
     };
 
@@ -148,7 +234,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                     }
                     throw error;
                 }
-                toast.success('Drug added!', { icon: '💊' });
+                toast.success('Drug added to your saved list!', { icon: '💊' });
                 setSavedDrugs([...savedDrugs, data as SavedDrug]);
             }
             setNewDrugName('');
@@ -188,7 +274,9 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-white">
                     <div>
                         <h3 className="text-xl font-bold text-gray-900">Manage Saved Drugs</h3>
-                        <p className="text-sm text-gray-500">{savedDrugs.length} drugs saved • Type to search & edit</p>
+                        <p className="text-sm text-gray-500">
+                            {savedDrugs.length} saved • {referenceDrugs.length} in database
+                        </p>
                     </div>
                     <button
                         onClick={onClose}
@@ -209,7 +297,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                 <span className="text-gray-500">{editingDrug.name}</span>
                             </>
                         ) : (
-                            'Add New Drug (or type to search existing)'
+                            'Add New Drug (type to search from database)'
                         )}
                     </div>
 
@@ -219,14 +307,15 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                             {DRUG_TYPES.map(type => (
                                 <button
                                     key={type.value}
-                                    onClick={() => setNewDrugType(type.value)}
-                                    className={`px-3 py-2 text-xs font-bold transition-all ${newDrugType === type.value
+                                    onClick={() => handleTypeChange(type.value)}
+                                    className={`px-3 py-2 text-xs font-bold transition-all flex flex-col items-center ${newDrugType === type.value
                                             ? type.color + ' border-b-2'
                                             : 'bg-white text-gray-400 hover:text-gray-600'
                                         }`}
-                                    title={type.label}
+                                    title={`Add ${type.prefix} prefix`}
                                 >
                                     <span className="text-base">{type.icon}</span>
+                                    <span className="text-[10px]">{type.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -236,7 +325,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                             <input
                                 ref={inputRef}
                                 type="text"
-                                placeholder="Type drug name to search or add new..."
+                                placeholder="Type drug name to search..."
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm uppercase"
                                 value={newDrugName}
                                 onChange={e => setNewDrugName(e.target.value)}
@@ -255,27 +344,38 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                             {showDropdown && (
                                 <div
                                     ref={dropdownRef}
-                                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto"
+                                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-72 overflow-y-auto"
                                 >
-                                    <div className="p-2 text-xs text-gray-500 border-b border-gray-100 bg-gray-50 rounded-t-xl">
-                                        Click to edit spelling or type
+                                    <div className="p-2 text-xs text-gray-500 border-b border-gray-100 bg-gray-50 rounded-t-xl sticky top-0">
+                                        💡 Click to add to your saved drugs
                                     </div>
-                                    {filteredDrugs.map(drug => {
-                                        const typeInfo = getDrugTypeInfo(drug.drug_type || 'TAB');
-                                        return (
-                                            <button
-                                                key={drug.id}
-                                                onClick={() => handleSelectSuggestion(drug)}
-                                                className="w-full px-4 py-3 text-left hover:bg-purple-50 flex items-center gap-3 border-b border-gray-50 last:border-0 transition-colors"
-                                            >
-                                                <span className="text-lg">{typeInfo.icon}</span>
-                                                <span className="font-medium text-gray-900 text-sm flex-1">{drug.name}</span>
-                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${typeInfo.color}`}>
-                                                    {drug.drug_type || 'TAB'}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
+                                    {filteredDrugs.map(drug => (
+                                        <button
+                                            key={drug.id}
+                                            onClick={() => handleSelectSuggestion(drug)}
+                                            className="w-full px-4 py-3 text-left hover:bg-purple-50 flex items-center gap-3 border-b border-gray-50 last:border-0 transition-colors"
+                                        >
+                                            <span className="text-lg">💊</span>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-medium text-gray-900 text-sm truncate">{drug.name}</div>
+                                                {drug.genericName && (
+                                                    <div className="text-xs text-gray-500 truncate">{drug.genericName}</div>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {drug.category && (
+                                                    <span className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium whitespace-nowrap">
+                                                        {drug.category}
+                                                    </span>
+                                                )}
+                                                {drug.isSaved && (
+                                                    <span className="text-[10px] px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
+                                                        SAVED
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -301,6 +401,9 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
                 {/* Drug List */}
                 <div className="flex-1 overflow-y-auto px-6 py-4">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                        Your Saved Drugs ({savedDrugs.length})
+                    </div>
                     {loading ? (
                         <div className="text-center py-8 text-gray-500">Loading...</div>
                     ) : savedDrugs.length === 0 ? (
@@ -311,7 +414,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                 </svg>
                             </div>
                             <p className="text-gray-500 text-sm">No saved drugs yet</p>
-                            <p className="text-gray-400 text-xs mt-1">Add your commonly prescribed medications above</p>
+                            <p className="text-gray-400 text-xs mt-1">Search from {referenceDrugs.length} drugs above and add them</p>
                         </div>
                     ) : (
                         <div className="space-y-2">
@@ -330,7 +433,12 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                         </div>
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
-                                                onClick={() => handleSelectSuggestion(drug)}
+                                                onClick={() => {
+                                                    setNewDrugName(drug.name);
+                                                    setNewDrugType(drug.drug_type || 'TAB');
+                                                    setEditingDrug(drug);
+                                                    inputRef.current?.focus();
+                                                }}
                                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
                                                 title="Edit"
                                             >
