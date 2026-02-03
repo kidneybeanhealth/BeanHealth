@@ -8,9 +8,19 @@ interface PrinterSetupModalProps {
     isOpen: boolean;
     onClose: () => void;
     onConnected: () => void;
+    settings: { spacing: number; alignment: 'left' | 'center' | 'right' };
+    onSettingsChange: (settings: { spacing: number; alignment: 'left' | 'center' | 'right' }) => void;
+    isSavingSettings?: boolean;
 }
 
-const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({ isOpen, onClose, onConnected }) => {
+const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({
+    isOpen,
+    onClose,
+    onConnected,
+    settings,
+    onSettingsChange,
+    isSavingSettings = false
+}) => {
     const [isConnecting, setIsConnecting] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [deviceName, setDeviceName] = useState<string | null>(null);
@@ -27,7 +37,8 @@ const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({ isOpen, onClose, 
         patientName: sandboxPatient,
         doctorName: 'A. Prabhakar',
         date: new Date().toLocaleDateString('en-GB'),
-        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+        settings: settings
     };
 
     useEffect(() => {
@@ -160,7 +171,12 @@ const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({ isOpen, onClose, 
                                     </div>
                                 </div>
                                 <div className="border border-blue-100 rounded-lg overflow-hidden bg-white">
-                                    <PrinterPreview data={previewData} isSandbox={true} />
+                                    <PrinterPreview
+                                        data={previewData}
+                                        isSandbox={true}
+                                        onSettingsChange={onSettingsChange}
+                                        isSaving={isSavingSettings}
+                                    />
                                 </div>
                                 <p className="text-[10px] text-blue-600 italic">
                                     This simulates exactly how it will appear on the 58mm Rugtek BP02 printer dots.

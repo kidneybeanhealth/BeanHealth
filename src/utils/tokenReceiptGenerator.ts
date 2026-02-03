@@ -12,6 +12,10 @@ export interface TokenData {
     department: string;
     date: string;
     time: string;
+    settings?: {
+        spacing: number;
+        alignment: 'left' | 'center' | 'right';
+    };
 }
 
 // ESC/POS Commands
@@ -22,6 +26,7 @@ const COMMANDS = {
     INIT: [ESC, 0x40],                    // Initialize printer
     CENTER: [ESC, 0x61, 0x01],            // Center align
     LEFT: [ESC, 0x61, 0x00],              // Left align
+    RIGHT: [ESC, 0x61, 0x02],             // Right align
     BOLD_ON: [ESC, 0x45, 0x01],           // Bold on
     BOLD_OFF: [ESC, 0x45, 0x00],          // Bold off
     DOUBLE_SIZE: [GS, 0x21, 0x11],        // Double width & height (2x)
@@ -81,11 +86,19 @@ export function generateTokenReceipt(data: TokenData): Uint8Array {
     addText(generateDivider('=') + '\n');
 
     // === TOKEN NUMBER (HUGE - 4x size) ===
-    addCommand(COMMANDS.CENTER);
+    const alignmentCmd = data.settings?.alignment === 'left' ? COMMANDS.LEFT :
+        data.settings?.alignment === 'right' ? COMMANDS.RIGHT :
+            COMMANDS.CENTER;
+
+    addCommand(alignmentCmd);
     addCommand(COMMANDS.QUADRUPLE_SIZE);
     addCommand(COMMANDS.BOLD_ON);
-    // Use 1 space character between digits (was 2)
-    const spacedToken = tokenNumberOnly.split('').join(' ');
+
+    // Dynamic spacing between digits
+    const spacingCount = data.settings?.spacing ?? 1;
+    const spacer = " ".repeat(spacingCount);
+    const spacedToken = tokenNumberOnly.split('').join(spacer);
+
     addText(spacedToken + '\n');
     addCommand(COMMANDS.NORMAL_SIZE);
     addCommand(COMMANDS.BOLD_OFF);

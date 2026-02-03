@@ -91,6 +91,11 @@ const ReceptionDashboard: React.FC = () => {
         department: string;
     } | null>(null);
     const [isPrintingToken, setIsPrintingToken] = useState(false);
+    const [printerSettings, setPrinterSettings] = useState<{ spacing: number; alignment: 'left' | 'center' | 'right' }>({
+        spacing: 1,
+        alignment: 'center'
+    });
+    const [isSavingPrinterSettings, setIsSavingPrinterSettings] = useState(false);
 
     // Memoized fetch functions
     const fetchDoctors = useCallback(async () => {
@@ -218,6 +223,7 @@ const ReceptionDashboard: React.FC = () => {
         if (profile?.id) {
             fetchDoctors();
             fetchQueue();
+            fetchHospitalSettings();
         }
     }, [profile?.id, fetchDoctors, fetchQueue]);
 
@@ -235,8 +241,8 @@ const ReceptionDashboard: React.FC = () => {
                 .single();
 
             if (data && !error) {
-                setQueue((prev: any[]) => {
-                    if (prev.find((item: any) => item.id === data.id)) return prev; // already exists
+                setQueue((prev: QueueItem[]) => {
+                    if (prev.find((item: QueueItem) => item.id === data.id)) return prev; // already exists
                     return [data, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 });
             }
@@ -267,7 +273,7 @@ const ReceptionDashboard: React.FC = () => {
                         toast.success('New patient registered', { duration: 3000, position: 'bottom-right' });
                     } else if (payload.eventType === 'UPDATE') {
                         // Update existing item - merge changes
-                        setQueue(prev => prev.map(item => {
+                        setQueue((prev: QueueItem[]) => prev.map(item => {
                             if (item.id === payload.new.id) {
                                 return { ...item, ...payload.new };
                             }
@@ -275,7 +281,7 @@ const ReceptionDashboard: React.FC = () => {
                         }));
                     } else if (payload.eventType === 'DELETE') {
                         // Remove item
-                        setQueue(prev => prev.filter(item => item.id !== payload.old.id));
+                        setQueue((prev: QueueItem[]) => prev.filter(item => item.id !== payload.old.id));
                     }
                 }
             )
@@ -355,8 +361,37 @@ const ReceptionDashboard: React.FC = () => {
                     setAvatarPreview(profile.avatar_url);
                 }
             }
+
+            // Sync printer settings if they exist
+            if (data?.printer_settings) {
+                setPrinterSettings(data.printer_settings);
+            }
         } catch (err) {
             console.warn('Failed to fetch hospital settings:', err);
+        }
+    };
+
+    const handleSavePrinterSettings = async (newSettings: { spacing: number; alignment: 'left' | 'center' | 'right' }) => {
+        if (!profile?.id) return;
+
+        setIsSavingPrinterSettings(true);
+        try {
+            const { error: updateError } = await supabase
+                .from('hospital_profiles')
+                .update({
+                    printer_settings: newSettings as any
+                })
+                .eq('id', profile.id);
+
+            if (updateError) throw updateError;
+
+            setPrinterSettings(newSettings);
+            toast.success('Layout saved successfully!');
+        } catch (error: any) {
+            console.error('Save printer settings error:', error);
+            toast.error(`Auto-save failed: ${error.message}`);
+        } finally {
+            setIsSavingPrinterSettings(false);
         }
     };
 
@@ -540,6 +575,9 @@ const ReceptionDashboard: React.FC = () => {
                 department: lastRegisteredPatient.department
             });
 
+            // Apply custom layout settings
+            tokenData.settings = printerSettings;
+
             const receiptData = generateTokenReceipt(tokenData);
             await printerService.print(receiptData);
 
@@ -581,6 +619,9 @@ const ReceptionDashboard: React.FC = () => {
                 doctorName: queueItem.doctor?.name || '',
                 department: queueItem.doctor?.specialty || ''
             });
+
+            // Apply custom layout settings
+            tokenData.settings = printerSettings;
 
             const receiptData = generateTokenReceipt(tokenData);
             await printerService.print(receiptData);
@@ -1227,8 +1268,12 @@ const ReceptionDashboard: React.FC = () => {
                                         doctorName: lastRegisteredPatient.doctorName,
                                         department: lastRegisteredPatient.department,
                                         date: new Date().toLocaleDateString('en-GB'),
-                                        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+                                        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+                                        settings: printerSettings
                                     }}
+                                    isSandbox={true}
+                                    onSettingsChange={handleSavePrinterSettings}
+                                    isSaving={isSavingPrinterSettings}
                                 />
                             </div>
 
@@ -1300,6 +1345,9 @@ const ReceptionDashboard: React.FC = () => {
                 isOpen={showPrinterSetup}
                 onClose={() => setShowPrinterSetup(false)}
                 onConnected={() => setPrinterConnected(true)}
+                settings={printerSettings}
+                onSettingsChange={handleSavePrinterSettings}
+                isSavingSettings={isSavingPrinterSettings}
             />
         </div>
     );
