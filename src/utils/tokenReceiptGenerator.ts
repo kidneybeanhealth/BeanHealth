@@ -84,13 +84,9 @@ export function generateTokenReceipt(data: TokenData): Uint8Array {
     addCommand(COMMANDS.CENTER);
     addCommand(COMMANDS.QUADRUPLE_SIZE);
     addCommand(COMMANDS.BOLD_ON);
-    // Add character spacing (160 dots = ~20mm = 2cm) for maximum digit separation
-    addCommand([...COMMANDS.CHAR_SPACING, 0xA0]);
-    // Split digits and join without manual spaces (ESC SP command handles spacing)
-    const spacedToken = tokenNumberOnly.split('').join('');
+    // Use 4 space characters between digits for ~2cm gap (ESC SP command is unreliable on Rugtek)
+    const spacedToken = tokenNumberOnly.split('').join('    ');
     addText(spacedToken + '\n');
-    // Reset character spacing (0 dots)
-    addCommand([...COMMANDS.CHAR_SPACING, 0x00]);
     addCommand(COMMANDS.NORMAL_SIZE);
     addCommand(COMMANDS.BOLD_OFF);
 
