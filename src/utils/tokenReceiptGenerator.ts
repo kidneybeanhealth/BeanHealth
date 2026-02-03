@@ -84,8 +84,8 @@ export function generateTokenReceipt(data: TokenData): Uint8Array {
     addCommand(COMMANDS.CENTER);
     addCommand(COMMANDS.QUADRUPLE_SIZE);
     addCommand(COMMANDS.BOLD_ON);
-    // Use 2 space characters between digits for a cleaner look (was 4)
-    const spacedToken = tokenNumberOnly.split('').join('  ');
+    // Use 1 space character between digits (was 2)
+    const spacedToken = tokenNumberOnly.split('').join(' ');
     addText(spacedToken + '\n');
     addCommand(COMMANDS.NORMAL_SIZE);
     addCommand(COMMANDS.BOLD_OFF);

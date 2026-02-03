@@ -33,7 +33,7 @@ const PrinterPreview: React.FC<PrinterPreviewProps> = ({ data, isSandbox = false
     // Clean token number
     const tokenDisplay = data.tokenNumber.replace(/^[A-Za-z-]+/, '');
     // Spaced token (matches tokenReceiptGenerator.ts)
-    const spacedToken = tokenDisplay.split('').join('  ');
+    const spacedToken = tokenDisplay.split('').join(' ');
 
     return (
         <div className={`flex flex-col items-center ${isSandbox ? 'my-4' : ''}`}>
