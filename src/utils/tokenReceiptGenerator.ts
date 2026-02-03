@@ -42,7 +42,7 @@ const COMMANDS = {
 /**
  * Generate a divider line
  */
-function generateDivider(char: string = '-', width: number = 32): string {
+function generateDivider(char: string = '-', width: number = 30): string {
     return char.repeat(width);
 }
 
@@ -74,7 +74,7 @@ export function generateTokenReceipt(data: TokenData): Uint8Array {
     // === HEADER (Compact) ===
     addCommand(COMMANDS.CENTER);
     // Om Muruga blessing - prints reliably on all thermal printers
-    addText('~~~ Om Muruga ~~~\n');
+    addText('~ Om Muruga ~\n');
     addCommand(COMMANDS.BOLD_ON);
     addText('KONGUNAD KIDNEY CENTRE\n');
     addCommand(COMMANDS.BOLD_OFF);
@@ -84,9 +84,8 @@ export function generateTokenReceipt(data: TokenData): Uint8Array {
     addCommand(COMMANDS.CENTER);
     addCommand(COMMANDS.QUADRUPLE_SIZE);
     addCommand(COMMANDS.BOLD_ON);
-    // Use 4 space characters between digits for ~2cm gap (ESC SP command is unreliable on Rugtek)
-    const spacedToken = tokenNumberOnly.split('').join('    ');
-    addText(spacedToken + '\n');
+    // Removed extra spacing between digits to prevent layout issues
+    addText(tokenNumberOnly + '\n');
     addCommand(COMMANDS.NORMAL_SIZE);
     addCommand(COMMANDS.BOLD_OFF);
 
