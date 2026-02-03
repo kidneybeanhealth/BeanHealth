@@ -7,6 +7,7 @@ import { LogoIcon } from '../icons/LogoIcon';
 import PrinterSetupModal from '../PrinterSetupModal';
 import { printerService } from '../../services/BluetoothPrinterService';
 import { generateTokenReceipt, createTokenData } from '../../utils/tokenReceiptGenerator';
+import PrinterPreview from '../PrinterPreview';
 
 interface DoctorProfile {
     id: string;
@@ -1216,31 +1217,26 @@ const ReceptionDashboard: React.FC = () => {
                         </div>
 
                         {/* Content */}
-                        <div className="p-6 space-y-4">
-                            <div className="text-center py-4 bg-gray-50 rounded-xl">
-                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Token Number</p>
-                                <p className="text-4xl font-bold text-gray-900">{lastRegisteredPatient.tokenNumber}</p>
+                        <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                            <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-inner">
+                                <PrinterPreview
+                                    data={{
+                                        tokenNumber: lastRegisteredPatient.tokenNumber,
+                                        patientName: lastRegisteredPatient.name,
+                                        mrNumber: lastRegisteredPatient.mrNumber,
+                                        doctorName: lastRegisteredPatient.doctorName,
+                                        department: lastRegisteredPatient.department,
+                                        date: new Date().toLocaleDateString('en-GB'),
+                                        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+                                    }}
+                                />
                             </div>
 
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Patient</span>
-                                    <span className="font-semibold text-gray-900">{lastRegisteredPatient.name}</span>
-                                </div>
-                                {lastRegisteredPatient.mrNumber && (
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">MR. NO</span>
-                                        <span className="font-semibold text-gray-900">{lastRegisteredPatient.mrNumber}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Doctor</span>
-                                    <span className="font-semibold text-gray-900">{formatDoctorName(lastRegisteredPatient.doctorName)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Department</span>
-                                    <span className="font-semibold text-gray-900">{lastRegisteredPatient.department}</span>
-                                </div>
+                            <div className="bg-blue-50 p-3 rounded-lg flex items-start gap-2 border border-blue-100">
+                                <span className="text-blue-600 mt-0.5">ℹ️</span>
+                                <p className="text-[10px] text-blue-700 leading-tight">
+                                    Above is a live simulation of the 58mm thermal receipt. Verify the token spacing and layout before printing.
+                                </p>
                             </div>
                         </div>
 

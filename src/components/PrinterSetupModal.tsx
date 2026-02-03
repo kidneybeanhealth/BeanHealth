@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { printerService } from '../services/BluetoothPrinterService';
 import { toast } from 'react-hot-toast';
+import { LogoIcon } from './icons/LogoIcon';
+import PrinterPreview, { PrinterPreviewData } from './PrinterPreview';
 
 interface PrinterSetupModalProps {
     isOpen: boolean;
@@ -14,6 +16,19 @@ const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({ isOpen, onClose, 
     const [deviceName, setDeviceName] = useState<string | null>(null);
     const [isPrinting, setIsPrinting] = useState(false);
     const [isSupported, setIsSupported] = useState(true);
+    const [showSandbox, setShowSandbox] = useState(false);
+
+    // Sandbox state for remote debugging
+    const [sandboxToken, setSandboxToken] = useState('48');
+    const [sandboxPatient, setSandboxPatient] = useState('ANTONY. M C');
+
+    const previewData: PrinterPreviewData = {
+        tokenNumber: sandboxToken,
+        patientName: sandboxPatient,
+        doctorName: 'A. Prabhakar',
+        date: new Date().toLocaleDateString('en-GB'),
+        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+    };
 
     useEffect(() => {
         // Check if Web Bluetooth is supported
@@ -104,7 +119,56 @@ const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({ isOpen, onClose, 
                 </div>
 
                 {/* Content */}
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                    {/* Offline Sandbox Toggle */}
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xl">🏃</span>
+                                <h4 className="font-bold text-blue-900 text-sm">Offline Layout Sandbox</h4>
+                            </div>
+                            <button
+                                onClick={() => setShowSandbox(!showSandbox)}
+                                className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-lg shadow hover:bg-blue-700 transition-colors"
+                            >
+                                {showSandbox ? 'Hide Preview' : 'Show Preview'}
+                            </button>
+                        </div>
+
+                        {showSandbox && (
+                            <div className="space-y-4 animate-fade-in">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-blue-700 uppercase mb-1">Test Token</label>
+                                        <input
+                                            type="text"
+                                            value={sandboxToken}
+                                            onChange={(e) => setSandboxToken(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g. 48"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-blue-700 uppercase mb-1">Test Patient</label>
+                                        <input
+                                            type="text"
+                                            value={sandboxPatient}
+                                            onChange={(e) => setSandboxPatient(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Patient Name"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="border border-blue-100 rounded-lg overflow-hidden bg-white">
+                                    <PrinterPreview data={previewData} isSandbox={true} />
+                                </div>
+                                <p className="text-[10px] text-blue-600 italic">
+                                    This simulates exactly how it will appear on the 58mm Rugtek BP02 printer dots.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
                     {!isSupported ? (
                         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                             <div className="flex items-start gap-3">
