@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useHospitalName } from '../../hooks/useHospitalName';
 
 const PHARMACY_PASSWORD = 'pharmacy@123';
 
@@ -11,6 +12,7 @@ const PharmacyLogin: React.FC = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const { displayName } = useHospitalName('Hospital Registry');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,7 +57,7 @@ const PharmacyLogin: React.FC = () => {
                         <div className="h-10 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
                         <div className="flex-1 flex justify-start pl-5">
                             <span className="text-[#3d2e2a] text-2xl sm:text-3xl font-black leading-none tracking-tight">
-                                {profile?.name || 'Hospital Registry'}
+                                {displayName}
                             </span>
                         </div>
                     </div>

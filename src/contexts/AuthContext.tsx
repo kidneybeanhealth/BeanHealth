@@ -602,6 +602,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionStorage.removeItem('authView');
         sessionStorage.removeItem('enterprise_reception_authenticated');
         sessionStorage.removeItem('enterprise_pharmacy_authenticated');
+        // Clear hospital name cache
+        localStorage.removeItem('hospital_name_cache');
         Object.keys(sessionStorage).forEach(key => {
           if (key.startsWith('enterprise_doctor_session_')) {
             sessionStorage.removeItem(key);

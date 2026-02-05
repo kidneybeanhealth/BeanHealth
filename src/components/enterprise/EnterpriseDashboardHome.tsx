@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LogoIcon } from '../icons/LogoIcon';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { useHospitalName } from '../../hooks/useHospitalName';
 
 /**
  * Enterprise Dashboard Home - Department Selection Screen
@@ -11,6 +12,7 @@ import { toast } from 'react-hot-toast';
 const EnterpriseDashboardHome: React.FC = () => {
     const { signOut, profile, refreshProfile } = useAuth();
     const navigate = useNavigate();
+    const { displayName } = useHospitalName('Hospital Admin');
 
     // Settings Modal State
     const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -273,7 +275,7 @@ const EnterpriseDashboardHome: React.FC = () => {
                                     )}
                                 </div>
                                 <span className={`${isExpanded ? 'inline-block' : 'hidden'} sm:inline-block text-base sm:text-[16px] font-black text-gray-800 tracking-tight whitespace-nowrap overflow-hidden text-ellipsis`}>
-                                    {profile?.name || 'Hospital Admin'}
+                                    {displayName}
                                 </span>
                             </button>
 
@@ -308,7 +310,7 @@ const EnterpriseDashboardHome: React.FC = () => {
                     <div className="max-w-2xl mx-auto mb-8 sm:mb-10 px-4 text-center">
                         <p className="text-secondary-500 font-bold tracking-[0.3em] uppercase text-[10px] sm:text-[11px] mb-3">Enterprise Portal</p>
                         <h2 className="text-2xl sm:text-[3rem] font-black text-gray-900 mb-5 tracking-tight leading-[1.2]">
-                            {profile?.name || 'Hospital Registry'}
+                            {displayName === 'Hospital Admin' ? 'Hospital Registry' : displayName}
                         </h2>
                         <p className="text-sm sm:text-lg text-gray-500/80 leading-relaxed font-medium max-w-xl mx-auto">
                             Welcome to the BeanHealth Enterprise Suite. Secure, efficient, and integrated management for your healthcare facility.

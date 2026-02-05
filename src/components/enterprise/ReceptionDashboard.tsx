@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useHospitalName } from '../../hooks/useHospitalName';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { LogoIcon } from '../icons/LogoIcon';
@@ -46,6 +47,7 @@ const formatDoctorName = (name: string) => {
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
     const { profile, refreshProfile } = useAuth();
+    const { displayName } = useHospitalName('Hospital');
 
     const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
     const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -702,7 +704,7 @@ const ReceptionDashboard: React.FC = () => {
                                         </span>
                                     )}
                                 </div>
-                                <span className="hidden sm:inline-block text-sm md:text-base font-bold text-gray-900 dark:text-white whitespace-nowrap">{profile?.name || 'Hospital'}</span>
+                                <span className="hidden sm:inline-block text-sm md:text-base font-bold text-gray-900 dark:text-white whitespace-nowrap">{displayName}</span>
                                 <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>

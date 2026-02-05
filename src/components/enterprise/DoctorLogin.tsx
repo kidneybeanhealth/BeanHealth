@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useHospitalName } from '../../hooks/useHospitalName';
 
 interface DoctorProfile {
     id: string;
@@ -44,6 +45,7 @@ const DoctorLogin: React.FC = () => {
     const navigate = useNavigate();
     const { doctorId } = useParams<{ doctorId: string }>();
     const { profile } = useAuth();
+    const { displayName } = useHospitalName('Hospital Registry');
 
     const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
     const [selectedDoctor, setSelectedDoctor] = useState<DoctorProfile | null>(null);
@@ -114,7 +116,8 @@ const DoctorLogin: React.FC = () => {
             }
 
             // Custom sort: Prabhakar first, Divakar second, others after
-            const sortedDoctors = (data || []).sort((a, b) => {
+            const doctorsList = (data as DoctorProfile[]) || [];
+            const sortedDoctors = doctorsList.sort((a, b) => {
                 const nameA = a.name.toLowerCase();
                 const nameB = b.name.toLowerCase();
 
@@ -216,7 +219,7 @@ const DoctorLogin: React.FC = () => {
                             <div className="h-10 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
                             <div className="flex-1 flex justify-start pl-5 text-left">
                                 <span className="text-[#3d2e2a] text-2xl sm:text-3xl font-black leading-none tracking-tight">
-                                    {profile?.name || 'Hospital Registry'}
+                                    {displayName}
                                 </span>
                             </div>
                         </div>
@@ -330,7 +333,7 @@ const DoctorLogin: React.FC = () => {
                         <div className="hidden sm:block h-10 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
                         <div className="sm:flex-1 flex justify-center sm:justify-start sm:pl-8">
                             <span className="text-[#3d2e2a] text-xl sm:text-3xl font-black leading-tight tracking-tight px-4 sm:px-0">
-                                {profile?.name || 'Hospital Registry'}
+                                {displayName}
                             </span>
                         </div>
                     </div>
