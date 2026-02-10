@@ -307,7 +307,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     const newMeds = [...medications];
     newMeds[index] = {
       ...newMeds[index],
-      name: drug.name
+      name: drug.name,
+      drugType: (drug as any).drugType || ''
     };
     setMedications(newMeds);
     setShowDrugDropdown(null);
@@ -444,8 +445,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     // Convert to pharmacy format
     const pharmacyMeds = medications.filter(m => m.name).map(m => {
       const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}`;
+      const prefix = (m as any).drugType ? `${(m as any).drugType}. ` : '';
       return {
-        name: m.name,
+        name: `${prefix}${m.name}`,
         dosage: m.number + ' tab',
         dose: m.dose,
         frequency: freq,
@@ -777,10 +779,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 <input
                                   className="w-full outline-none font-bold uppercase text-xs"
                                   placeholder="Type drug name..."
-                                  value={med.name}
+                                  value={(med as any).drugType ? `${(med as any).drugType}. ${med.name}` : med.name}
                                   onChange={e => {
-                                    updateMed(globalIndex, 'name', e.target.value);
-                                    setDrugSearchQuery(e.target.value);
+                                    const val = e.target.value;
+                                    const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, '');
+                                    updateMed(globalIndex, 'name', stripped);
+                                    if (stripped !== val) updateMed(globalIndex, 'drugType', '');
+                                    setDrugSearchQuery(stripped);
                                     if (!readOnly && allDrugOptions.length > 0) {
                                       setShowDrugDropdown(globalIndex);
                                     }

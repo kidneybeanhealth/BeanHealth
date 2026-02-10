@@ -222,6 +222,10 @@ export interface Database {
           name: string
           age: number
           token_number: string | null
+          mr_number: string | null
+          father_husband_name: string | null
+          place: string | null
+          phone: string | null
           created_at: string
         }
         Insert: {
@@ -230,6 +234,10 @@ export interface Database {
           name: string
           age: number
           token_number: string | null
+          mr_number?: string | null
+          father_husband_name?: string | null
+          place?: string | null
+          phone?: string | null
           created_at?: string
         }
         Update: {
@@ -238,6 +246,10 @@ export interface Database {
           name?: string
           age?: number
           token_number?: string | null
+          mr_number?: string | null
+          father_husband_name?: string | null
+          place?: string | null
+          phone?: string | null
           created_at?: string
         }
       }
@@ -269,6 +281,41 @@ export interface Database {
           doctor_id?: string | null
           queue_number?: number
           status?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      hospital_profiles: {
+        Row: {
+          id: string
+          hospital_name: string
+          address: string | null
+          contact_number: string | null
+          email: string | null
+          avatar_url: string | null
+          printer_settings: any | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          hospital_name: string
+          address?: string | null
+          contact_number?: string | null
+          email?: string | null
+          avatar_url?: string | null
+          printer_settings?: any | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_name?: string
+          address?: string | null
+          contact_number?: string | null
+          email?: string | null
+          avatar_url?: string | null
+          printer_settings?: any | null
           created_at?: string
           updated_at?: string
         }

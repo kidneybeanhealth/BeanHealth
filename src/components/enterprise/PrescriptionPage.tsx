@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 interface SavedDrug {
     id: string;
     name: string;
+    drug_type?: string;
 }
 
 interface ReferenceDrug {
@@ -22,6 +23,7 @@ interface DrugOption {
     genericName?: string;
     category?: string;
     isReference?: boolean;
+    drugType?: string;
 }
 
 // Dose mappings for auto-populate
@@ -74,11 +76,11 @@ const PrescriptionPage: React.FC = () => {
     });
 
     const [medications, setMedications] = useState([
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' }
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' }
     ]);
 
     // Drug Search States
@@ -169,12 +171,13 @@ const PrescriptionPage: React.FC = () => {
 
     // Combined drug options for search
     const allDrugOptions: DrugOption[] = [
-        ...savedDrugs.map(d => ({ id: d.id, name: d.name, isReference: false })),
+        ...savedDrugs.map(d => ({ id: d.id, name: d.name, drugType: d.drug_type, isReference: false })),
         ...referenceDrugs.map(d => ({
             id: d.id,
             name: d.brand_name,
             genericName: d.generic_name,
             category: d.category,
+            drugType: d.category?.toUpperCase() === 'INJECTION' ? 'INJ' : d.category?.toUpperCase() === 'SYRUP' ? 'SYP' : d.category?.toUpperCase() === 'CAPSULE' ? 'CAP' : 'TAB',
             isReference: true
         }))
     ];
@@ -254,8 +257,9 @@ const PrescriptionPage: React.FC = () => {
         try {
             const pharmacyMeds = medications.filter(m => m.name).map(m => {
                 const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}`;
+                const prefix = m.drugType ? `${m.drugType}. ` : '';
                 return {
-                    name: m.name,
+                    name: `${prefix}${m.name}`,
                     dosage: m.number + ' tab',
                     dose: m.dose,
                     frequency: freq,
@@ -316,7 +320,7 @@ const PrescriptionPage: React.FC = () => {
         }
     };
 
-    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F' }]);
+    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' }]);
     const removeRow = (i: number) => !readOnly && medications.length > 1 && setMedications(medications.filter((_, idx) => idx !== i));
     const updateMed = (i: number, f: string, v: any) => {
         if (readOnly) return;
@@ -486,11 +490,11 @@ const PrescriptionPage: React.FC = () => {
                                                     <div key={globalI} className={`flex border-b border-black ${isFirstPage ? 'flex-1 items-stretch' : 'py-1'} text-xs relative group`}>
                                                         <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">{globalI + 1}</div>
                                                         <div className="flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center" ref={el => { dropdownRefs.current[globalI] = el; }}>
-                                                            <input className="w-full outline-none font-bold uppercase text-xs" value={med.name} onChange={e => { updateMed(globalI, 'name', e.target.value); setDrugSearchQuery(e.target.value); !readOnly && setShowDrugDropdown(globalI); }} onFocus={() => !readOnly && (setShowDrugDropdown(globalI), setDrugSearchQuery(med.name))} readOnly={readOnly} />
+                                                            <input className="w-full outline-none font-bold uppercase text-xs" value={med.drugType ? `${med.drugType}. ${med.name}` : med.name} onChange={e => { const val = e.target.value; const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, ''); updateMed(globalI, 'name', stripped); setDrugSearchQuery(stripped); !readOnly && setShowDrugDropdown(globalI); }} onFocus={() => !readOnly && (setShowDrugDropdown(globalI), setDrugSearchQuery(med.name))} readOnly={readOnly} />
                                                             {!readOnly && showDrugDropdown === globalI && filteredDrugs.length > 0 && (
                                                                 <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
                                                                     {filteredDrugs.map(drug => (
-                                                                        <button key={drug.id} onClick={() => { updateMed(globalI, 'name', drug.name); setShowDrugDropdown(null); }} className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0">
+                                                                        <button key={drug.id} onClick={() => { const newMeds = [...medications]; (newMeds[globalI] as any).name = drug.name; (newMeds[globalI] as any).drugType = drug.drugType || ''; setMedications(newMeds); setShowDrugDropdown(null); }} className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0">
                                                                             <span className="font-semibold text-sm">{drug.name}</span>
                                                                         </button>
                                                                     ))}
