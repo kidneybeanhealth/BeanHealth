@@ -107,6 +107,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ user, isOpen, onClose, onLo
                         {!isDoctor && (
                             <>
                                 <DetailItem label="Patient ID" value={user.patientId || (user as any).patient_id} />
+                                {(user as any).beanhealth_id && (
+                                    <DetailItem
+                                        label="BeanHealth ID"
+                                        value={
+                                            <span className="font-mono text-xs px-2 py-0.5 bg-[#8AC43C]/10 text-[#719e34] rounded-md">
+                                                {(user as any).beanhealth_id}
+                                            </span>
+                                        }
+                                    />
+                                )}
                                 <DetailItem label="Date of Birth" value={formatDate(user.dateOfBirth || (user as any).date_of_birth)} />
                                 <DetailItem label="Condition" value={user.condition} />
                                 <DetailItem

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useHospitalName } from '../../hooks/useHospitalName';
@@ -9,6 +9,7 @@ import PrinterSetupModal from '../PrinterSetupModal';
 import { printerService } from '../../services/BluetoothPrinterService';
 import { generateTokenReceipt, createTokenData } from '../../utils/tokenReceiptGenerator';
 import PrinterPreview from '../PrinterPreview';
+import { BeanhealthIdService } from '../../services/beanhealthIdService';
 
 interface DoctorProfile {
     id: string;
@@ -18,16 +19,20 @@ interface DoctorProfile {
 
 interface QueueItem {
     id: string;
+    hospital_id: string;
     patient_id: string;
-    doctor_id: string;
+    doctor_id: string | null;
     queue_number: number;
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
     patient: {
+        id?: string;
         name: string;
         age: number;
         token_number: string;
+        mr_number?: string;
     };
     doctor: {
+        id?: string;
         name: string;
         specialty: string;
     };
@@ -99,6 +104,38 @@ const ReceptionDashboard: React.FC = () => {
     });
     const [isSavingPrinterSettings, setIsSavingPrinterSettings] = useState(false);
 
+    // BeanHealth ID Lookup
+    const [bhidMatch, setBhidMatch] = useState<{
+        id: string;
+        name: string;
+        email: string;
+        beanhealthId: string;
+    } | null>(null);
+    const [isSearchingBhid, setIsSearchingBhid] = useState(false);
+    const phoneDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handlePhoneLookup = useCallback((phone: string) => {
+        // Clear previous match and timer
+        setBhidMatch(null);
+        if (phoneDebounceRef.current) clearTimeout(phoneDebounceRef.current);
+
+        // Need at least 10 digits for a valid phone
+        const digits = phone.replace(/\D/g, '');
+        if (digits.length < 10) return;
+
+        setIsSearchingBhid(true);
+        phoneDebounceRef.current = setTimeout(async () => {
+            try {
+                const match = await BeanhealthIdService.findPatientByPhone(digits);
+                setBhidMatch(match);
+            } catch (err) {
+                console.warn('BHID lookup failed:', err);
+            } finally {
+                setIsSearchingBhid(false);
+            }
+        }, 600);
+    }, []);
+
     // Memoized fetch functions
     const fetchDoctors = useCallback(async () => {
         if (!profile?.id) return;
@@ -121,7 +158,7 @@ const ReceptionDashboard: React.FC = () => {
         if (!isBackground) setIsLoadingQueue(true);
         try {
             const { data, error } = await supabase
-                .from('hospital_queues' as any)
+                .from('hospital_queues')
                 .select(`
                     *,
                     patient:hospital_patients!hospital_queues_patient_id_fkey(*),
@@ -153,7 +190,7 @@ const ReceptionDashboard: React.FC = () => {
             date.setHours(0, 0, 0, 0);
 
             const { data, error } = await supabase
-                .from('hospital_queues' as any)
+                .from('hospital_queues')
                 .select(`
                     *,
                     patient:hospital_patients!hospital_queues_patient_id_fkey(*),
@@ -187,7 +224,7 @@ const ReceptionDashboard: React.FC = () => {
             date.setHours(0, 0, 0, 0);
 
             const { data, error } = await supabase
-                .from('hospital_queues' as any)
+                .from('hospital_queues')
                 .select(`
                     *,
                     patient:hospital_patients!hospital_queues_patient_id_fkey!inner(*),
@@ -233,7 +270,7 @@ const ReceptionDashboard: React.FC = () => {
     const fetchSingleQueueItem = async (id: string) => {
         try {
             const { data, error } = await supabase
-                .from('hospital_queues' as any)
+                .from('hospital_queues')
                 .select(`
                     *,
                     patient:hospital_patients!hospital_queues_patient_id_fkey(*),
@@ -243,9 +280,12 @@ const ReceptionDashboard: React.FC = () => {
                 .single();
 
             if (data && !error) {
-                setQueue((prev: QueueItem[]) => {
-                    if (prev.find((item: QueueItem) => item.id === data.id)) return prev; // already exists
-                    return [data, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                setQueue((prev: any[]) => {
+                    const exists = prev.some((item: any) => item.id === (data as any).id);
+                    if (exists) return prev;
+                    return [data, ...prev].sort((a: any, b: any) =>
+                        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                    );
                 });
             }
         } catch (error) {
@@ -275,7 +315,7 @@ const ReceptionDashboard: React.FC = () => {
                         toast.success('New patient registered', { duration: 3000, position: 'bottom-right' });
                     } else if (payload.eventType === 'UPDATE') {
                         // Update existing item - merge changes
-                        setQueue((prev: QueueItem[]) => prev.map(item => {
+                        setQueue((prev: any[]) => prev.map((item: any) => {
                             if (item.id === payload.new.id) {
                                 return { ...item, ...payload.new };
                             }
@@ -283,7 +323,7 @@ const ReceptionDashboard: React.FC = () => {
                         }));
                     } else if (payload.eventType === 'DELETE') {
                         // Remove item
-                        setQueue((prev: QueueItem[]) => prev.filter(item => item.id !== payload.old.id));
+                        setQueue((prev: any[]) => prev.filter((item: any) => item.id !== payload.old.id));
                     }
                 }
             )
@@ -329,13 +369,16 @@ const ReceptionDashboard: React.FC = () => {
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
         setWalkInForm({ name: '', age: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '' });
+        setBhidMatch(null);
+        setIsSearchingBhid(false);
+        if (phoneDebounceRef.current) clearTimeout(phoneDebounceRef.current);
     };
 
     const fetchHospitalSettings = async () => {
         if (!profile?.id) return;
         try {
             const { data, error } = await supabase
-                .from('hospital_profiles' as any)
+                .from('hospital_profiles')
                 .select('*')
                 .eq('id', profile.id)
                 .single() as { data: any; error: any };
@@ -379,9 +422,9 @@ const ReceptionDashboard: React.FC = () => {
         setIsSavingPrinterSettings(true);
         try {
             const { error: updateError } = await supabase
-                .from('hospital_profiles')
+                .from('hospital_profiles' as any)
                 .update({
-                    printer_settings: newSettings as any
+                    printer_settings: newSettings
                 })
                 .eq('id', profile.id);
 
@@ -442,15 +485,15 @@ const ReceptionDashboard: React.FC = () => {
                 avatarUrl = urlData.publicUrl;
             }
 
-            const { error: profileError } = await (supabase
-                .from('hospital_profiles' as any)
+            const { error: profileError } = await supabase
+                .from('hospital_profiles')
                 .upsert({
                     id: profile.id,
                     hospital_name: hospitalSettings.hospitalName,
                     address: hospitalSettings.address,
                     contact_number: hospitalSettings.contactNumber,
                     updated_at: new Date().toISOString()
-                } as any) as any);
+                });
 
             if (profileError) {
                 console.error('Settings save error:', profileError);
@@ -459,7 +502,7 @@ const ReceptionDashboard: React.FC = () => {
                 return;
             }
 
-            await (supabase.from('users') as any)
+            await supabase.from('users')
                 .update({
                     name: hospitalSettings.hospitalName,
                     avatar_url: avatarUrl,
@@ -494,7 +537,7 @@ const ReceptionDashboard: React.FC = () => {
             const tokenNumber = walkInForm.tokenNumber;
 
             const { data: patientResult, error: patientError } = await supabase
-                .from('hospital_patients' as any)
+                .from('hospital_patients')
                 .insert({
                     hospital_id: profile.id,
                     name: walkInForm.name,
@@ -504,7 +547,7 @@ const ReceptionDashboard: React.FC = () => {
                     father_husband_name: walkInForm.fatherHusbandName || null,
                     place: walkInForm.place || null,
                     phone: walkInForm.phone || null
-                } as any)
+                })
                 .select()
                 .single();
 
@@ -517,7 +560,7 @@ const ReceptionDashboard: React.FC = () => {
             const patientData = patientResult as { id: string };
 
             const { count, error: countError } = await supabase
-                .from('hospital_queues' as any)
+                .from('hospital_queues')
                 .select('*', { count: 'exact', head: true })
                 .eq('doctor_id', walkInForm.doctorId)
                 .eq('status', 'pending');
@@ -527,14 +570,14 @@ const ReceptionDashboard: React.FC = () => {
             const nextQueueNo = (count || 0) + 1;
 
             const { error: queueError } = await supabase
-                .from('hospital_queues' as any)
+                .from('hospital_queues')
                 .insert({
                     hospital_id: profile.id,
                     patient_id: patientData.id,
                     doctor_id: walkInForm.doctorId,
                     queue_number: nextQueueNo,
                     status: 'pending'
-                } as any);
+                });
 
             if (queueError) {
                 console.error('Queue Insertion Error:', queueError);
@@ -555,6 +598,22 @@ const ReceptionDashboard: React.FC = () => {
                 department: walkInForm.department
             });
             setShowPrintDialog(true);
+
+            // Auto-link to BeanHealth app account if match was found
+            if (bhidMatch && patientData.id) {
+                try {
+                    await BeanhealthIdService.linkPatientToUser(
+                        patientData.id,
+                        bhidMatch.id,
+                        profile.id,
+                        walkInForm.mrNumber || undefined
+                    );
+                    toast.success(`Linked to BeanHealth ID: ${bhidMatch.beanhealthId}`, { duration: 4000 });
+                } catch (linkErr) {
+                    console.warn('Auto-link failed:', linkErr);
+                }
+            }
+
             handleCloseWalkInModal();
             fetchQueue();
         } catch (error: any) {
@@ -888,6 +947,11 @@ const ReceptionDashboard: React.FC = () => {
                                                 <h4 className="font-bold text-gray-900 truncate pr-2">{item.patient?.name}</h4>
                                                 <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
                                                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                                    {item.patient?.beanhealth_id && (
+                                                        <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                            {item.patient.beanhealth_id}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -1010,15 +1074,53 @@ const ReceptionDashboard: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
-                                    <input
-                                        type="tel"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                        value={walkInForm.phone}
-                                        onChange={e => setWalkInForm({ ...walkInForm, phone: e.target.value })}
-                                        placeholder="Phone Number"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type="tel"
+                                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900 ${bhidMatch ? 'border-green-400 bg-green-50/30' : 'border-gray-200'
+                                                }`}
+                                            value={walkInForm.phone}
+                                            onChange={e => {
+                                                setWalkInForm({ ...walkInForm, phone: e.target.value });
+                                                handlePhoneLookup(e.target.value);
+                                            }}
+                                            placeholder="Phone Number"
+                                        />
+                                        {isSearchingBhid && (
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                                            </div>
+                                        )}
+                                        {bhidMatch && (
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
+
+                            {/* BeanHealth ID Match Banner */}
+                            {bhidMatch && (
+                                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
+                                    <div className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold text-green-800">BeanHealth Patient Found!</p>
+                                        <p className="text-xs text-green-700 truncate">
+                                            {bhidMatch.name} · <span className="font-mono font-bold">{bhidMatch.beanhealthId}</span>
+                                        </p>
+                                    </div>
+                                    <span className="px-2 py-1 bg-green-200/60 text-green-800 text-[10px] font-bold rounded-full uppercase tracking-wide flex-shrink-0">
+                                        Auto-Link
+                                    </span>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Department</label>
                                 <input
@@ -1092,6 +1194,13 @@ const ReceptionDashboard: React.FC = () => {
                                     <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.mr_number || '--'}</p>
                                 </div>
                             </div>
+
+                            {selectedPatientDetails.beanhealth_id && (
+                                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[10px] font-semibold text-gray-400 uppercase">BH ID</span>
+                                    <span className="text-xs font-mono font-medium text-gray-500">{selectedPatientDetails.beanhealth_id}</span>
+                                </div>
+                            )}
 
                             <div>
                                 <label className="text-xs font-semibold text-gray-500 uppercase">Patient Name</label>

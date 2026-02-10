@@ -12,7 +12,8 @@ export interface Database {
           id: string
           email: string
           name: string
-          role: 'patient' | 'doctor'
+          role: 'patient' | 'doctor' | 'admin' | 'enterprise'
+          beanhealth_id?: string
           avatar_url?: string
           specialty?: string
           date_of_birth?: string
@@ -28,7 +29,8 @@ export interface Database {
           id?: string
           email: string
           name: string
-          role: 'patient' | 'doctor'
+          role: 'patient' | 'doctor' | 'admin' | 'enterprise'
+          beanhealth_id?: string
           avatar_url?: string
           specialty?: string
           date_of_birth?: string
@@ -44,7 +46,8 @@ export interface Database {
           id?: string
           email?: string
           name?: string
-          role?: 'patient' | 'doctor'
+          role?: 'patient' | 'doctor' | 'admin' | 'enterprise'
+          beanhealth_id?: string
           avatar_url?: string
           specialty?: string
           date_of_birth?: string

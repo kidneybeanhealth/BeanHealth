@@ -6,9 +6,10 @@ import { UserIcon } from '../icons/UserIcon';
 interface AuthChooserProps {
     onNext: (role: 'patient' | 'doctor') => void;
     onEnterpriseLogin?: () => void;
+    onHospitalPatientLogin?: () => void;
 }
 
-const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: onAdminLogin }) => {
+const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: onAdminLogin, onHospitalPatientLogin }) => {
     const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | null>(null);
 
     const handleRoleSelect = (role: 'patient' | 'doctor') => {
@@ -95,6 +96,26 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: on
                             </svg>
                         </div>
                     )}
+                </button>
+
+                {/* Hospital Patient Card */}
+                <button
+                    onClick={() => onHospitalPatientLogin?.()}
+                    className="w-full p-4 rounded-2xl border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 hover:border-orange-400 hover:shadow-md transition-all duration-200 text-left flex items-center gap-4 group"
+                >
+                    <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-base !text-gray-900">
+                            I Visited a Hospital
+                        </h3>
+                        <p className="text-xs sm:text-sm !text-gray-500">
+                            Login with your phone number
+                        </p>
+                    </div>
                 </button>
 
                 {/* Enterprise Card */}

@@ -5,10 +5,11 @@ import EnterpriseLogin from './EnterpriseLogin';
 import AdminLogin from './AdminLogin';
 import AuthChooser from './AuthChooser';
 import TrialCodeVerification from './TrialCodeVerification';
+import HospitalPatientLogin from './HospitalPatientLogin';
 import TermsAndConditionsModal from '../modals/TermsAndConditionsModal';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
-type AuthView = 'chooser' | 'trial-code' | 'login' | 'admin-login' | 'enterprise-login';
+type AuthView = 'chooser' | 'trial-code' | 'login' | 'admin-login' | 'enterprise-login' | 'hospital-patient';
 
 interface AuthProps {
   initialView?: AuthView;
@@ -44,6 +45,7 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
       case 'login': return 'Sign In';
       case 'admin-login': return 'Admin Portal';
       case 'enterprise-login': return 'Enterprise Portal';
+      case 'hospital-patient': return 'Hospital Patient Login';
       case 'chooser': default: return 'Get Started';
     }
   };
@@ -88,9 +90,11 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
         return <AdminLogin onSwitchToChooser={handleSwitchToChooser} />;
       case 'enterprise-login':
         return <EnterpriseLogin onSwitchToChooser={handleSwitchToChooser} />;
+      case 'hospital-patient':
+        return <HospitalPatientLogin onSwitchToChooser={handleSwitchToChooser} />;
       case 'chooser':
       default:
-        return <AuthChooser onNext={handleRoleSelected} onEnterpriseLogin={handleGoToEnterprise} />;
+        return <AuthChooser onNext={handleRoleSelected} onEnterpriseLogin={handleGoToEnterprise} onHospitalPatientLogin={() => setView('hospital-patient')} />;
     }
   }
 

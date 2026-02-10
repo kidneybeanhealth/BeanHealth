@@ -407,6 +407,156 @@ export class AuthService {
       callback(session?.user || null)
     })
   }
+
+  // ============================
+  // Hospital Patient Phone Login
+  // ============================
+
+  /**
+   * Find hospital patients by phone number (Step 1 of phone login)
+   */
+  static async findHospitalPatientsByPhone(phone: string): Promise<{
+    patient_id: string;
+    patient_name: string;
+    hospital_name: string;
+    age: number;
+    created_at: string;
+  }[]> {
+    const digits = phone.replace(/\D/g, '');
+
+    const { data, error } = await supabase.rpc('find_patients_by_phone', {
+      p_phone: digits
+    });
+
+    if (error) {
+      console.error('[AuthService] Phone lookup error:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Sign in as hospital patient using phone + name verification
+   * Creates Supabase auth account on first login, signs in on subsequent logins
+   */
+  static async signInAsHospitalPatient(phone: string, name: string): Promise<{
+    success: boolean;
+    error?: string;
+    isNewAccount?: boolean;
+  }> {
+    const digits = phone.replace(/\D/g, '');
+    const phantomEmail = `${digits}@p.beanhealth.app`;
+    const password = `bh_${digits}_${name.toLowerCase().trim().replace(/\s+/g, '_')}`;
+
+    try {
+      // Step 1: Verify the patient exists in hospital_patients
+      const { data: verifyData, error: verifyError } = await supabase.rpc('verify_hospital_patient', {
+        p_phone: digits,
+        p_name: name
+      });
+
+      if (verifyError || !verifyData || verifyData.length === 0) {
+        console.error('[AuthService] Verification failed:', verifyError);
+        return { success: false, error: 'No matching patient found. Please check your phone number and name.' };
+      }
+
+      const hospitalPatient = verifyData[0];
+      console.log('[AuthService] Patient verified:', hospitalPatient.patient_name);
+
+      // Step 2: Try to sign in (returning user)
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: phantomEmail,
+        password,
+      });
+
+      if (signInData?.session) {
+        console.log('[AuthService] Returning hospital patient signed in');
+        return { success: true, isNewAccount: false };
+      }
+
+      // Step 3: If sign-in failed, create new account (first-time user)
+      console.log('[AuthService] Creating new account for hospital patient');
+
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: phantomEmail,
+        password,
+        options: {
+          data: {
+            name: hospitalPatient.patient_name,
+            role: 'patient',
+            source: 'hospital_registration'
+          }
+        }
+      });
+
+      if (signUpError) {
+        console.error('[AuthService] SignUp error:', signUpError);
+        return { success: false, error: signUpError.message };
+      }
+
+      if (!signUpData.user) {
+        return { success: false, error: 'Account creation failed' };
+      }
+
+      // Step 4: Create users table entry
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: signUpData.user.id,
+          email: phantomEmail,
+          name: hospitalPatient.patient_name,
+          role: 'patient',
+          beanhealth_id: hospitalPatient.beanhealth_id, // Transfer BHID from hospital record
+        });
+
+      if (profileError) {
+        console.error('[AuthService] Profile creation error:', profileError);
+        // Don't fail completely - auth account exists, profile can be retried
+      }
+
+      // Step 5: Link hospital_patients to new users account
+      try {
+        await (supabase.from('hospital_patients') as any)
+          .update({ linked_user_id: signUpData.user.id })
+          .eq('id', hospitalPatient.patient_id);
+
+        // Create patient_hospital_links entry
+        await (supabase.from('patient_hospital_links') as any)
+          .insert({
+            user_id: signUpData.user.id,
+            hospital_id: (await supabase
+              .from('hospital_patients')
+              .select('hospital_id')
+              .eq('id', hospitalPatient.patient_id)
+              .single()).data?.hospital_id,
+            hospital_patient_id: hospitalPatient.patient_id,
+            local_mr_number: hospitalPatient.mr_number,
+            linked_at: new Date().toISOString()
+          });
+      } catch (linkErr) {
+        console.warn('[AuthService] Auto-link failed (non-critical):', linkErr);
+      }
+
+      // Step 6: If signUp didn't return a session, try signing in
+      if (!signUpData.session) {
+        const { error: retryError } = await supabase.auth.signInWithPassword({
+          email: phantomEmail,
+          password,
+        });
+        if (retryError) {
+          return { success: false, error: 'Account created but sign-in failed. Please try again.' };
+        }
+      }
+
+      console.log('[AuthService] New hospital patient account created and signed in');
+      return { success: true, isNewAccount: true };
+
+    } catch (error: any) {
+      console.error('[AuthService] Hospital patient auth failed:', error);
+      return { success: false, error: error.message || 'Something went wrong' };
+    }
+  }
 }
 
 export class UserService {
