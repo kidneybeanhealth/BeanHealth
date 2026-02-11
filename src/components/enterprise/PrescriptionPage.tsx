@@ -239,7 +239,10 @@ const PrescriptionPage: React.FC = () => {
                     reviewDate: notes.match(/Review: (.*?)(\n|$)/)?.[1] || '',
                     testsToReview: notes.match(/Tests: (.*?)(\n|$)/)?.[1] || '',
                     place: notes.match(/Place: (.*?)(\n|$)/)?.[1] || prev.place,
-                    phone: notes.match(/Phone: (.*?)(\n|$)/)?.[1] || prev.phone
+                    phone: notes.match(/Phone: (.*?)(\n|$)/)?.[1] || prev.phone,
+                    doctorNotes: notes.match(/DoctorNotes: (.*?)(\n|$)/)?.[1] || '',
+                    saltIntake: notes.match(/SaltIntake: (.*?)(\n|$)/)?.[1] || '',
+                    fluidIntake: notes.match(/FluidIntake: (.*?)(\n|$)/)?.[1] || ''
                 }));
             } catch (e) {
                 console.error("Error parsing existing prescription:", e);
@@ -269,7 +272,7 @@ const PrescriptionPage: React.FC = () => {
                 };
             });
 
-            const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
+            const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
 
             // This is handled by EnterpriseDoctorDashboard.handleSendToPharmacy usually
             // We need to implement it here or expose it.

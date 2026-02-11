@@ -184,43 +184,62 @@ const PharmacyQueueDisplay: React.FC = () => {
     return (
         <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col overflow-hidden">
             {/* Header */}
-            <header className="flex-shrink-0 bg-white shadow-sm border-b border-gray-100">
-                <div className="flex items-center justify-between px-6 py-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-                            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <header className="flex-shrink-0 bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
+                <div className="flex items-center justify-between px-8 py-5">
+                    <div className="flex items-center gap-6">
+                        <div className="w-14 h-14 bg-gray-900 rounded-2xl flex items-center justify-center shadow-xl shadow-gray-200">
+                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">{hospitalName || 'Hospital'}</h1>
-                            <p className="text-blue-600 text-sm font-semibold tracking-wide">PHARMACY QUEUE</p>
+                            <h1 className="text-3xl font-black text-gray-900 tracking-tight">{hospitalName || 'Hospital Registry'}</h1>
+                            <p className="text-emerald-600 text-sm font-bold tracking-[0.2em] uppercase mt-0.5">Pharmacy Queue Display</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <div className="text-right">
-                            <p className="text-3xl font-mono font-bold text-gray-900">
+
+                    <div className="flex flex-col items-center">
+                        <div className="px-6 py-2 bg-gray-50 rounded-full border border-gray-100 flex items-center gap-3 shadow-sm group transition-all hover:bg-white hover:shadow-md">
+                            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-600/20">
+                                <LogoIcon className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Powered by</span>
+                                <span className="text-sm font-black text-gray-900 leading-tight">BeanHealth</span>
+                            </div>
+                            <div className="ml-2 flex gap-1">
+                                <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
+                                <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse delay-75"></span>
+                                <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse delay-150"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-8">
+                        <div className="text-right border-l border-gray-100 pl-8">
+                            <p className="text-4xl font-black text-gray-900 tracking-tighter tabular-nums">
                                 {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                             </p>
-                            <p className="text-gray-500 text-sm">
+                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">
                                 {currentTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                             <button
                                 onClick={handleTestAudio}
-                                className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-sm font-bold transition-all flex items-center gap-2 border border-blue-100"
+                                className="w-12 h-12 bg-white hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 rounded-2xl transition-all flex items-center justify-center border border-gray-100 hover:border-emerald-100 shadow-sm"
+                                title="Test Audio"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                 </svg>
-                                Test
                             </button>
                             <button
                                 onClick={toggleFullscreen}
-                                className="p-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                                className="w-12 h-12 bg-white hover:bg-gray-50 text-gray-400 hover:text-gray-900 rounded-2xl transition-all flex items-center justify-center border border-gray-100 shadow-sm"
+                                title="Toggle Fullscreen"
                             >
-                                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                                 </svg>
                             </button>
@@ -333,20 +352,8 @@ const PharmacyQueueDisplay: React.FC = () => {
                 </div>
             </main>
 
-            {/* Footer */}
-            <footer className="flex-shrink-0 px-5 pb-4">
-                <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500 rounded-2xl shadow-lg p-4">
-                    <div className="flex items-center justify-center gap-4">
-                        <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                            <LogoIcon className="w-8 h-8 text-white" />
-                        </div>
-                        <div className="text-center">
-                            <p className="text-white font-bold text-lg">Powered by BeanHealth</p>
-                            <p className="text-white/80 text-sm">Smart Healthcare Management</p>
-                        </div>
-                    </div>
-                </div>
-            </footer>
+            {/* Simple Bottom Spacing */}
+            <div className="h-4 flex-shrink-0" />
         </div>
     );
 };

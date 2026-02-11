@@ -386,9 +386,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         const diagnosis = notes.match(/Diagnosis: (.*?)(\n|$)/)?.[1] || '';
         const review = notes.match(/Review: (.*?)(\n|$)/)?.[1] || '';
         const tests = notes.match(/Tests: (.*?)(\n|$)/)?.[1] || '';
-        // New fields
         const place = notes.match(/Place: (.*?)(\n|$)/)?.[1] || '';
         const phone = notes.match(/Phone: (.*?)(\n|$)/)?.[1] || '';
+        const docNotes = notes.match(/DoctorNotes: (.*?)(\n|$)/)?.[1] || '';
+        const salt = notes.match(/SaltIntake: (.*?)(\n|$)/)?.[1] || '';
+        const fluid = notes.match(/FluidIntake: (.*?)(\n|$)/)?.[1] || '';
 
         setFormData(prev => ({
           ...prev,
@@ -396,7 +398,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
           reviewDate: review,
           testsToReview: tests,
           place: place || prev.place,
-          phone: phone || prev.phone
+          phone: phone || prev.phone,
+          doctorNotes: docNotes,
+          saltIntake: salt,
+          fluidIntake: fluid
         }));
 
       } catch (e) {
@@ -458,7 +463,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     });
 
     // We pack the extra metadata (Place, Phone, etc) into the notes field so it persists without schema changes
-    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
+    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
     if (onSendToPharmacy) onSendToPharmacy(pharmacyMeds, notes);
   };
 
