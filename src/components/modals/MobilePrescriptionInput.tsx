@@ -195,13 +195,11 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                     <div className="flex-1 relative">
                                         <input
                                             type="text"
-                                            value={(med as any).drugType ? `${(med as any).drugType}. ${med.name}` : med.name}
+                                            value={med.name}
                                             onChange={e => {
                                                 const val = e.target.value;
-                                                const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, '');
-                                                updateMed(index, 'name', stripped);
-                                                if (stripped !== val) updateMed(index, 'drugType', '');
-                                                setDrugSearchQuery(stripped);
+                                                updateMed(index, 'name', val);
+                                                setDrugSearchQuery(val);
                                                 setShowDrugDropdown(index);
                                             }}
                                             onFocus={() => setShowDrugDropdown(index)}

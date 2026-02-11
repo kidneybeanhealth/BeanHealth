@@ -251,9 +251,8 @@ const PrescriptionPage: React.FC = () => {
         try {
             const pharmacyMeds = medications.filter(m => m.name).map(m => {
                 const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}${m.extra ? '-' + m.extra : ''}`;
-                const prefix = m.drugType ? `${m.drugType}. ` : '';
                 return {
-                    name: `${prefix}${m.name}`,
+                    name: m.name,
                     dosage: m.number + ' tab',
                     dose: m.dose,
                     frequency: freq,
@@ -487,11 +486,11 @@ const PrescriptionPage: React.FC = () => {
                                                         <div key={globalI} className={`flex border-b border-black ${isFirstPage && chunk.length >= 5 ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}>
                                                             <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">{globalI + 1}</div>
                                                             <div className="flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center" ref={el => { dropdownRefs.current[globalI] = el; }}>
-                                                                <input className="w-full outline-none font-bold uppercase text-xs" value={med.drugType ? `${med.drugType}. ${med.name}` : med.name} onChange={e => { const val = e.target.value; const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, ''); updateMed(globalI, 'name', stripped); setDrugSearchQuery(stripped); !readOnly && setShowDrugDropdown(globalI); }} onFocus={() => !readOnly && (setShowDrugDropdown(globalI), setDrugSearchQuery(med.name))} readOnly={readOnly} />
+                                                                <input className="w-full outline-none font-bold uppercase text-xs" value={med.name} onChange={e => { const val = e.target.value; updateMed(globalI, 'name', val); setDrugSearchQuery(val); !readOnly && setShowDrugDropdown(globalI); }} onFocus={() => !readOnly && (setShowDrugDropdown(globalI), setDrugSearchQuery(med.name))} readOnly={readOnly} />
                                                                 {!readOnly && showDrugDropdown === globalI && filteredDrugs.length > 0 && (
                                                                     <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
                                                                         {filteredDrugs.map(drug => (
-                                                                            <button key={drug.id} onClick={() => { const newMeds = [...medications]; (newMeds[globalI] as any).name = drug.name; (newMeds[globalI] as any).drugType = drug.drugType || ''; setMedications(newMeds); setShowDrugDropdown(null); }} className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0">
+                                                                            <button key={drug.id} onClick={() => { const newMeds = [...medications]; const prefix = drug.drugType ? `${drug.drugType}. ` : ''; (newMeds[globalI] as any).name = `${prefix}${drug.name}`; (newMeds[globalI] as any).drugType = drug.drugType || ''; setMedications(newMeds); setShowDrugDropdown(null); }} className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0">
                                                                                 <span className="font-semibold text-sm">{drug.name}</span>
                                                                             </button>
                                                                         ))}

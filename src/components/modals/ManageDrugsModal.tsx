@@ -115,38 +115,25 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Handle selecting a drug type - add prefix to name
+    // Handle selecting a drug type - toggle logic
     const handleTypeChange = (type: string) => {
-        const typeInfo = DRUG_TYPES.find(t => t.value === type);
-        const oldTypeInfo = DRUG_TYPES.find(t => t.value === newDrugType);
-
-        // Remove old prefix if exists
-        let cleanName = newDrugName;
-        if (oldTypeInfo && cleanName.startsWith(oldTypeInfo.prefix)) {
-            cleanName = cleanName.slice(oldTypeInfo.prefix.length).trim();
+        if (newDrugType === type) {
+            setNewDrugType(''); // Deselect if same type clicked
+        } else {
+            setNewDrugType(type);
         }
-
-        // Add new prefix
-        if (typeInfo && cleanName && !cleanName.startsWith(typeInfo.prefix)) {
-            setNewDrugName(`${typeInfo.prefix}${cleanName}`);
-        }
-
-        setNewDrugType(type);
     };
 
     const handleSelectSuggestion = (drug: DrugOption) => {
-        // Get current type prefix
-        const typeInfo = DRUG_TYPES.find(t => t.value === newDrugType);
-        const prefix = typeInfo?.prefix || '';
+        // Strip any existing prefixes from the suggestion name
+        let cleanName = drug.name;
+        DRUG_TYPES.forEach(t => {
+            if (cleanName.toUpperCase().startsWith(t.prefix)) {
+                cleanName = cleanName.slice(t.prefix.length).trim();
+            }
+        });
 
-        // Add prefix if not already present
-        let drugName = drug.name;
-        const hasAnyPrefix = DRUG_TYPES.some(t => drugName.toUpperCase().startsWith(t.prefix));
-        if (!hasAnyPrefix && prefix) {
-            drugName = `${prefix}${drugName}`;
-        }
-
-        setNewDrugName(drugName);
+        setNewDrugName(cleanName);
         setShowDropdown(false);
 
         // If it's an existing saved drug, set it for editing
@@ -162,7 +149,15 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
     const handleSaveDrug = async () => {
         if (!newDrugName.trim()) return;
 
-        const normalizedName = newDrugName.trim().toUpperCase();
+        // Strip any manual prefixes typed by the user
+        let cleanName = newDrugName.trim();
+        DRUG_TYPES.forEach(t => {
+            if (cleanName.toUpperCase().startsWith(t.prefix)) {
+                cleanName = cleanName.slice(t.prefix.length).trim();
+            }
+        });
+
+        const normalizedName = cleanName.toUpperCase();
 
         // Check for duplicates (only if adding new, not editing)
         if (!editingDrug) {
@@ -411,8 +406,15 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => {
-                                                    setNewDrugName(drug.name);
-                                                    setNewDrugType(drug.drug_type || 'TAB');
+                                                    // Strip prefix for edit field
+                                                    let cleanName = drug.name;
+                                                    DRUG_TYPES.forEach(t => {
+                                                        if (cleanName.toUpperCase().startsWith(t.prefix)) {
+                                                            cleanName = cleanName.slice(t.prefix.length).trim();
+                                                        }
+                                                    });
+                                                    setNewDrugName(cleanName);
+                                                    setNewDrugType(drug.drug_type || '');
                                                     setEditingDrug(drug);
                                                     inputRef.current?.focus();
                                                 }}
