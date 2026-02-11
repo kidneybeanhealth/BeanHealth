@@ -86,7 +86,6 @@ const PrescriptionPage: React.FC = () => {
 
     // Drug Search States
     const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
-    const [referenceDrugs, setReferenceDrugs] = useState<ReferenceDrug[]>([]);
     const [showDrugDropdown, setShowDrugDropdown] = useState<number | null>(null);
     const [drugSearchQuery, setDrugSearchQuery] = useState('');
     const [showManageDrugsModal, setShowManageDrugsModal] = useState(false);
@@ -156,9 +155,8 @@ const PrescriptionPage: React.FC = () => {
                     setPatient(patData);
                 }
 
-                // Fetch Drugs (same as modal)
+                // Fetch Saved Drugs only
                 await fetchSavedDrugs(doctorId);
-                await fetchReferenceDrugs();
 
             } catch (err: any) {
                 console.error('Initialization error:', err);
@@ -172,15 +170,7 @@ const PrescriptionPage: React.FC = () => {
 
     // Combined drug options for search
     const allDrugOptions: DrugOption[] = [
-        ...savedDrugs.map(d => ({ id: d.id, name: d.name, drugType: d.drug_type, isReference: false })),
-        ...referenceDrugs.map(d => ({
-            id: d.id,
-            name: d.brand_name,
-            genericName: d.generic_name,
-            category: d.category,
-            drugType: d.category?.toUpperCase() === 'INJECTION' ? 'INJ' : d.category?.toUpperCase() === 'SYRUP' ? 'SYP' : d.category?.toUpperCase() === 'CAPSULE' ? 'CAP' : 'TAB',
-            isReference: true
-        }))
+        ...savedDrugs.map(d => ({ id: d.id, name: d.name, drugType: d.drug_type, isReference: false }))
     ];
 
     const filteredDrugs = allDrugOptions.filter(drug =>
@@ -197,13 +187,6 @@ const PrescriptionPage: React.FC = () => {
         setSavedDrugs(data || []);
     };
 
-    const fetchReferenceDrugs = async () => {
-        const { data } = await (supabase as any)
-            .from('reference_drugs')
-            .select('*')
-            .order('category', { ascending: true });
-        setReferenceDrugs(data || []);
-    };
 
     // Auto-populate logic (same as modal)
     useEffect(() => {

@@ -42,7 +42,6 @@ interface ManageDrugsModalProps {
 
 const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalId, onClose }) => {
     const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
-    const [referenceDrugs, setReferenceDrugs] = useState<ReferenceDrug[]>([]);
     const [newDrugName, setNewDrugName] = useState('');
     const [newDrugType, setNewDrugType] = useState('TAB');
     const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
@@ -68,16 +67,6 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
                 if (savedError) throw savedError;
                 setSavedDrugs(savedData || []);
-
-                // Fetch reference drugs (the 300+ master list)
-                const { data: refData, error: refError } = await supabase
-                    .from('reference_drugs' as any)
-                    .select('*')
-                    .order('brand_name', { ascending: true });
-
-                if (!refError && refData) {
-                    setReferenceDrugs(refData);
-                }
             } catch (err) {
                 console.error('Error fetching drugs:', err);
                 toast.error('Failed to load drugs');
@@ -88,26 +77,14 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
         fetchAllDrugs();
     }, [doctorId]);
 
-    // Combine saved drugs and reference drugs for autocomplete
+    // Combine saved drugs for autocomplete
     const allDrugOptions: DrugOption[] = [
-        // Reference drugs first (the 300+ master list)
-        ...referenceDrugs.map(d => ({
+        ...savedDrugs.map(d => ({
             id: d.id,
-            name: d.brand_name,
-            genericName: d.generic_name,
-            category: d.category,
-            isReference: true,
-            isSaved: savedDrugs.some(s => s.name.toUpperCase() === d.brand_name.toUpperCase())
-        })),
-        // Then doctor's saved drugs that aren't in reference list
-        ...savedDrugs
-            .filter(s => !referenceDrugs.some(r => r.brand_name.toUpperCase() === s.name.toUpperCase()))
-            .map(d => ({
-                id: d.id,
-                name: d.name,
-                isReference: false,
-                isSaved: true
-            }))
+            name: d.name,
+            isReference: false,
+            isSaved: true
+        }))
     ];
 
     // Filter drugs as user types
@@ -124,7 +101,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
             setFilteredDrugs([]);
             setShowDropdown(false);
         }
-    }, [newDrugName, savedDrugs, referenceDrugs, editingDrug]);
+    }, [newDrugName, savedDrugs, editingDrug]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -275,7 +252,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                     <div>
                         <h3 className="text-xl font-bold text-gray-900">Manage Saved Drugs</h3>
                         <p className="text-sm text-gray-500">
-                            {savedDrugs.length} saved • {referenceDrugs.length} in database
+                            {savedDrugs.length} saved
                         </p>
                     </div>
                     <button
@@ -309,8 +286,8 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                     key={type.value}
                                     onClick={() => handleTypeChange(type.value)}
                                     className={`px-3 py-2 text-xs font-bold transition-all flex flex-col items-center ${newDrugType === type.value
-                                            ? type.color + ' border-b-2'
-                                            : 'bg-white text-gray-400 hover:text-gray-600'
+                                        ? type.color + ' border-b-2'
+                                        : 'bg-white text-gray-400 hover:text-gray-600'
                                         }`}
                                     title={`Add ${type.prefix} prefix`}
                                 >
@@ -414,7 +391,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                 </svg>
                             </div>
                             <p className="text-gray-500 text-sm">No saved drugs yet</p>
-                            <p className="text-gray-400 text-xs mt-1">Search from {referenceDrugs.length} drugs above and add them</p>
+                            <p className="text-gray-400 text-xs mt-1">Add new drugs using the form above</p>
                         </div>
                     ) : (
                         <div className="space-y-2">

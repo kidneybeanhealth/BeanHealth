@@ -97,7 +97,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
   // Saved Drugs State
   const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
-  const [referenceDrugs, setReferenceDrugs] = useState<ReferenceDrug[]>([]);
   const [showDrugDropdown, setShowDrugDropdown] = useState<number | null>(null);
   const [drugSearchQuery, setDrugSearchQuery] = useState('');
   const [showManageDrugsModal, setShowManageDrugsModal] = useState(false);
@@ -163,10 +162,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch saved drugs and reference drugs on mount
   useEffect(() => {
     if (!readOnly) {
-      fetchReferenceDrugs();
       if (doctor?.id) {
         fetchSavedDrugs();
         fetchSavedDiagnoses();
@@ -200,23 +197,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
       setSavedDrugs(data || []);
     } catch (error) {
       console.error('Error fetching saved drugs:', error);
-    }
-  };
-
-  const fetchReferenceDrugs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('reference_drugs' as any)
-        .select('*')
-        .order('category', { ascending: true });
-
-      if (error) {
-        console.log('Reference drugs table not available yet:', error.message);
-        return;
-      }
-      setReferenceDrugs(data || []);
-    } catch (error) {
-      console.error('Error fetching reference drugs:', error);
     }
   };
 
@@ -316,22 +296,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     setDrugSearchQuery('');
   };
 
-  // Combine saved drugs and reference drugs for searching
+  // Combine saved drugs for searching
   const allDrugOptions: DrugOption[] = [
-    // Personal saved drugs first
+    // Personal saved drugs only
     ...savedDrugs.map(d => ({
       id: d.id,
       name: d.name,
       drugType: d.drug_type || 'TAB',
       isReference: false
-    })),
-    // Reference drugs (now with brand_name as primary)
-    ...referenceDrugs.map(d => ({
-      id: d.id,
-      name: d.brand_name,           // Brand name is now primary
-      genericName: d.generic_name,  // Generic name as secondary
-      category: d.category,
-      isReference: true
     }))
   ];
 
