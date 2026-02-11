@@ -308,56 +308,54 @@ const DoctorLogin: React.FC = () => {
     // Doctor List View
     return (
         <div
-            className="min-h-screen flex flex-col p-4 sm:p-8"
-            style={{
-                background: 'linear-gradient(135deg, #f8faf6 0%, #e8f5e0 50%, #f0f7ec 100%)'
-            }}
+            className="min-h-screen flex flex-col p-4 sm:p-8 bg-[#f9fbf8]"
         >
-            <div className="max-w-7xl mx-auto w-full">
-                <div className="flex flex-col items-center justify-center mb-10 sm:mb-16 animate-fade-in text-center w-full">
-                    <div className="w-20 h-20 sm:w-32 sm:h-32 flex-shrink-0 relative transition-transform duration-700 hover:scale-105 mb-6 sm:mb-8">
+            <div className="max-w-7xl mx-auto w-full relative z-10">
+                <div className="flex flex-col items-center justify-center mb-16 sm:mb-20 animate-fade-in text-center w-full">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 relative mb-8">
                         <img
                             src="/logo.png"
                             alt="BeanHealth Logo"
-                            className="w-full h-full object-contain drop-shadow-sm"
+                            className="w-full h-full object-contain"
                         />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-0 w-full max-w-2xl">
-                        <div className="sm:flex-1 flex justify-center sm:justify-end sm:pr-8">
-                            <div className="flex text-2xl sm:text-4xl font-black tracking-tight leading-none">
-                                <span className="text-[#3d2e2a]">Bean</span>
-                                <span className="text-secondary-500">Health</span>
+                    <div className="flex flex-col items-center">
+                        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-10">
+                            <div className="flex text-3xl sm:text-4xl font-black tracking-tight leading-none">
+                                <span className="text-gray-900">Bean</span>
+                                <span className="text-emerald-600">Health</span>
                             </div>
-                        </div>
-                        <div className="hidden sm:block h-10 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
-                        <div className="sm:flex-1 flex justify-center sm:justify-start sm:pl-8">
-                            <span className="text-[#3d2e2a] text-xl sm:text-3xl font-black leading-tight tracking-tight px-4 sm:px-0">
+                            <div className="hidden sm:block h-10 w-px bg-gray-300 shrink-0" />
+                            <span className="text-gray-800 text-2xl sm:text-3xl font-bold leading-tight tracking-tight">
                                 {displayName}
                             </span>
                         </div>
+                        <p className="mt-6 text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-[0.3em] uppercase">Medical Staff Access</p>
                     </div>
-                    <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-[0.3em] uppercase opacity-80 mt-6 sm:mt-8">Medical Staff Access</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6 mb-8 sm:mb-12 px-2">
-                    <div className="w-full">
-                        <button
-                            onClick={() => navigate('/enterprise-dashboard')}
-                            className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-4 sm:mb-6 transition-colors group"
-                        >
-                            <svg className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                            <span className="text-sm sm:font-medium">Back to Dashboard</span>
-                        </button>
-                        <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-gray-900 mb-1 sm:mb-2">
-                            Medical Staff
+                <div className="flex flex-col items-center mb-12 sm:mb-16 px-4">
+                    <div className="max-w-3xl w-full text-center">
+                        <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-gray-900 mb-3 leading-tight">
+                            Select Your Profile
                         </h2>
-                        <p className="text-base sm:text-lg text-gray-500 font-medium">
-                            Select your profile to access your dashboard.
+                        <p className="text-base sm:text-lg text-gray-500 font-medium max-w-xl mx-auto">
+                            Choose your profile to securely access your clinical workspace.
                         </p>
                     </div>
+                </div>
+
+                <div className="mb-10 px-4 flex justify-center">
+                    <button
+                        onClick={() => navigate('/enterprise-dashboard')}
+                        className="flex items-center gap-2 px-6 py-2 text-gray-400 hover:text-gray-600 transition-colors group"
+                    >
+                        <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        <span className="text-sm font-semibold">Back to Dashboard</span>
+                    </button>
                 </div>
 
                 {loading ? (
@@ -377,33 +375,40 @@ const DoctorLogin: React.FC = () => {
                         <p className="text-gray-500 font-medium">Add doctors to your hospital to get started.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="flex flex-wrap justify-center gap-8 px-4 pb-20">
                         {doctors.map((doctor) => (
                             <button
                                 key={doctor.id}
                                 onClick={() => handleDoctorClick(doctor)}
-                                className="group relative flex flex-col items-center p-6 sm:p-8 bg-white/80 backdrop-blur-sm rounded-[1.5rem] sm:rounded-[2rem] border border-white/60 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-500 ease-out text-center focus:outline-none focus:ring-4 focus:ring-primary-500/20"
+                                className="group relative flex flex-col items-center w-full sm:w-[280px] p-8 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 text-center focus:outline-none"
                             >
-                                <div className="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-6 relative">
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-primary-100 to-primary-50 rounded-full scale-90 group-hover:scale-110 transition-transform duration-500 ease-out opacity-60" />
-                                    <div className="relative w-full h-full rounded-full overflow-hidden border-[3px] sm:border-[4px] border-white shadow-sm flex items-center justify-center bg-gray-50 text-xl sm:text-2xl font-bold text-gray-900 group-hover:border-primary-50 transition-colors duration-300">
+                                <div className="w-24 h-24 mb-6 relative">
+                                    <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-gray-50 flex items-center justify-center bg-gray-50 ring-4 ring-gray-50/50">
                                         {doctor.avatar_url ? (
                                             <img src={doctor.avatar_url} alt={doctor.name} className="w-full h-full object-cover" />
                                         ) : (
-                                            <span className="text-2xl sm:text-3xl text-gray-800">
-                                                {getDoctorInitials(doctor.name)}
-                                            </span>
+                                            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                                <span className="text-2xl font-bold text-gray-400">
+                                                    {getDoctorInitials(doctor.name)}
+                                                </span>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
 
-                                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 tracking-tight group-hover:text-primary-700 transition-colors line-clamp-1">{formatDoctorName(doctor.name)}</h3>
-                                <p className="text-[10px] sm:text-sm font-medium text-gray-500 mb-6 sm:mb-8 uppercase tracking-wider">{doctor.specialty || 'GENERAL MEDICINE'}</p>
+                                <div className="w-full mb-6">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-1 tracking-tight">
+                                        {formatDoctorName(doctor.name)}
+                                    </h3>
+                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                        {doctor.specialty || 'GENERAL MEDICINE'}
+                                    </p>
+                                </div>
 
-                                <div className="mt-auto pointer-events-none w-full">
-                                    <span className="inline-flex w-full items-center justify-center px-4 sm:px-6 py-2 sm:py-2.5 bg-gray-50 text-gray-900 text-xs sm:text-sm font-bold rounded-xl sm:rounded-full group-hover:bg-primary-600 group-hover:text-white transition-all duration-300 shadow-sm">
+                                <div className="mt-auto w-full">
+                                    <div className="w-full py-3 bg-gray-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest group-hover:bg-emerald-600 transition-colors">
                                         Access Dashboard
-                                    </span>
+                                    </div>
                                 </div>
                             </button>
                         ))}
