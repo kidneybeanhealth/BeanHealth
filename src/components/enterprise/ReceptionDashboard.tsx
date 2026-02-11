@@ -928,7 +928,7 @@ const ReceptionDashboard: React.FC = () => {
                             ) : (
                                 <div>
                                     {/* Table Header */}
-                                    <div className="grid grid-cols-[3rem_1fr_4rem_7rem_6rem_8rem_4rem_2.5rem] gap-2 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
+                                    <div className="grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_10rem_3rem_2rem] gap-1 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
                                         <span>#</span>
                                         <span>Patient Name</span>
                                         <span>Age</span>
@@ -948,7 +948,7 @@ const ReceptionDashboard: React.FC = () => {
                                                 <div key={patient.id}>
                                                     {/* Patient Row */}
                                                     <div
-                                                        className={`grid grid-cols-[3rem_1fr_4rem_7rem_6rem_8rem_4rem_2.5rem] gap-2 px-6 py-4 cursor-pointer transition-all duration-150 items-center ${expandedPatientId === patient.id ? 'bg-orange-50/60 border-l-4 border-l-orange-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
+                                                        className={`grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_10rem_3rem_2rem] gap-1 px-6 py-4 cursor-pointer transition-all duration-150 items-center ${expandedPatientId === patient.id ? 'bg-orange-50/60 border-l-4 border-l-orange-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
                                                         onClick={() => setExpandedPatientId(expandedPatientId === patient.id ? null : patient.id)}
                                                     >
                                                         {/* S.No */}
@@ -974,10 +974,10 @@ const ReceptionDashboard: React.FC = () => {
                                                         <span className="text-sm text-gray-700 font-mono">{patient.phone || '—'}</span>
 
                                                         {/* MR # */}
-                                                        <span className="text-sm text-gray-700 font-medium">{patient.mr_number || '—'}</span>
+                                                        <span className="text-xs text-gray-700 font-medium truncate min-w-0" title={patient.mr_number || ''}>{patient.mr_number || '—'}</span>
 
                                                         {/* BH ID */}
-                                                        <span className="text-xs text-gray-500 font-mono truncate">{patient.beanhealth_id || '—'}</span>
+                                                        <span className="text-xs text-gray-500 font-mono truncate min-w-0" title={patient.beanhealth_id || ''}>{patient.beanhealth_id || '—'}</span>
 
                                                         {/* Visits */}
                                                         <span className="text-sm font-semibold text-orange-600">{patient.prescriptions?.length || 0}</span>
@@ -1054,539 +1054,539 @@ const ReceptionDashboard: React.FC = () => {
                                 </div>
                             )}
                         </>
-                            ) : queue.length === 0 ? (
-                            <div className="p-20 text-center">
-                                <p className="text-gray-700 font-medium">No records found</p>
-                            </div>
-                            ) : (
-                            <div className="divide-y divide-gray-50">
-                                {queue
-                                    .filter(item => activeTab === 'queue' ? (item.status === 'pending' || item.status === 'in_progress') : (item.status === 'completed' || item.status === 'cancelled'))
-                                    .map((item) => (
-                                        <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
-                                            <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
-                                                <div className="w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2 shrink-0">
-                                                    {item.patient?.token_number || 'N/A'}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <h4 className="font-bold text-gray-900 truncate pr-2">{item.patient?.name}</h4>
-                                                    <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
-                                                        <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                                                        {item.patient?.beanhealth_id && (
-                                                            <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                                                                {item.patient.beanhealth_id}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
+                    ) : queue.length === 0 ? (
+                        <div className="p-20 text-center">
+                            <p className="text-gray-700 font-medium">No records found</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-50">
+                            {queue
+                                .filter(item => activeTab === 'queue' ? (item.status === 'pending' || item.status === 'in_progress') : (item.status === 'completed' || item.status === 'cancelled'))
+                                .map((item) => (
+                                    <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
+                                        <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
+                                            <div className="w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2 shrink-0">
+                                                {item.patient?.token_number || 'N/A'}
                                             </div>
-
-                                            <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pl-[4.5rem] sm:pl-0">
-                                                {/* Reprint Token Button */}
-                                                <button
-                                                    onClick={() => handleReprintFromQueue(item)}
-                                                    disabled={!printerConnected}
-                                                    className={`p-2 rounded-xl border transition-all ${printerConnected
-                                                        ? 'bg-white text-gray-500 border-gray-200 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50'
-                                                        : 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
-                                                        }`}
-                                                    title={printerConnected ? 'Reprint Token' : 'Connect printer first'}
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                    </svg>
-                                                </button>
-                                                <div className="text-right">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase
-                                                    ${item.status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                                                            item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                                                        {item.status.replace('_', ' ')}
-                                                    </span>
-                                                    <p className="font-medium text-xs sm:text-sm text-gray-800 mt-1">{formatDoctorName(item.doctor?.name || '')}</p>
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-gray-900 truncate pr-2">{item.patient?.name}</h4>
+                                                <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
+                                                    <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                                    {item.patient?.beanhealth_id && (
+                                                        <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                            {item.patient.beanhealth_id}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
-                                {activeTab === 'queue' && queue.filter(i => i.status === 'pending' || i.status === 'in_progress').length === 0 && (
-                                    <div className="p-16 text-center text-gray-700">All caught up! No active patients in queue.</div>
-                                )}
-                            </div>
-                    )}
-                        </div>
-                </div>
 
-                {/* Walk-In Modal */}
-                {showWalkInModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 overflow-y-auto max-h-[90vh]">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-bold text-gray-900">Patient Registration</h3>
-                                <button onClick={handleCloseWalkInModal} className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
+                                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pl-[4.5rem] sm:pl-0">
+                                            {/* Reprint Token Button */}
+                                            <button
+                                                onClick={() => handleReprintFromQueue(item)}
+                                                disabled={!printerConnected}
+                                                className={`p-2 rounded-xl border transition-all ${printerConnected
+                                                    ? 'bg-white text-gray-500 border-gray-200 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50'
+                                                    : 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
+                                                    }`}
+                                                title={printerConnected ? 'Reprint Token' : 'Connect printer first'}
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                </svg>
+                                            </button>
+                                            <div className="text-right">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase
+                                                    ${item.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                                                        item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                                    {item.status.replace('_', ' ')}
+                                                </span>
+                                                <p className="font-medium text-xs sm:text-sm text-gray-800 mt-1">{formatDoctorName(item.doctor?.name || '')}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            {activeTab === 'queue' && queue.filter(i => i.status === 'pending' || i.status === 'in_progress').length === 0 && (
+                                <div className="p-16 text-center text-gray-700">All caught up! No active patients in queue.</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Walk-In Modal */}
+            {showWalkInModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 overflow-y-auto max-h-[90vh]">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">Patient Registration</h3>
+                            <button onClick={handleCloseWalkInModal} className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleWalkInSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Token #</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.tokenNumber}
+                                        onChange={e => setWalkInForm({ ...walkInForm, tokenNumber: e.target.value })}
+                                        placeholder="T-101"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">MR. NO</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.mrNumber}
+                                        onChange={e => setWalkInForm({ ...walkInForm, mrNumber: e.target.value })}
+                                        placeholder="MR-12345"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Age</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.age}
+                                        onChange={e => setWalkInForm({ ...walkInForm, age: e.target.value })}
+                                        placeholder="Years"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Full Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.name}
+                                        onChange={e => setWalkInForm({ ...walkInForm, name: e.target.value })}
+                                        placeholder="Patient Name"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Father/Husband Name</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                    value={walkInForm.fatherHusbandName}
+                                    onChange={e => setWalkInForm({ ...walkInForm, fatherHusbandName: e.target.value })}
+                                    placeholder="Father or Husband Name"
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Place</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.place}
+                                        onChange={e => setWalkInForm({ ...walkInForm, place: e.target.value })}
+                                        placeholder="City/Town"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
+                                    <div className="relative">
+                                        <input
+                                            type="tel"
+                                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900 ${bhidMatch ? 'border-green-400 bg-green-50/30' : 'border-gray-200'
+                                                }`}
+                                            value={walkInForm.phone}
+                                            onChange={e => {
+                                                setWalkInForm({ ...walkInForm, phone: e.target.value });
+                                                handlePhoneLookup(e.target.value);
+                                            }}
+                                            placeholder="Phone Number"
+                                        />
+                                        {isSearchingBhid && (
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                                            </div>
+                                        )}
+                                        {bhidMatch && (
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* BeanHealth ID Match Banner */}
+                            {bhidMatch && (
+                                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
+                                    <div className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold text-green-800">BeanHealth Patient Found!</p>
+                                        <p className="text-xs text-green-700 truncate">
+                                            {bhidMatch.name} · <span className="font-mono font-bold">{bhidMatch.beanhealthId}</span>
+                                        </p>
+                                    </div>
+                                    <span className="px-2 py-1 bg-green-200/60 text-green-800 text-[10px] font-bold rounded-full uppercase tracking-wide flex-shrink-0">
+                                        Auto-Link
+                                    </span>
+                                </div>
+                            )}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Department</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                    value={walkInForm.department}
+                                    onChange={e => setWalkInForm({ ...walkInForm, department: e.target.value })}
+                                    placeholder="e.g. Cardiology"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Consulting Doctor</label>
+                                <select
+                                    required
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                    value={walkInForm.doctorId}
+                                    onChange={e => setWalkInForm({ ...walkInForm, doctorId: e.target.value })}
+                                >
+                                    <option value="">Select Physician</option>
+                                    {doctors.map(doc => (
+                                        <option key={doc.id} value={doc.id}>{doc.name} - {doc.specialty}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleCloseWalkInModal}
+                                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg transition-colors"
+                                >
+                                    Create Token
                                 </button>
                             </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
-                            <form onSubmit={handleWalkInSubmit} className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Token #</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                            value={walkInForm.tokenNumber}
-                                            onChange={e => setWalkInForm({ ...walkInForm, tokenNumber: e.target.value })}
-                                            placeholder="T-101"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">MR. NO</label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                            value={walkInForm.mrNumber}
-                                            onChange={e => setWalkInForm({ ...walkInForm, mrNumber: e.target.value })}
-                                            placeholder="MR-12345"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Age</label>
-                                        <input
-                                            type="number"
-                                            required
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                            value={walkInForm.age}
-                                            onChange={e => setWalkInForm({ ...walkInForm, age: e.target.value })}
-                                            placeholder="Years"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Full Name</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                            value={walkInForm.name}
-                                            onChange={e => setWalkInForm({ ...walkInForm, name: e.target.value })}
-                                            placeholder="Patient Name"
-                                        />
-                                    </div>
+
+
+            {/* View Patient Details Modal */}
+            {showDetailsModal && selectedPatientDetails && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-scale-in">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-xl font-bold text-gray-900">Patient Details</h3>
+                            <button
+                                onClick={() => setShowDetailsModal(false)}
+                                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase">Token Number</label>
+                                    <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.token_number || '--'}</p>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Father/Husband Name</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                        value={walkInForm.fatherHusbandName}
-                                        onChange={e => setWalkInForm({ ...walkInForm, fatherHusbandName: e.target.value })}
-                                        placeholder="Father or Husband Name"
-                                    />
+                                    <label className="text-xs font-semibold text-gray-500 uppercase">MR. NO</label>
+                                    <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.mr_number || '--'}</p>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Place</label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                            value={walkInForm.place}
-                                            onChange={e => setWalkInForm({ ...walkInForm, place: e.target.value })}
-                                            placeholder="City/Town"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
-                                        <div className="relative">
-                                            <input
-                                                type="tel"
-                                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900 ${bhidMatch ? 'border-green-400 bg-green-50/30' : 'border-gray-200'
-                                                    }`}
-                                                value={walkInForm.phone}
-                                                onChange={e => {
-                                                    setWalkInForm({ ...walkInForm, phone: e.target.value });
-                                                    handlePhoneLookup(e.target.value);
-                                                }}
-                                                placeholder="Phone Number"
-                                            />
-                                            {isSearchingBhid && (
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                    <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                                                </div>
-                                            )}
-                                            {bhidMatch && (
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                    </svg>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                            </div>
 
-                                {/* BeanHealth ID Match Banner */}
-                                {bhidMatch && (
-                                    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
-                                        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                            </svg>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-green-800">BeanHealth Patient Found!</p>
-                                            <p className="text-xs text-green-700 truncate">
-                                                {bhidMatch.name} · <span className="font-mono font-bold">{bhidMatch.beanhealthId}</span>
-                                            </p>
-                                        </div>
-                                        <span className="px-2 py-1 bg-green-200/60 text-green-800 text-[10px] font-bold rounded-full uppercase tracking-wide flex-shrink-0">
-                                            Auto-Link
-                                        </span>
-                                    </div>
-                                )}
+                            {selectedPatientDetails.beanhealth_id && (
+                                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[10px] font-semibold text-gray-400 uppercase">BH ID</span>
+                                    <span className="text-xs font-mono font-medium text-gray-500">{selectedPatientDetails.beanhealth_id}</span>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase">Patient Name</label>
+                                <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.name}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Department</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                        value={walkInForm.department}
-                                        onChange={e => setWalkInForm({ ...walkInForm, department: e.target.value })}
-                                        placeholder="e.g. Cardiology"
-                                    />
+                                    <label className="text-xs font-semibold text-gray-500 uppercase">Age</label>
+                                    <p className="font-medium text-gray-900">{selectedPatientDetails.age ? `${selectedPatientDetails.age} Years` : '--'}</p>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Consulting Doctor</label>
-                                    <select
-                                        required
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                        value={walkInForm.doctorId}
-                                        onChange={e => setWalkInForm({ ...walkInForm, doctorId: e.target.value })}
-                                    >
-                                        <option value="">Select Physician</option>
-                                        {doctors.map(doc => (
-                                            <option key={doc.id} value={doc.id}>{doc.name} - {doc.specialty}</option>
-                                        ))}
-                                    </select>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase">Phone</label>
+                                    <p className="font-medium text-gray-900">{selectedPatientDetails.phone || '--'}</p>
                                 </div>
+                            </div>
 
-                                <div className="pt-4 flex gap-3">
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase">Father/Husband Name</label>
+                                <p className="font-medium text-gray-900">{selectedPatientDetails.father_husband_name || '--'}</p>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase">Place</label>
+                                <p className="font-medium text-gray-900">{selectedPatientDetails.place || '--'}</p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100 bg-gray-50">
+                            <button
+                                onClick={() => setShowDetailsModal(false)}
+                                className="w-full py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-sm"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Settings Modal */}
+            {showSettingsModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-gray-900">Hospital Settings</h3>
+                            <button
+                                onClick={() => { setShowSettingsModal(false); setAvatarFile(null); }}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveSettings} className="p-6 space-y-5">
+                            {/* Avatar Upload */}
+                            <div className="flex flex-col items-center mb-6">
+                                <div className="relative group">
+                                    <div className="w-24 h-24 rounded-xl bg-primary-50 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                                        {avatarPreview ? (
+                                            <img src={avatarPreview} alt="Hospital Logo" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-2xl font-bold text-gray-600">{hospitalSettings.hospitalName?.charAt(0) || 'H'}</span>
+                                        )}
+                                    </div>
+                                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-xl">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Hospital Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900"
+                                    value={hospitalSettings.hospitalName}
+                                    onChange={e => setHospitalSettings({ ...hospitalSettings, hospitalName: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Address</label>
+                                <textarea
+                                    rows={2}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 resize-none"
+                                    value={hospitalSettings.address}
+                                    onChange={e => setHospitalSettings({ ...hospitalSettings, address: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Contact Number</label>
+                                <input
+                                    type="tel"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900"
+                                    value={hospitalSettings.contactNumber}
+                                    onChange={e => setHospitalSettings({ ...hospitalSettings, contactNumber: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900"
+                                    value={hospitalSettings.email}
+                                    onChange={e => setHospitalSettings({ ...hospitalSettings, email: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="pt-6 border-t border-gray-100 flex flex-col gap-3">
+                                <div className="flex gap-3">
                                     <button
                                         type="button"
-                                        onClick={handleCloseWalkInModal}
+                                        onClick={() => { setShowSettingsModal(false); setAvatarFile(null); }}
                                         className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg transition-colors"
+                                        disabled={isSavingSettings}
+                                        className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg transition-colors disabled:opacity-50"
                                     >
-                                        Create Token
+                                        {isSavingSettings ? 'Saving...' : 'Save Settings'}
                                     </button>
                                 </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
-
-
-                {/* View Patient Details Modal */}
-                {showDetailsModal && selectedPatientDetails && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-scale-in">
-                            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                <h3 className="text-xl font-bold text-gray-900">Patient Details</h3>
                                 <button
-                                    onClick={() => setShowDetailsModal(false)}
-                                    className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                                    type="button"
+                                    onClick={handleLogout}
+                                    className="w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2 border border-red-100"
                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-
-                            <div className="p-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-semibold text-gray-500 uppercase">Token Number</label>
-                                        <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.token_number || '--'}</p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-semibold text-gray-500 uppercase">MR. NO</label>
-                                        <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.mr_number || '--'}</p>
-                                    </div>
-                                </div>
-
-                                {selectedPatientDetails.beanhealth_id && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
-                                        <span className="text-[10px] font-semibold text-gray-400 uppercase">BH ID</span>
-                                        <span className="text-xs font-mono font-medium text-gray-500">{selectedPatientDetails.beanhealth_id}</span>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase">Patient Name</label>
-                                    <p className="font-bold text-gray-900 text-lg">{selectedPatientDetails.name}</p>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-semibold text-gray-500 uppercase">Age</label>
-                                        <p className="font-medium text-gray-900">{selectedPatientDetails.age ? `${selectedPatientDetails.age} Years` : '--'}</p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-semibold text-gray-500 uppercase">Phone</label>
-                                        <p className="font-medium text-gray-900">{selectedPatientDetails.phone || '--'}</p>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase">Father/Husband Name</label>
-                                    <p className="font-medium text-gray-900">{selectedPatientDetails.father_husband_name || '--'}</p>
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase">Place</label>
-                                    <p className="font-medium text-gray-900">{selectedPatientDetails.place || '--'}</p>
-                                </div>
-                            </div>
-
-                            <div className="p-6 border-t border-gray-100 bg-gray-50">
-                                <button
-                                    onClick={() => setShowDetailsModal(false)}
-                                    className="w-full py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-sm"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Settings Modal */}
-                {showSettingsModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-                            <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                                <h3 className="text-xl font-bold text-gray-900">Hospital Settings</h3>
-                                <button
-                                    onClick={() => { setShowSettingsModal(false); setAvatarFile(null); }}
-                                    className="text-gray-500 hover:text-gray-700"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                     </svg>
+                                    Sign Out from Portal
                                 </button>
                             </div>
-
-                            <form onSubmit={handleSaveSettings} className="p-6 space-y-5">
-                                {/* Avatar Upload */}
-                                <div className="flex flex-col items-center mb-6">
-                                    <div className="relative group">
-                                        <div className="w-24 h-24 rounded-xl bg-primary-50 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
-                                            {avatarPreview ? (
-                                                <img src={avatarPreview} alt="Hospital Logo" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className="text-2xl font-bold text-gray-600">{hospitalSettings.hospitalName?.charAt(0) || 'H'}</span>
-                                            )}
-                                        </div>
-                                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-xl">
-                                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
-                                            <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Hospital Name</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900"
-                                        value={hospitalSettings.hospitalName}
-                                        onChange={e => setHospitalSettings({ ...hospitalSettings, hospitalName: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Address</label>
-                                    <textarea
-                                        rows={2}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 resize-none"
-                                        value={hospitalSettings.address}
-                                        onChange={e => setHospitalSettings({ ...hospitalSettings, address: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Contact Number</label>
-                                    <input
-                                        type="tel"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900"
-                                        value={hospitalSettings.contactNumber}
-                                        onChange={e => setHospitalSettings({ ...hospitalSettings, contactNumber: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Email</label>
-                                    <input
-                                        type="email"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900"
-                                        value={hospitalSettings.email}
-                                        onChange={e => setHospitalSettings({ ...hospitalSettings, email: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="pt-6 border-t border-gray-100 flex flex-col gap-3">
-                                    <div className="flex gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => { setShowSettingsModal(false); setAvatarFile(null); }}
-                                            className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={isSavingSettings}
-                                            className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg transition-colors disabled:opacity-50"
-                                        >
-                                            {isSavingSettings ? 'Saving...' : 'Save Settings'}
-                                        </button>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleLogout}
-                                        className="w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2 border border-red-100"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                        </svg>
-                                        Sign Out from Portal
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                        </form>
                     </div>
-                )}
+                </div>
+            )}
 
-                {/* Print Token Dialog */}
-                {showPrintDialog && lastRegisteredPatient && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-scale-in">
-                            {/* Header */}
-                            <div className="px-6 py-5 bg-green-50 border-b border-green-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            {/* Print Token Dialog */}
+            {showPrintDialog && lastRegisteredPatient && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-scale-in">
+                        {/* Header */}
+                        <div className="px-6 py-5 bg-green-50 border-b border-green-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">Patient Registered!</h3>
+                                    <p className="text-sm text-gray-600">Token created successfully</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                            <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-inner">
+                                <PrinterPreview
+                                    data={{
+                                        tokenNumber: lastRegisteredPatient.tokenNumber,
+                                        patientName: lastRegisteredPatient.name,
+                                        mrNumber: lastRegisteredPatient.mrNumber,
+                                        doctorName: lastRegisteredPatient.doctorName,
+                                        department: lastRegisteredPatient.department,
+                                        date: new Date().toLocaleDateString('en-GB'),
+                                        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+                                        settings: printerSettings
+                                    }}
+                                    isSandbox={true}
+                                    onSettingsChange={handleSavePrinterSettings}
+                                    isSaving={isSavingPrinterSettings}
+                                />
+                            </div>
+
+                            <div className="bg-blue-50 p-3 rounded-lg flex items-start gap-2 border border-blue-100">
+                                <span className="text-blue-600 mt-0.5">ℹ️</span>
+                                <p className="text-[10px] text-blue-700 leading-tight">
+                                    Above is a live simulation of the 58mm thermal receipt. Verify the token spacing and layout before printing.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="px-6 pb-6 flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowPrintDialog(false);
+                                    setLastRegisteredPatient(null);
+                                }}
+                                className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+                            >
+                                Skip
+                            </button>
+                            <button
+                                onClick={handlePrintToken}
+                                disabled={isPrintingToken || !printerConnected}
+                                className={`flex-1 py-3 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all ${printerConnected
+                                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/25'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    }`}
+                            >
+                                {isPrintingToken ? (
+                                    <>
+                                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-900">Patient Registered!</h3>
-                                        <p className="text-sm text-gray-600">Token created successfully</p>
-                                    </div>
-                                </div>
-                            </div>
+                                        Printing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                        Print Token
+                                    </>
+                                )}
+                            </button>
+                        </div>
 
-                            {/* Content */}
-                            <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
-                                <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-inner">
-                                    <PrinterPreview
-                                        data={{
-                                            tokenNumber: lastRegisteredPatient.tokenNumber,
-                                            patientName: lastRegisteredPatient.name,
-                                            mrNumber: lastRegisteredPatient.mrNumber,
-                                            doctorName: lastRegisteredPatient.doctorName,
-                                            department: lastRegisteredPatient.department,
-                                            date: new Date().toLocaleDateString('en-GB'),
-                                            time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-                                            settings: printerSettings
-                                        }}
-                                        isSandbox={true}
-                                        onSettingsChange={handleSavePrinterSettings}
-                                        isSaving={isSavingPrinterSettings}
-                                    />
-                                </div>
-
-                                <div className="bg-blue-50 p-3 rounded-lg flex items-start gap-2 border border-blue-100">
-                                    <span className="text-blue-600 mt-0.5">ℹ️</span>
-                                    <p className="text-[10px] text-blue-700 leading-tight">
-                                        Above is a live simulation of the 58mm thermal receipt. Verify the token spacing and layout before printing.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="px-6 pb-6 flex gap-3">
+                        {!printerConnected && (
+                            <div className="px-6 pb-6 pt-0">
                                 <button
                                     onClick={() => {
                                         setShowPrintDialog(false);
-                                        setLastRegisteredPatient(null);
+                                        setShowPrinterSetup(true);
                                     }}
-                                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+                                    className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
                                 >
-                                    Skip
-                                </button>
-                                <button
-                                    onClick={handlePrintToken}
-                                    disabled={isPrintingToken || !printerConnected}
-                                    className={`flex-1 py-3 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all ${printerConnected
-                                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/25'
-                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                        }`}
-                                >
-                                    {isPrintingToken ? (
-                                        <>
-                                            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Printing...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                            </svg>
-                                            Print Token
-                                        </>
-                                    )}
+                                    Connect printer first →
                                 </button>
                             </div>
-
-                            {!printerConnected && (
-                                <div className="px-6 pb-6 pt-0">
-                                    <button
-                                        onClick={() => {
-                                            setShowPrintDialog(false);
-                                            setShowPrinterSetup(true);
-                                        }}
-                                        className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
-                                    >
-                                        Connect printer first →
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
-                )}
+                </div>
+            )}
 
-                {/* Printer Setup Modal */}
-                <PrinterSetupModal
-                    isOpen={showPrinterSetup}
-                    onClose={() => setShowPrinterSetup(false)}
-                    onConnected={() => setPrinterConnected(true)}
-                    settings={printerSettings}
-                    onSettingsChange={handleSavePrinterSettings}
-                    isSavingSettings={isSavingPrinterSettings}
-                />
-            </div>
-            );
+            {/* Printer Setup Modal */}
+            <PrinterSetupModal
+                isOpen={showPrinterSetup}
+                onClose={() => setShowPrinterSetup(false)}
+                onConnected={() => setPrinterConnected(true)}
+                settings={printerSettings}
+                onSettingsChange={handleSavePrinterSettings}
+                isSavingSettings={isSavingPrinterSettings}
+            />
+        </div>
+    );
 };
 
-            export default ReceptionDashboard;
+export default ReceptionDashboard;

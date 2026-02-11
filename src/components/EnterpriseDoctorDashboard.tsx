@@ -847,7 +847,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                             ) : (
                                 <div>
                                     {/* Table Header */}
-                                    <div className="grid grid-cols-[3rem_1fr_4rem_7rem_6rem_4rem_2.5rem] gap-2 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
+                                    <div className="grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_3rem_2rem] gap-1 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
                                         <span>#</span>
                                         <span>Patient Name</span>
                                         <span>Age</span>
@@ -865,7 +865,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                             return (
                                                 <div key={patient.id}>
                                                     <div
-                                                        className={`grid grid-cols-[3rem_1fr_4rem_7rem_6rem_4rem_2.5rem] gap-2 px-6 py-4 cursor-pointer transition-all duration-150 items-center ${expandedPatientId === patient.id ? 'bg-blue-50/60 border-l-4 border-l-blue-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
+                                                        className={`grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_3rem_2rem] gap-1 px-6 py-4 cursor-pointer transition-all duration-150 items-center ${expandedPatientId === patient.id ? 'bg-blue-50/60 border-l-4 border-l-blue-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
                                                         onClick={() => setExpandedPatientId(expandedPatientId === patient.id ? null : patient.id)}
                                                     >
                                                         <span className="text-xs text-gray-400 font-medium">{index + 1}</span>
@@ -881,7 +881,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
 
                                                         <span className="text-sm text-gray-700 font-mono">{patient.phone || '—'}</span>
 
-                                                        <span className="text-sm text-gray-700 font-medium">{patient.mr_number || '—'}</span>
+                                                        <span className="text-xs text-gray-700 font-medium truncate min-w-0" title={patient.mr_number || ''}>{patient.mr_number || '—'}</span>
 
                                                         <span className="text-sm font-semibold text-blue-600">{patient.prescriptions?.length || 0}</span>
 
