@@ -690,328 +690,333 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                     )}
 
                     {/* Medicine Table Box */}
-                    <div className={`border-2 border-black flex flex-col ${pageIndex < chunks.length - 1 ? 'flex-1 mb-1' : 'mb-4'}`}>
-                      <div className="text-center font-bold border-b border-black py-1 text-xs shrink-0">
-                        மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS
-                      </div>
+                    {chunk.length > 0 && (
+                      <div className={`border-2 border-black flex flex-col ${pageIndex < chunks.length - 1 ? 'flex-1 mb-1' : 'mb-4'}`}>
+                        <div className="text-center font-bold border-b border-black py-1 text-xs shrink-0">
+                          மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS
+                        </div>
 
-                      {/* Table Headers */}
-                      <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
-                        <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
-                          வ.எ<br />S.N
-                        </div>
-                        <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
-                          மருந்துக்கள் / DRUGS
-                        </div>
-                        <div className="w-[440px] shrink-0 flex flex-col">
-                          <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
-                          <div className="flex flex-1 items-stretch">
-                            <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                              <span>Qty</span>
-                              <span>எண்</span>
-                            </div>
-                            <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                              <span>Freq</span>
-                            </div>
-                            <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                              <span>M</span>
-                              <span>கா</span>
-                            </div>
-                            <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                              <span>N</span>
-                              <span>ம</span>
-                            </div>
-                            <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                              <span>Nt</span>
-                              <span>இ</span>
-                            </div>
-                            <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                              <span>Ex</span>
-                              <span>கூ</span>
-                            </div>
-                            <div className="w-10 py-1 text-[9px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                              <span>B/F</span>
-                              <span>A/F</span>
+                        {/* Table Headers */}
+                        <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
+                          <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
+                            வ.எ<br />S.N
+                          </div>
+                          <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
+                            மருந்துக்கள் / DRUGS
+                          </div>
+                          <div className="w-[440px] shrink-0 flex flex-col">
+                            <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
+                            <div className="flex flex-1 items-stretch">
+                              <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                                <span>Qty</span>
+                                <span>எண்</span>
+                              </div>
+                              <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                                <span>Freq</span>
+                              </div>
+                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                                <span>M</span>
+                                <span>கா</span>
+                              </div>
+                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                                <span>N</span>
+                                <span>ம</span>
+                              </div>
+                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                                <span>Nt</span>
+                                <span>இ</span>
+                              </div>
+                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                                <span>Ex</span>
+                                <span>கூ</span>
+                              </div>
+                              <div className="w-10 py-1 text-[9px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                                <span>B/F</span>
+                                <span>A/F</span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Table Body Container - Expand on first page if single page */}
-                      <div className={shouldExpand || isFirstPageMulti ? "flex-1 flex flex-col justify-between" : ""}>
+                        {/* Table Body Container - Expand on first page if single page */}
+                        <div className={shouldExpand || isFirstPageMulti ? "flex-1 flex flex-col justify-between" : ""}>
 
-                        {chunk.map((med, localIndex) => {
-                          // Calculate correct global index based on page
-                          const globalIndex = pageIndex === 0
-                            ? localIndex
-                            : FIRST_PAGE_ITEMS + (pageIndex - 1) * SUBSEQUENT_PAGE_ITEMS + localIndex;
+                          {chunk.map((med, localIndex) => {
+                            // Calculate correct global index based on page
+                            const globalIndex = pageIndex === 0
+                              ? localIndex
+                              : FIRST_PAGE_ITEMS + (pageIndex - 1) * SUBSEQUENT_PAGE_ITEMS + localIndex;
 
-                          const shouldExpandRow = shouldExpand;
+                            const shouldExpandRow = shouldExpand;
 
-                          return (
-                            <div
-                              key={globalIndex}
-                              className={`flex border-b border-black ${shouldExpandRow ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}
-                            >
-                              <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
-                                {globalIndex + 1}
-                              </div>
-                              <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
-                                <input
-                                  className="w-full outline-none font-bold uppercase text-xs"
-                                  placeholder="Type drug name..."
-                                  value={(med as any).drugType ? `${(med as any).drugType}. ${med.name}` : med.name}
-                                  onChange={e => {
-                                    const val = e.target.value;
-                                    const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, '');
-                                    updateMed(globalIndex, 'name', stripped);
-                                    if (stripped !== val) updateMed(globalIndex, 'drugType', '');
-                                    setDrugSearchQuery(stripped);
-                                    if (!readOnly && allDrugOptions.length > 0) {
-                                      setShowDrugDropdown(globalIndex);
-                                    }
-                                  }}
-                                  onFocus={() => {
-                                    if (!readOnly && allDrugOptions.length > 0) {
-                                      setShowDrugDropdown(globalIndex);
-                                      setDrugSearchQuery(med.name);
-                                    }
-                                  }}
-                                  readOnly={readOnly}
-                                />
-                                {/* Drug Dropdown */}
-                                {!readOnly && showDrugDropdown === globalIndex && filteredDrugs.length > 0 && (
-                                  <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
-                                    {filteredDrugs.map(drug => (
-                                      <button
-                                        key={drug.id}
-                                        type="button"
-                                        onClick={() => handleSelectDrug(globalIndex, drug)}
-                                        className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          {!drug.isReference && (
-                                            <span className="text-sm">{getDrugTypeIcon(drug.drugType)}</span>
-                                          )}
-                                          <span className="font-semibold text-gray-900 text-sm">{drug.name}</span>
-                                          {drug.isReference && drug.category && (
-                                            <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
-                                              {drug.category}
-                                            </span>
-                                          )}
-                                          {!drug.isReference && (
-                                            <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
-                                              {drug.drugType || 'TAB'}
-                                            </span>
-                                          )}
-                                        </div>
-                                        {drug.genericName && (
-                                          <div className="text-xs text-gray-500 mt-0.5">
-                                            {drug.genericName}
+                            return (
+                              <div
+                                key={globalIndex}
+                                className={`flex border-b border-black ${shouldExpandRow ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}
+                              >
+                                <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
+                                  {globalIndex + 1}
+                                </div>
+                                <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
+                                  <input
+                                    className="w-full outline-none font-bold uppercase text-xs"
+                                    placeholder="Type drug name..."
+                                    value={(med as any).drugType ? `${(med as any).drugType}. ${med.name}` : med.name}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, '');
+                                      updateMed(globalIndex, 'name', stripped);
+                                      if (stripped !== val) updateMed(globalIndex, 'drugType', '');
+                                      setDrugSearchQuery(stripped);
+                                      if (!readOnly && allDrugOptions.length > 0) {
+                                        setShowDrugDropdown(globalIndex);
+                                      }
+                                    }}
+                                    onFocus={() => {
+                                      if (!readOnly && allDrugOptions.length > 0) {
+                                        setShowDrugDropdown(globalIndex);
+                                        setDrugSearchQuery(med.name);
+                                      }
+                                    }}
+                                    readOnly={readOnly}
+                                  />
+                                  {!readOnly && showDrugDropdown === globalIndex && filteredDrugs.length > 0 && (
+                                    <div className="absolute left-0 top-full z-[100] w-[400px] bg-white border-2 border-black shadow-xl max-h-64 overflow-y-auto print:hidden">
+                                      {filteredDrugs.map(drug => (
+                                        <button
+                                          key={drug.id}
+                                          type="button"
+                                          className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
+                                          onMouseDown={() => {
+                                            const newMeds = [...medications];
+                                            (newMeds[globalIndex] as any).name = drug.name;
+                                            (newMeds[globalIndex] as any).drugType = drug.drugType || '';
+                                            setMedications(newMeds);
+                                            setShowDrugDropdown(null);
+                                            setDrugSearchQuery('');
+                                          }}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-bold text-sm text-gray-900">{drug.name}</span>
+                                            {drug.category && (
+                                              <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full font-medium uppercase">
+                                                {drug.category}
+                                              </span>
+                                            )}
+                                            {!drug.isReference && (
+                                              <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
+                                                {drug.drugType || 'TAB'}
+                                              </span>
+                                            )}
                                           </div>
-                                        )}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                                {/* Row Controls (Hidden in Print) */}
-                                <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white gap-1">
-                                  {/* Add row button - only on last medication */}
-                                  {!readOnly && globalIndex === medications.length - 1 && (
-                                    <button onClick={addRow} className="text-emerald-500 hover:text-emerald-700 font-bold text-lg px-1" title="Add medication">+</button>
-                                  )}
-                                  {medications.length > 1 && (
-                                    <button onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1" title="Remove">×</button>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="w-[440px] flex shrink-0 items-stretch">
-                                {/* Quantity */}
-                                <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                  <input className="w-full text-center outline-none text-xs bg-transparent font-bold" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
-                                </div>
-                                {/* Frequency - Searchable ComboBox */}
-                                <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
-                                  <input
-                                    className="w-full text-center outline-none text-[9px] font-bold uppercase bg-transparent"
-                                    value={med.dose}
-                                    onChange={e => { updateMed(globalIndex, 'dose', e.target.value.toUpperCase()); setDoseSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowDoseDropdown(globalIndex); }}
-                                    onFocus={() => !readOnly && (setShowDoseDropdown(globalIndex), setDoseSearchQuery(''))}
-                                    onBlur={() => setTimeout(() => setShowDoseDropdown(null), 150)}
-                                    readOnly={readOnly}
-                                    placeholder="--"
-                                  />
-                                  {!readOnly && showDoseDropdown === globalIndex && (
-                                    <div className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
-                                      {DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery)).map(opt => (
-                                        <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'dose', opt); setShowDoseDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-xs font-bold border-b border-gray-50 last:border-0">
-                                          {opt}
+                                          {drug.genericName && (
+                                            <div className="text-xs text-gray-500 mt-0.5">
+                                              {drug.genericName}
+                                            </div>
+                                          )}
                                         </button>
                                       ))}
                                     </div>
                                   )}
+                                  {/* Row Controls (Hidden in Print) */}
+                                  <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white gap-1">
+                                    {/* Add row button - only on last medication */}
+                                    {!readOnly && globalIndex === medications.length - 1 && (
+                                      <button onClick={addRow} className="text-emerald-500 hover:text-emerald-700 font-bold text-lg px-1" title="Add medication">+</button>
+                                    )}
+                                    {medications.length > 1 && (
+                                      <button onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1" title="Remove">×</button>
+                                    )}
+                                  </div>
                                 </div>
-                                {/* M dosage container - Split: Top time, Bottom value */}
-                                <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
-                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                <div className="w-[440px] flex shrink-0 items-stretch">
+                                  {/* Quantity */}
+                                  <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                    <input className="w-full text-center outline-none text-xs bg-transparent font-bold" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
+                                  </div>
+                                  {/* Frequency - Searchable ComboBox */}
+                                  <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
                                     <input
-                                      className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
-                                      placeholder=""
-                                      value={(med as any).morningTime || ''}
-                                      onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                      onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'morningTime' })}
-                                      onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                      className="w-full text-center outline-none text-[9px] font-bold uppercase bg-transparent"
+                                      value={med.dose}
+                                      onChange={e => { updateMed(globalIndex, 'dose', e.target.value.toUpperCase()); setDoseSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowDoseDropdown(globalIndex); }}
+                                      onFocus={() => !readOnly && (setShowDoseDropdown(globalIndex), setDoseSearchQuery(''))}
+                                      onBlur={() => setTimeout(() => setShowDoseDropdown(null), 150)}
                                       readOnly={readOnly}
+                                      placeholder="--"
                                     />
-                                    {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime' && (
-                                      <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                        {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                          <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'morningTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                            {t}
+                                    {!readOnly && showDoseDropdown === globalIndex && (
+                                      <div className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
+                                        {DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery)).map(opt => (
+                                          <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'dose', opt); setShowDoseDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-xs font-bold border-b border-gray-50 last:border-0">
+                                            {opt}
                                           </button>
                                         ))}
                                       </div>
                                     )}
                                   </div>
-                                  <div className="flex-1 flex items-center justify-center min-h-[18px]">
-                                    <textarea
-                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                      placeholder="0"
-                                      value={med.morning}
-                                      onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
-                                      readOnly={readOnly}
-                                      rows={1}
-                                    />
-                                  </div>
-                                </div>
-                                {/* N dosage container - Split: Top time, Bottom value */}
-                                <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
-                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
-                                    <input
-                                      className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
-                                      placeholder=""
-                                      value={(med as any).noonTime || ''}
-                                      onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                      onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'noonTime' })}
-                                      onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
-                                      readOnly={readOnly}
-                                    />
-                                    {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime' && (
-                                      <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                        {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                          <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'noonTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                            {t}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 flex items-center justify-center min-h-[18px]">
-                                    <textarea
-                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                      placeholder="0"
-                                      value={med.noon}
-                                      onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
-                                      readOnly={readOnly}
-                                      rows={1}
-                                    />
-                                  </div>
-                                </div>
-                                {/* Nt dosage container - Split: Top time, Bottom value */}
-                                <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
-                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
-                                    <input
-                                      className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
-                                      placeholder=""
-                                      value={(med as any).nightTime || ''}
-                                      onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                      onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'nightTime' })}
-                                      onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
-                                      readOnly={readOnly}
-                                    />
-                                    {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime' && (
-                                      <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                        {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                          <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'nightTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                            {t}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 flex items-center justify-center min-h-[18px]">
-                                    <textarea
-                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                      placeholder="0"
-                                      value={med.night}
-                                      onChange={e => updateMed(globalIndex, 'night', e.target.value)}
-                                      readOnly={readOnly}
-                                      rows={1}
-                                    />
-                                  </div>
-                                </div>
-                                {/* Ex dosage container - Split: Top time, Bottom value */}
-                                <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
-                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
-                                    <input
-                                      className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
-                                      placeholder=""
-                                      value={(med as any).extraTime || ''}
-                                      onChange={e => { updateMed(globalIndex, 'extraTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                      onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'extraTime' })}
-                                      onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
-                                      readOnly={readOnly}
-                                    />
-                                    {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'extraTime' && (
-                                      <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                        {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                          <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'extraTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                            {t}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 flex items-center justify-center min-h-[18px]">
-                                    <textarea
-                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                      placeholder="0"
-                                      value={(med as any).extra || ''}
-                                      onChange={e => updateMed(globalIndex, 'extra', e.target.value)}
-                                      readOnly={readOnly}
-                                      rows={1}
-                                    />
-                                  </div>
-                                </div>
-                                {/* Food Timing - Searchable Combobox */}
-                                <div className="w-10 flex items-center justify-center shrink-0 relative">
-                                  <input
-                                    className="w-full h-full text-center font-bold text-[8px] outline-none bg-transparent uppercase"
-                                    value={med.foodTiming}
-                                    onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
-                                    onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''))}
-                                    onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
-                                    readOnly={readOnly}
-                                    placeholder="A/F"
-                                  />
-                                  {!readOnly && showFoodTimingDropdown === globalIndex && (
-                                    <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
-                                      {FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery)).map(opt => (
-                                        <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-[10px] font-bold border-b border-gray-50 last:border-0">
-                                          {opt}
-                                        </button>
-                                      ))}
+                                  {/* M dosage container - Split: Top time, Bottom value */}
+                                  <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
+                                    <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                      <input
+                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        placeholder=""
+                                        value={(med as any).morningTime || ''}
+                                        onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value); setTimeSearchQuery(e.target.value); }}
+                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'morningTime' })}
+                                        onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        readOnly={readOnly}
+                                      />
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime' && (
+                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
+                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'morningTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
+                                              {t}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
+                                    <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                      <textarea
+                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                        placeholder="0"
+                                        value={med.morning}
+                                        onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
+                                        readOnly={readOnly}
+                                        rows={1}
+                                      />
+                                    </div>
+                                  </div>
+                                  {/* N dosage container - Split: Top time, Bottom value */}
+                                  <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
+                                    <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                      <input
+                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        placeholder=""
+                                        value={(med as any).noonTime || ''}
+                                        onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value); setTimeSearchQuery(e.target.value); }}
+                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'noonTime' })}
+                                        onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        readOnly={readOnly}
+                                      />
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime' && (
+                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
+                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'noonTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
+                                              {t}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                      <textarea
+                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                        placeholder="0"
+                                        value={med.noon}
+                                        onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
+                                        readOnly={readOnly}
+                                        rows={1}
+                                      />
+                                    </div>
+                                  </div>
+                                  {/* Nt dosage container - Split: Top time, Bottom value */}
+                                  <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
+                                    <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                      <input
+                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        placeholder=""
+                                        value={(med as any).nightTime || ''}
+                                        onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); }}
+                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'nightTime' })}
+                                        onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        readOnly={readOnly}
+                                      />
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime' && (
+                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
+                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'nightTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
+                                              {t}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                      <textarea
+                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                        placeholder="0"
+                                        value={med.night}
+                                        onChange={e => updateMed(globalIndex, 'night', e.target.value)}
+                                        readOnly={readOnly}
+                                        rows={1}
+                                      />
+                                    </div>
+                                  </div>
+                                  {/* Ex dosage container - Split: Top time, Bottom value */}
+                                  <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
+                                    <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                      <input
+                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        placeholder=""
+                                        value={(med as any).extraTime || ''}
+                                        onChange={e => { updateMed(globalIndex, 'extraTime', e.target.value); setTimeSearchQuery(e.target.value); }}
+                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'extraTime' })}
+                                        onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        readOnly={readOnly}
+                                      />
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'extraTime' && (
+                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
+                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'extraTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
+                                              {t}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                      <textarea
+                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                        placeholder="0"
+                                        value={(med as any).extra || ''}
+                                        onChange={e => updateMed(globalIndex, 'extra', e.target.value)}
+                                        readOnly={readOnly}
+                                        rows={1}
+                                      />
+                                    </div>
+                                  </div>
+                                  {/* Food Timing - Searchable Combobox */}
+                                  <div className="w-10 flex items-center justify-center shrink-0 relative">
+                                    <input
+                                      className="w-full h-full text-center font-bold text-[8px] outline-none bg-transparent uppercase"
+                                      value={med.foodTiming}
+                                      onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
+                                      onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''))}
+                                      onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
+                                      readOnly={readOnly}
+                                      placeholder="A/F"
+                                    />
+                                    {!readOnly && showFoodTimingDropdown === globalIndex && (
+                                      <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
+                                        {FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery)).map(opt => (
+                                          <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-[10px] font-bold border-b border-gray-50 last:border-0">
+                                            {opt}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
 
-                      {/* Empty space - Add button now on last row, Manage Drugs moved to dashboard */}
-                    </div>
+                        {/* Empty space - Add button now on last row, Manage Drugs moved to dashboard */}
+                      </div>
+                    )}
 
                     {/* Footer Section - ONLY on the final page */}
                     {isLastPage && (() => {

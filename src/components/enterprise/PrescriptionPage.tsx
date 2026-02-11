@@ -453,119 +453,124 @@ const PrescriptionPage: React.FC = () => {
                                         </div>
                                     )}
 
-                                    <div className={`border-2 border-black flex flex-col ${pageIndex < chunks.length - 1 ? 'flex-1 mb-1' : 'mb-4'}`}>
-                                        <div className="text-center font-bold border-b border-black py-1 text-xs shrink-0">மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS</div>
-                                        <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
-                                            <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">வ.எ<br />S.N</div>
-                                            <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">மருந்துக்கள் / DRUGS</div>
-                                            <div className="w-[420px] shrink-0 flex flex-col">
-                                                <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
-                                                <div className="flex flex-1 items-stretch">
-                                                    <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Qty / எண்</div>
-                                                    <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Freq</div>
-                                                    <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">M / கா</div>
-                                                    <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">N / ம</div>
-                                                    <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Nt / இ</div>
-                                                    <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Ex / கூ</div>
-                                                    <div className="w-14 py-1 text-[9px] flex flex-col items-center justify-center shrink-0">B/F A/F</div>
+                                    {/* Medicine Table Box */}
+                                    {chunk.length > 0 && (
+                                        <div className={`border-2 border-black flex flex-col ${pageIndex < chunks.length - 1 ? 'flex-1 mb-1' : 'mb-4'}`}>
+                                            <div className="text-center font-bold border-b border-black py-1 text-xs shrink-0">மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS</div>
+                                            <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
+                                                <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">வ.எ<br />S.N</div>
+                                                <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">மருந்துக்கள் / DRUGS</div>
+                                                <div className="w-[420px] shrink-0 flex flex-col">
+                                                    <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
+                                                    <div className="flex flex-1 items-stretch">
+                                                        <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Qty / எண்</div>
+                                                        <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Freq</div>
+                                                        <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">M / கா</div>
+                                                        <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">N / ம</div>
+                                                        <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Nt / இ</div>
+                                                        <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Ex / கூ</div>
+                                                        <div className="w-14 py-1 text-[9px] flex flex-col items-center justify-center shrink-0">B/F A/F</div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className={isFirstPage && chunk.length >= 5 ? "flex-1 flex flex-col justify-between" : ""}>
-                                            {chunk.map((med, localI) => {
-                                                const globalI = isFirstPage ? localI : FIRST_PAGE_ITEMS + (pageIndex - 1) * SUBSEQUENT_PAGE_ITEMS + localI;
-                                                return (
-                                                    <div key={globalI} className={`flex border-b border-black ${isFirstPage && chunk.length >= 5 ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}>
-                                                        <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">{globalI + 1}</div>
-                                                        <div className="flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center" ref={el => { dropdownRefs.current[globalI] = el; }}>
-                                                            <input className="w-full outline-none font-bold uppercase text-xs" value={med.drugType ? `${med.drugType}. ${med.name}` : med.name} onChange={e => { const val = e.target.value; const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, ''); updateMed(globalI, 'name', stripped); setDrugSearchQuery(stripped); !readOnly && setShowDrugDropdown(globalI); }} onFocus={() => !readOnly && (setShowDrugDropdown(globalI), setDrugSearchQuery(med.name))} readOnly={readOnly} />
-                                                            {!readOnly && showDrugDropdown === globalI && filteredDrugs.length > 0 && (
-                                                                <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
-                                                                    {filteredDrugs.map(drug => (
-                                                                        <button key={drug.id} onClick={() => { const newMeds = [...medications]; (newMeds[globalI] as any).name = drug.name; (newMeds[globalI] as any).drugType = drug.drugType || ''; setMedications(newMeds); setShowDrugDropdown(null); }} className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0">
-                                                                            <span className="font-semibold text-sm">{drug.name}</span>
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                            {!readOnly && (
-                                                                <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white">
-                                                                    <button onClick={() => removeRow(globalI)} className="text-red-500 hover:text-red-700 font-bold px-1">×</button>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="w-[420px] flex shrink-0 items-stretch">
-                                                            {/* Qty */}
-                                                            <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                                                <input className="w-full text-center outline-none text-xs font-bold" value={med.number} onChange={e => updateMed(globalI, 'number', e.target.value)} readOnly={readOnly} />
-                                                            </div>
-                                                            {/* Frequency - Searchable ComboBox */}
-                                                            <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
-                                                                <input
-                                                                    className="w-full text-center outline-none text-[9px] font-bold uppercase"
-                                                                    value={med.dose}
-                                                                    onChange={e => { updateMed(globalI, 'dose', e.target.value.toUpperCase()); setDoseSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowDoseDropdown(globalI); }}
-                                                                    onFocus={() => !readOnly && (setShowDoseDropdown(globalI), setDoseSearchQuery(''))}
-                                                                    onBlur={() => setTimeout(() => setShowDoseDropdown(null), 150)}
-                                                                    readOnly={readOnly}
-                                                                    placeholder="--"
-                                                                />
-                                                                {!readOnly && showDoseDropdown === globalI && (
-                                                                    <div className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
-                                                                        {DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery)).map(opt => (
-                                                                            <button key={opt} onMouseDown={() => { updateMed(globalI, 'dose', opt); setShowDoseDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-xs font-bold border-b border-gray-50 last:border-0">
-                                                                                {opt}
+                                            <div className={isFirstPage && chunk.length >= 5 ? "flex-1 flex flex-col justify-between" : ""}>
+                                                {chunk.map((med, localI) => {
+                                                    const globalI = isFirstPage ? localI : FIRST_PAGE_ITEMS + (pageIndex - 1) * SUBSEQUENT_PAGE_ITEMS + localI;
+                                                    return (
+                                                        <div key={globalI} className={`flex border-b border-black ${isFirstPage && chunk.length >= 5 ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}>
+                                                            <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">{globalI + 1}</div>
+                                                            <div className="flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center" ref={el => { dropdownRefs.current[globalI] = el; }}>
+                                                                <input className="w-full outline-none font-bold uppercase text-xs" value={med.drugType ? `${med.drugType}. ${med.name}` : med.name} onChange={e => { const val = e.target.value; const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, ''); updateMed(globalI, 'name', stripped); setDrugSearchQuery(stripped); !readOnly && setShowDrugDropdown(globalI); }} onFocus={() => !readOnly && (setShowDrugDropdown(globalI), setDrugSearchQuery(med.name))} readOnly={readOnly} />
+                                                                {!readOnly && showDrugDropdown === globalI && filteredDrugs.length > 0 && (
+                                                                    <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
+                                                                        {filteredDrugs.map(drug => (
+                                                                            <button key={drug.id} onClick={() => { const newMeds = [...medications]; (newMeds[globalI] as any).name = drug.name; (newMeds[globalI] as any).drugType = drug.drugType || ''; setMedications(newMeds); setShowDrugDropdown(null); }} className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0">
+                                                                                <span className="font-semibold text-sm">{drug.name}</span>
                                                                             </button>
                                                                         ))}
                                                                     </div>
                                                                 )}
-                                                            </div>
-                                                            {/* Morning */}
-                                                            <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
-                                                                <input className="w-full text-center text-xs font-bold outline-none" value={med.morning} onChange={e => updateMed(globalI, 'morning', e.target.value)} readOnly={readOnly} placeholder="0" />
-                                                            </div>
-                                                            {/* Noon */}
-                                                            <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
-                                                                <input className="w-full text-center text-xs font-bold outline-none" value={med.noon} onChange={e => updateMed(globalI, 'noon', e.target.value)} readOnly={readOnly} placeholder="0" />
-                                                            </div>
-                                                            {/* Night */}
-                                                            <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
-                                                                <input className="w-full text-center text-xs font-bold outline-none" value={med.night} onChange={e => updateMed(globalI, 'night', e.target.value)} readOnly={readOnly} placeholder="0" />
-                                                            </div>
-                                                            {/* Extra */}
-                                                            <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
-                                                                <input className="w-full text-center text-xs font-bold outline-none" value={(med as any).extra || ''} onChange={e => updateMed(globalI, 'extra', e.target.value)} readOnly={readOnly} placeholder="0" />
-                                                            </div>
-                                                            {/* Food Timing Dropdown */}
-                                                            <div className="w-14 flex items-center justify-center shrink-0 relative">
-                                                                <button
-                                                                    className="w-full text-center font-bold text-[9px] outline-none cursor-pointer hover:bg-gray-100 py-1"
-                                                                    onClick={() => !readOnly && setShowFoodTimingDropdown(showFoodTimingDropdown === globalI ? null : globalI)}
-                                                                    disabled={readOnly}
-                                                                >
-                                                                    {med.foodTiming || 'A/F'}
-                                                                </button>
-                                                                {!readOnly && showFoodTimingDropdown === globalI && (
-                                                                    <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden print:hidden">
-                                                                        {FOOD_TIMING_OPTIONS.map(opt => (
-                                                                            <button key={opt} onClick={() => { updateMed(globalI, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-[10px] font-bold border-b border-gray-50 last:border-0">
-                                                                                {opt}
-                                                                            </button>
-                                                                        ))}
+                                                                {!readOnly && (
+                                                                    <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white">
+                                                                        <button onClick={() => removeRow(globalI)} className="text-red-500 hover:text-red-700 font-bold px-1">×</button>
                                                                     </div>
                                                                 )}
                                                             </div>
+                                                            <div className="w-[420px] flex shrink-0 items-stretch">
+                                                                {/* Qty */}
+                                                                <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                                                    <input className="w-full text-center outline-none text-xs font-bold" value={med.number} onChange={e => updateMed(globalI, 'number', e.target.value)} readOnly={readOnly} />
+                                                                </div>
+                                                                {/* Frequency - Searchable ComboBox */}
+                                                                <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
+                                                                    <input
+                                                                        className="w-full text-center outline-none text-[9px] font-bold uppercase"
+                                                                        value={med.dose}
+                                                                        onChange={e => { updateMed(globalI, 'dose', e.target.value.toUpperCase()); setDoseSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowDoseDropdown(globalI); }}
+                                                                        onFocus={() => !readOnly && (setShowDoseDropdown(globalI), setDoseSearchQuery(''))}
+                                                                        onBlur={() => setTimeout(() => setShowDoseDropdown(null), 150)}
+                                                                        readOnly={readOnly}
+                                                                        placeholder="--"
+                                                                    />
+                                                                    {!readOnly && showDoseDropdown === globalI && (
+                                                                        <div className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
+                                                                            {DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery)).map(opt => (
+                                                                                <button key={opt} onMouseDown={() => { updateMed(globalI, 'dose', opt); setShowDoseDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-xs font-bold border-b border-gray-50 last:border-0">
+                                                                                    {opt}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                {/* Morning */}
+                                                                <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
+                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={med.morning} onChange={e => updateMed(globalI, 'morning', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                                </div>
+                                                                {/* Noon */}
+                                                                <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
+                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={med.noon} onChange={e => updateMed(globalI, 'noon', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                                </div>
+                                                                {/* Night */}
+                                                                <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
+                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={med.night} onChange={e => updateMed(globalI, 'night', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                                </div>
+                                                                {/* Extra */}
+                                                                <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
+                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={(med as any).extra || ''} onChange={e => updateMed(globalI, 'extra', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                                </div>
+                                                                {/* Food Timing Dropdown */}
+                                                                <div className="w-14 flex items-center justify-center shrink-0 relative">
+                                                                    <input
+                                                                        className="w-full text-center text-xs font-bold outline-none uppercase"
+                                                                        value={med.foodTiming}
+                                                                        onChange={e => { updateMed(globalI, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowFoodTimingDropdown(globalI); }}
+                                                                        onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalI), setFoodTimingSearchQuery(''))}
+                                                                        onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
+                                                                        readOnly={readOnly}
+                                                                        placeholder="A/F"
+                                                                    />
+                                                                    {!readOnly && showFoodTimingDropdown === globalI && (
+                                                                        <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
+                                                                            {FOOD_TIMING_OPTIONS.map(opt => (
+                                                                                <button key={opt} onClick={() => { updateMed(globalI, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-[10px] font-bold border-b border-gray-50 last:border-0">
+                                                                                    {opt}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        {isLastPage && !readOnly && (
-                                            <div className="p-2 text-center border-t border-dashed border-gray-300 print:hidden">
-                                                <button onClick={addRow} className="text-emerald-600 text-sm font-bold hover:underline">+ Add Medicine Row</button>
+                                                    );
+                                                })}
                                             </div>
-                                        )}
-                                    </div>
+                                            {isLastPage && !readOnly && (
+                                                <div className="p-2 text-center border-t border-dashed border-gray-300 print:hidden">
+                                                    <button onClick={addRow} className="text-emerald-600 text-sm font-bold hover:underline">+ Add Medicine Row</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {isLastPage && (
                                         <div className="mt-auto">
