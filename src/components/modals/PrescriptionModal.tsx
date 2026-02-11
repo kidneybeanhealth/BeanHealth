@@ -757,17 +757,26 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
                                   {globalIndex + 1}
                                 </div>
-                                <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
+                                <div className={`flex-1 border-r border-black px-1 relative min-w-0 flex items-center gap-1`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
+                                  <select
+                                    value={(med as any).drugType || 'TAB'}
+                                    onChange={e => updateMed(globalIndex, 'drugType', e.target.value)}
+                                    className="outline-none font-bold text-[10px] bg-transparent cursor-pointer appearance-none border-r border-gray-200 pr-1 shrink-0"
+                                    disabled={readOnly}
+                                  >
+                                    <option value="TAB">TAB.</option>
+                                    <option value="CAP">CAP.</option>
+                                    <option value="INJ">INJ.</option>
+                                    <option value="SYP">SYP.</option>
+                                  </select>
                                   <input
-                                    className="w-full outline-none font-bold uppercase text-xs"
-                                    placeholder="Type drug name..."
-                                    value={(med as any).drugType ? `${(med as any).drugType}. ${med.name}` : med.name}
+                                    className="flex-1 outline-none font-bold uppercase text-xs truncate"
+                                    placeholder="Drug name..."
+                                    value={med.name}
                                     onChange={e => {
                                       const val = e.target.value;
-                                      const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, '');
-                                      updateMed(globalIndex, 'name', stripped);
-                                      if (stripped !== val) updateMed(globalIndex, 'drugType', '');
-                                      setDrugSearchQuery(stripped);
+                                      updateMed(globalIndex, 'name', val);
+                                      setDrugSearchQuery(val);
                                       if (!readOnly && allDrugOptions.length > 0) {
                                         setShowDrugDropdown(globalIndex);
                                       }
@@ -801,11 +810,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                             {drug.category && (
                                               <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full font-medium uppercase">
                                                 {drug.category}
-                                              </span>
-                                            )}
-                                            {!drug.isReference && (
-                                              <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
-                                                {drug.drugType || 'TAB'}
                                               </span>
                                             )}
                                           </div>
