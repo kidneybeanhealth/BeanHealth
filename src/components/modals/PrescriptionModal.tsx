@@ -1010,39 +1010,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                       />
                                     </div>
                                   </div>
-                                  {/* Ex dosage container - Split: Top time, Bottom value */}
-                                  <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
-                                    <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
-                                      <input
-                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
-                                        placeholder=""
-                                        value={(med as any).extraTime || ''}
-                                        onChange={e => { updateMed(globalIndex, 'extraTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'extraTime' })}
-                                        onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
-                                        readOnly={readOnly}
-                                      />
-                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'extraTime' && (
-                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'extraTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                              {t}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex-1 flex items-center justify-center min-h-[18px]">
-                                      <textarea
-                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                        placeholder="0"
-                                        value={(med as any).extra || ''}
-                                        onChange={e => updateMed(globalIndex, 'extra', e.target.value)}
-                                        readOnly={readOnly}
-                                        rows={1}
-                                      />
-                                    </div>
-                                  </div>
                                   {/* Food Timing - Searchable Combobox */}
                                   <div className="w-8 flex items-center justify-center shrink-0 relative">
                                     <input
