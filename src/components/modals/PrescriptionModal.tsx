@@ -76,7 +76,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     fatherName: '',
     place: '',
     phone: '',
-    allergy: 'Nil',
+    allergy: '',
     diagnosis: '',
     reviewDate: '',
     testsToReview: '',
@@ -87,11 +87,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   });
 
   const [medications, setMedications] = useState([
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' }
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' }
   ]);
 
   // Time options for timing dropdowns (removed internal constant, uses outside one)
@@ -710,10 +710,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
                             மருந்துக்கள் / DRUGS
                           </div>
-                          <div className="w-[440px] shrink-0 flex flex-col">
+                          <div className="w-[446px] shrink-0 flex flex-col">
                             <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
                             <div className="flex flex-1 items-stretch">
-                              <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-28 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>Qty</span>
                                 <span>எண்</span>
                               </div>
@@ -736,7 +736,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 <span>Ex</span>
                                 <span>கூ</span>
                               </div>
-                              <div className="w-10 py-1 text-[9px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-8 py-1 text-[9px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>B/F</span>
                                 <span>A/F</span>
                               </div>
@@ -835,9 +835,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                     )}
                                   </div>
                                 </div>
-                                <div className="w-[440px] flex shrink-0 items-stretch">
+                                <div className="w-[446px] flex shrink-0 items-stretch">
                                   {/* Quantity */}
-                                  <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                  <div className="w-28 border-r border-black px-0.5 flex items-center justify-center shrink-0">
                                     <input className="w-full text-center outline-none text-xs bg-transparent font-bold" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
                                   </div>
                                   {/* Frequency - Searchable ComboBox */}
@@ -994,7 +994,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                     </div>
                                   </div>
                                   {/* Food Timing - Searchable Combobox */}
-                                  <div className="w-10 flex items-center justify-center shrink-0 relative">
+                                  <div className="w-8 flex items-center justify-center shrink-0 relative">
                                     <input
                                       className="w-full h-full text-center font-bold text-[8px] outline-none bg-transparent uppercase"
                                       value={med.foodTiming}
@@ -1002,7 +1002,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                       onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''))}
                                       onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
                                       readOnly={readOnly}
-                                      placeholder="A/F"
+                                      placeholder=""
                                     />
                                     {!readOnly && showFoodTimingDropdown === globalIndex && (
                                       <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">

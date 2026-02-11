@@ -71,7 +71,7 @@ const PrescriptionPage: React.FC = () => {
         fatherName: '',
         place: '',
         phone: '',
-        allergy: 'Nil',
+        allergy: '',
         diagnosis: '',
         reviewDate: '',
         testsToReview: '',
@@ -82,11 +82,11 @@ const PrescriptionPage: React.FC = () => {
     });
 
     const [medications, setMedications] = useState([
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' }
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' }
     ]);
 
     // Drug Search States
@@ -467,16 +467,16 @@ const PrescriptionPage: React.FC = () => {
                                             <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
                                                 <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">வ.எ<br />S.N</div>
                                                 <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">மருந்துக்கள் / DRUGS</div>
-                                                <div className="w-[420px] shrink-0 flex flex-col">
+                                                <div className="w-[422px] shrink-0 flex flex-col">
                                                     <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
                                                     <div className="flex flex-1 items-stretch">
-                                                        <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Qty / எண்</div>
+                                                        <div className="w-28 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Qty / எண்</div>
                                                         <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Freq</div>
                                                         <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">M / கா</div>
                                                         <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">N / ம</div>
                                                         <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Nt / இ</div>
                                                         <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Ex / கூ</div>
-                                                        <div className="w-14 py-1 text-[9px] flex flex-col items-center justify-center shrink-0">B/F A/F</div>
+                                                        <div className="w-8 py-1 text-[9px] flex flex-col items-center justify-center shrink-0 leading-tight">B/F A/F</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -503,9 +503,9 @@ const PrescriptionPage: React.FC = () => {
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <div className="w-[420px] flex shrink-0 items-stretch">
+                                                            <div className="w-[422px] flex shrink-0 items-stretch">
                                                                 {/* Qty */}
-                                                                <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                                                <div className="w-28 border-r border-black px-0.5 flex items-center justify-center shrink-0">
                                                                     <input className="w-full text-center outline-none text-xs font-bold" value={med.number} onChange={e => updateMed(globalI, 'number', e.target.value)} readOnly={readOnly} />
                                                                 </div>
                                                                 {/* Frequency - Searchable ComboBox */}
@@ -546,15 +546,15 @@ const PrescriptionPage: React.FC = () => {
                                                                     <input className="w-full text-center text-xs font-bold outline-none" value={(med as any).extra || ''} onChange={e => updateMed(globalI, 'extra', e.target.value)} readOnly={readOnly} placeholder="0" />
                                                                 </div>
                                                                 {/* Food Timing Dropdown */}
-                                                                <div className="w-14 flex items-center justify-center shrink-0 relative">
+                                                                <div className="w-8 flex items-center justify-center shrink-0 relative">
                                                                     <input
-                                                                        className="w-full text-center text-xs font-bold outline-none uppercase"
+                                                                        className="w-full text-center text-[8px] font-bold outline-none uppercase"
                                                                         value={med.foodTiming}
                                                                         onChange={e => { updateMed(globalI, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowFoodTimingDropdown(globalI); }}
                                                                         onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalI), setFoodTimingSearchQuery(''))}
                                                                         onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
                                                                         readOnly={readOnly}
-                                                                        placeholder="A/F"
+                                                                        placeholder=""
                                                                     />
                                                                     {!readOnly && showFoodTimingDropdown === globalI && (
                                                                         <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
