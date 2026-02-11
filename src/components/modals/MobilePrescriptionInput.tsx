@@ -192,30 +192,21 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                     <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
                                         {index + 1}
                                     </span>
-                                    <div className="flex-1 flex gap-1 relative">
-                                        <select
-                                            value={(med as any).drugType || 'TAB'}
-                                            onChange={e => updateMed(index, 'drugType', e.target.value)}
-                                            className="px-2 py-2 border border-gray-200 rounded-lg text-sm font-bold bg-white outline-none shrink-0 appearance-none"
-                                            disabled={readOnly}
-                                        >
-                                            <option value="TAB">TAB.</option>
-                                            <option value="CAP">CAP.</option>
-                                            <option value="INJ">INJ.</option>
-                                            <option value="SYP">SYP.</option>
-                                        </select>
+                                    <div className="flex-1 relative">
                                         <input
                                             type="text"
-                                            value={med.name}
+                                            value={(med as any).drugType ? `${(med as any).drugType}. ${med.name}` : med.name}
                                             onChange={e => {
                                                 const val = e.target.value;
-                                                updateMed(index, 'name', val);
-                                                setDrugSearchQuery(val);
+                                                const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, '');
+                                                updateMed(index, 'name', stripped);
+                                                if (stripped !== val) updateMed(index, 'drugType', '');
+                                                setDrugSearchQuery(stripped);
                                                 setShowDrugDropdown(index);
                                             }}
                                             onFocus={() => setShowDrugDropdown(index)}
                                             onBlur={() => setTimeout(() => setShowDrugDropdown(null), 200)}
-                                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none uppercase min-w-0"
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none uppercase"
                                             placeholder="Drug name..."
                                             readOnly={readOnly}
                                         />

@@ -192,6 +192,7 @@ export interface Database {
           access_code: string
           avatar_url: string | null
           is_active: boolean
+          signature_url: string | null
           created_at: string
         }
         Insert: {

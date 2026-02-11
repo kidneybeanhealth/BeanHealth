@@ -56,7 +56,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .from('hospital_prescriptions' as any)
                 .select(`
                     *,
-                    doctor:hospital_doctors(name, specialty),
+                    doctor:hospital_doctors(name, specialty, signature_url),
                     patient:hospital_patients(name, age, mr_number)
                 `)
                 .eq('hospital_id', hospitalId)
@@ -203,7 +203,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .from('hospital_prescriptions' as any)
                 .select(`
                     *,
-                    doctor:hospital_doctors(name, specialty),
+                    doctor:hospital_doctors(name, specialty, signature_url),
                     patient:hospital_patients(name, age, mr_number)
                 `)
                 .eq('id', id)

@@ -280,17 +280,22 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
                     <div className="flex gap-2">
                         {/* Drug Type Selector */}
-                        <select
-                            value={newDrugType}
-                            onChange={(e) => setNewDrugType(e.target.value)}
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm font-bold appearance-none cursor-pointer hover:bg-gray-50 transition-colors bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236B7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_0.25rem_center] bg-no-repeat pr-8"
-                        >
+                        <div className="flex bg-white rounded-lg border border-gray-200 overflow-hidden">
                             {DRUG_TYPES.map(type => (
-                                <option key={type.value} value={type.value}>
-                                    {type.label}
-                                </option>
+                                <button
+                                    key={type.value}
+                                    onClick={() => handleTypeChange(type.value)}
+                                    className={`px-3 py-2 text-xs font-bold transition-all flex flex-col items-center ${newDrugType === type.value
+                                        ? type.color + ' border-b-2'
+                                        : 'bg-white text-gray-400 hover:text-gray-600'
+                                        }`}
+                                    title={`Add ${type.prefix} prefix`}
+                                >
+                                    <span className="text-base">{type.icon}</span>
+                                    <span className="text-[10px]">{type.label}</span>
+                                </button>
                             ))}
-                        </select>
+                        </div>
 
                         {/* Drug Name Input with Autocomplete */}
                         <div className="flex-1 relative">
@@ -327,6 +332,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                             onClick={() => handleSelectSuggestion(drug)}
                                             className="w-full px-4 py-3 text-left hover:bg-purple-50 flex items-center gap-3 border-b border-gray-50 last:border-0 transition-colors"
                                         >
+                                            <span className="text-lg">💊</span>
                                             <div className="flex-1 min-w-0">
                                                 <div className="font-medium text-gray-900 text-sm truncate">{drug.name}</div>
                                                 {drug.genericName && (
