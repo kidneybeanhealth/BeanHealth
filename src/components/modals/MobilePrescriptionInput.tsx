@@ -337,20 +337,20 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* M / N / E / Nt Compact Grid */}
-                                    <div className="grid grid-cols-4 border border-gray-100 rounded-xl overflow-hidden bg-gray-50/50">
+                                    {/* M / N / E / Nt Compact Horizontal Row */}
+                                    <div className="flex border border-gray-100 rounded-xl overflow-hidden bg-gray-50/50 w-full">
                                         {[
-                                            { label: 'M', field: 'morning', timeField: 'morningTime', color: 'orange', bg: 'bg-orange-50/50', text: 'text-orange-600', border: 'border-orange-100', times: TIME_OPTIONS.filter(t => t.includes('AM') || t === '12 PM') },
-                                            { label: 'N', field: 'noon', timeField: 'noonTime', color: 'yellow', bg: 'bg-yellow-50/50', text: 'text-yellow-600', border: 'border-yellow-100', times: TIME_OPTIONS.filter(t => t.includes('PM') && !t.includes('9') && !t.includes('10') && !t.includes('11')) },
-                                            { label: 'E', field: 'evening', timeField: 'eveningTime', color: 'gray', bg: 'bg-gray-100/50', text: 'text-gray-600', border: 'border-gray-200', times: TIME_OPTIONS },
-                                            { label: 'Nt', field: 'night', timeField: 'nightTime', color: 'indigo', bg: 'bg-indigo-50/50', text: 'text-indigo-600', border: 'border-indigo-100', times: TIME_OPTIONS.filter(t => t.includes('PM')) }
+                                            { label: 'M', field: 'morning', timeField: 'morningTime', color: 'orange', bg: 'bg-orange-50/30', text: 'text-orange-600', border: 'border-orange-100', times: TIME_OPTIONS.filter(t => t.includes('AM') || t === '12 PM') },
+                                            { label: 'N', field: 'noon', timeField: 'noonTime', color: 'yellow', bg: 'bg-yellow-50/30', text: 'text-yellow-600', border: 'border-yellow-100', times: TIME_OPTIONS.filter(t => t.includes('PM') && !t.includes('9') && !t.includes('10') && !t.includes('11')) },
+                                            { label: 'E', field: 'evening', timeField: 'eveningTime', color: 'gray', bg: 'bg-gray-100/30', text: 'text-gray-600', border: 'border-gray-200', times: TIME_OPTIONS },
+                                            { label: 'Nt', field: 'night', timeField: 'nightTime', color: 'indigo', bg: 'bg-indigo-50/30', text: 'text-indigo-600', border: 'border-indigo-100', times: TIME_OPTIONS.filter(t => t.includes('PM')) }
                                         ].map((slot, i) => (
-                                            <div key={slot.label} className={`${slot.bg} ${i < 3 ? 'border-r border-gray-100' : ''} p-2 text-center flex flex-col gap-1.5`}>
-                                                <div className={`text-[10px] font-black ${slot.text} leading-none mb-0.5`}>{slot.label}</div>
+                                            <div key={slot.label} className={`${slot.bg} ${i < 3 ? 'border-r border-gray-100' : ''} flex-1 min-w-0 p-1.5 text-center flex flex-col gap-1`}>
+                                                <div className={`text-[9px] font-black ${slot.text} leading-none mb-0.5`}>{slot.label}</div>
                                                 <select
                                                     value={(med as any)[slot.timeField] || ''}
                                                     onChange={e => updateMed(index, slot.timeField, e.target.value)}
-                                                    className={`w-full py-1 text-[9px] border ${slot.border} rounded bg-white text-gray-500 outline-none`}
+                                                    className={`w-full py-0.5 px-0.5 text-[8px] border ${slot.border} rounded bg-white text-gray-500 outline-none h-6`}
                                                     disabled={readOnly}
                                                 >
                                                     <option value="">Time</option>
@@ -362,7 +362,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                                     type="text"
                                                     value={(med as any)[slot.field] || ''}
                                                     onChange={e => updateMed(index, slot.field, e.target.value)}
-                                                    className={`w-full py-1.5 border ${slot.border} rounded-lg text-center text-sm font-bold focus:ring-1 focus:ring-emerald-400 outline-none bg-white text-gray-900`}
+                                                    className={`w-full py-1 border ${slot.border} rounded-lg text-center text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none bg-white text-gray-900 h-8`}
                                                     placeholder="0"
                                                     readOnly={readOnly}
                                                 />
