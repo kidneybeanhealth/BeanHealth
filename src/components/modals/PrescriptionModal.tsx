@@ -77,15 +77,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     testsToReview: '',
     specialistToReview: '',
     saltIntake: '',
-    fluidIntake: ''
+    fluidIntake: '',
+    doctorNotes: ''
   });
 
   const [medications, setMedications] = useState([
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' }
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' }
   ]);
 
   // Time options for timing dropdowns (removed internal constant, uses outside one)
@@ -413,7 +414,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   // Medicine Handlers
   const addRow = () => {
     if (readOnly) return;
-    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', foodTiming: 'A/F' }]);
+    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' }]);
   };
 
   const removeRow = (index: number) => {
@@ -444,7 +445,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     if (readOnly) return;
     // Convert to pharmacy format
     const pharmacyMeds = medications.filter(m => m.name).map(m => {
-      const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}`;
+      const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}${m.extra ? '-' + m.extra : ''}`;
       const prefix = (m as any).drugType ? `${(m as any).drugType}. ` : '';
       return {
         name: `${prefix}${m.name}`,
@@ -457,7 +458,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     });
 
     // We pack the extra metadata (Place, Phone, etc) into the notes field so it persists without schema changes
-    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}`;
+    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
     if (onSendToPharmacy) onSendToPharmacy(pharmacyMeds, notes);
   };
 
@@ -725,28 +726,32 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                         <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
                           மருந்துக்கள் / DRUGS
                         </div>
-                        <div className="w-[380px] shrink-0 flex flex-col">
-                          <div className="border-b border-black py-1">அளவு - Dose</div>
+                        <div className="w-[440px] shrink-0 flex flex-col">
+                          <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
                           <div className="flex flex-1 items-stretch">
                             <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                              <span>Dose</span>
-                              <span>அளவு</span>
+                              <span>Frequency</span>
+                              <span>எத்தனை முறை</span>
                             </div>
                             <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>Qty</span>
                               <span>எண்</span>
                             </div>
-                            <div className="w-16 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>M</span>
                               <span>கா</span>
                             </div>
-                            <div className="w-16 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>N</span>
                               <span>ம</span>
                             </div>
-                            <div className="w-16 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                            <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>Nt</span>
                               <span>இ</span>
+                            </div>
+                            <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <span>Ex</span>
+                              <span>கூ</span>
                             </div>
                             <div className="w-10 py-1 text-[9px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>B/F</span>
@@ -844,8 +849,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                   )}
                                 </div>
                               </div>
-                              <div className="w-[380px] flex shrink-0 items-stretch">
-                                {/* Dose - Searchable ComboBox */}
+                              <div className="w-[440px] flex shrink-0 items-stretch">
+                                {/* Frequency - Searchable ComboBox */}
                                 <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
                                   <input
                                     className="w-full text-center outline-none text-[10px] font-bold uppercase bg-transparent"
@@ -870,19 +875,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0">
                                   <input className="w-full text-center outline-none text-xs bg-transparent" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
                                 </div>
-                                {/* M dosage container - Split: Top value, Bottom time */}
-                                <div className="w-16 border-r border-black flex flex-col shrink-0 relative">
-                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[18px]">
-                                    <textarea
-                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                      placeholder="0"
-                                      value={med.morning}
-                                      onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
-                                      readOnly={readOnly}
-                                      rows={1}
-                                    />
-                                  </div>
-                                  <div className="flex-1 flex items-center justify-center min-h-[16px] relative">
+                                {/* M dosage container - Split: Top time, Bottom value */}
+                                <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
+                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                     <input
                                       className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
                                       placeholder=""
@@ -902,20 +897,20 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                       </div>
                                     )}
                                   </div>
-                                </div>
-                                {/* N dosage container - Split: Top value, Bottom time */}
-                                <div className="w-16 border-r border-black flex flex-col shrink-0 relative">
-                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[18px]">
+                                  <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                     <textarea
                                       className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
                                       placeholder="0"
-                                      value={med.noon}
-                                      onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
+                                      value={med.morning}
+                                      onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
                                       readOnly={readOnly}
                                       rows={1}
                                     />
                                   </div>
-                                  <div className="flex-1 flex items-center justify-center min-h-[16px] relative">
+                                </div>
+                                {/* N dosage container - Split: Top time, Bottom value */}
+                                <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
+                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                     <input
                                       className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
                                       placeholder=""
@@ -935,20 +930,20 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                       </div>
                                     )}
                                   </div>
-                                </div>
-                                {/* Nt dosage container - Split: Top value, Bottom time */}
-                                <div className="w-16 border-r border-black flex flex-col shrink-0 relative">
-                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[18px]">
+                                  <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                     <textarea
                                       className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
                                       placeholder="0"
-                                      value={med.night}
-                                      onChange={e => updateMed(globalIndex, 'night', e.target.value)}
+                                      value={med.noon}
+                                      onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
                                       readOnly={readOnly}
                                       rows={1}
                                     />
                                   </div>
-                                  <div className="flex-1 flex items-center justify-center min-h-[16px] relative">
+                                </div>
+                                {/* Nt dosage container - Split: Top time, Bottom value */}
+                                <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
+                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                     <input
                                       className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
                                       placeholder=""
@@ -967,6 +962,49 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                         ))}
                                       </div>
                                     )}
+                                  </div>
+                                  <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                    <textarea
+                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                      placeholder="0"
+                                      value={med.night}
+                                      onChange={e => updateMed(globalIndex, 'night', e.target.value)}
+                                      readOnly={readOnly}
+                                      rows={1}
+                                    />
+                                  </div>
+                                </div>
+                                {/* Ex dosage container - Split: Top time, Bottom value */}
+                                <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
+                                  <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                    <input
+                                      className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                      placeholder=""
+                                      value={(med as any).extraTime || ''}
+                                      onChange={e => { updateMed(globalIndex, 'extraTime', e.target.value); setTimeSearchQuery(e.target.value); }}
+                                      onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'extraTime' })}
+                                      onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                      readOnly={readOnly}
+                                    />
+                                    {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'extraTime' && (
+                                      <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                        {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
+                                          <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'extraTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
+                                            {t}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                    <textarea
+                                      className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                      placeholder="0"
+                                      value={(med as any).extra || ''}
+                                      onChange={e => updateMed(globalIndex, 'extra', e.target.value)}
+                                      readOnly={readOnly}
+                                      rows={1}
+                                    />
                                   </div>
                                 </div>
                                 {/* Food Timing - Searchable Combobox */}
@@ -1013,6 +1051,20 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
                       return (
                         <div className="mt-auto">
+                          {/* Doctor Notes */}
+                          <div className="border-t border-black pt-1.5 mt-1 mb-1">
+                            <div className="flex gap-2 items-start text-[10px] font-bold">
+                              <span className="shrink-0 pt-0.5">குறிப்புகள் / Notes:</span>
+                              <textarea
+                                className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-[10px] resize-none leading-tight min-h-[56px]"
+                                value={formData.doctorNotes}
+                                onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value })}
+                                readOnly={readOnly}
+                                rows={4}
+                                placeholder="Additional notes..."
+                              />
+                            </div>
+                          </div>
                           {/* Salt and Fluid Intake - Parallel Layout */}
                           <div className="border-t border-black pt-2 mt-1 mb-2">
                             <p className="font-bold underline italic text-[10px] mb-1.5">To be specified / monitored:</p>

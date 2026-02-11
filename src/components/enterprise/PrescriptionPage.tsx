@@ -72,15 +72,16 @@ const PrescriptionPage: React.FC = () => {
         testsToReview: '',
         specialistToReview: '',
         saltIntake: '',
-        fluidIntake: ''
+        fluidIntake: '',
+        doctorNotes: ''
     });
 
     const [medications, setMedications] = useState([
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' }
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' }
     ]);
 
     // Drug Search States
@@ -256,7 +257,7 @@ const PrescriptionPage: React.FC = () => {
         const toastId = toast.loading('Sending to pharmacy...');
         try {
             const pharmacyMeds = medications.filter(m => m.name).map(m => {
-                const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}`;
+                const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}${m.extra ? '-' + m.extra : ''}`;
                 const prefix = m.drugType ? `${m.drugType}. ` : '';
                 return {
                     name: `${prefix}${m.name}`,
@@ -268,7 +269,7 @@ const PrescriptionPage: React.FC = () => {
                 };
             });
 
-            const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}`;
+            const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
 
             // This is handled by EnterpriseDoctorDashboard.handleSendToPharmacy usually
             // We need to implement it here or expose it.
@@ -320,7 +321,7 @@ const PrescriptionPage: React.FC = () => {
         }
     };
 
-    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', night: '', foodTiming: 'A/F', drugType: '' }]);
+    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' }]);
     const removeRow = (i: number) => !readOnly && medications.length > 1 && setMedications(medications.filter((_, idx) => idx !== i));
     const updateMed = (i: number, f: string, v: any) => {
         if (readOnly) return;
@@ -471,14 +472,15 @@ const PrescriptionPage: React.FC = () => {
                                         <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
                                             <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">வ.எ<br />S.N</div>
                                             <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">மருந்துக்கள் / DRUGS</div>
-                                            <div className="w-[360px] shrink-0 flex flex-col">
-                                                <div className="border-b border-black py-1">அளவு - Dose</div>
+                                            <div className="w-[420px] shrink-0 flex flex-col">
+                                                <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
                                                 <div className="flex flex-1 items-stretch">
-                                                    <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Dose / அளவு</div>
+                                                    <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Frequency / எத்தனை முறை</div>
                                                     <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Qty / எண்</div>
                                                     <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">M / கா</div>
                                                     <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">N / ம</div>
                                                     <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Nt / இ</div>
+                                                    <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Ex / கூ</div>
                                                     <div className="w-14 py-1 text-[9px] flex flex-col items-center justify-center shrink-0">B/F A/F</div>
                                                 </div>
                                             </div>
@@ -506,8 +508,8 @@ const PrescriptionPage: React.FC = () => {
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="w-[360px] flex shrink-0 items-stretch">
-                                                            {/* Dose - Searchable ComboBox */}
+                                                        <div className="w-[420px] flex shrink-0 items-stretch">
+                                                            {/* Frequency - Searchable ComboBox */}
                                                             <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
                                                                 <input
                                                                     className="w-full text-center outline-none text-[10px] font-bold uppercase"
@@ -544,6 +546,10 @@ const PrescriptionPage: React.FC = () => {
                                                             <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
                                                                 <input className="w-full text-center text-xs font-bold outline-none" value={med.night} onChange={e => updateMed(globalI, 'night', e.target.value)} readOnly={readOnly} placeholder="0" />
                                                             </div>
+                                                            {/* Extra */}
+                                                            <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
+                                                                <input className="w-full text-center text-xs font-bold outline-none" value={(med as any).extra || ''} onChange={e => updateMed(globalI, 'extra', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                            </div>
                                                             {/* Food Timing Dropdown */}
                                                             <div className="w-14 flex items-center justify-center shrink-0 relative">
                                                                 <button
@@ -577,6 +583,20 @@ const PrescriptionPage: React.FC = () => {
 
                                     {isLastPage && (
                                         <div className="mt-auto">
+                                            {/* Doctor Notes */}
+                                            <div className="border-t border-black pt-1.5 mt-1 mb-1">
+                                                <div className="flex gap-2 items-start text-[10px] font-bold">
+                                                    <span className="shrink-0 pt-0.5">குறிப்புகள் / Notes:</span>
+                                                    <textarea
+                                                        className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-[10px] resize-none leading-tight min-h-[56px]"
+                                                        value={formData.doctorNotes}
+                                                        onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value })}
+                                                        readOnly={readOnly}
+                                                        rows={4}
+                                                        placeholder="Additional notes..."
+                                                    />
+                                                </div>
+                                            </div>
                                             <div className="border-t border-black pt-2 mt-1 mb-2">
                                                 <p className="font-bold underline italic text-[10px] mb-1.5">To be specified / monitored:</p>
                                                 <div className="flex gap-6 text-[10px] font-bold">

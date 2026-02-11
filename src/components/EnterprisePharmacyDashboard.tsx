@@ -79,35 +79,79 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         }
     }, [hospitalId]);
 
-    // Past Records
-    const [pastRecords, setPastRecords] = useState<Prescription[]>([]);
+    // Patient Database State (Past Records tab)
+    const [pastRecords, setPastRecords] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [pastRecordsPage, setPastRecordsPage] = useState(0);
+    const [hasMorePastRecords, setHasMorePastRecords] = useState(true);
+    const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
+    const [pastRecordsTotal, setPastRecordsTotal] = useState(0);
+    const [expandedPatientId, setExpandedPatientId] = useState<string | null>(null);
+    const PAST_RECORDS_PER_PAGE = 50;
 
-    const fetchPastRecords = useCallback(async (isBackground = false) => {
+    // Helper: deduplicate prescriptions by patient
+    const groupPrescriptionsByPatient = (prescriptions: any[]) => {
+        const patientMap = new Map<string, any>();
+        for (const rx of prescriptions) {
+            const pid = rx.patient_id;
+            if (!patientMap.has(pid)) {
+                patientMap.set(pid, {
+                    ...rx.patient,
+                    prescriptions: []
+                });
+            }
+            patientMap.get(pid)!.prescriptions.push(rx);
+        }
+        for (const patient of patientMap.values()) {
+            patient.prescriptions.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        }
+        return Array.from(patientMap.values());
+    };
+
+    const fetchPastRecords = useCallback(async (isBackground = false, page = 0, append = false) => {
         if (!hospitalId) return;
-        if (!isBackground) setLoading(true);
+        if (!isBackground && !append) setLoading(true);
+        if (append) setIsLoadingMorePast(true);
         try {
+            if (!append) {
+                const { data: countData } = await supabase
+                    .from('hospital_prescriptions' as any)
+                    .select('patient_id')
+                    .eq('hospital_id', hospitalId);
+                const uniquePatients = new Set((countData || []).map((r: any) => r.patient_id));
+                setPastRecordsTotal(uniquePatients.size);
+            }
+
             const { data, error } = await supabase
                 .from('hospital_prescriptions' as any)
                 .select(`
-                    *,
+                    id, medications, notes, status, token_number, created_at, patient_id,
                     doctor:hospital_doctors(name, specialty),
-                    patient:hospital_patients(name, age, mr_number)
+                    patient:hospital_patients(*)
                 `)
                 .eq('hospital_id', hospitalId)
-                .lt('created_at', getTodayISO()) // Filter: Before Today
-                .order('created_at', { ascending: false })
-                .limit(50);
+                .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setPastRecords(data || []);
+            const grouped = groupPrescriptionsByPatient(data || []);
+            const paged = append
+                ? grouped.slice(0, (page + 1) * PAST_RECORDS_PER_PAGE)
+                : grouped.slice(0, PAST_RECORDS_PER_PAGE);
+            setHasMorePastRecords(paged.length < grouped.length);
+            setPastRecords(paged);
+            setPastRecordsPage(page);
         } catch (error) {
-            console.error('Error fetching past records:', error);
-            if (!isBackground) toast.error('Failed to load past records');
+            console.error('Error fetching patients:', error);
+            if (!isBackground) toast.error('Failed to load patients');
         } finally {
-            if (!isBackground) setLoading(false);
+            if (!isBackground && !append) setLoading(false);
+            if (append) setIsLoadingMorePast(false);
         }
     }, [hospitalId]);
+
+    const handleLoadMorePastRecords = () => {
+        fetchPastRecords(true, pastRecordsPage + 1, true);
+    };
 
     const handleSearchPastRecords = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -121,18 +165,18 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
             const { data, error } = await supabase
                 .from('hospital_prescriptions' as any)
                 .select(`
-                    *,
+                    id, medications, notes, status, token_number, created_at, patient_id,
                     doctor:hospital_doctors(name, specialty),
-                    patient:hospital_patients!inner(name, age, mr_number)
+                    patient:hospital_patients!inner(*)
                 `)
                 .eq('hospital_id', hospitalId)
-                .lt('created_at', getTodayISO())
                 .ilike('patient.name', `%${searchQuery}%`)
-                .order('created_at', { ascending: false })
-                .limit(20);
+                .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setPastRecords(data || []);
+            const grouped = groupPrescriptionsByPatient(data || []);
+            setPastRecords(grouped as any);
+            setHasMorePastRecords(false);
         } catch (err) {
             console.error(err);
             toast.error('Search failed');
@@ -627,7 +671,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                             History Log
                         </button>
                         <button
-                            onClick={() => { setActiveTab('past_records'); fetchPastRecords(); }}
+                            onClick={() => { setActiveTab('past_records'); setPastRecords([]); setPastRecordsPage(0); setHasMorePastRecords(true); fetchPastRecords(); }}
                             className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === 'past_records'
                                 ? 'bg-white text-gray-900 shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
@@ -647,44 +691,153 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     <div className="divide-y divide-gray-50">
                         {activeTab === 'past_records' ? (
                             <>
-                                <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+                                {/* Patient Database Header */}
+                                <div className="p-4 border-b border-gray-100 bg-gray-50/50 space-y-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            <h3 className="text-sm font-bold text-gray-800">Patient Database</h3>
+                                        </div>
+                                        {pastRecordsTotal > 0 && (
+                                            <span className="text-xs text-gray-500 font-medium bg-white px-3 py-1 rounded-full border border-gray-200">
+                                                {pastRecords.length} of {pastRecordsTotal} patients
+                                            </span>
+                                        )}
+                                    </div>
                                     <form onSubmit={handleSearchPastRecords} className="relative w-full">
                                         <input
                                             type="text"
-                                            placeholder="Search past prescriptions..."
-                                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                            placeholder="Search patient by name..."
+                                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                         />
-                                        <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-5 h-5 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                         </svg>
                                     </form>
                                 </div>
                                 {pastRecords.length === 0 ? (
-                                    <div className="p-24 text-center text-gray-600">No past records found</div>
+                                    <div className="p-24 text-center">
+                                        <svg className="w-16 h-16 text-gray-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        <p className="font-medium text-gray-700">No patients found</p>
+                                        <p className="text-gray-400 text-sm mt-1">Try a different search term</p>
+                                    </div>
                                 ) : (
-                                    pastRecords.map(item => (
-                                        <div key={item.id} className="p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between transition-all duration-200 gap-6 bg-white hover:bg-gray-50/50 border-b border-gray-50 last:border-0">
-                                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
-                                                <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
-                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0 bg-gray-100 text-gray-500`}>
-                                                        {item.token_number}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-lg font-bold text-gray-900">{item.patient?.name}</h4>
-                                                        <div className="text-sm text-gray-500">{new Date(item.created_at).toLocaleDateString()} - <span className="capitalize">{item.status}</span></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => setSelectedPrescription(item)}
-                                                className="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50"
-                                            >
-                                                View Details
-                                            </button>
+                                    <div>
+                                        {/* Table Header */}
+                                        <div className="grid grid-cols-[3rem_1fr_4rem_7rem_6rem_8rem_4rem_2.5rem] gap-2 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
+                                            <span>#</span>
+                                            <span>Patient Name</span>
+                                            <span>Age</span>
+                                            <span>Phone</span>
+                                            <span>MR #</span>
+                                            <span>BH ID</span>
+                                            <span>Rxs</span>
+                                            <span></span>
                                         </div>
-                                    ))
+                                        {/* Patient Rows */}
+                                        <div className="divide-y divide-gray-100">
+                                            {pastRecords.map((patient, index) => {
+                                                const nameForInitial = (patient.name || '').replace(/^(MR\.|MRS\.|MS\.|DR\.)\s*/i, '').trim();
+                                                const initial = nameForInitial.charAt(0)?.toUpperCase() || '?';
+                                                return (
+                                                    <div key={patient.id}>
+                                                        <div
+                                                            className={`grid grid-cols-[3rem_1fr_4rem_7rem_6rem_8rem_4rem_2.5rem] gap-2 px-6 py-4 cursor-pointer transition-all duration-150 items-center ${expandedPatientId === patient.id ? 'bg-blue-50/60 border-l-4 border-l-blue-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
+                                                            onClick={() => setExpandedPatientId(expandedPatientId === patient.id ? null : patient.id)}
+                                                        >
+                                                            <span className="text-xs text-gray-400 font-medium">{index + 1}</span>
+
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+                                                                    {initial}
+                                                                </div>
+                                                                <p className="font-semibold text-gray-900 text-sm truncate">{patient.name}</p>
+                                                            </div>
+
+                                                            <span className="text-sm text-gray-700">{patient.age || '—'}</span>
+
+                                                            <span className="text-sm text-gray-700 font-mono">{patient.phone || '—'}</span>
+
+                                                            <span className="text-sm text-gray-700 font-medium">{patient.mr_number || '—'}</span>
+
+                                                            <span className="text-xs text-gray-500 font-mono truncate">{patient.beanhealth_id || '—'}</span>
+
+                                                            <span className="text-sm font-semibold text-blue-600">{patient.prescriptions?.length || 0}</span>
+
+                                                            <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expandedPatientId === patient.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
+                                                        </div>
+
+                                                        {/* Expanded: Prescription History */}
+                                                        {expandedPatientId === patient.id && (
+                                                            <div className="bg-gray-50 border-t border-gray-100">
+                                                                {patient.prescriptions?.length > 0 ? (
+                                                                    <div className="px-6 py-4 space-y-2">
+                                                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Prescription History</p>
+                                                                        {patient.prescriptions.map((rx: any) => {
+                                                                            const meds = Array.isArray(rx.medications) ? rx.medications : [];
+                                                                            const medSummary = meds.slice(0, 3).map((m: any) => m.name || m.drug_name || '').filter(Boolean).join(', ');
+                                                                            return (
+                                                                                <div key={rx.id} className="bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors">
+                                                                                    <div className="flex items-start justify-between gap-2">
+                                                                                        <div className="min-w-0">
+                                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                                <span className="text-xs font-semibold text-gray-800">
+                                                                                                    {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                                                </span>
+                                                                                                {rx.doctor?.name && (
+                                                                                                    <span className="text-[10px] text-gray-500 font-medium">
+                                                                                                        · Dr. {rx.doctor.name}
+                                                                                                    </span>
+                                                                                                )}
+                                                                                                {rx.status === 'dispensed' && (
+                                                                                                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
+                                                                                                )}
+                                                                                                {rx.status === 'pending' && (
+                                                                                                    <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">Pending</span>
+                                                                                                )}
+                                                                                            </div>
+                                                                                            {medSummary && (
+                                                                                                <p className="text-xs text-gray-500 mt-1 truncate">
+                                                                                                    💊 {medSummary}{meds.length > 3 ? ` +${meds.length - 3} more` : ''}
+                                                                                                </p>
+                                                                                            )}
+                                                                                            {rx.notes && <p className="text-[11px] text-gray-400 mt-0.5 truncate italic">"{rx.notes}"</p>}
+                                                                                        </div>
+                                                                                        <span className="text-[10px] text-gray-400 font-medium shrink-0">
+                                                                                            {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="px-5 py-4 text-center">
+                                                                        <p className="text-xs text-gray-400">No prescriptions recorded</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {hasMorePastRecords && (
+                                            <div className="p-4 text-center border-t border-gray-100">
+                                                <button
+                                                    onClick={handleLoadMorePastRecords}
+                                                    disabled={isLoadingMorePast}
+                                                    className="px-6 py-2.5 bg-blue-50 text-blue-600 font-bold text-sm rounded-xl hover:bg-blue-100 transition-colors border border-blue-200 disabled:opacity-50"
+                                                >
+                                                    {isLoadingMorePast ? 'Loading...' : 'Load More Patients'}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </>
                         ) : prescriptions.filter(p => activeTab === 'queue' ? p.status === 'pending' : p.status === 'dispensed').length === 0 ? (
