@@ -337,103 +337,37 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* M / N / Nt / Ex Row */}
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {/* Morning */}
-                                        <div className="bg-orange-50 rounded-lg p-2 text-center">
-                                            <label className="text-[10px] font-bold text-orange-600 uppercase">Morning</label>
-                                            <select
-                                                value={med.morningTime}
-                                                onChange={e => updateMed(index, 'morningTime', e.target.value)}
-                                                className="w-full mt-1 px-1 py-1 text-[10px] border border-orange-200 rounded bg-white text-gray-600"
-                                                disabled={readOnly}
-                                            >
-                                                <option value="">Time</option>
-                                                {TIME_OPTIONS.filter(t => t.includes('AM') || t === '12 PM').map(t => (
-                                                    <option key={t} value={t}>{t}</option>
-                                                ))}
-                                            </select>
-                                            <input
-                                                type="text"
-                                                value={med.morning}
-                                                onChange={e => updateMed(index, 'morning', e.target.value)}
-                                                className="w-full mt-1 px-2 py-2 border border-orange-200 rounded-lg text-center text-lg font-bold focus:ring-2 focus:ring-orange-400 outline-none bg-white"
-                                                placeholder="0"
-                                                readOnly={readOnly}
-                                            />
-                                        </div>
-
-                                        {/* Noon */}
-                                        <div className="bg-yellow-50 rounded-lg p-2 text-center">
-                                            <label className="text-[10px] font-bold text-yellow-600 uppercase">Noon</label>
-                                            <select
-                                                value={med.noonTime}
-                                                onChange={e => updateMed(index, 'noonTime', e.target.value)}
-                                                className="w-full mt-1 px-1 py-1 text-[10px] border border-yellow-200 rounded bg-white text-gray-600"
-                                                disabled={readOnly}
-                                            >
-                                                <option value="">Time</option>
-                                                {TIME_OPTIONS.filter(t => t.includes('PM') && !t.includes('9') && !t.includes('10') && !t.includes('11')).map(t => (
-                                                    <option key={t} value={t}>{t}</option>
-                                                ))}
-                                            </select>
-                                            <input
-                                                type="text"
-                                                value={med.noon}
-                                                onChange={e => updateMed(index, 'noon', e.target.value)}
-                                                className="w-full mt-1 px-2 py-2 border border-yellow-200 rounded-lg text-center text-lg font-bold focus:ring-2 focus:ring-yellow-400 outline-none bg-white"
-                                                placeholder="0"
-                                                readOnly={readOnly}
-                                            />
-                                        </div>
-
-                                        {/* Evening */}
-                                        <div className="bg-gray-50 rounded-lg p-2 text-center">
-                                            <label className="text-[10px] font-bold text-gray-600 uppercase">Evening</label>
-                                            <select
-                                                value={med.eveningTime || ''}
-                                                onChange={e => updateMed(index, 'eveningTime', e.target.value)}
-                                                className="w-full mt-1 px-1 py-1 text-[10px] border border-gray-200 rounded bg-white text-gray-600"
-                                                disabled={readOnly}
-                                            >
-                                                <option value="">Time</option>
-                                                {TIME_OPTIONS.map(t => (
-                                                    <option key={t} value={t}>{t}</option>
-                                                ))}
-                                            </select>
-                                            <input
-                                                type="text"
-                                                value={med.evening || ''}
-                                                onChange={e => updateMed(index, 'evening', e.target.value)}
-                                                className="w-full mt-1 px-2 py-2 border border-gray-200 rounded-lg text-center text-lg font-bold focus:ring-2 focus:ring-gray-400 outline-none bg-white"
-                                                placeholder="0"
-                                                readOnly={readOnly}
-                                            />
-                                        </div>
-
-                                        {/* Night */}
-                                        <div className="bg-indigo-50 rounded-lg p-2 text-center">
-                                            <label className="text-[10px] font-bold text-indigo-600 uppercase">Night</label>
-                                            <select
-                                                value={med.nightTime}
-                                                onChange={e => updateMed(index, 'nightTime', e.target.value)}
-                                                className="w-full mt-1 px-1 py-1 text-[10px] border border-indigo-200 rounded bg-white text-gray-600"
-                                                disabled={readOnly}
-                                            >
-                                                <option value="">Time</option>
-                                                {TIME_OPTIONS.filter(t => t.includes('PM')).map(t => (
-                                                    <option key={t} value={t}>{t}</option>
-                                                ))}
-                                            </select>
-                                            <input
-                                                type="text"
-                                                value={med.night}
-                                                onChange={e => updateMed(index, 'night', e.target.value)}
-                                                className="w-full mt-1 px-2 py-2 border border-indigo-200 rounded-lg text-center text-lg font-bold focus:ring-2 focus:ring-indigo-400 outline-none bg-white"
-                                                placeholder="0"
-                                                readOnly={readOnly}
-                                            />
-                                        </div>
+                                    {/* M / N / E / Nt Compact Grid */}
+                                    <div className="grid grid-cols-4 border border-gray-100 rounded-xl overflow-hidden bg-gray-50/50">
+                                        {[
+                                            { label: 'M', field: 'morning', timeField: 'morningTime', color: 'orange', bg: 'bg-orange-50/50', text: 'text-orange-600', border: 'border-orange-100', times: TIME_OPTIONS.filter(t => t.includes('AM') || t === '12 PM') },
+                                            { label: 'N', field: 'noon', timeField: 'noonTime', color: 'yellow', bg: 'bg-yellow-50/50', text: 'text-yellow-600', border: 'border-yellow-100', times: TIME_OPTIONS.filter(t => t.includes('PM') && !t.includes('9') && !t.includes('10') && !t.includes('11')) },
+                                            { label: 'E', field: 'evening', timeField: 'eveningTime', color: 'gray', bg: 'bg-gray-100/50', text: 'text-gray-600', border: 'border-gray-200', times: TIME_OPTIONS },
+                                            { label: 'Nt', field: 'night', timeField: 'nightTime', color: 'indigo', bg: 'bg-indigo-50/50', text: 'text-indigo-600', border: 'border-indigo-100', times: TIME_OPTIONS.filter(t => t.includes('PM')) }
+                                        ].map((slot, i) => (
+                                            <div key={slot.label} className={`${slot.bg} ${i < 3 ? 'border-r border-gray-100' : ''} p-2 text-center flex flex-col gap-1.5`}>
+                                                <div className={`text-[10px] font-black ${slot.text} leading-none mb-0.5`}>{slot.label}</div>
+                                                <select
+                                                    value={(med as any)[slot.timeField] || ''}
+                                                    onChange={e => updateMed(index, slot.timeField, e.target.value)}
+                                                    className={`w-full py-1 text-[9px] border ${slot.border} rounded bg-white text-gray-500 outline-none`}
+                                                    disabled={readOnly}
+                                                >
+                                                    <option value="">Time</option>
+                                                    {slot.times.map(t => (
+                                                        <option key={t} value={t}>{t}</option>
+                                                    ))}
+                                                </select>
+                                                <input
+                                                    type="text"
+                                                    value={(med as any)[slot.field] || ''}
+                                                    onChange={e => updateMed(index, slot.field, e.target.value)}
+                                                    className={`w-full py-1.5 border ${slot.border} rounded-lg text-center text-sm font-bold focus:ring-1 focus:ring-emerald-400 outline-none bg-white text-gray-900`}
+                                                    placeholder="0"
+                                                    readOnly={readOnly}
+                                                />
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
