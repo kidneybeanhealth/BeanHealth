@@ -43,7 +43,7 @@ interface ManageDrugsModalProps {
 const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalId, onClose }) => {
     const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
     const [newDrugName, setNewDrugName] = useState('');
-    const [newDrugType, setNewDrugType] = useState('TAB');
+    const [newDrugType, setNewDrugType] = useState('');
     const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -140,7 +140,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
         const existingSaved = savedDrugs.find(s => s.name.toUpperCase() === drug.name.toUpperCase());
         if (existingSaved) {
             setEditingDrug(existingSaved);
-            setNewDrugType(existingSaved.drug_type || 'TAB');
+            setNewDrugType(existingSaved.drug_type || '');
         }
 
         inputRef.current?.focus();
@@ -210,7 +210,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                 setSavedDrugs([...savedDrugs, data as SavedDrug]);
             }
             setNewDrugName('');
-            setNewDrugType('TAB');
+            setNewDrugType('');
             setEditingDrug(null);
         } catch (err: any) {
             console.error('Error saving drug:', err);
@@ -236,7 +236,8 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
     };
 
     const getDrugTypeInfo = (type: string) => {
-        return DRUG_TYPES.find(t => t.value === type) || DRUG_TYPES[0];
+        if (!type) return null;
+        return DRUG_TYPES.find(t => t.value === type) || null;
     };
 
     return (
@@ -391,16 +392,18 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                     ) : (
                         <div className="space-y-2">
                             {savedDrugs.map(drug => {
-                                const typeInfo = getDrugTypeInfo(drug.drug_type || 'TAB');
+                                const typeInfo = getDrugTypeInfo(drug.drug_type || '');
                                 return (
                                     <div
                                         key={drug.id}
                                         className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 hover:bg-gray-100 transition-colors group"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <span className={`text-xs px-2 py-1 rounded-lg font-bold ${typeInfo.color}`}>
-                                                {typeInfo.icon} {drug.drug_type || 'TAB'}
-                                            </span>
+                                            {typeInfo && (
+                                                <span className={`text-xs px-2 py-1 rounded-lg font-bold ${typeInfo.color}`}>
+                                                    {typeInfo.icon} {drug.drug_type}
+                                                </span>
+                                            )}
                                             <span className="font-medium text-gray-900 text-sm">{drug.name}</span>
                                         </div>
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
