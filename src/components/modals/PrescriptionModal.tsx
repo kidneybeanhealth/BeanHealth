@@ -26,6 +26,22 @@ interface DrugOption {
   isReference?: boolean;
 }
 
+interface Medication {
+  name: string;
+  number: string;
+  dose: string;
+  morning: string;
+  morningTime: string;
+  noon: string;
+  noonTime: string;
+  evening: string;
+  eveningTime: string;
+  night: string;
+  nightTime: string;
+  foodTiming: string;
+  drugType?: string;
+}
+
 // Drug type icons helper
 const getDrugTypeIcon = (type?: string): string => {
   switch (type) {
@@ -46,17 +62,17 @@ interface PrescriptionModalProps {
   clinicLogo?: string;
 }
 
-// Dose mappings for auto-populate
-const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; night: string }> = {
-  'OD': { morning: '1', noon: '0', night: '0' },
-  'BD': { morning: '1', noon: '0', night: '1' },
-  'TDS': { morning: '1', noon: '1', night: '1' },
-  'HS': { morning: '0', noon: '0', night: '1' },
-  'QID': { morning: '1', noon: '1', night: '2' },
-  '1/2 OD': { morning: '1/2', noon: '0', night: '0' },
-  '1/2 BD': { morning: '1/2', noon: '0', night: '1/2' },
-  '1/2 TDS': { morning: '1/2', noon: '1/2', night: '1/2' },
-  '1/2 HS': { morning: '0', noon: '0', night: '1/2' },
+// Dose mappings for auto-populate: Morning, Noon, Evening, Night
+const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: string; night: string }> = {
+  'OD': { morning: '1', noon: '0', evening: '0', night: '0' },
+  'BD': { morning: '1', noon: '0', evening: '0', night: '1' },
+  'TDS': { morning: '1', noon: '1', evening: '0', night: '1' },
+  'HS': { morning: '0', noon: '0', evening: '0', night: '1' },
+  'QID': { morning: '1', noon: '1', evening: '1', night: '1' },
+  '1/2 OD': { morning: '1/2', noon: '0', evening: '0', night: '0' },
+  '1/2 BD': { morning: '1/2', noon: '0', evening: '0', night: '1/2' },
+  '1/2 TDS': { morning: '1/2', noon: '1/2', evening: '0', night: '1/2' },
+  '1/2 HS': { morning: '0', noon: '0', evening: '0', night: '1/2' },
 };
 
 const DOSE_OPTIONS = Object.keys(DOSE_MAPPINGS);
@@ -86,12 +102,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     doctorNotes: ''
   });
 
-  const [medications, setMedications] = useState([
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: '' }
+  const [medications, setMedications] = useState<Medication[]>([
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' }
   ]);
 
   // Time options for timing dropdowns (removed internal constant, uses outside one)
@@ -353,7 +369,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
             morningTime: '',
             noon: freqs[1] !== '0' ? freqs[1] : '',
             noonTime: '',
-            night: freqs[2] !== '0' ? freqs[2] : '',
+            evening: freqs[2] !== '0' ? freqs[2] : '',
+            eveningTime: '',
+            night: freqs[3] !== '0' ? freqs[3] : '',
             nightTime: '',
             foodTiming
           };
@@ -429,7 +447,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     if (readOnly) return;
     // Convert to pharmacy format
     const pharmacyMeds = medications.filter(m => m.name).map(m => {
-      const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}${m.extra ? '-' + m.extra : ''}`;
+      const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.evening || '0'}-${m.night || '0'}`;
       return {
         name: m.name,
         dosage: m.number + ' tab',
@@ -729,12 +747,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 <span>ம</span>
                               </div>
                               <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>Nt</span>
-                                <span>இ</span>
+                                <span>E</span>
+                                <span>மா</span>
                               </div>
                               <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>Ex</span>
-                                <span>கூ</span>
+                                <span>Nt</span>
+                                <span>இ</span>
                               </div>
                               <div className="w-8 py-1 text-[9px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>B/F</span>
@@ -794,8 +812,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                           onMouseDown={() => {
                                             const newMeds = [...medications];
                                             const prefix = drug.drugType ? `${drug.drugType}. ` : '';
-                                            (newMeds[globalIndex] as any).name = `${prefix}${drug.name}`;
-                                            (newMeds[globalIndex] as any).drugType = drug.drugType || '';
+                                            newMeds[globalIndex].name = `${prefix}${drug.name}`;
+                                            newMeds[globalIndex].drugType = drug.drugType || '';
                                             setMedications(newMeds);
                                             setShowDrugDropdown(null);
                                             setDrugSearchQuery('');
@@ -926,13 +944,46 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                       />
                                     </div>
                                   </div>
-                                  {/* Nt dosage container - Split: Top time, Bottom value */}
+                                  {/* evening dosage container */}
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
                                         className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
-                                        value={(med as any).nightTime || ''}
+                                        value={med.eveningTime || ''}
+                                        onChange={e => { updateMed(globalIndex, 'eveningTime', e.target.value); setTimeSearchQuery(e.target.value); }}
+                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'eveningTime' })}
+                                        onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        readOnly={readOnly}
+                                      />
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime' && (
+                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
+                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'eveningTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
+                                              {t}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                      <textarea
+                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                        placeholder="0"
+                                        value={med.evening}
+                                        onChange={e => updateMed(globalIndex, 'evening', e.target.value)}
+                                        readOnly={readOnly}
+                                        rows={1}
+                                      />
+                                    </div>
+                                  </div>
+                                  {/* night dosage container */}
+                                  <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
+                                    <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                      <input
+                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        placeholder=""
+                                        value={med.nightTime || ''}
                                         onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); }}
                                         onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'nightTime' })}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}

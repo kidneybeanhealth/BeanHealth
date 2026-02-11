@@ -26,17 +26,17 @@ interface DrugOption {
     drugType?: string;
 }
 
-// Dose mappings for auto-populate
-const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; night: string }> = {
-    'OD': { morning: '1', noon: '0', night: '0' },
-    'TD': { morning: '1', noon: '0', night: '1' },
-    'TDS': { morning: '1', noon: '1', night: '1' },
-    'HS': { morning: '0', noon: '0', night: '1' },
-    'QID': { morning: '1', noon: '1', night: '2' },
-    '1/2 OD': { morning: '1/2', noon: '0', night: '0' },
-    '1/2 TD': { morning: '1/2', noon: '0', night: '1/2' },
-    '1/2 TDS': { morning: '1/2', noon: '1/2', night: '1/2' },
-    '1/2 HS': { morning: '0', noon: '0', night: '1/2' },
+// Dose mappings for auto-populate: Morning, Noon, Evening, Night
+const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: string; night: string }> = {
+    'OD': { morning: '1', noon: '0', evening: '0', night: '0' },
+    'TD': { morning: '1', noon: '0', evening: '0', night: '1' },
+    'TDS': { morning: '1', noon: '1', evening: '0', night: '1' },
+    'HS': { morning: '0', noon: '0', evening: '0', night: '1' },
+    'QID': { morning: '1', noon: '1', evening: '1', night: '1' },
+    '1/2 OD': { morning: '1/2', noon: '0', evening: '0', night: '0' },
+    '1/2 TD': { morning: '1/2', noon: '0', evening: '0', night: '1/2' },
+    '1/2 TDS': { morning: '1/2', noon: '1/2', evening: '0', night: '1/2' },
+    '1/2 HS': { morning: '0', noon: '0', evening: '0', night: '1/2' },
 };
 
 const DOSE_OPTIONS = Object.keys(DOSE_MAPPINGS);
@@ -82,11 +82,11 @@ const PrescriptionPage: React.FC = () => {
     });
 
     const [medications, setMedications] = useState([
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' },
-        { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: '', drugType: '' }
+        { name: '', number: '', dose: '', morning: '', noon: '', evening: '', night: '', foodTiming: '', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', evening: '', night: '', foodTiming: '', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', evening: '', night: '', foodTiming: '', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', evening: '', night: '', foodTiming: '', drugType: '' },
+        { name: '', number: '', dose: '', morning: '', noon: '', evening: '', night: '', foodTiming: '', drugType: '' }
     ]);
 
     // Drug Search States
@@ -215,7 +215,8 @@ const PrescriptionPage: React.FC = () => {
                         dose: m.dose || '',
                         morning: freqs[0] !== '0' ? freqs[0] : '',
                         noon: freqs[1] !== '0' ? freqs[1] : '',
-                        night: freqs[2] !== '0' ? freqs[2] : '',
+                        evening: freqs[2] !== '0' ? freqs[2] : '',
+                        night: freqs[3] !== '0' ? freqs[3] : '',
                         beforeFood: (m.instruction || '').toLowerCase().includes('before')
                     };
                 });
@@ -250,7 +251,7 @@ const PrescriptionPage: React.FC = () => {
         const toastId = toast.loading('Sending to pharmacy...');
         try {
             const pharmacyMeds = medications.filter(m => m.name).map(m => {
-                const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.night || '0'}${m.extra ? '-' + m.extra : ''}`;
+                const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.evening || '0'}-${m.night || '0'}`;
                 return {
                     name: m.name,
                     dosage: m.number + ' tab',
@@ -313,7 +314,7 @@ const PrescriptionPage: React.FC = () => {
         }
     };
 
-    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', night: '', extra: '', extraTime: '', foodTiming: 'A/F', drugType: '' }]);
+    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', evening: '', night: '', foodTiming: 'A/F', drugType: '' }]);
     const removeRow = (i: number) => !readOnly && medications.length > 1 && setMedications(medications.filter((_, idx) => idx !== i));
     const updateMed = (i: number, f: string, v: any) => {
         if (readOnly) return;
@@ -325,6 +326,7 @@ const PrescriptionPage: React.FC = () => {
             const mapping = DOSE_MAPPINGS[v];
             (newMeds[i] as any).morning = mapping.morning;
             (newMeds[i] as any).noon = mapping.noon;
+            (newMeds[i] as any).evening = mapping.evening;
             (newMeds[i] as any).night = mapping.night;
         }
 
@@ -473,8 +475,8 @@ const PrescriptionPage: React.FC = () => {
                                                         <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Freq</div>
                                                         <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">M / கா</div>
                                                         <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">N / ம</div>
+                                                        <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">E / மா</div>
                                                         <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Nt / இ</div>
-                                                        <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Ex / கூ</div>
                                                         <div className="w-8 py-1 text-[9px] flex flex-col items-center justify-center shrink-0 leading-tight">B/F A/F</div>
                                                     </div>
                                                 </div>
@@ -536,13 +538,13 @@ const PrescriptionPage: React.FC = () => {
                                                                 <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
                                                                     <input className="w-full text-center text-xs font-bold outline-none" value={med.noon} onChange={e => updateMed(globalI, 'noon', e.target.value)} readOnly={readOnly} placeholder="0" />
                                                                 </div>
+                                                                {/* Evening */}
+                                                                <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
+                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={med.evening || ''} onChange={e => updateMed(globalI, 'evening', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                                </div>
                                                                 {/* Night */}
                                                                 <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
                                                                     <input className="w-full text-center text-xs font-bold outline-none" value={med.night} onChange={e => updateMed(globalI, 'night', e.target.value)} readOnly={readOnly} placeholder="0" />
-                                                                </div>
-                                                                {/* Extra */}
-                                                                <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
-                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={(med as any).extra || ''} onChange={e => updateMed(globalI, 'extra', e.target.value)} readOnly={readOnly} placeholder="0" />
                                                                 </div>
                                                                 {/* Food Timing Dropdown */}
                                                                 <div className="w-8 flex items-center justify-center shrink-0 relative">

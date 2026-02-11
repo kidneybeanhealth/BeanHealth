@@ -9,10 +9,10 @@ interface Medication {
     morningTime: string;
     noon: string;
     noonTime: string;
+    evening: string;
+    eveningTime: string;
     night: string;
     nightTime: string;
-    extra: string;
-    extraTime: string;
     foodTiming: string;
 }
 
@@ -380,6 +380,30 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                             />
                                         </div>
 
+                                        {/* Evening */}
+                                        <div className="bg-gray-50 rounded-lg p-2 text-center">
+                                            <label className="text-[10px] font-bold text-gray-600 uppercase">Evening</label>
+                                            <select
+                                                value={med.eveningTime || ''}
+                                                onChange={e => updateMed(index, 'eveningTime', e.target.value)}
+                                                className="w-full mt-1 px-1 py-1 text-[10px] border border-gray-200 rounded bg-white text-gray-600"
+                                                disabled={readOnly}
+                                            >
+                                                <option value="">Time</option>
+                                                {TIME_OPTIONS.map(t => (
+                                                    <option key={t} value={t}>{t}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="text"
+                                                value={med.evening || ''}
+                                                onChange={e => updateMed(index, 'evening', e.target.value)}
+                                                className="w-full mt-1 px-2 py-2 border border-gray-200 rounded-lg text-center text-lg font-bold focus:ring-2 focus:ring-gray-400 outline-none bg-white"
+                                                placeholder="0"
+                                                readOnly={readOnly}
+                                            />
+                                        </div>
+
                                         {/* Night */}
                                         <div className="bg-indigo-50 rounded-lg p-2 text-center">
                                             <label className="text-[10px] font-bold text-indigo-600 uppercase">Night</label>
@@ -399,30 +423,6 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                                 value={med.night}
                                                 onChange={e => updateMed(index, 'night', e.target.value)}
                                                 className="w-full mt-1 px-2 py-2 border border-indigo-200 rounded-lg text-center text-lg font-bold focus:ring-2 focus:ring-indigo-400 outline-none bg-white"
-                                                placeholder="0"
-                                                readOnly={readOnly}
-                                            />
-                                        </div>
-
-                                        {/* Extra */}
-                                        <div className="bg-gray-50 rounded-lg p-2 text-center">
-                                            <label className="text-[10px] font-bold text-gray-600 uppercase">Extra</label>
-                                            <select
-                                                value={med.extraTime}
-                                                onChange={e => updateMed(index, 'extraTime', e.target.value)}
-                                                className="w-full mt-1 px-1 py-1 text-[10px] border border-gray-200 rounded bg-white text-gray-600"
-                                                disabled={readOnly}
-                                            >
-                                                <option value="">Time</option>
-                                                {TIME_OPTIONS.map(t => (
-                                                    <option key={t} value={t}>{t}</option>
-                                                ))}
-                                            </select>
-                                            <input
-                                                type="text"
-                                                value={med.extra}
-                                                onChange={e => updateMed(index, 'extra', e.target.value)}
-                                                className="w-full mt-1 px-2 py-2 border border-gray-200 rounded-lg text-center text-lg font-bold focus:ring-2 focus:ring-gray-400 outline-none bg-white"
                                                 placeholder="0"
                                                 readOnly={readOnly}
                                             />
