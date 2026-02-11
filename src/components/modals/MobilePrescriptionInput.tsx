@@ -218,8 +218,15 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                                         onMouseDown={() => handleSelectDrug(index, drug)}
                                                         className="w-full px-3 py-2 text-left hover:bg-emerald-50 text-sm border-b border-gray-50 last:border-0"
                                                     >
-                                                        <span className="font-medium">{drug.name}</span>
-                                                        {drug.genericName && <span className="text-gray-500 ml-1 text-xs">({drug.genericName})</span>}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium">{drug.name}</span>
+                                                            {drug.drugType && (
+                                                                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-full font-bold uppercase border border-emerald-100">
+                                                                    {drug.drugType}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {drug.genericName && <span className="text-gray-500 block text-[10px] mt-0.5 line-clamp-1">({drug.genericName})</span>}
                                                     </button>
                                                 ))}
                                             </div>

@@ -492,7 +492,15 @@ const PrescriptionPage: React.FC = () => {
                                                                 {!readOnly && showDrugDropdown === globalI && filteredDrugs.length > 0 && (
                                                                     <div className="absolute left-0 top-full z-50 w-[400px] bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto print:hidden">
                                                                         {filteredDrugs.map(drug => (
-                                                                            <button key={drug.id} onClick={() => { const newMeds = [...medications]; const prefix = drug.drugType ? `${drug.drugType}. ` : ''; (newMeds[globalI] as any).name = `${prefix}${drug.name}`; (newMeds[globalI] as any).drugType = drug.drugType || ''; setMedications(newMeds); setShowDrugDropdown(null); }} className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0">
+                                                                            <button key={drug.id} onClick={() => {
+                                                                                const newMeds = [...medications];
+                                                                                const drugType = drug.drugType || (drug as any).drug_type;
+                                                                                const prefix = drugType ? `${drugType}. ` : '';
+                                                                                (newMeds[globalI] as any).name = `${prefix}${drug.name}`;
+                                                                                (newMeds[globalI] as any).drugType = drugType || '';
+                                                                                setMedications(newMeds);
+                                                                                setShowDrugDropdown(null);
+                                                                            }} className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0">
                                                                                 <span className="font-semibold text-sm">{drug.name}</span>
                                                                             </button>
                                                                         ))}

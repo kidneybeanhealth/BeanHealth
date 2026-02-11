@@ -122,6 +122,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   const [drugSearchQuery, setDrugSearchQuery] = useState('');
   const [showManageDrugsModal, setShowManageDrugsModal] = useState(false);
   const [newDrugName, setNewDrugName] = useState('');
+  const [newDrugType, setNewDrugType] = useState('');
+  const DRUG_TYPES = [
+    { value: 'TAB', label: 'TAB', icon: '💊', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+    { value: 'CAP', label: 'CAP', icon: '🔶', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+    { value: 'INJ', label: 'INJ', icon: '💉', color: 'bg-red-50 text-red-700 border-red-200' },
+    { value: 'SYP', label: 'SYP', icon: '🧴', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  ];
   const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
   const [isSavingDrug, setIsSavingDrug] = useState(false);
 
@@ -263,6 +270,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
           .insert({
             doctor_id: doctor.id,
             name: newDrugName.toUpperCase().trim(),
+            drug_type: newDrugType || null,
             created_at: new Date().toISOString()
           });
 
@@ -278,6 +286,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
       // Reset form and refresh list
       setNewDrugName('');
+      setNewDrugType('');
       setEditingDrug(null);
       fetchSavedDrugs();
     } catch (error: any) {
@@ -308,11 +317,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
   const handleSelectDrug = (index: number, drug: SavedDrug) => {
     const newMeds = [...medications];
-    const prefix = (drug as any).drug_type ? `${(drug as any).drug_type}. ` : '';
+    const drugType = (drug as any).drugType || (drug as any).drug_type;
+    const prefix = drugType ? `${drugType}. ` : '';
     newMeds[index] = {
       ...newMeds[index],
       name: `${prefix}${drug.name}`,
-      drugType: (drug as any).drug_type || ''
+      drugType: drugType || ''
     };
     setMedications(newMeds);
     setShowDrugDropdown(null);
@@ -1264,6 +1274,21 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                 <div className="text-sm font-semibold text-gray-700 mb-3">
                   {editingDrug ? 'Edit Drug' : 'Add New Drug'}
                 </div>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {DRUG_TYPES.map(type => (
+                    <button
+                      key={type.value}
+                      onClick={() => setNewDrugType(newDrugType === type.value ? '' : type.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${newDrugType === type.value
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-105'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
+                        }`}
+                    >
+                      <span>{type.icon}</span>
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
                 <div className="flex gap-3">
                   <input
                     type="text"
@@ -1293,7 +1318,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                   <div className="divide-y divide-gray-100">
                     {savedDrugs.map(drug => (
                       <div key={drug.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 group">
-                        <div className="font-semibold text-gray-900">{drug.name}</div>
+                        <div className="flex items-center gap-3">
+                          {drug.drug_type && (
+                            <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-bold uppercase">
+                              {drug.drug_type}
+                            </span>
+                          )}
+                          <div className="font-semibold text-gray-900">{drug.name}</div>
+                        </div>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => {
