@@ -434,7 +434,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   // Medicine Handlers
   const addRow = () => {
     if (readOnly) return;
-    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: 'A/F' }]);
+    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' }]);
   };
 
   const removeRow = (index: number) => {
@@ -511,6 +511,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         handleSelectDrug={handleSelectDrug}
         showDrugDropdown={showDrugDropdown}
         setShowDrugDropdown={setShowDrugDropdown}
+        SPECIALIST_OPTIONS={SPECIALIST_OPTIONS}
       />
     );
   }
@@ -1148,28 +1149,34 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                       onClick={() => setShowSpecialistDropdown(false)}
                                     />
                                     <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[120] max-h-48 overflow-y-auto py-1 font-normal">
-                                      {SPECIALIST_OPTIONS.filter(opt =>
-                                        opt.toLowerCase().includes((formData.specialistToReview || '').toLowerCase())
-                                      ).map((opt) => (
-                                        <button
-                                          key={opt}
-                                          type="button"
-                                          className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 text-gray-700 transition-colors border-b border-gray-50 last:border-0"
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setFormData({ ...formData, specialistToReview: opt });
-                                            setShowSpecialistDropdown(false);
-                                          }}
-                                        >
-                                          {opt}
-                                        </button>
-                                      ))}
-                                      {SPECIALIST_OPTIONS.filter(opt =>
-                                        opt.toLowerCase().includes((formData.specialistToReview || '').toLowerCase())
-                                      ).length === 0 && (
-                                          <div className="px-3 py-2 text-xs text-gray-400 italic">No matches, keep typing...</div>
-                                        )}
+                                      {SPECIALIST_OPTIONS.map((opt) => {
+                                        const isSelected = (formData.specialistToReview || '').split(', ').includes(opt);
+                                        return (
+                                          <button
+                                            key={opt}
+                                            type="button"
+                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between ${isSelected ? 'text-emerald-700 font-bold bg-emerald-50/30' : 'text-gray-700'}`}
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              const currentSpecs = (formData.specialistToReview || '').split(', ').filter(s => s);
+                                              let newSpecs;
+                                              if (isSelected) {
+                                                newSpecs = currentSpecs.filter(s => s !== opt);
+                                              } else {
+                                                newSpecs = [...currentSpecs, opt];
+                                              }
+                                              setFormData({ ...formData, specialistToReview: newSpecs.join(', ') });
+                                            }}
+                                          >
+                                            <span>{opt}</span>
+                                            {isSelected && <span className="text-emerald-600">✓</span>}
+                                          </button>
+                                        );
+                                      })}
+                                      {SPECIALIST_OPTIONS.length === 0 && (
+                                        <div className="px-3 py-2 text-xs text-gray-400 italic">No specialists configured</div>
+                                      )}
                                     </div>
                                   </>
                                 )}

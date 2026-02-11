@@ -102,6 +102,7 @@ const PrescriptionPage: React.FC = () => {
     const [showDoseDropdown, setShowDoseDropdown] = useState<number | null>(null);
     const [doseSearchQuery, setDoseSearchQuery] = useState('');
     const [showFoodTimingDropdown, setShowFoodTimingDropdown] = useState<number | null>(null);
+    const [foodTimingSearchQuery, setFoodTimingSearchQuery] = useState('');
     const [showSpecialistDropdown, setShowSpecialistDropdown] = useState(false);
 
     const componentRef = useRef<HTMLDivElement>(null);
@@ -314,7 +315,7 @@ const PrescriptionPage: React.FC = () => {
         }
     };
 
-    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', evening: '', night: '', foodTiming: 'A/F', drugType: '' }]);
+    const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', evening: '', night: '', foodTiming: '', drugType: '' }]);
     const removeRow = (i: number) => !readOnly && medications.length > 1 && setMedications(medications.filter((_, idx) => idx !== i));
     const updateMed = (i: number, f: string, v: any) => {
         if (readOnly) return;
@@ -632,25 +633,31 @@ const PrescriptionPage: React.FC = () => {
                                                                     onClick={() => setShowSpecialistDropdown(false)}
                                                                 />
                                                                 <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto py-1">
-                                                                    {SPECIALIST_OPTIONS.filter(opt =>
-                                                                        opt.toLowerCase().includes((formData.specialistToReview || '').toLowerCase())
-                                                                    ).map((opt) => (
-                                                                        <button
-                                                                            key={opt}
-                                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 text-gray-700 transition-colors border-b border-gray-50 last:border-0"
-                                                                            onClick={() => {
-                                                                                setFormData({ ...formData, specialistToReview: opt });
-                                                                                setShowSpecialistDropdown(false);
-                                                                            }}
-                                                                        >
-                                                                            {opt}
-                                                                        </button>
-                                                                    ))}
-                                                                    {SPECIALIST_OPTIONS.filter(opt =>
-                                                                        opt.toLowerCase().includes((formData.specialistToReview || '').toLowerCase())
-                                                                    ).length === 0 && (
-                                                                            <div className="px-3 py-2 text-xs text-gray-400 italic">No matches, keep typing...</div>
-                                                                        )}
+                                                                    {SPECIALIST_OPTIONS.map((opt) => {
+                                                                        const isSelected = (formData.specialistToReview || '').split(', ').includes(opt);
+                                                                        return (
+                                                                            <button
+                                                                                key={opt}
+                                                                                className={`w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between ${isSelected ? 'text-emerald-700 font-bold bg-emerald-50/30' : 'text-gray-700'}`}
+                                                                                onClick={() => {
+                                                                                    const currentSpecs = (formData.specialistToReview || '').split(', ').filter(s => s);
+                                                                                    let newSpecs;
+                                                                                    if (isSelected) {
+                                                                                        newSpecs = currentSpecs.filter(s => s !== opt);
+                                                                                    } else {
+                                                                                        newSpecs = [...currentSpecs, opt];
+                                                                                    }
+                                                                                    setFormData({ ...formData, specialistToReview: newSpecs.join(', ') });
+                                                                                }}
+                                                                            >
+                                                                                <span>{opt}</span>
+                                                                                {isSelected && <span className="text-emerald-600">✓</span>}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                    {SPECIALIST_OPTIONS.length === 0 && (
+                                                                        <div className="px-3 py-2 text-xs text-gray-400 italic">No specialists configured</div>
+                                                                    )}
                                                                 </div>
                                                             </>
                                                         )}

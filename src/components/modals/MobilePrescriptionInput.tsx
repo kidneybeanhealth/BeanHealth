@@ -28,6 +28,7 @@ interface MobilePrescriptionInputProps {
         saltIntake: string;
         fluidIntake: string;
         doctorNotes: string;
+        specialistToReview: string;
     };
     setFormData: (data: any) => void;
     medications: Medication[];
@@ -57,6 +58,7 @@ interface MobilePrescriptionInputProps {
     setDiagnosisSearchQuery: (q: string) => void;
     showDiagnosisDropdown: boolean;
     setShowDiagnosisDropdown: (b: boolean) => void;
+    SPECIALIST_OPTIONS: string[];
 }
 
 const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
@@ -86,11 +88,13 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
     diagnosisSearchQuery,
     setDiagnosisSearchQuery,
     showDiagnosisDropdown,
-    setShowDiagnosisDropdown
+    setShowDiagnosisDropdown,
+    SPECIALIST_OPTIONS
 }) => {
     const [expandedCard, setExpandedCard] = React.useState<number | null>(null);
     const [showDoseDropdown, setShowDoseDropdown] = React.useState<number | null>(null);
     const [showTimingDropdown, setShowTimingDropdown] = React.useState<number | null>(null);
+    const [showSpecialistDropdown, setShowSpecialistDropdown] = React.useState(false);
 
     return (
         <div className="fixed inset-0 z-[60] flex flex-col bg-gray-50 overflow-hidden">
@@ -451,6 +455,54 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                 placeholder="Blood tests, X-ray, etc."
                                 readOnly={readOnly}
                             />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Specialists to be seen</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={formData.specialistToReview}
+                                    onChange={e => setFormData({ ...formData, specialistToReview: e.target.value })}
+                                    onFocus={() => !readOnly && setShowSpecialistDropdown(true)}
+                                    className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    placeholder="Type or select specialists..."
+                                    readOnly={readOnly}
+                                />
+                                {!readOnly && showSpecialistDropdown && (
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-50"
+                                            onClick={() => setShowSpecialistDropdown(false)}
+                                        />
+                                        <div className="absolute left-0 right-0 bottom-full mb-1 z-[60] bg-white border border-gray-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto py-2">
+                                            {SPECIALIST_OPTIONS.map((opt) => {
+                                                const isSelected = (formData.specialistToReview || '').split(', ').includes(opt);
+                                                return (
+                                                    <button
+                                                        key={opt}
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            const currentSpecs = (formData.specialistToReview || '').split(', ').filter(s => s);
+                                                            let newSpecs;
+                                                            if (isSelected) {
+                                                                newSpecs = currentSpecs.filter(s => s !== opt);
+                                                            } else {
+                                                                newSpecs = [...currentSpecs, opt];
+                                                            }
+                                                            setFormData({ ...formData, specialistToReview: newSpecs.join(', ') });
+                                                        }}
+                                                        className={`w-full px-4 py-3 text-left flex items-center justify-between border-b border-gray-50 last:border-0 ${isSelected ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-gray-700'}`}
+                                                    >
+                                                        <span>{opt}</span>
+                                                        {isSelected && <span className="text-emerald-600 font-bold">✓</span>}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
