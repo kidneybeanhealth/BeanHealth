@@ -461,8 +461,8 @@ const PrescriptionPage: React.FC = () => {
                                             <div className="w-[420px] shrink-0 flex flex-col">
                                                 <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
                                                 <div className="flex flex-1 items-stretch">
-                                                    <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Frequency / எத்தனை முறை</div>
-                                                    <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Qty / எண்</div>
+                                                    <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Qty / எண்</div>
+                                                    <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Freq</div>
                                                     <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">M / கா</div>
                                                     <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">N / ம</div>
                                                     <div className="w-12 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0">Nt / இ</div>
@@ -471,11 +471,11 @@ const PrescriptionPage: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className={isFirstPage ? "flex-1 flex flex-col justify-between" : ""}>
+                                        <div className={isFirstPage && chunk.length >= 5 ? "flex-1 flex flex-col justify-between" : ""}>
                                             {chunk.map((med, localI) => {
                                                 const globalI = isFirstPage ? localI : FIRST_PAGE_ITEMS + (pageIndex - 1) * SUBSEQUENT_PAGE_ITEMS + localI;
                                                 return (
-                                                    <div key={globalI} className={`flex border-b border-black ${isFirstPage ? 'flex-1 items-stretch' : 'py-1'} text-xs relative group`}>
+                                                    <div key={globalI} className={`flex border-b border-black ${isFirstPage && chunk.length >= 5 ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}>
                                                         <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">{globalI + 1}</div>
                                                         <div className="flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center" ref={el => { dropdownRefs.current[globalI] = el; }}>
                                                             <input className="w-full outline-none font-bold uppercase text-xs" value={med.drugType ? `${med.drugType}. ${med.name}` : med.name} onChange={e => { const val = e.target.value; const stripped = val.replace(/^(TAB|CAP|INJ|SYP)\.\s*/i, ''); updateMed(globalI, 'name', stripped); setDrugSearchQuery(stripped); !readOnly && setShowDrugDropdown(globalI); }} onFocus={() => !readOnly && (setShowDrugDropdown(globalI), setDrugSearchQuery(med.name))} readOnly={readOnly} />
@@ -495,10 +495,14 @@ const PrescriptionPage: React.FC = () => {
                                                             )}
                                                         </div>
                                                         <div className="w-[420px] flex shrink-0 items-stretch">
+                                                            {/* Qty */}
+                                                            <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                                                <input className="w-full text-center outline-none text-xs font-bold" value={med.number} onChange={e => updateMed(globalI, 'number', e.target.value)} readOnly={readOnly} />
+                                                            </div>
                                                             {/* Frequency - Searchable ComboBox */}
-                                                            <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
+                                                            <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
                                                                 <input
-                                                                    className="w-full text-center outline-none text-[10px] font-bold uppercase"
+                                                                    className="w-full text-center outline-none text-[9px] font-bold uppercase"
                                                                     value={med.dose}
                                                                     onChange={e => { updateMed(globalI, 'dose', e.target.value.toUpperCase()); setDoseSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowDoseDropdown(globalI); }}
                                                                     onFocus={() => !readOnly && (setShowDoseDropdown(globalI), setDoseSearchQuery(''))}
@@ -515,10 +519,6 @@ const PrescriptionPage: React.FC = () => {
                                                                         ))}
                                                                     </div>
                                                                 )}
-                                                            </div>
-                                                            {/* Qty */}
-                                                            <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                                                <input className="w-full text-center outline-none text-xs" value={med.number} onChange={e => updateMed(globalI, 'number', e.target.value)} readOnly={readOnly} />
                                                             </div>
                                                             {/* Morning */}
                                                             <div className="w-12 border-r border-black flex items-center justify-center shrink-0">

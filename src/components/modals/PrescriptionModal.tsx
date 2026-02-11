@@ -544,8 +544,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
               return chunks.map((chunk, pageIndex) => {
                 const isFirstPage = pageIndex === 0;
                 const isLastPage = pageIndex === chunks.length - 1;
-                // Standardize expansion for the first page to fill space beautifully
-                const shouldExpand = isFirstPage;
+                // Standardize expansion for the first page only if there are enough items to fill space
+                const shouldExpand = isFirstPage && chunk.length >= 5;
                 const isFirstPageMulti = false; // Deprecated by new logic
 
                 return (
@@ -707,12 +707,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
                           <div className="flex flex-1 items-stretch">
                             <div className="w-20 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                              <span>Frequency</span>
-                              <span>எத்தனை முறை</span>
-                            </div>
-                            <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>Qty</span>
                               <span>எண்</span>
+                            </div>
+                            <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <span>Freq</span>
                             </div>
                             <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                               <span>M</span>
@@ -752,7 +751,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           return (
                             <div
                               key={globalIndex}
-                              className={`flex border-b border-black ${shouldExpandRow ? 'flex-1 items-stretch' : 'py-1'} text-xs relative group`}
+                              className={`flex border-b border-black ${shouldExpandRow ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}
                             >
                               <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
                                 {globalIndex + 1}
@@ -827,10 +826,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 </div>
                               </div>
                               <div className="w-[440px] flex shrink-0 items-stretch">
+                                {/* Quantity */}
+                                <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                  <input className="w-full text-center outline-none text-xs bg-transparent font-bold" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
+                                </div>
                                 {/* Frequency - Searchable ComboBox */}
-                                <div className="w-20 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
+                                <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
                                   <input
-                                    className="w-full text-center outline-none text-[10px] font-bold uppercase bg-transparent"
+                                    className="w-full text-center outline-none text-[9px] font-bold uppercase bg-transparent"
                                     value={med.dose}
                                     onChange={e => { updateMed(globalIndex, 'dose', e.target.value.toUpperCase()); setDoseSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowDoseDropdown(globalIndex); }}
                                     onFocus={() => !readOnly && (setShowDoseDropdown(globalIndex), setDoseSearchQuery(''))}
@@ -847,10 +850,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                       ))}
                                     </div>
                                   )}
-                                </div>
-                                {/* Quantity */}
-                                <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                  <input className="w-full text-center outline-none text-xs bg-transparent" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
                                 </div>
                                 {/* M dosage container - Split: Top time, Bottom value */}
                                 <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
