@@ -65,6 +65,11 @@ const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'SC', 'SC A/F'];
 
 const TIME_OPTIONS = ['6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'];
 
+const SPECIALIST_OPTIONS = [
+  'Dr. A. Prabhakar',
+  'Dr. A. Divakar'
+];
+
 const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, onClose, onSendToPharmacy, readOnly = false, existingData = null, clinicLogo }) => {
   // Form States matching the PDF structure
   const [formData, setFormData] = useState({
@@ -115,6 +120,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   const [foodTimingSearchQuery, setFoodTimingSearchQuery] = useState('');
   const [showTimeDropdown, setShowTimeDropdown] = useState<{ index: number, field: string } | null>(null);
   const [timeSearchQuery, setTimeSearchQuery] = useState('');
+  const [showSpecialistDropdown, setShowSpecialistDropdown] = useState(false);
 
   // Refs for printing
   const componentRef = useRef<HTMLDivElement>(null);
@@ -435,7 +441,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     });
 
     // We pack the extra metadata (Place, Phone, etc) into the notes field so it persists without schema changes
-    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
+    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
     if (onSendToPharmacy) onSendToPharmacy(pharmacyMeds, notes);
   };
 
@@ -1094,7 +1100,48 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                             </div>
                             <div className="flex gap-2 items-end">
                               <div className="shrink-0 w-80 whitespace-nowrap">பார்க்க வேண்டிய டாக்டர்கள் / Specialists :</div>
-                              <input className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent" value={formData.specialistToReview} onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value })} readOnly={readOnly} />
+                              <div className="relative flex-1">
+                                <input
+                                  className="w-full border-b border-gray-300 border-dashed outline-none px-1 bg-transparent"
+                                  value={formData.specialistToReview}
+                                  onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value })}
+                                  onFocus={() => !readOnly && setShowSpecialistDropdown(true)}
+                                  placeholder="Type or select specialist..."
+                                  readOnly={readOnly}
+                                />
+                                {!readOnly && showSpecialistDropdown && (
+                                  <>
+                                    <div
+                                      className="fixed inset-0 z-[110]"
+                                      onClick={() => setShowSpecialistDropdown(false)}
+                                    />
+                                    <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[120] max-h-48 overflow-y-auto py-1 font-normal">
+                                      {SPECIALIST_OPTIONS.filter(opt =>
+                                        opt.toLowerCase().includes((formData.specialistToReview || '').toLowerCase())
+                                      ).map((opt) => (
+                                        <button
+                                          key={opt}
+                                          type="button"
+                                          className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 text-gray-700 transition-colors border-b border-gray-50 last:border-0"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setFormData({ ...formData, specialistToReview: opt });
+                                            setShowSpecialistDropdown(false);
+                                          }}
+                                        >
+                                          {opt}
+                                        </button>
+                                      ))}
+                                      {SPECIALIST_OPTIONS.filter(opt =>
+                                        opt.toLowerCase().includes((formData.specialistToReview || '').toLowerCase())
+                                      ).length === 0 && (
+                                          <div className="px-3 py-2 text-xs text-gray-400 italic">No matches, keep typing...</div>
+                                        )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
 

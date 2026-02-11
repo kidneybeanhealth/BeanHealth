@@ -45,6 +45,11 @@ const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'SC', 'SC A/F'];
 
 const TIMING_VALUE_OPTIONS = ['0', '1/2', '1', '1 + 1/2', '2'];
 
+const SPECIALIST_OPTIONS = [
+    'Dr. A. Prabhakar',
+    'Dr. A. Divakar'
+];
+
 const PrescriptionPage: React.FC = () => {
     const { doctorId, patientId, prescriptionId } = useParams<{
         doctorId: string;
@@ -97,6 +102,7 @@ const PrescriptionPage: React.FC = () => {
     const [showDoseDropdown, setShowDoseDropdown] = useState<number | null>(null);
     const [doseSearchQuery, setDoseSearchQuery] = useState('');
     const [showFoodTimingDropdown, setShowFoodTimingDropdown] = useState<number | null>(null);
+    const [showSpecialistDropdown, setShowSpecialistDropdown] = useState(false);
 
     const componentRef = useRef<HTMLDivElement>(null);
     const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
@@ -225,7 +231,8 @@ const PrescriptionPage: React.FC = () => {
                     phone: notes.match(/Phone: (.*?)(\n|$)/)?.[1] || prev.phone,
                     doctorNotes: notes.match(/DoctorNotes: (.*?)(\n|$)/)?.[1] || '',
                     saltIntake: notes.match(/SaltIntake: (.*?)(\n|$)/)?.[1] || '',
-                    fluidIntake: notes.match(/FluidIntake: (.*?)(\n|$)/)?.[1] || ''
+                    fluidIntake: notes.match(/FluidIntake: (.*?)(\n|$)/)?.[1] || '',
+                    specialistToReview: notes.match(/SpecialistToReview: (.*?)(\n|$)/)?.[1] || ''
                 }));
             } catch (e) {
                 console.error("Error parsing existing prescription:", e);
@@ -255,7 +262,7 @@ const PrescriptionPage: React.FC = () => {
                 };
             });
 
-            const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
+            const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
 
             // This is handled by EnterpriseDoctorDashboard.handleSendToPharmacy usually
             // We need to implement it here or expose it.
@@ -598,7 +605,48 @@ const PrescriptionPage: React.FC = () => {
                                             <div className="space-y-1 text-xs font-bold mb-2">
                                                 <div className="flex gap-2 items-end"><div className="shrink-0 w-80">மீண்டும் வரவேண்டிய நாள் / Review on :</div><input type="date" className="flex-1 border-b border-dashed outline-none" value={formData.reviewDate} onChange={e => setFormData({ ...formData, reviewDate: e.target.value })} readOnly={readOnly} /></div>
                                                 <div className="flex gap-2 items-end"><div className="shrink-0 w-80">செய்ய வேண்டிய பரிசோதனைகள் / Tests :</div><input className="flex-1 border-b border-dashed outline-none" value={formData.testsToReview} onChange={e => setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} /></div>
-                                                <div className="flex gap-2 items-end"><div className="shrink-0 w-80">பார்க்க வேண்டிய டாக்டர்கள் / Specialists :</div><input className="flex-1 border-b border-dashed outline-none" value={formData.specialistToReview} onChange={e => setFormData({ ...formData, specialistToReview: e.target.value })} readOnly={readOnly} /></div>
+                                                <div className="flex gap-2 items-end">
+                                                    <div className="shrink-0 w-80">பார்க்க வேண்டிய டாக்டர்கள் / Specialists :</div>
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            className="w-full border-b border-dashed outline-none"
+                                                            value={formData.specialistToReview}
+                                                            onChange={e => setFormData({ ...formData, specialistToReview: e.target.value })}
+                                                            onFocus={() => !readOnly && setShowSpecialistDropdown(true)}
+                                                            placeholder="Type or select specialist..."
+                                                            readOnly={readOnly}
+                                                        />
+                                                        {!readOnly && showSpecialistDropdown && (
+                                                            <>
+                                                                <div
+                                                                    className="fixed inset-0 z-10"
+                                                                    onClick={() => setShowSpecialistDropdown(false)}
+                                                                />
+                                                                <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto py-1">
+                                                                    {SPECIALIST_OPTIONS.filter(opt =>
+                                                                        opt.toLowerCase().includes((formData.specialistToReview || '').toLowerCase())
+                                                                    ).map((opt) => (
+                                                                        <button
+                                                                            key={opt}
+                                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 text-gray-700 transition-colors border-b border-gray-50 last:border-0"
+                                                                            onClick={() => {
+                                                                                setFormData({ ...formData, specialistToReview: opt });
+                                                                                setShowSpecialistDropdown(false);
+                                                                            }}
+                                                                        >
+                                                                            {opt}
+                                                                        </button>
+                                                                    ))}
+                                                                    {SPECIALIST_OPTIONS.filter(opt =>
+                                                                        opt.toLowerCase().includes((formData.specialistToReview || '').toLowerCase())
+                                                                    ).length === 0 && (
+                                                                            <div className="px-3 py-2 text-xs text-gray-400 italic">No matches, keep typing...</div>
+                                                                        )}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                             {/* Signature */}
                                             <div className="flex justify-end mt-4 mb-2">
