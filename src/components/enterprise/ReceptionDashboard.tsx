@@ -30,6 +30,7 @@ interface QueueItem {
         age: number;
         token_number: string;
         mr_number?: string;
+        beanhealth_id?: string;
     };
     doctor: {
         id?: string;
@@ -729,10 +730,10 @@ const ReceptionDashboard: React.FC = () => {
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [selectedPatientDetails, setSelectedPatientDetails] = useState<any>(null);
 
-    const handleViewDetails = (patient: any) => {
-        setSelectedPatientDetails(patient);
-        setShowDetailsModal(true);
-    };
+    // const handleViewDetails = (patient: any) => {
+    //     setSelectedPatientDetails(patient);
+    //     setShowDetailsModal(true);
+    // };
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-black font-sans selection:bg-secondary-100 selection:text-secondary-900">

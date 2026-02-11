@@ -43,19 +43,34 @@ const DoctorSettingsModal: React.FC<DoctorSettingsModalProps> = ({ doctor, onClo
         setCroppedAreaPixels(croppedAreaPixels);
     }, []);
 
+    // Attach stream to video element when it becomes available
+    useEffect(() => {
+        if (showCamera && stream && videoRef.current) {
+            videoRef.current.srcObject = stream;
+        }
+    }, [showCamera, stream]);
+
     const startCamera = async () => {
         try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' }
-            });
-            setStream(mediaStream);
-            setShowCamera(true);
-            if (videoRef.current) {
-                videoRef.current.srcObject = mediaStream;
+            // Try back camera first
+            try {
+                const mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                setStream(mediaStream);
+                setShowCamera(true);
+            } catch (envError) {
+                console.warn("Environment camera not found, trying default...", envError);
+                // Fallback to any available camera
+                const mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: true
+                });
+                setStream(mediaStream);
+                setShowCamera(true);
             }
         } catch (err) {
             console.error("Error accessing camera:", err);
-            toast.error("Could not access camera");
+            toast.error("Could not access camera. Please check permissions.");
         }
     };
 

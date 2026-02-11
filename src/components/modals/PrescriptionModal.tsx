@@ -421,12 +421,20 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     contentRef: componentRef,
     documentTitle: `Prescription-${patient?.name || 'Patient'}-${new Date().toLocaleDateString()}`,
     onPrintError: (error) => console.error('Print failed:', error),
+    onBeforeGetContent: () => {
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, 500); // Wait for 500ms to ensure styles/Tailwind are fully loaded in the iframe context
+      });
+    },
+    removeAfterPrint: true
   } as any);
 
   // Medicine Handlers
   const addRow = () => {
     if (readOnly) return;
-    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', night: '', nightTime: '', extra: '', extraTime: '', foodTiming: 'A/F' }]);
+    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: 'A/F' }]);
   };
 
   const removeRow = (index: number) => {
@@ -526,19 +534,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-2 bg-gray-100" ref={containerRef}>
-
-          <style>{`
-            @media print {
-              .print-content {
-                transform: none !important;
-                width: 100% !important;
-                margin: 0 !important;
-                min-width: 0 !important;
-              }
-            }
-          `}</style>
-
-
           <div
             ref={componentRef}
             className="print-content bg-white shadow-sm p-4 max-w-[210mm] text-black w-full origin-top-left"
@@ -550,6 +545,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
               marginBottom: layoutState.scale < 1 ? `-${(1 - layoutState.scale) * 100}%` : '0' // Attempt to reduce bottom whitespace
             }}
           >
+            <style>{`
+            @media print {
+              .print-content {
+                transform: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                min-width: 0 !important;
+              }
+            }
+          `}</style>
             {(() => {
               const FIRST_PAGE_ITEMS = 15;
               const SUBSEQUENT_PAGE_ITEMS = 25; // High capacity for additional pages if needed
