@@ -612,8 +612,25 @@ const PrescriptionPage: React.FC = () => {
                                                 <div className="flex gap-2 items-end"><div className="shrink-0 w-80">செய்ய வேண்டிய பரிசோதனைகள் / Tests :</div><input className="flex-1 border-b border-dashed outline-none" value={formData.testsToReview} onChange={e => setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} /></div>
                                                 <div className="flex gap-2 items-end"><div className="shrink-0 w-80">பார்க்க வேண்டிய டாக்டர்கள் / Specialists :</div><input className="flex-1 border-b border-dashed outline-none" value={formData.specialistToReview} onChange={e => setFormData({ ...formData, specialistToReview: e.target.value })} readOnly={readOnly} /></div>
                                             </div>
-                                            <div className="flex justify-end mt-4">
-                                                <div className="text-center"><div className="h-8"></div><div className="font-bold border-t border-black px-4 pt-1">டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.</div></div>
+                                            {/* Signature */}
+                                            <div className="flex justify-end mt-4 mb-2">
+                                                <div className="text-center min-w-[150px] flex flex-col items-center justify-end">
+                                                    {/* Dynamic Signature Image */}
+                                                    {doctor?.signature_url ? (
+                                                        <div className="h-16 w-40 mb-1 flex items-end justify-center">
+                                                            <img
+                                                                src={doctor.signature_url}
+                                                                alt="Signature"
+                                                                className="max-h-full max-w-full object-contain mix-blend-multiply"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="h-16 w-40"></div>
+                                                    )}
+                                                    <div className="font-bold border-t border-black px-4 pt-1">
+                                                        டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div className="w-full border-2 border-black p-2 text-[12px] leading-[1.5] text-center font-bold mt-4">
                                                 <p>முன்பதிவு காலதாமதத்தை குறைக்கும் / Prior registration avoids delay</p>
