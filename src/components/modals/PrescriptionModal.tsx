@@ -1115,6 +1115,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 />
                                 <span className="shrink-0">lit/day</span>
                               </div>
+                              <div className="flex items-baseline">
+                                <span className="shrink-0">VEG ONLY DIET</span>
+                              </div>
                             </div>
                           </div>
 
