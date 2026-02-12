@@ -435,7 +435,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
       return new Promise<void>((resolve) => {
         setTimeout(() => {
           resolve();
-        }, 500); // Wait for 500ms to ensure styles/Tailwind are fully loaded in the iframe context
+        }, 2000); // Wait for 2000ms to ensure styles/Tailwind are fully loaded in the iframe context
       });
     },
     removeAfterPrint: true
@@ -569,6 +569,32 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                 margin: 0 !important;
                 min-width: 0 !important;
               }
+              
+              /* Critical Layout Fixes for Print */
+              .flex { display: flex !important; }
+              .flex-col { flex-direction: column !important; }
+              .flex-row { flex-direction: row !important; }
+              .items-center { align-items: center !important; }
+              .items-end { align-items: flex-end !important; }
+              .justify-between { justify-content: space-between !important; }
+              .justify-center { justify-content: center !important; }
+              .justify-end { justify-content: flex-end !important; }
+              .grow { flex-grow: 1 !important; }
+              .shrink-0 { flex-shrink: 0 !important; }
+              .w-full { width: 100% !important; }
+              .h-full { height: 100% !important; }
+              .absolute { position: absolute !important; }
+              .relative { position: relative !important; }
+              .border { border-width: 1px !important; }
+              .border-2 { border-width: 2px !important; }
+              .border-b { border-bottom-width: 1px !important; }
+              .border-r { border-right-width: 1px !important; }
+              .border-t { border-top-width: 1px !important; }
+              .border-black { border-color: black !important; }
+              .text-center { text-align: center !important; }
+              .text-right { text-align: right !important; }
+              .font-bold { font-weight: 700 !important; }
+              .uppercase { text-transform: uppercase !important; }
             }
           `}</style>
             {(() => {

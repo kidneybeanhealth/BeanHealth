@@ -245,6 +245,13 @@ const PrescriptionPage: React.FC = () => {
     const handlePrint = useReactToPrint({
         contentRef: componentRef,
         documentTitle: `Prescription-${patient?.name || 'Patient'}-${new Date().toLocaleDateString()}`,
+        onBeforeGetContent: () => {
+            return new Promise<void>((resolve) => {
+                setTimeout(() => {
+                    resolve();
+                }, 2000); // Wait for 2000ms to ensure styles/Tailwind are fully loaded in the print window
+            });
+        },
     } as any);
 
     const handleSend = async () => {
@@ -374,6 +381,42 @@ const PrescriptionPage: React.FC = () => {
 
             {/* Scrollable Container for Preview */}
             <div className="p-4 bg-gray-50 min-h-[calc(100vh-80px)] overflow-y-auto">
+                <style>{`
+                    @media print {
+                        .print-content {
+                            transform: none !important;
+                            width: 100% !important;
+                            margin: 0 !important;
+                            min-width: 0 !important;
+                        }
+                        
+                        /* Critical Layout Fixes for Print */
+                        .flex { display: flex !important; }
+                        .flex-col { flex-direction: column !important; }
+                        .flex-row { flex-direction: row !important; }
+                        .items-center { align-items: center !important; }
+                        .items-end { align-items: flex-end !important; }
+                        .justify-between { justify-content: space-between !important; }
+                        .justify-center { justify-content: center !important; }
+                        .justify-end { justify-content: flex-end !important; }
+                        .grow { flex-grow: 1 !important; }
+                        .shrink-0 { flex-shrink: 0 !important; }
+                        .w-full { width: 100% !important; }
+                        .h-full { height: 100% !important; }
+                        .absolute { position: absolute !important; }
+                        .relative { position: relative !important; }
+                        .border { border-width: 1px !important; }
+                        .border-2 { border-width: 2px !important; }
+                        .border-b { border-bottom-width: 1px !important; }
+                        .border-r { border-right-width: 1px !important; }
+                        .border-t { border-top-width: 1px !important; }
+                        .border-black { border-color: black !important; }
+                        .text-center { text-align: center !important; }
+                        .text-right { text-align: right !important; }
+                        .font-bold { font-weight: 700 !important; }
+                        .uppercase { text-transform: uppercase !important; }
+                    }
+                `}</style>
                 <div ref={componentRef} className="bg-white mx-auto shadow-sm p-4 max-w-[210mm] text-black w-full print-content">
                     {/* Reuse the exact JSX from PrescriptionModal here for A4 output */}
                     {/* ... (The multi-page template logic starts here) */}
