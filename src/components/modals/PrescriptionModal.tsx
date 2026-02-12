@@ -393,6 +393,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         const diagnosis = notes.match(/Diagnosis: (.*?)(\n|$)/)?.[1] || '';
         const review = notes.match(/Review: (.*?)(\n|$)/)?.[1] || '';
         const tests = notes.match(/Tests: (.*?)(\n|$)/)?.[1] || '';
+        const specialists = notes.match(/SpecialistToReview: (.*?)(\n|$)/)?.[1]
+          || notes.match(/SpecialistsToReview: (.*?)(\n|$)/)?.[1]
+          || '';
         const place = notes.match(/Place: (.*?)(\n|$)/)?.[1] || '';
         const phone = notes.match(/Phone: (.*?)(\n|$)/)?.[1] || '';
         const docNotes = notes.match(/DoctorNotes: (.*?)(\n|$)/)?.[1] || '';
@@ -404,6 +407,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
           diagnosis,
           reviewDate: review,
           testsToReview: tests,
+          specialistToReview: specialists,
           place: place || prev.place,
           phone: phone || prev.phone,
           doctorNotes: docNotes,
