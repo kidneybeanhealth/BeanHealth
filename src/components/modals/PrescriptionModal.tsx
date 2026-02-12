@@ -1077,10 +1077,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                         <div className="mt-auto">
                           {/* Doctor Notes */}
                           <div className="border-t border-black pt-1.5 mt-1 mb-1">
-                            <div className="flex gap-2 items-start text-[12px] font-bold">
+                            <div className="flex gap-2 items-start text-[14px] font-bold">
                               <span className="shrink-0 pt-0.5">குறிப்புகள் / Notes:</span>
                               <textarea
-                                className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-[12px] resize-none leading-normal min-h-[72px]"
+                                className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-[14px] resize-none leading-normal min-h-[72px]"
                                 value={formData.doctorNotes}
                                 onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value })}
                                 readOnly={readOnly}
