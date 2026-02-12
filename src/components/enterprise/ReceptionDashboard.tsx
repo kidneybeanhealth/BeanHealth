@@ -562,49 +562,123 @@ const ReceptionDashboard: React.FC = () => {
 
         try {
             const tokenNumber = walkInForm.tokenNumber;
+            const normalizedMrNumber = walkInForm.mrNumber.trim() || null;
+            const normalizedPhone = walkInForm.phone.trim() || null;
+            const linkedUserId = bhidMatch?.id || null;
 
-            const { data: patientResult, error: patientError } = await supabase
-                .from('hospital_patients')
-                .insert({
-                    hospital_id: profile.id,
-                    name: walkInForm.name,
-                    age: parseInt(walkInForm.age),
-                    token_number: tokenNumber,
-                    mr_number: walkInForm.mrNumber || null,
-                    father_husband_name: walkInForm.fatherHusbandName || null,
-                    place: walkInForm.place || null,
-                    phone: walkInForm.phone || null
-                })
-                .select()
-                .single();
+            let patientId: string | null = null;
 
-            if (patientError) {
-                console.error('Patient Creation Error:', patientError);
-                throw new Error(patientError.message);
+            // Reuse existing patient by MR number (strong key).
+            if (normalizedMrNumber) {
+                const existingByMr = await supabase
+                    .from('hospital_patients')
+                    .select('id')
+                    .eq('hospital_id', profile.id)
+                    .eq('mr_number', normalizedMrNumber)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (existingByMr.error) throw existingByMr.error;
+                patientId = (existingByMr.data as any)?.id || null;
             }
-            if (!patientResult) throw new Error('No data returned from patient creation');
 
-            const patientData = patientResult as { id: string };
+            // Fallback reuse by linked BeanHealth user.
+            if (!patientId && linkedUserId) {
+                const existingByLinkedUser = await supabase
+                    .from('hospital_patients')
+                    .select('id')
+                    .eq('hospital_id', profile.id)
+                    .eq('linked_user_id', linkedUserId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
 
-            const { count, error: countError } = await supabase
-                .from('hospital_queues')
-                .select('*', { count: 'exact', head: true })
-                .eq('doctor_id', walkInForm.doctorId)
-                .eq('status', 'pending');
+                if (existingByLinkedUser.error) throw existingByLinkedUser.error;
+                patientId = (existingByLinkedUser.data as any)?.id || null;
+            }
 
-            if (countError) console.warn('Queue count error:', countError);
+            if (patientId) {
+                const patientUpdate = await supabase
+                    .from('hospital_patients')
+                    .update({
+                        name: walkInForm.name,
+                        age: parseInt(walkInForm.age, 10),
+                        token_number: tokenNumber,
+                        mr_number: normalizedMrNumber,
+                        father_husband_name: walkInForm.fatherHusbandName || null,
+                        place: walkInForm.place || null,
+                        phone: normalizedPhone,
+                        linked_user_id: linkedUserId || undefined
+                    })
+                    .eq('id', patientId);
+                if (patientUpdate.error) throw patientUpdate.error;
+            } else {
+                const patientInsert = await supabase
+                    .from('hospital_patients')
+                    .insert({
+                        hospital_id: profile.id,
+                        name: walkInForm.name,
+                        age: parseInt(walkInForm.age, 10),
+                        token_number: tokenNumber,
+                        mr_number: normalizedMrNumber,
+                        father_husband_name: walkInForm.fatherHusbandName || null,
+                        place: walkInForm.place || null,
+                        phone: normalizedPhone,
+                        linked_user_id: linkedUserId
+                    })
+                    .select('id')
+                    .single();
 
-            const nextQueueNo = (count || 0) + 1;
+                if (patientInsert.error) throw patientInsert.error;
+                patientId = (patientInsert.data as any)?.id || null;
+            }
 
-            const { error: queueError } = await supabase
-                .from('hospital_queues')
-                .insert({
-                    hospital_id: profile.id,
-                    patient_id: patientData.id,
-                    doctor_id: walkInForm.doctorId,
-                    queue_number: nextQueueNo,
-                    status: 'pending'
-                });
+            if (!patientId) throw new Error('Patient save failed');
+
+            let nextQueueNo = 1;
+            let queueError: any = null;
+
+            // Preferred: DB-side atomic queue number generation (if migration has been applied).
+            const queueFromRpc = await (supabase as any).rpc('create_hospital_queue_entry', {
+                p_hospital_id: profile.id,
+                p_patient_id: patientId,
+                p_doctor_id: walkInForm.doctorId
+            });
+            const queueFromRpcData = queueFromRpc.data as any[] | null;
+
+            if (!queueFromRpc.error && Array.isArray(queueFromRpcData) && queueFromRpcData.length > 0) {
+                nextQueueNo = queueFromRpcData[0].queue_number || 1;
+            } else {
+                // Backward-compatible fallback for environments without the RPC function.
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+                const tomorrowStart = new Date(todayStart);
+                tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+                const maxQueue = await supabase
+                    .from('hospital_queues')
+                    .select('queue_number')
+                    .eq('doctor_id', walkInForm.doctorId)
+                    .gte('created_at', todayStart.toISOString())
+                    .lt('created_at', tomorrowStart.toISOString())
+                    .order('queue_number', { ascending: false })
+                    .limit(1);
+
+                if (maxQueue.error) throw maxQueue.error;
+                nextQueueNo = ((maxQueue.data?.[0] as any)?.queue_number || 0) + 1;
+
+                const queueInsert = await supabase
+                    .from('hospital_queues')
+                    .insert({
+                        hospital_id: profile.id,
+                        patient_id: patientId,
+                        doctor_id: walkInForm.doctorId,
+                        queue_number: nextQueueNo,
+                        status: 'pending'
+                    });
+                queueError = queueInsert.error;
+            }
 
             if (queueError) {
                 console.error('Queue Insertion Error:', queueError);
@@ -627,10 +701,10 @@ const ReceptionDashboard: React.FC = () => {
             setShowPrintDialog(true);
 
             // Auto-link to BeanHealth app account if match was found
-            if (bhidMatch && patientData.id) {
+            if (bhidMatch && patientId) {
                 try {
                     await BeanhealthIdService.linkPatientToUser(
-                        patientData.id,
+                        patientId,
                         bhidMatch.id,
                         profile.id,
                         walkInForm.mrNumber || undefined

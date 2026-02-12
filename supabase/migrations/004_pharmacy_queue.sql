@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS hospital_pharmacy_queue (
 CREATE INDEX IF NOT EXISTS idx_pharmacy_queue_hospital ON hospital_pharmacy_queue(hospital_id);
 CREATE INDEX IF NOT EXISTS idx_pharmacy_queue_status ON hospital_pharmacy_queue(status);
 CREATE INDEX IF NOT EXISTS idx_pharmacy_queue_created ON hospital_pharmacy_queue(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pharmacy_queue_prescription_id
+    ON hospital_pharmacy_queue(prescription_id)
+    WHERE prescription_id IS NOT NULL;
 
 -- Enable RLS
 ALTER TABLE hospital_pharmacy_queue ENABLE ROW LEVEL SECURITY;

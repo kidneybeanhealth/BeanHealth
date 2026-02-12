@@ -6,6 +6,7 @@ CREATE TABLE public.hospital_prescriptions (
     hospital_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     doctor_id UUID REFERENCES public.hospital_doctors(id) ON DELETE SET NULL,
     patient_id UUID REFERENCES public.hospital_patients(id) ON DELETE CASCADE,
+    queue_id UUID REFERENCES public.hospital_queues(id) ON DELETE SET NULL,
     medications JSONB NOT NULL DEFAULT '[]',
     notes TEXT,
     token_number TEXT,
@@ -24,4 +25,5 @@ WITH CHECK (auth.uid() = hospital_id);
 
 -- Indexes
 CREATE INDEX idx_prescriptions_hospital ON public.hospital_prescriptions(hospital_id);
+CREATE INDEX idx_prescriptions_queue_id ON public.hospital_prescriptions(queue_id);
 CREATE INDEX idx_prescriptions_status ON public.hospital_prescriptions(status);

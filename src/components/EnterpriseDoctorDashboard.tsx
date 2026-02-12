@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import PrescriptionModal from './modals/PrescriptionModal';
@@ -57,6 +57,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     const [loading, setLoading] = useState(true);
     const [showRxModal, setShowRxModal] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+    const [selectedQueueId, setSelectedQueueId] = useState<string | null>(null);
     const [medications, setMedications] = useState<Medication[]>([
         { name: '', dosage: '', frequency: '', duration: '', instruction: '' }
     ]);
@@ -71,6 +72,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     const [showManageDiagnosesModal, setShowManageDiagnosesModal] = useState(false);
     // Local doctor state to handle updates (e.g. after signature upload)
     const [currentDoctor, setCurrentDoctor] = useState<DoctorProfile>(doctor);
+    const isSendingToPharmacyRef = useRef(false);
 
     useEffect(() => {
         setCurrentDoctor(doctor);
@@ -379,19 +381,37 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     const handleViewPrescription = async (historyItem: any) => {
         const toastId = toast.loading('Opening prescription...');
         try {
-            // Fetch the latest prescription for this patient and doctor
-            // ideally we would link queue_id to prescription_id, but for now we find the closest match
-            const { data, error } = await supabase
+            // Primary path: resolve by queue_id (same visit). Fallback keeps legacy DBs working.
+            const byQueue = await supabase
                 .from('hospital_prescriptions' as any)
                 .select(`
                     *,
                     patient:hospital_patients(*)
                 `)
                 .eq('doctor_id', doctor.id)
-                .eq('patient_id', historyItem.patient_id)
+                .eq('queue_id', historyItem.id)
                 .order('created_at', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle();
+
+            let data = byQueue.data;
+            let error = byQueue.error;
+
+            if (!data) {
+                const fallback = await supabase
+                    .from('hospital_prescriptions' as any)
+                    .select(`
+                        *,
+                        patient:hospital_patients(*)
+                    `)
+                    .eq('doctor_id', doctor.id)
+                    .eq('patient_id', historyItem.patient_id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                data = fallback.data;
+                error = fallback.error;
+            }
 
             if (error || !data) {
                 toast.dismiss(toastId);
@@ -441,53 +461,133 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     };
 
     const handleSendToPharmacy = async (prescriptionMeds: any[], prescriptionNotes: string) => {
-        if (!selectedPatient) return;
+        if (!selectedPatient || !selectedQueueId) return;
+        if (isSendingToPharmacyRef.current) return;
+        isSendingToPharmacyRef.current = true;
         const toastId = toast.loading('Sending to pharmacy...');
 
         try {
-            const { data, error } = await supabase
-                .from('hospital_prescriptions' as any)
-                .insert({
-                    hospital_id: doctor.hospital_id,
-                    doctor_id: doctor.id,
-                    patient_id: selectedPatient.id,
-                    token_number: selectedPatient.token_number,
-                    medications: prescriptionMeds,
-                    notes: prescriptionNotes,
-                    status: 'pending'
-                } as any)
-                .select()
-                .single();
+            let prescriptionId: string | null = null;
 
-            if (error) {
-                console.error('Supabase Insert Error:', error);
-                throw error;
+            // Idempotency: one prescription per queue visit.
+            const existingByQueue = await supabase
+                .from('hospital_prescriptions' as any)
+                .select('id, status')
+                .eq('queue_id', selectedQueueId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            const existingByQueueData = existingByQueue.data as any;
+
+            if (existingByQueueData?.id) {
+                prescriptionId = existingByQueueData.id;
+            } else {
+                // Fallback if queue_id column is not yet present in DB.
+                if (existingByQueue.error && String(existingByQueue.error.message || '').toLowerCase().includes('queue_id')) {
+                    const legacyMatch = await supabase
+                        .from('hospital_prescriptions' as any)
+                        .select('id')
+                        .eq('doctor_id', doctor.id)
+                        .eq('patient_id', selectedPatient.id)
+                        .eq('token_number', selectedPatient.token_number)
+                        .gte('created_at', getTodayISO())
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    const legacyMatchData = legacyMatch.data as any;
+                    if (legacyMatchData?.id) {
+                        prescriptionId = legacyMatchData.id;
+                    }
+                }
             }
 
-            // Sync with Pharmacy Queue Display (Bridge logic)
-            console.log('Syncing with pharmacy queue for token:', selectedPatient.token_number);
-            const { error: queueError } = await (supabase as any)
+            if (!prescriptionId) {
+                const insertWithQueue = await supabase
+                    .from('hospital_prescriptions' as any)
+                    .insert({
+                        hospital_id: doctor.hospital_id,
+                        doctor_id: doctor.id,
+                        patient_id: selectedPatient.id,
+                        queue_id: selectedQueueId,
+                        token_number: selectedPatient.token_number,
+                        medications: prescriptionMeds,
+                        notes: prescriptionNotes,
+                        status: 'pending'
+                    } as any)
+                    .select('id')
+                    .single();
+
+                // Backward compatibility for DBs where queue_id isn't migrated yet.
+                if (insertWithQueue.error && String(insertWithQueue.error.message || '').toLowerCase().includes('queue_id')) {
+                    const insertLegacy = await supabase
+                        .from('hospital_prescriptions' as any)
+                        .insert({
+                            hospital_id: doctor.hospital_id,
+                            doctor_id: doctor.id,
+                            patient_id: selectedPatient.id,
+                            token_number: selectedPatient.token_number,
+                            medications: prescriptionMeds,
+                            notes: prescriptionNotes,
+                            status: 'pending'
+                        } as any)
+                        .select('id')
+                        .single();
+                    if (insertLegacy.error) throw insertLegacy.error;
+                    prescriptionId = (insertLegacy.data as any)?.id || null;
+                } else {
+                    if (insertWithQueue.error) throw insertWithQueue.error;
+                    prescriptionId = (insertWithQueue.data as any)?.id || null;
+                }
+            }
+
+            if (!prescriptionId) throw new Error('Prescription ID missing after save');
+
+            // Sync queue row in an idempotent way.
+            const existingQueue = await (supabase as any)
                 .from('hospital_pharmacy_queue')
-                .insert({
-                    hospital_id: doctor.hospital_id,
-                    prescription_id: (data as any)?.id || '',
-                    patient_name: selectedPatient.name,
-                    token_number: selectedPatient.token_number,
-                    status: 'waiting'
-                });
+                .select('id')
+                .eq('prescription_id', prescriptionId)
+                .limit(1)
+                .maybeSingle();
+
+            let queueError: any = null;
+            if (existingQueue.data?.id) {
+                const updateQueue = await (supabase as any)
+                    .from('hospital_pharmacy_queue')
+                    .update({
+                        patient_name: selectedPatient.name,
+                        token_number: selectedPatient.token_number,
+                        status: 'waiting'
+                    })
+                    .eq('id', existingQueue.data.id);
+                queueError = updateQueue.error;
+            } else {
+                const insertQueue = await (supabase as any)
+                    .from('hospital_pharmacy_queue')
+                    .insert({
+                        hospital_id: doctor.hospital_id,
+                        prescription_id: prescriptionId,
+                        patient_name: selectedPatient.name,
+                        token_number: selectedPatient.token_number,
+                        status: 'waiting'
+                    });
+                queueError = insertQueue.error;
+            }
 
             if (queueError) {
                 console.error('Pharmacy Queue sync failed:', queueError);
             }
 
-            console.log('Prescription sent successfully:', { prescriptionMeds, prescriptionNotes });
             toast.success('Prescription sent to Pharmacy!', { id: toastId });
             setShowRxModal(false);
-            // Update queue status
-            handleUpdateStatus(queue.find(q => q.patient.id === selectedPatient.id)?.id || '', 'completed');
+            setSelectedQueueId(null);
+            setSelectedPatient(null);
+            await handleUpdateStatus(selectedQueueId, 'completed');
         } catch (error: any) {
             console.error('Full Error Object:', error);
             toast.error(`Failed to send: ${error.message || 'Unknown error'}`, { id: toastId });
+        } finally {
+            isSendingToPharmacyRef.current = false;
         }
     };
 
@@ -735,6 +835,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                                 <button
                                                     onClick={() => {
                                                         setSelectedPatient(item.patient);
+                                                        setSelectedQueueId(item.id);
                                                         setShowRxModal(true);
                                                     }}
                                                     className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
@@ -960,7 +1061,11 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 <PrescriptionModal
                     doctor={currentDoctor}
                     patient={selectedPatient}
-                    onClose={() => setShowRxModal(false)}
+                    onClose={() => {
+                        setShowRxModal(false);
+                        setSelectedQueueId(null);
+                        setSelectedPatient(null);
+                    }}
                     onSendToPharmacy={handleSendToPharmacy}
                     clinicLogo={hospitalLogo || undefined}
                 />

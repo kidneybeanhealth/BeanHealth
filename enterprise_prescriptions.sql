@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS public.hospital_prescriptions (
     hospital_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     doctor_id UUID REFERENCES public.hospital_doctors(id) ON DELETE SET NULL,
     patient_id UUID REFERENCES public.hospital_patients(id) ON DELETE CASCADE,
+    queue_id UUID REFERENCES public.hospital_queues(id) ON DELETE SET NULL,
     medications JSONB NOT NULL DEFAULT '[]', -- Array of { name, dosage, frequency, duration, instruction }
     notes TEXT,
     token_number TEXT, -- Snapshot of token number for easy display
@@ -24,4 +25,5 @@ WITH CHECK (auth.uid() = hospital_id);
 CREATE INDEX IF NOT EXISTS idx_prescriptions_hospital ON public.hospital_prescriptions(hospital_id);
 CREATE INDEX IF NOT EXISTS idx_prescriptions_doctor ON public.hospital_prescriptions(doctor_id);
 CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON public.hospital_prescriptions(patient_id);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_queue_id ON public.hospital_prescriptions(queue_id);
 CREATE INDEX IF NOT EXISTS idx_prescriptions_status ON public.hospital_prescriptions(status);
