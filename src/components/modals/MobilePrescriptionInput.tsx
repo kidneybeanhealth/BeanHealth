@@ -1,5 +1,11 @@
 import React from 'react';
 
+const parseSpecialists = (value: string) =>
+    (value || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
 // Types for medication
 interface Medication {
     name: string;
@@ -201,7 +207,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                             type="text"
                                             value={med.name}
                                             onChange={e => {
-                                                const val = e.target.value;
+                                                const val = e.target.value.toUpperCase();
                                                 updateMed(index, 'name', val);
                                                 setDrugSearchQuery(val);
                                                 setShowDrugDropdown(index);
@@ -476,14 +482,15 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                         />
                                         <div className="absolute left-0 right-0 bottom-full mb-1 z-[60] bg-white border border-gray-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto py-2">
                                             {SPECIALIST_OPTIONS.map((opt) => {
-                                                const isSelected = (formData.specialistToReview || '').split(', ').includes(opt);
+                                                const currentSpecs = parseSpecialists(formData.specialistToReview || '');
+                                                const isSelected = currentSpecs.includes(opt);
                                                 return (
                                                     <button
                                                         key={opt}
                                                         type="button"
-                                                        onClick={(e) => {
+                                                        onMouseDown={(e) => {
                                                             e.preventDefault();
-                                                            const currentSpecs = (formData.specialistToReview || '').split(', ').filter(s => s);
+                                                            e.stopPropagation();
                                                             let newSpecs;
                                                             if (isSelected) {
                                                                 newSpecs = currentSpecs.filter(s => s !== opt);

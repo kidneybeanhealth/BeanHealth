@@ -254,7 +254,7 @@ const PrescriptionPage: React.FC = () => {
             const pharmacyMeds = medications.filter(m => m.name).map(m => {
                 const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.evening || '0'}-${m.night || '0'}`;
                 return {
-                    name: m.name,
+                    name: String(m.name || '').toUpperCase(),
                     dosage: m.number + ' tab',
                     dose: m.dose,
                     frequency: freq,
@@ -634,13 +634,15 @@ const PrescriptionPage: React.FC = () => {
                                                                 />
                                                                 <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto py-1">
                                                                     {SPECIALIST_OPTIONS.map((opt) => {
-                                                                        const isSelected = (formData.specialistToReview || '').split(', ').includes(opt);
+                                                                        const currentSpecs = (formData.specialistToReview || '').split(',').map(s => s.trim()).filter(Boolean);
+                                                                        const isSelected = currentSpecs.includes(opt);
                                                                         return (
                                                                             <button
                                                                                 key={opt}
                                                                                 className={`w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between ${isSelected ? 'text-emerald-700 font-bold bg-emerald-50/30' : 'text-gray-700'}`}
-                                                                                onClick={() => {
-                                                                                    const currentSpecs = (formData.specialistToReview || '').split(', ').filter(s => s);
+                                                                                onMouseDown={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation();
                                                                                     let newSpecs;
                                                                                     if (isSelected) {
                                                                                         newSpecs = currentSpecs.filter(s => s !== opt);

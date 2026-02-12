@@ -86,6 +86,12 @@ const SPECIALIST_OPTIONS = [
   'Dr. A. Divakar'
 ];
 
+const parseSpecialists = (value: string) =>
+  (value || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
 const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, onClose, onSendToPharmacy, readOnly = false, existingData = null, clinicLogo }) => {
   // Form States matching the PDF structure
   const [formData, setFormData] = useState({
@@ -321,7 +327,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     const prefix = drugType ? `${drugType}. ` : '';
     newMeds[index] = {
       ...newMeds[index],
-      name: `${prefix}${drug.name}`,
+      name: `${prefix}${drug.name}`.toUpperCase(),
       drugType: drugType || ''
     };
     setMedications(newMeds);
@@ -372,17 +378,17 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
           else if (instruction === '' || instruction.includes('nil')) foodTiming = 'nil';
 
           return {
-            name: m.name,
+            name: String(m.name || '').toUpperCase(),
             number: (m.dosage || '').replace(' tab', ''),
             dose: m.dose || '',
             morning: freqs[0] !== '0' ? freqs[0] : '',
-            morningTime: '',
+            morningTime: m.morningTime || m.morning_time || '',
             noon: freqs[1] !== '0' ? freqs[1] : '',
-            noonTime: '',
+            noonTime: m.noonTime || m.noon_time || '',
             evening: freqs[2] !== '0' ? freqs[2] : '',
-            eveningTime: '',
+            eveningTime: m.eveningTime || m.evening_time || '',
             night: freqs[3] !== '0' ? freqs[3] : '',
-            nightTime: '',
+            nightTime: m.nightTime || m.night_time || '',
             foodTiming
           };
         });
@@ -471,10 +477,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     const pharmacyMeds = medications.filter(m => m.name).map(m => {
       const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.evening || '0'}-${m.night || '0'}`;
       return {
-        name: m.name,
+        name: String(m.name || '').toUpperCase(),
         dosage: m.number + ' tab',
         dose: m.dose,
         frequency: freq,
+        morningTime: m.morningTime || '',
+        noonTime: m.noonTime || '',
+        eveningTime: m.eveningTime || '',
+        nightTime: m.nightTime || '',
+        drugType: m.drugType || '',
         duration: 'See Review Date',
         instruction: m.foodTiming === 'B/F' ? 'Before Food' : m.foodTiming === 'nil' ? '' : m.foodTiming || 'After Food'
       };
@@ -832,7 +843,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                           onMouseDown={() => {
                                             const newMeds = [...medications];
                                             const prefix = drug.drugType ? `${drug.drugType}. ` : '';
-                                            newMeds[globalIndex].name = `${prefix}${drug.name}`;
+                                            newMeds[globalIndex].name = `${prefix}${drug.name}`.toUpperCase();
                                             newMeds[globalIndex].drugType = drug.drugType || '';
                                             setMedications(newMeds);
                                             setShowDrugDropdown(null);
@@ -1157,16 +1168,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                     />
                                     <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[120] max-h-48 overflow-y-auto py-1 font-normal">
                                       {SPECIALIST_OPTIONS.map((opt) => {
-                                        const isSelected = (formData.specialistToReview || '').split(', ').includes(opt);
+                                        const currentSpecs = parseSpecialists(formData.specialistToReview || '');
+                                        const isSelected = currentSpecs.includes(opt);
                                         return (
                                           <button
                                             key={opt}
                                             type="button"
                                             className={`w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between ${isSelected ? 'text-emerald-700 font-bold bg-emerald-50/30' : 'text-gray-700'}`}
-                                            onClick={(e) => {
+                                            onMouseDown={(e) => {
                                               e.preventDefault();
                                               e.stopPropagation();
-                                              const currentSpecs = (formData.specialistToReview || '').split(', ').filter(s => s);
                                               let newSpecs;
                                               if (isSelected) {
                                                 newSpecs = currentSpecs.filter(s => s !== opt);
