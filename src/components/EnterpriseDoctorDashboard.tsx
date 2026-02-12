@@ -694,29 +694,31 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                         </button>
 
                         {/* Action Group 2: Tabs + Settings + Refresh */}
-                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                            <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm flex flex-1 sm:flex-none">
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full lg:w-auto">
+                            {/* Tabs Switcher - Force Horizontal Grid */}
+                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm grid grid-cols-3 gap-1 flex-1 md:flex-none min-w-[320px]">
                                 <button
                                     onClick={() => setViewMode('queue')}
-                                    className={`flex-1 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Active Queue
                                 </button>
                                 <button
                                     onClick={() => setViewMode('history')}
-                                    className={`flex-1 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'history' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'history' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     History Log
                                 </button>
                                 <button
                                     onClick={() => setViewMode('past_records')}
-                                    className={`flex-1 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Past Records
                                 </button>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            {/* Settings & Reload Buttons */}
+                            <div className="flex items-center gap-2 justify-end md:justify-start">
                                 <button
                                     onClick={() => setShowSettingsModal(true)}
                                     className={`p-2.5 sm:p-3 bg-white text-gray-500 hover:text-blue-600 rounded-2xl border border-gray-200 hover:border-blue-200 transition-all shadow-sm shrink-0 ${currentDoctor.signature_url ? '' : 'animate-pulse ring-2 ring-blue-500/20'}`}
@@ -767,27 +769,27 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                     <h3 className="font-bold text-gray-900 text-lg">Current Queue</h3>
                                     <span className="text-sm font-medium text-gray-700 sm:hidden">{queue.length} waiting</span>
                                 </div>
-                                <div className="flex items-center gap-2 sm:gap-3">
+                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-0 w-full sm:w-auto">
                                     <button
                                         onClick={() => setShowManageDrugsModal(true)}
-                                        className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/25 transition-all hover:-translate-y-0.5 flex items-center gap-1.5 sm:gap-2 shrink-0"
+                                        className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/25 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-1.5 sm:gap-2 shrink-0 min-w-[120px]"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
-                                        <span className="hidden xs:inline">Manage</span> <span className="hidden sm:inline">Saved</span> Drugs
+                                        <span>Manage Drugs</span>
                                     </button>
                                     <button
                                         onClick={() => setShowManageDiagnosesModal(true)}
-                                        className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 flex items-center gap-1.5 sm:gap-2 shrink-0"
+                                        className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-1.5 sm:gap-2 shrink-0 min-w-[120px]"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
-                                        <span className="hidden xs:inline">Manage</span> <span className="hidden sm:inline">Saved</span> Diag
+                                        <span>Manage Diag</span>
                                     </button>
-                                    <span className="hidden sm:inline text-sm font-medium text-gray-700">{queue.length} Patients Waiting</span>
+                                    <span className="hidden sm:inline text-sm font-medium text-gray-700 ml-2">{queue.length} Patients Waiting</span>
                                 </div>
                             </div>
 
@@ -947,8 +949,8 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                 </div>
                             ) : (
                                 <div>
-                                    {/* Table Header */}
-                                    <div className="grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_3rem_2rem] gap-1 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
+                                    {/* Table Header - Hidden on mobile */}
+                                    <div className="hidden md:grid grid-cols-[3rem_1.5fr_0.5fr_1fr_1fr_0.5fr_2rem] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
                                         <span>#</span>
                                         <span>Patient Name</span>
                                         <span>Age</span>
@@ -966,27 +968,52 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                             return (
                                                 <div key={patient.id}>
                                                     <div
-                                                        className={`grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_3rem_2rem] gap-1 px-6 py-4 cursor-pointer transition-all duration-150 items-center ${expandedPatientId === patient.id ? 'bg-blue-50/60 border-l-4 border-l-blue-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
+                                                        className={`flex flex-col md:grid md:grid-cols-[3rem_1.5fr_0.5fr_1fr_1fr_0.5fr_2rem] gap-2 md:gap-4 p-4 md:px-6 md:py-4 cursor-pointer transition-all duration-150 items-start md:items-center ${expandedPatientId === patient.id ? 'bg-blue-50/60 border-l-4 border-l-blue-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
                                                         onClick={() => setExpandedPatientId(expandedPatientId === patient.id ? null : patient.id)}
                                                     >
-                                                        <span className="text-xs text-gray-400 font-medium">{index + 1}</span>
+                                                        {/* Mobile: Top Row with # and Name */}
+                                                        <div className="flex items-center justify-between w-full md:w-auto md:contents">
+                                                            <span className="text-xs text-gray-400 font-medium hidden md:block">{index + 1}</span>
 
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
-                                                                {initial}
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+                                                                    {initial}
+                                                                </div>
+                                                                <div className="flex flex-col md:block min-w-0">
+                                                                    <p className="font-semibold text-gray-900 text-sm truncate">{patient.name}</p>
+                                                                    {/* Mobile-only sub-details */}
+                                                                    <p className="text-xs text-gray-500 md:hidden">
+                                                                        {patient.age} yrs • {patient.phone || 'No phone'}
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                            <p className="font-semibold text-gray-900 text-sm truncate">{patient.name}</p>
+
+                                                            {/* Mobile Chevron */}
+                                                            <svg className={`w-5 h-5 text-gray-400 md:hidden transition-transform duration-200 ${expandedPatientId === patient.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
                                                         </div>
 
-                                                        <span className="text-sm text-gray-700">{patient.age || '—'}</span>
+                                                        {/* Desktop Columns / Mobile Data Grid */}
+                                                        <span className="text-sm text-gray-700 hidden md:block">{patient.age || '—'}</span>
+                                                        <span className="text-sm text-gray-700 font-mono hidden md:block">{patient.phone || '—'}</span>
 
-                                                        <span className="text-sm text-gray-700 font-mono">{patient.phone || '—'}</span>
+                                                        {/* Mobile: MR & Visits Row */}
+                                                        <div className="flex items-center gap-4 w-full md:contents mt-2 md:mt-0 pl-[3.25rem] md:pl-0">
+                                                            <div className="flex-1 md:hidden">
+                                                                <p className="text-[10px] text-gray-400 uppercase font-bold">MR Number</p>
+                                                                <p className="text-xs font-mono text-gray-700">{patient.mr_number || '—'}</p>
+                                                            </div>
+                                                            <span className="text-xs text-gray-700 font-medium truncate min-w-0 hidden md:block" title={patient.mr_number || ''}>{patient.mr_number || '—'}</span>
 
-                                                        <span className="text-xs text-gray-700 font-medium truncate min-w-0" title={patient.mr_number || ''}>{patient.mr_number || '—'}</span>
+                                                            <div className="flex-1 md:flex-none">
+                                                                <p className="text-[10px] text-gray-400 uppercase font-bold md:hidden">Visits</p>
+                                                                <span className="text-sm font-semibold text-blue-600">{patient.prescriptions?.length || 0}</span>
+                                                            </div>
+                                                        </div>
 
-                                                        <span className="text-sm font-semibold text-blue-600">{patient.prescriptions?.length || 0}</span>
-
-                                                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expandedPatientId === patient.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        {/* Desktop Chevron */}
+                                                        <svg className={`w-4 h-4 text-gray-400 hidden md:block transition-transform duration-200 ${expandedPatientId === patient.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                                         </svg>
                                                     </div>

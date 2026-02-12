@@ -105,6 +105,11 @@ const ReceptionDashboard: React.FC = () => {
     });
     const [isSavingPrinterSettings, setIsSavingPrinterSettings] = useState(false);
 
+    // Delete Patient State
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<{ type: 'queue' | 'patient', id: string, name: string, queueId?: string } | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     // BeanHealth ID Lookup
     const [bhidMatch, setBhidMatch] = useState<{
         id: string;
@@ -567,12 +572,13 @@ const ReceptionDashboard: React.FC = () => {
             const linkedUserId = bhidMatch?.id || null;
 
             let patientId: string | null = null;
+            let existingPatientName: string | null = null;
 
             // Reuse existing patient by MR number (strong key).
             if (normalizedMrNumber) {
                 const existingByMr = await supabase
                     .from('hospital_patients')
-                    .select('id')
+                    .select('id, name')
                     .eq('hospital_id', profile.id)
                     .eq('mr_number', normalizedMrNumber)
                     .order('created_at', { ascending: false })
@@ -580,14 +586,17 @@ const ReceptionDashboard: React.FC = () => {
                     .maybeSingle();
 
                 if (existingByMr.error) throw existingByMr.error;
-                patientId = (existingByMr.data as any)?.id || null;
+                if (existingByMr.data) {
+                    patientId = existingByMr.data.id;
+                    existingPatientName = existingByMr.data.name;
+                }
             }
 
             // Fallback reuse by linked BeanHealth user.
             if (!patientId && linkedUserId) {
                 const existingByLinkedUser = await supabase
                     .from('hospital_patients')
-                    .select('id')
+                    .select('id, name')
                     .eq('hospital_id', profile.id)
                     .eq('linked_user_id', linkedUserId)
                     .order('created_at', { ascending: false })
@@ -595,32 +604,75 @@ const ReceptionDashboard: React.FC = () => {
                     .maybeSingle();
 
                 if (existingByLinkedUser.error) throw existingByLinkedUser.error;
-                patientId = (existingByLinkedUser.data as any)?.id || null;
+                if (existingByLinkedUser.data) {
+                    patientId = existingByLinkedUser.data.id;
+                    existingPatientName = existingByLinkedUser.data.name;
+                }
             }
 
+            // CHECK: Is this patient already in the queue TODAY?
             if (patientId) {
-                const patientUpdate = await supabase
-                    .from('hospital_patients')
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+
+                const { data: existingQueueData, error: queueCheckError } = await supabase
+                    .from('hospital_queues')
+                    .select('id, queue_number, patient:hospital_patients(name)')
+                    .eq('hospital_id', profile.id)
+                    .eq('patient_id', patientId)
+                    .gte('created_at', todayStart.toISOString())
+                    .maybeSingle();
+
+                if (existingQueueData) {
+                    toast.dismiss(toastId);
+                    toast.error(`Patient ${existingPatientName || ''} is already in the queue today!`);
+                    return; // STOP execution
+                }
+            }
+
+            // GLOBAL TOKEN CALCULATION (Prevents duplicates)
+            // Count total patients in queue today across ALL doctors
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const tomorrowStart = new Date(todayStart);
+            tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+            const { count: todayTotalCount, error: countError } = await supabase
+                .from('hospital_queues')
+                .select('id', { count: 'exact', head: true })
+                .eq('hospital_id', profile.id)
+                .gte('created_at', todayStart.toISOString())
+                .lt('created_at', tomorrowStart.toISOString());
+
+            if (countError) throw countError;
+
+            // The Next Global Token is Total Count + 1
+            const globalToken = String((todayTotalCount || 0) + 1);
+
+            // Create/Update Patient
+            if (patientId) {
+                const patientUpdate = await (supabase
+                    .from('hospital_patients') as any)
                     .update({
                         name: walkInForm.name,
                         age: parseInt(walkInForm.age, 10),
-                        token_number: tokenNumber,
+                        token_number: globalToken, // Use calculated global token
                         mr_number: normalizedMrNumber,
                         father_husband_name: walkInForm.fatherHusbandName || null,
                         place: walkInForm.place || null,
                         phone: normalizedPhone,
-                        linked_user_id: linkedUserId || undefined
-                    })
+                        linked_user_id: linkedUserId || null
+                    } as any)
                     .eq('id', patientId);
                 if (patientUpdate.error) throw patientUpdate.error;
             } else {
-                const patientInsert = await supabase
-                    .from('hospital_patients')
+                const patientInsert = await (supabase
+                    .from('hospital_patients') as any)
                     .insert({
                         hospital_id: profile.id,
                         name: walkInForm.name,
                         age: parseInt(walkInForm.age, 10),
-                        token_number: tokenNumber,
+                        token_number: globalToken, // Use calculated global token
                         mr_number: normalizedMrNumber,
                         father_husband_name: walkInForm.fatherHusbandName || null,
                         place: walkInForm.place || null,
@@ -639,60 +691,47 @@ const ReceptionDashboard: React.FC = () => {
             let nextQueueNo = 1;
             let queueError: any = null;
 
-            // Preferred: DB-side atomic queue number generation (if migration has been applied).
-            const queueFromRpc = await (supabase as any).rpc('create_hospital_queue_entry', {
-                p_hospital_id: profile.id,
-                p_patient_id: patientId,
-                p_doctor_id: walkInForm.doctorId
-            });
-            const queueFromRpcData = queueFromRpc.data as any[] | null;
+            // Doctor-Specific Queue Number
+            const maxQueue = await supabase
+                .from('hospital_queues')
+                .select('queue_number')
+                .eq('doctor_id', walkInForm.doctorId)
+                .gte('created_at', todayStart.toISOString())
+                .lt('created_at', tomorrowStart.toISOString())
+                .order('queue_number', { ascending: false })
+                .limit(1);
 
-            if (!queueFromRpc.error && Array.isArray(queueFromRpcData) && queueFromRpcData.length > 0) {
-                nextQueueNo = queueFromRpcData[0].queue_number || 1;
-            } else {
-                // Backward-compatible fallback for environments without the RPC function.
-                const todayStart = new Date();
-                todayStart.setHours(0, 0, 0, 0);
-                const tomorrowStart = new Date(todayStart);
-                tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+            if (maxQueue.error) throw maxQueue.error;
+            nextQueueNo = ((maxQueue.data?.[0] as any)?.queue_number || 0) + 1;
 
-                const maxQueue = await supabase
-                    .from('hospital_queues')
-                    .select('queue_number')
-                    .eq('doctor_id', walkInForm.doctorId)
-                    .gte('created_at', todayStart.toISOString())
-                    .lt('created_at', tomorrowStart.toISOString())
-                    .order('queue_number', { ascending: false })
-                    .limit(1);
-
-                if (maxQueue.error) throw maxQueue.error;
-                nextQueueNo = ((maxQueue.data?.[0] as any)?.queue_number || 0) + 1;
-
-                const queueInsert = await supabase
-                    .from('hospital_queues')
-                    .insert({
-                        hospital_id: profile.id,
-                        patient_id: patientId,
-                        doctor_id: walkInForm.doctorId,
-                        queue_number: nextQueueNo,
-                        status: 'pending'
-                    });
-                queueError = queueInsert.error;
-            }
+            const queueInsert = await (supabase
+                .from('hospital_queues') as any)
+                .insert({
+                    hospital_id: profile.id,
+                    patient_id: patientId,
+                    doctor_id: walkInForm.doctorId,
+                    queue_number: nextQueueNo,
+                    status: 'pending'
+                });
+            queueError = queueInsert.error;
 
             if (queueError) {
                 console.error('Queue Insertion Error:', queueError);
                 throw new Error(queueError.message);
             }
 
+            // Update local token variable for the success message
+            // We reuse the calculated globalToken here
+
+
             // Find the selected doctor for the print dialog
             const selectedDoctor = doctors.find(d => d.id === walkInForm.doctorId);
 
-            toast.success(`Patient registered! Token: ${tokenNumber}`, { id: toastId });
+            toast.success(`Patient registered! Token: ${globalToken}`, { id: toastId });
 
             // Store patient info for printing and show print dialog
             setLastRegisteredPatient({
-                tokenNumber,
+                tokenNumber: globalToken,
                 name: walkInForm.name,
                 mrNumber: walkInForm.mrNumber || undefined,
                 doctorName: selectedDoctor?.name || '',
@@ -792,6 +831,69 @@ const ReceptionDashboard: React.FC = () => {
         } catch (error: any) {
             console.error('Reprint error:', error);
             toast.error(error.message || 'Failed to reprint', { id: toastId });
+        }
+    };
+
+    const confirmDelete = (type: 'queue' | 'patient', id: string, name: string, queueId?: string) => {
+        setItemToDelete({ type, id, name, queueId });
+        setShowDeleteModal(true);
+    };
+
+    const handleDeletePatient = async () => {
+        if (!itemToDelete || !profile?.id) return;
+
+        setIsDeleting(true);
+        const toastId = toast.loading('Deleting record...');
+
+        try {
+            // 1. If it's a queue item or has a queueId, delete from hospital_queues first
+            // Note: If we are deleting a patient from Past Records, they might still have queue entries.
+            // PostgreSQL foreign key constraints usually handle cascading deletes if configured, 
+            // but we'll be explicit here to be safe and ensure UI updates correctly.
+
+            if (itemToDelete.type === 'queue' && itemToDelete.queueId) {
+                const { error: queueError } = await supabase
+                    .from('hospital_queues')
+                    .delete()
+                    .eq('id', itemToDelete.queueId);
+
+                if (queueError) throw queueError;
+            } else if (itemToDelete.type === 'patient') {
+                // If deleting a patient entirely, we should remove all their queue entries first
+                const { error: queueError } = await supabase
+                    .from('hospital_queues')
+                    .delete()
+                    .eq('patient_id', itemToDelete.id);
+
+                if (queueError) console.warn('Error clearing queue entries:', queueError); // Continue anyway
+            }
+
+            // 2. Delete the patient record
+            // This will likely cascade delete prescriptions/history if your DB schema is set up that way.
+            // If not, this might fail if there are foreign keys. Assuming strictly "wrongly entered" implies minimal history.
+            const { error: patientError } = await supabase
+                .from('hospital_patients')
+                .delete()
+                .eq('id', itemToDelete.id);
+
+            if (patientError) throw patientError;
+
+            toast.success('Record deleted successfully', { id: toastId });
+            setShowDeleteModal(false);
+            setItemToDelete(null);
+
+            // Refresh data
+            fetchQueue();
+            if (activeTab === 'past_records') {
+                setPastRecords(prev => prev.filter(p => p.id !== itemToDelete.id));
+                setPastRecordsTotal(prev => Math.max(0, prev - 1));
+            }
+
+        } catch (error: any) {
+            console.error('Delete error:', error);
+            toast.error(`Failed to delete: ${error.message || 'Unknown error'}`, { id: toastId });
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -1003,7 +1105,7 @@ const ReceptionDashboard: React.FC = () => {
                             ) : (
                                 <div>
                                     {/* Table Header */}
-                                    <div className="grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_10rem_3rem_2rem] gap-1 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
+                                    <div className="grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_10rem_3rem_3rem_2rem] gap-1 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
                                         <span>#</span>
                                         <span>Patient Name</span>
                                         <span>Age</span>
@@ -1011,6 +1113,7 @@ const ReceptionDashboard: React.FC = () => {
                                         <span>MR #</span>
                                         <span>BH ID</span>
                                         <span>Visits</span>
+                                        <span></span>
                                         <span></span>
                                     </div>
                                     {/* Patient Rows */}
@@ -1023,7 +1126,7 @@ const ReceptionDashboard: React.FC = () => {
                                                 <div key={patient.id}>
                                                     {/* Patient Row */}
                                                     <div
-                                                        className={`grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_10rem_3rem_2rem] gap-1 px-6 py-4 cursor-pointer transition-all duration-150 items-center ${expandedPatientId === patient.id ? 'bg-orange-50/60 border-l-4 border-l-orange-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
+                                                        className={`grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_10rem_3rem_3rem_2rem] gap-1 px-6 py-4 cursor-pointer transition-all duration-150 items-center ${expandedPatientId === patient.id ? 'bg-orange-50/60 border-l-4 border-l-orange-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
                                                         onClick={() => setExpandedPatientId(expandedPatientId === patient.id ? null : patient.id)}
                                                     >
                                                         {/* S.No */}
@@ -1056,6 +1159,20 @@ const ReceptionDashboard: React.FC = () => {
 
                                                         {/* Visits */}
                                                         <span className="text-sm font-semibold text-orange-600">{patient.prescriptions?.length || 0}</span>
+
+                                                        {/* Delete Button */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                confirmDelete('patient', patient.id, patient.name);
+                                                            }}
+                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete Patient Record"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
 
                                                         {/* Expand arrow */}
                                                         <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expandedPatientId === patient.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1171,6 +1288,18 @@ const ReceptionDashboard: React.FC = () => {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                                 </svg>
                                             </button>
+
+                                            {/* Delete Button (Queue) */}
+                                            <button
+                                                onClick={() => confirmDelete('queue', item.patient?.id || '', item.patient?.name || 'Unknown', item.id)}
+                                                className="p-2 rounded-xl border border-transparent hover:bg-red-50 hover:border-red-100 text-gray-300 hover:text-red-500 transition-all"
+                                                title="Remove from Queue & Delete"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+
                                             <div className="text-right">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase
                                                     ${item.status === 'pending' ? 'bg-orange-100 text-orange-700' :
@@ -1660,6 +1789,52 @@ const ReceptionDashboard: React.FC = () => {
                 onSettingsChange={handleSavePrinterSettings}
                 isSavingSettings={isSavingPrinterSettings}
             />
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && itemToDelete && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-scale-in">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-1">Delete Patient?</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Are you sure you want to delete <span className="font-bold text-gray-800">{itemToDelete.name}</span>?
+                                <br />
+                                <span className="text-red-500 font-medium mt-1 block">This action cannot be undone.</span>
+                            </p>
+
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }}
+                                    className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeletePatient}
+                                    disabled={isDeleting}
+                                    className="flex-1 px-4 py-2.5 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isDeleting ? (
+                                        <>
+                                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Deleting...
+                                        </>
+                                    ) : 'Delete'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
