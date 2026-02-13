@@ -584,19 +584,43 @@ const PrescriptionPage: React.FC = () => {
                                                                 </div>
                                                                 {/* Morning */}
                                                                 <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
-                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={med.morning} onChange={e => updateMed(globalI, 'morning', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                                    <input
+                                                                        className="w-full text-center text-xs font-bold outline-none"
+                                                                        value={readOnly ? (med.morning && med.morning !== '0' ? med.morning : '-') : med.morning}
+                                                                        onChange={e => updateMed(globalI, 'morning', e.target.value)}
+                                                                        readOnly={readOnly}
+                                                                        placeholder={readOnly ? '' : '0'}
+                                                                    />
                                                                 </div>
                                                                 {/* Noon */}
                                                                 <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
-                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={med.noon} onChange={e => updateMed(globalI, 'noon', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                                    <input
+                                                                        className="w-full text-center text-xs font-bold outline-none"
+                                                                        value={readOnly ? (med.noon && med.noon !== '0' ? med.noon : '-') : med.noon}
+                                                                        onChange={e => updateMed(globalI, 'noon', e.target.value)}
+                                                                        readOnly={readOnly}
+                                                                        placeholder={readOnly ? '' : '0'}
+                                                                    />
                                                                 </div>
                                                                 {/* Evening */}
                                                                 <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
-                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={med.evening || ''} onChange={e => updateMed(globalI, 'evening', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                                    <input
+                                                                        className="w-full text-center text-xs font-bold outline-none"
+                                                                        value={readOnly ? (med.evening && med.evening !== '0' ? med.evening : '-') : (med.evening || '')}
+                                                                        onChange={e => updateMed(globalI, 'evening', e.target.value)}
+                                                                        readOnly={readOnly}
+                                                                        placeholder={readOnly ? '' : '0'}
+                                                                    />
                                                                 </div>
                                                                 {/* Night */}
                                                                 <div className="w-12 border-r border-black flex items-center justify-center shrink-0">
-                                                                    <input className="w-full text-center text-xs font-bold outline-none" value={med.night} onChange={e => updateMed(globalI, 'night', e.target.value)} readOnly={readOnly} placeholder="0" />
+                                                                    <input
+                                                                        className="w-full text-center text-xs font-bold outline-none"
+                                                                        value={readOnly ? (med.night && med.night !== '0' ? med.night : '-') : med.night}
+                                                                        onChange={e => updateMed(globalI, 'night', e.target.value)}
+                                                                        readOnly={readOnly}
+                                                                        placeholder={readOnly ? '' : '0'}
+                                                                    />
                                                                 </div>
                                                                 {/* Food Timing Dropdown */}
                                                                 <div className="w-8 flex items-center justify-center shrink-0 relative">

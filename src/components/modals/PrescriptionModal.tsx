@@ -912,7 +912,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 <div className="w-[446px] flex shrink-0 items-stretch">
                                   {/* Quantity */}
                                   <div className="w-28 border-r border-black px-0.5 flex items-center justify-center shrink-0">
-                                    <input className="w-full text-center outline-none text-xs bg-transparent font-bold" placeholder="1" value={med.number} onChange={e => updateMed(globalIndex, 'number', e.target.value)} readOnly={readOnly} />
+                                    <input
+                                      className="w-full text-center outline-none text-xs bg-transparent font-bold"
+                                      placeholder={readOnly ? '' : '1'}
+                                      value={med.number}
+                                      onChange={e => updateMed(globalIndex, 'number', e.target.value)}
+                                      readOnly={readOnly}
+                                    />
                                   </div>
                                   {/* Frequency - Searchable ComboBox */}
                                   <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
@@ -960,8 +966,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
                                         className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                        placeholder="0"
-                                        value={med.morning}
+                                        placeholder={readOnly ? '' : '0'}
+                                        value={readOnly ? (med.morning && med.morning !== '0' ? med.morning : '-') : med.morning}
                                         onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
                                         readOnly={readOnly}
                                         rows={1}
@@ -993,8 +999,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
                                         className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                        placeholder="0"
-                                        value={med.noon}
+                                        placeholder={readOnly ? '' : '0'}
+                                        value={readOnly ? (med.noon && med.noon !== '0' ? med.noon : '-') : med.noon}
                                         onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
                                         readOnly={readOnly}
                                         rows={1}
@@ -1026,8 +1032,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
                                         className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                        placeholder="0"
-                                        value={med.evening}
+                                        placeholder={readOnly ? '' : '0'}
+                                        value={readOnly ? (med.evening && med.evening !== '0' ? med.evening : '-') : med.evening}
                                         onChange={e => updateMed(globalIndex, 'evening', e.target.value)}
                                         readOnly={readOnly}
                                         rows={1}
@@ -1059,8 +1065,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
                                         className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
-                                        placeholder="0"
-                                        value={med.night}
+                                        placeholder={readOnly ? '' : '0'}
+                                        value={readOnly ? (med.night && med.night !== '0' ? med.night : '-') : med.night}
                                         onChange={e => updateMed(globalIndex, 'night', e.target.value)}
                                         readOnly={readOnly}
                                         rows={1}
