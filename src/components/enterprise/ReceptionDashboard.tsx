@@ -175,7 +175,15 @@ const ReceptionDashboard: React.FC = () => {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setQueue(data as any || []);
+
+            // Sort by token_number descending (highest token first)
+            const sortedQueue = (data as any || []).sort((a: any, b: any) => {
+                const tokenA = parseInt(a.patient?.token_number || '0', 10);
+                const tokenB = parseInt(b.patient?.token_number || '0', 10);
+                return tokenB - tokenA; // Descending: 9, 8, 7, 6...
+            });
+
+            setQueue(sortedQueue);
         } catch (error) {
             console.error('Error fetching queue:', error);
             if (!isBackground) toast.error('Failed to update queue');
@@ -398,6 +406,38 @@ const ReceptionDashboard: React.FC = () => {
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [profile?.id, fetchQueue]);
 
+    const calculateNextToken = useCallback(() => {
+        if (queue.length === 0) return "1";
+
+        // Extract numeric tokens, filtering out non-numeric ones
+        const numericTokens = queue
+            .map(item => parseInt(item.patient?.token_number || '0', 10))
+            .filter(num => !isNaN(num) && num > 0);
+
+        if (numericTokens.length === 0) return "1";
+
+        const maxToken = Math.max(...numericTokens);
+        return String(maxToken + 1);
+    }, [queue]);
+
+    const handleOpenWalkInModal = () => {
+        const nextToken = calculateNextToken();
+
+        setWalkInForm({
+            name: '',
+            age: '',
+            fatherHusbandName: '',
+            place: '',
+            phone: '',
+            department: '',
+            doctorId: '',
+            tokenNumber: nextToken, // Pre-fill with smart Auto-Calc
+            mrNumber: ''
+        });
+
+        setShowWalkInModal(true);
+    };
+
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
         setWalkInForm({ name: '', age: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '' });
@@ -566,10 +606,23 @@ const ReceptionDashboard: React.FC = () => {
         const toastId = toast.loading('Registering patient...');
 
         try {
-            const tokenNumber = walkInForm.tokenNumber;
+            const manualToken = walkInForm.tokenNumber.trim();
             const normalizedMrNumber = walkInForm.mrNumber.trim() || null;
             const normalizedPhone = walkInForm.phone.trim() || null;
             const linkedUserId = bhidMatch?.id || null;
+
+            // 1. UNIQUE TOKEN CHECK (For today)
+            // Check against local queue state which contains all today's patients
+            const isTokenTaken = queue.some(item =>
+                item.patient?.token_number === manualToken &&
+                item.status !== 'cancelled' // Optional: allow reusing tokens if previous was cancelled? stricter to say no.
+            );
+
+            if (isTokenTaken) {
+                toast.dismiss(toastId);
+                toast.error(`Token #${manualToken} is already active today! Please choose another.`);
+                return;
+            }
 
             let patientId: string | null = null;
             let existingPatientName: string | null = null;
@@ -630,24 +683,8 @@ const ReceptionDashboard: React.FC = () => {
                 }
             }
 
-            // GLOBAL TOKEN CALCULATION (Prevents duplicates)
-            // Count total patients in queue today across ALL doctors
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            const tomorrowStart = new Date(todayStart);
-            tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-
-            const { count: todayTotalCount, error: countError } = await supabase
-                .from('hospital_queues')
-                .select('id', { count: 'exact', head: true })
-                .eq('hospital_id', profile.id)
-                .gte('created_at', todayStart.toISOString())
-                .lt('created_at', tomorrowStart.toISOString());
-
-            if (countError) throw countError;
-
-            // The Next Global Token is Total Count + 1
-            const globalToken = String((todayTotalCount || 0) + 1);
+            // Assign the validated manual token to globalToken variable to maintain compatibility with updated code below
+            const globalToken = manualToken;
 
             // Create/Update Patient
             if (patientId) {
@@ -692,6 +729,11 @@ const ReceptionDashboard: React.FC = () => {
             let queueError: any = null;
 
             // Doctor-Specific Queue Number
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const tomorrowStart = new Date(todayStart);
+            tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
             const maxQueue = await supabase
                 .from('hospital_queues')
                 .select('queue_number')
@@ -1013,7 +1055,7 @@ const ReceptionDashboard: React.FC = () => {
                             </svg>
                         </button>
                         <button
-                            onClick={() => setShowWalkInModal(true)}
+                            onClick={handleOpenWalkInModal}
                             className="px-4 sm:px-6 py-2.5 sm:py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-semibold shadow-lg shadow-orange-500/20 hover:shadow-xl transition-all flex items-center gap-2 text-sm sm:text-base whitespace-nowrap"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
