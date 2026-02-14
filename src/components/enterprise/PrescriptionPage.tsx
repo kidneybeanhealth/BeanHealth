@@ -227,14 +227,14 @@ const PrescriptionPage: React.FC = () => {
                 setFormData(prev => ({
                     ...prev,
                     diagnosis: notes.match(/Diagnosis: (.*?)(\n|$)/)?.[1] || '',
-                    reviewDate: notes.match(/Review: (.*?)(\n|$)/)?.[1] || '',
-                    testsToReview: notes.match(/Tests: (.*?)(\n|$)/)?.[1] || '',
+                    reviewDate: existingData.next_review_date || notes.match(/Review: (.*?)(\n|$)/)?.[1] || '',
+                    testsToReview: existingData.tests_to_review || notes.match(/Tests: (.*?)(\n|$)/)?.[1] || '',
                     place: notes.match(/Place: (.*?)(\n|$)/)?.[1] || prev.place,
                     phone: notes.match(/Phone: (.*?)(\n|$)/)?.[1] || prev.phone,
                     doctorNotes: notes.match(/DoctorNotes: (.*?)(\n|$)/)?.[1] || '',
                     saltIntake: notes.match(/SaltIntake: (.*?)(\n|$)/)?.[1] || '',
                     fluidIntake: notes.match(/FluidIntake: (.*?)(\n|$)/)?.[1] || '',
-                    specialistToReview: notes.match(/SpecialistToReview: (.*?)(\n|$)/)?.[1] || ''
+                    specialistToReview: existingData.specialists_to_review || notes.match(/SpecialistToReview: (.*?)(\n|$)/)?.[1] || ''
                 }));
             } catch (e) {
                 console.error("Error parsing existing prescription:", e);
@@ -285,6 +285,9 @@ const PrescriptionPage: React.FC = () => {
                     token_number: patient.token_number,
                     medications: pharmacyMeds,
                     notes: notes,
+                    next_review_date: formData.reviewDate || null,
+                    tests_to_review: formData.testsToReview || null,
+                    specialists_to_review: formData.specialistToReview || null,
                     status: 'pending'
                 } as any)
                 .select()

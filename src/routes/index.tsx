@@ -26,6 +26,9 @@ const ReceptionLogin = React.lazy(() =>
 const ReceptionDashboard = React.lazy(() =>
     import('../components/enterprise').then(m => ({ default: m.ReceptionDashboard }))
 );
+const TrackPatientsPage = React.lazy(() =>
+    import('../components/enterprise').then(m => ({ default: m.TrackPatientsPage }))
+);
 const PharmacyLogin = React.lazy(() =>
     import('../components/enterprise').then(m => ({ default: m.PharmacyLogin }))
 );
@@ -290,6 +293,16 @@ const AppRoutes: React.FC = () => {
                         <ProtectedRoute allowedRoles={['enterprise']}>
                             <DepartmentProtectedRoute department="reception">
                                 <ReceptionDashboard />
+                            </DepartmentProtectedRoute>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/enterprise-dashboard/reception/tracker"
+                    element={
+                        <ProtectedRoute allowedRoles={['enterprise']}>
+                            <DepartmentProtectedRoute department="reception">
+                                <TrackPatientsPage />
                             </DepartmentProtectedRoute>
                         </ProtectedRoute>
                     }

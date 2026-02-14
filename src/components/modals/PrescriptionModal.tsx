@@ -56,7 +56,7 @@ interface PrescriptionModalProps {
   doctor: any;
   patient: any;
   onClose: () => void;
-  onSendToPharmacy?: (medications: any[], notes: string) => void;
+  onSendToPharmacy?: (medications: any[], notes: string, reviewContext?: { nextReviewDate: string | null; testsToReview: string; specialistsToReview: string }) => void;
   readOnly?: boolean;
   existingData?: any;
   clinicLogo?: string;
@@ -397,9 +397,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         // Notes parsing
         const notes = existingData.notes || '';
         const diagnosis = notes.match(/Diagnosis: (.*?)(\n|$)/)?.[1] || '';
-        const review = notes.match(/Review: (.*?)(\n|$)/)?.[1] || '';
-        const tests = notes.match(/Tests: (.*?)(\n|$)/)?.[1] || '';
-        const specialists = notes.match(/SpecialistToReview: (.*?)(\n|$)/)?.[1]
+        const review = existingData.next_review_date || notes.match(/Review: (.*?)(\n|$)/)?.[1] || '';
+        const tests = existingData.tests_to_review || notes.match(/Tests: (.*?)(\n|$)/)?.[1] || '';
+        const specialists = existingData.specialists_to_review || notes.match(/SpecialistToReview: (.*?)(\n|$)/)?.[1]
           || notes.match(/SpecialistsToReview: (.*?)(\n|$)/)?.[1]
           || '';
         const place = notes.match(/Place: (.*?)(\n|$)/)?.[1] || '';
@@ -493,7 +493,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
 
     // We pack the extra metadata (Place, Phone, etc) into the notes field so it persists without schema changes
     const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
-    if (onSendToPharmacy) onSendToPharmacy(pharmacyMeds, notes);
+    if (onSendToPharmacy) {
+      onSendToPharmacy(pharmacyMeds, notes, {
+        nextReviewDate: formData.reviewDate || null,
+        testsToReview: formData.testsToReview || '',
+        specialistsToReview: formData.specialistToReview || ''
+      });
+    }
   };
 
   if (isMobile && !showPrintView) {

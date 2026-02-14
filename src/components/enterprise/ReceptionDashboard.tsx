@@ -50,6 +50,13 @@ const formatDoctorName = (name: string) => {
     return `Dr. ${cleanName}`;
 };
 
+const toLocalISODate = (date: Date): string => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+};
+
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
     const { profile, refreshProfile } = useAuth();
@@ -91,6 +98,7 @@ const ReceptionDashboard: React.FC = () => {
     const [showPrinterSetup, setShowPrinterSetup] = useState(false);
     const [printerConnected, setPrinterConnected] = useState(false);
     const [showPrintDialog, setShowPrintDialog] = useState(false);
+    const [reviewAlertCount, setReviewAlertCount] = useState(0);
     const [lastRegisteredPatient, setLastRegisteredPatient] = useState<{
         tokenNumber: string;
         name: string;
@@ -297,14 +305,41 @@ const ReceptionDashboard: React.FC = () => {
         }
     }, [isLoadingQueue]);
 
+    const fetchReviewAlertCount = useCallback(async () => {
+        if (!profile?.id) return;
+        try {
+            const today = toLocalISODate(new Date());
+            const { count, error } = await (supabase as any)
+                .from('hospital_patient_reviews')
+                .select('id', { count: 'exact', head: true })
+                .eq('hospital_id', profile.id)
+                .in('status', ['pending', 'rescheduled'])
+                .lte('next_review_date', today);
+
+            if (error) {
+                // If table is not migrated yet, silently ignore.
+                if (String(error.message || '').toLowerCase().includes('hospital_patient_reviews')) {
+                    setReviewAlertCount(0);
+                    return;
+                }
+                throw error;
+            }
+            setReviewAlertCount(count || 0);
+        } catch (error) {
+            console.warn('Review alert count unavailable:', error);
+            setReviewAlertCount(0);
+        }
+    }, [profile?.id]);
+
     // Initial fetch
     useEffect(() => {
         if (profile?.id) {
             fetchDoctors();
             fetchQueue();
             fetchHospitalSettings();
+            fetchReviewAlertCount();
         }
-    }, [profile?.id, fetchDoctors, fetchQueue]);
+    }, [profile?.id, fetchDoctors, fetchQueue, fetchReviewAlertCount]);
 
     // Fetch single item for realtime inserts
     const fetchSingleQueueItem = async (id: string) => {
@@ -1043,6 +1078,18 @@ const ReceptionDashboard: React.FC = () => {
                             </span>
                             {printerConnected && (
                                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                            )}
+                        </button>
+                        <button
+                            onClick={() => navigate('/enterprise-dashboard/reception/tracker')}
+                            className="relative px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-gray-900 hover:border-gray-300 font-semibold shadow-sm transition-all text-sm whitespace-nowrap"
+                            title="Track patients with review dates"
+                        >
+                            Track patients
+                            {reviewAlertCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">
+                                    {reviewAlertCount > 99 ? '99+' : reviewAlertCount}
+                                </span>
                             )}
                         </button>
                         <button

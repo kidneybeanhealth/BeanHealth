@@ -460,7 +460,11 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         setMedications(newMeds);
     };
 
-    const handleSendToPharmacy = async (prescriptionMeds: any[], prescriptionNotes: string) => {
+    const handleSendToPharmacy = async (
+        prescriptionMeds: any[],
+        prescriptionNotes: string,
+        reviewContext?: { nextReviewDate: string | null; testsToReview: string; specialistsToReview: string }
+    ) => {
         if (!selectedPatient || !selectedQueueId) return;
         if (isSendingToPharmacyRef.current) return;
         isSendingToPharmacyRef.current = true;
@@ -512,13 +516,24 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                         token_number: selectedPatient.token_number,
                         medications: prescriptionMeds,
                         notes: prescriptionNotes,
+                        next_review_date: reviewContext?.nextReviewDate || null,
+                        tests_to_review: reviewContext?.testsToReview || null,
+                        specialists_to_review: reviewContext?.specialistsToReview || null,
                         status: 'pending'
                     } as any)
                     .select('id')
                     .single();
 
                 // Backward compatibility for DBs where queue_id isn't migrated yet.
-                if (insertWithQueue.error && String(insertWithQueue.error.message || '').toLowerCase().includes('queue_id')) {
+                if (
+                    insertWithQueue.error &&
+                    (
+                        String(insertWithQueue.error.message || '').toLowerCase().includes('queue_id') ||
+                        String(insertWithQueue.error.message || '').toLowerCase().includes('next_review_date') ||
+                        String(insertWithQueue.error.message || '').toLowerCase().includes('tests_to_review') ||
+                        String(insertWithQueue.error.message || '').toLowerCase().includes('specialists_to_review')
+                    )
+                ) {
                     const insertLegacy = await supabase
                         .from('hospital_prescriptions' as any)
                         .insert({
@@ -537,6 +552,39 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                 } else {
                     if (insertWithQueue.error) throw insertWithQueue.error;
                     prescriptionId = (insertWithQueue.data as any)?.id || null;
+                }
+            } else {
+                const updateWithStructured = await (supabase
+                    .from('hospital_prescriptions') as any)
+                    .update({
+                        medications: prescriptionMeds,
+                        notes: prescriptionNotes,
+                        next_review_date: reviewContext?.nextReviewDate || null,
+                        tests_to_review: reviewContext?.testsToReview || null,
+                        specialists_to_review: reviewContext?.specialistsToReview || null,
+                        status: 'pending'
+                    })
+                    .eq('id', prescriptionId);
+
+                if (
+                    updateWithStructured.error &&
+                    (
+                        String(updateWithStructured.error.message || '').toLowerCase().includes('next_review_date') ||
+                        String(updateWithStructured.error.message || '').toLowerCase().includes('tests_to_review') ||
+                        String(updateWithStructured.error.message || '').toLowerCase().includes('specialists_to_review')
+                    )
+                ) {
+                    const updateLegacy = await (supabase
+                        .from('hospital_prescriptions') as any)
+                        .update({
+                            medications: prescriptionMeds,
+                            notes: prescriptionNotes,
+                            status: 'pending'
+                        })
+                        .eq('id', prescriptionId);
+                    if (updateLegacy.error) throw updateLegacy.error;
+                } else if (updateWithStructured.error) {
+                    throw updateWithStructured.error;
                 }
             }
 
