@@ -32,6 +32,7 @@ interface Prescription {
         gender?: string;
         phone?: string;
         mr_number?: string;
+        token_number?: string;
     };
 }
 
@@ -62,7 +63,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select(`
                     *,
                     doctor:hospital_doctors(name, specialty, signature_url),
-                    patient:hospital_patients(name, age, mr_number)
+                    patient:hospital_patients(name, age, mr_number, token_number)
                 `)
                 .eq('hospital_id', hospitalId)
                 .in('status', ['pending', 'dispensed'])
@@ -209,10 +210,10 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select(`
                     *,
                     doctor:hospital_doctors(name, specialty, signature_url),
-                    patient:hospital_patients(name, age, mr_number)
+                    patient:hospital_patients(name, age, mr_number, token_number)
                 `)
                 .eq('id', id)
-                .single();
+                .single() as any;
 
             if (data && !error) {
                 setPrescriptions(prev => {
@@ -437,7 +438,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('id')
                 .eq('prescription_id', prescription.id)
                 .in('status', ['waiting', 'calling'])
-                .single();
+                .single() as any;
 
             if (existing) {
                 // Update existing entry to "calling"
@@ -475,7 +476,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('id, status')
                 .eq('prescription_id', prescription.id)
                 .in('status', ['waiting', 'calling'])
-                .single();
+                .single() as any;
 
             if (existing) {
                 toast('Patient already in queue', { icon: 'ℹ️' });
@@ -508,7 +509,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('patient_name')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling')
-                .single();
+                .single() as any;
 
             if (current) {
                 // Set back to waiting
@@ -546,7 +547,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .eq('status', 'waiting')
                 .order('created_at', { ascending: true })
                 .limit(1)
-                .single();
+                .single() as any;
 
             if (nextPatient) {
                 await (supabase
@@ -573,7 +574,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('patient_name')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling')
-                .single();
+                .single() as any;
 
             if (current) {
                 await (supabase
@@ -602,7 +603,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('patient_name')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling')
-                .single();
+                .single() as any;
 
             if (current) {
                 await (supabase
@@ -813,7 +814,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                                                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
                                                                     {initial}
                                                                 </div>
-                                                                <p className="font-semibold text-gray-900 text-sm truncate">{patient.name}</p>
+                                                                <p className="font-semibold text-gray-900 text-sm truncate flex items-center gap-2">
+                                                                    {patient.name}
+                                                                    {patient.token_number && (
+                                                                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] rounded font-bold border border-blue-100">
+                                                                            Token: {patient.token_number}
+                                                                        </span>
+                                                                    )}
+                                                                </p>
                                                             </div>
 
                                                             <span className="text-sm text-gray-700">{patient.age || '—'}</span>
@@ -938,7 +946,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                             <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
                                                 <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-sm flex-shrink-0
                                                     ${item.status === 'pending' ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
-                                                    {item.token_number}
+                                                    {item.token_number || item.patient?.token_number}
                                                 </div>
                                                 <div className="flex-1">
                                                     <h4 className="text-lg font-bold text-gray-900 flex flex-wrap items-center gap-2">
@@ -1037,7 +1045,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                         <div className="flex items-center gap-3 mb-3">
                                             <h2 className="text-2xl font-bold text-gray-900">{selectedPrescription.patient?.name}</h2>
                                             <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
-                                                Token {selectedPrescription.token_number}
+                                                Token {selectedPrescription.token_number || selectedPrescription.patient?.token_number}
                                             </span>
                                         </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
