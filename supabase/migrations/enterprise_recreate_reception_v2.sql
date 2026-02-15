@@ -26,6 +26,11 @@ CREATE TABLE public.hospital_queues (
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    -- Attribution columns (added for PA support)
+    completed_by_actor_type TEXT NULL CHECK (completed_by_actor_type IN ('chief', 'assistant')),
+    completed_by_assistant_id UUID NULL REFERENCES public.hospital_doctor_assistants(id) ON DELETE SET NULL,
+    completed_by_name TEXT NULL,
+    completed_actor_session_id UUID NULL REFERENCES public.hospital_doctor_actor_sessions(id) ON DELETE SET NULL,
     CONSTRAINT hospital_queues_hospital_id_fkey FOREIGN KEY (hospital_id) REFERENCES public.users(id) ON DELETE CASCADE,
     CONSTRAINT hospital_queues_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.hospital_patients(id) ON DELETE CASCADE,
     CONSTRAINT hospital_queues_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.hospital_doctors(id) ON DELETE SET NULL

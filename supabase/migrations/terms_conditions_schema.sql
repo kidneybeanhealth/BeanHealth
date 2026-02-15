@@ -31,7 +31,7 @@ BEGIN
   
   RETURN FOUND;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION accept_terms(UUID, TEXT) TO authenticated;

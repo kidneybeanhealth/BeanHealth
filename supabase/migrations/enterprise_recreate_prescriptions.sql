@@ -12,7 +12,12 @@ CREATE TABLE public.hospital_prescriptions (
     token_number TEXT,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'dispensed', 'cancelled')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    -- Attribution columns (added for PA support)
+    prescribed_by_actor_type TEXT NOT NULL DEFAULT 'chief' CHECK (prescribed_by_actor_type IN ('chief', 'assistant')),
+    prescribed_by_assistant_id UUID NULL REFERENCES public.hospital_doctor_assistants(id) ON DELETE SET NULL,
+    prescribed_by_name TEXT NULL,
+    actor_session_id UUID NULL REFERENCES public.hospital_doctor_actor_sessions(id) ON DELETE SET NULL
 );
 
 -- RLS

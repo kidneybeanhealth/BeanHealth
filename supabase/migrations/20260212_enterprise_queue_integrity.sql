@@ -57,8 +57,7 @@ CREATE OR REPLACE FUNCTION public.create_hospital_queue_entry(
 )
 RETURNS TABLE(queue_id UUID, queue_number INTEGER)
 LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
     v_next_queue_number INTEGER;

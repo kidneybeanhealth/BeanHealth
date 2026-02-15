@@ -32,7 +32,7 @@ BEGIN
   
   RETURN uid;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- Step 4: Create function to generate doctor referral code
 CREATE OR REPLACE FUNCTION generate_doctor_referral_code()
@@ -62,7 +62,7 @@ BEGIN
   
   RETURN code;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- Step 5: Create trigger to auto-generate referral codes for doctors
 CREATE OR REPLACE FUNCTION auto_generate_referral_code()
@@ -137,7 +137,7 @@ BEGIN
     RETURN QUERY SELECT FALSE, NULL::UUID, NULL::TEXT;
   END IF;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- Step 10: Backfill referral codes for existing doctors
 DO $$
@@ -226,7 +226,7 @@ BEGIN
   
   RETURN QUERY SELECT TRUE, v_patient_uid, NULL::TEXT;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- Step 12: Grant necessary permissions
 GRANT EXECUTE ON FUNCTION generate_patient_uid() TO authenticated;

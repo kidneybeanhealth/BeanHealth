@@ -62,7 +62,7 @@ BEGIN
   ORDER BY hp.created_at DESC
   LIMIT 1;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- ============================================
 -- 3. HELPER: FIND PATIENTS BY PHONE (for step 1)
@@ -91,4 +91,4 @@ BEGIN
   ORDER BY hp.created_at DESC
   LIMIT 5;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;

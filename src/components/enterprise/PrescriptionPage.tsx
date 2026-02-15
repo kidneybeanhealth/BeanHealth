@@ -50,6 +50,22 @@ const SPECIALIST_OPTIONS = [
     'Dr. A. Divakar'
 ];
 
+const getReviewDaysLabel = (value: string): string => {
+    if (!value) return '';
+    const [y, m, d] = value.split('-').map(Number);
+    if (!y || !m || !d) return value;
+
+    const target = new Date(y, m - 1, d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+    if (diffDays > 0) return `In ${diffDays} days`;
+    if (diffDays === 0) return 'Today';
+    return `${Math.abs(diffDays)} days ago`;
+};
+
 const PrescriptionPage: React.FC = () => {
     const { doctorId, patientId, prescriptionId } = useParams<{
         doctorId: string;
@@ -256,6 +272,9 @@ const PrescriptionPage: React.FC = () => {
 
     const handleSend = async () => {
         if (readOnly) return;
+        const confirmSend = window.confirm('Send this prescription to pharmacy queue?');
+        if (!confirmSend) return;
+
         const toastId = toast.loading('Sending to pharmacy...');
         try {
             const pharmacyMeds = medications.filter(m => m.name).map(m => {
@@ -324,6 +343,8 @@ const PrescriptionPage: React.FC = () => {
             toast.error('Failed to send: ' + error.message, { id: toastId });
         }
     };
+
+    const reviewDaysLabel = getReviewDaysLabel(formData.reviewDate);
 
     const addRow = () => !readOnly && setMedications([...medications, { name: '', number: '', dose: '', morning: '', noon: '', evening: '', night: '', foodTiming: '', drugType: '' }]);
     const removeRow = (i: number) => !readOnly && medications.length > 1 && setMedications(medications.filter((_, idx) => idx !== i));
@@ -683,7 +704,13 @@ const PrescriptionPage: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div className="space-y-1 text-xs font-bold mb-2">
-                                                <div className="flex gap-2 items-end"><div className="shrink-0 w-80">மீண்டும் வரவேண்டிய நாள் / Review on :</div><input type="date" className="flex-1 border-b border-dashed outline-none" value={formData.reviewDate} onChange={e => setFormData({ ...formData, reviewDate: e.target.value })} readOnly={readOnly} /></div>
+                                                <div className="flex gap-2 items-end">
+                                                    <div className="shrink-0 w-80">மீண்டும் வரவேண்டிய நாள் / Review on :</div>
+                                                    <div className="flex-1">
+                                                        <input type="date" className="w-full border-b border-dashed outline-none" value={formData.reviewDate} onChange={e => setFormData({ ...formData, reviewDate: e.target.value })} readOnly={readOnly} />
+                                                        {reviewDaysLabel && <div className="text-sm text-gray-800 mt-1 font-bold">{reviewDaysLabel}</div>}
+                                                    </div>
+                                                </div>
                                                 <div className="flex gap-2 items-end"><div className="shrink-0 w-80">செய்ய வேண்டிய பரிசோதனைகள் / Tests :</div><input className="flex-1 border-b border-dashed outline-none" value={formData.testsToReview} onChange={e => setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} /></div>
                                                 <div className="flex gap-2 items-end">
                                                     <div className="shrink-0 w-80">பார்க்க வேண்டிய டாக்டர்கள் / Specialists :</div>

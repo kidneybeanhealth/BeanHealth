@@ -65,7 +65,7 @@ BEGIN
   
   RETURN result;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- ============================================
 -- 4. AUTO-GENERATE BHID FOR NEW PATIENTS
@@ -168,7 +168,7 @@ BEGIN
     AND hp.phone = phone_number
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- ============================================
 -- 8. BACKFILL EXISTING PATIENTS WITH BHID

@@ -8,6 +8,7 @@ CREATE OR REPLACE FUNCTION admin_delete_user_completely(target_user_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, auth, extensions
 AS $$
 BEGIN
   -- 1. Security Check: Ensure the executor is an admin

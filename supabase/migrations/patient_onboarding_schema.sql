@@ -58,7 +58,7 @@ BEGIN
   
   RETURN new_patient_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- ============================================
 -- 4. DOCTOR REFERRAL CODE GENERATION FUNCTION
@@ -145,7 +145,7 @@ BEGIN
   WHERE u.referral_code = UPPER(code)
   AND u.role = 'doctor';
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 -- ============================================
 -- 7. SAMPLE DATA (For Testing)
