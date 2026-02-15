@@ -194,10 +194,33 @@ const TrackPatientsPage: React.FC = () => {
                 (row.patient?.phone || '').toLowerCase().includes(q)
             );
         };
-        return reviews.filter((row) => {
+        const rows = reviews.filter((row) => {
             const bucket = getBucket(row);
             const bucketPass = bucketFilter === 'all' ? true : bucket === bucketFilter;
             return bucketPass && rowPassesQuery(row);
+        });
+
+        // Custom Sorting logic:
+        // Priority 1: pending, rescheduled (Active)
+        // Priority 2: completed
+        // Priority 3: cancelled
+        return rows.sort((a, b) => {
+            const getPriority = (status: string) => {
+                if (status === 'pending' || status === 'rescheduled') return 1;
+                if (status === 'completed') return 2;
+                if (status === 'cancelled') return 3;
+                return 4;
+            };
+
+            const priA = getPriority(a.status);
+            const priB = getPriority(b.status);
+
+            if (priA !== priB) return priA - priB;
+
+            // Within same priority, sort by next_review_date (ascending, upcoming first)
+            const dateA = a.next_review_date || '9999-12-31';
+            const dateB = b.next_review_date || '9999-12-31';
+            return dateA.localeCompare(dateB);
         });
     }, [reviews, query, bucketFilter]);
 
@@ -217,8 +240,10 @@ const TrackPatientsPage: React.FC = () => {
             .single();
 
         if (error) throw error;
-        const sorted = (data?.prescriptions || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        return { ...data, prescriptions: sorted };
+        if (!data) return null;
+        const patientData = data as any;
+        const sorted = (patientData.prescriptions || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return { ...patientData, prescriptions: sorted };
     }, [profile?.id]);
 
     const handleOpenRxPopup = async (row: ReviewRow) => {
