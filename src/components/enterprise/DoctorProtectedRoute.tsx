@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+import {
+    getLegacyDoctorSessionKey,
+    loadDoctorActorSession,
+    saveDoctorActorSession,
+    clearDoctorActorSession,
+} from '../../utils/doctorActorSession';
 
 interface DoctorProtectedRouteProps {
     children: React.ReactNode;
@@ -9,63 +16,125 @@ interface DoctorProtectedRouteProps {
 // Session timeout: 4 hours
 const DOCTOR_SESSION_TIMEOUT = 4 * 60 * 60 * 1000;
 
-/**
- * Protected route for doctor dashboards
- * Checks if doctor session is authenticated
- * 
- * Enhanced for enterprise stability:
- * - Waits for auth to be fully initialized before checking
- * - Prevents premature redirects during auth state changes
- * - Uses stable session validation
- */
 const DoctorProtectedRoute: React.FC<DoctorProtectedRouteProps> = ({ children }) => {
     const { doctorId } = useParams<{ doctorId: string }>();
     const { profile, loading, isInitialized } = useAuth();
     const [isReady, setIsReady] = useState(false);
     const [isValidSession, setIsValidSession] = useState<boolean | null>(null);
 
-    // Wait for auth to stabilize before checking session
     useEffect(() => {
-        if (isInitialized && !loading && profile) {
-            // Small delay to ensure auth state is stable
-            const timer = setTimeout(() => {
-                setIsReady(true);
-                validateSession();
-            }, 50);
-            return () => clearTimeout(timer);
-        }
-    }, [isInitialized, loading, profile, doctorId]);
+        if (!isInitialized || loading || !profile?.id || !doctorId) return;
 
-    const validateSession = () => {
-        if (!doctorId || !profile?.id) {
-            setIsValidSession(false);
-            return;
-        }
+        let cancelled = false;
+        setIsReady(false);
+        setIsValidSession(null);
 
-        const sessionKey = `enterprise_doctor_session_${profile.id}`;
-        const savedSession = sessionStorage.getItem(sessionKey);
+        const validate = async () => {
+            await new Promise((resolve) => setTimeout(resolve, 50));
 
-        if (!savedSession) {
-            setIsValidSession(false);
-            return;
-        }
-
-        try {
-            const { doctorId: savedDoctorId, timestamp } = JSON.parse(savedSession);
-            const isValid = savedDoctorId === doctorId &&
-                (Date.now() - timestamp) < DOCTOR_SESSION_TIMEOUT;
-
-            if (!isValid) {
-                sessionStorage.removeItem(sessionKey);
+            let paAuthEnabled = false;
+            try {
+                const { data } = await (supabase
+                    .from('hospital_profiles' as any)
+                    .select('enable_pa_actor_auth')
+                    .eq('id', profile.id)
+                    .maybeSingle() as any);
+                paAuthEnabled = Boolean(data?.enable_pa_actor_auth);
+            } catch (_e) {
+                paAuthEnabled = false;
             }
-            setIsValidSession(isValid);
-        } catch (e) {
-            sessionStorage.removeItem(sessionKey);
-            setIsValidSession(false);
-        }
-    };
 
-    // Show loading while auth is initializing or session is being validated
+            if (paAuthEnabled) {
+                const actorSession = loadDoctorActorSession(profile.id, doctorId);
+                if (!actorSession) {
+                    if (!cancelled) {
+                        setIsValidSession(false);
+                        setIsReady(true);
+                    }
+                    return;
+                }
+
+                const { data, error } = await (supabase as any).rpc('doctor_actor_validate', {
+                    p_hospital_id: profile.id,
+                    p_chief_doctor_id: doctorId,
+                    p_session_token: actorSession.sessionToken,
+                });
+                const validated = Array.isArray(data) ? data[0] : null;
+
+                if (error || !validated?.session_id) {
+                    clearDoctorActorSession(profile.id, doctorId);
+                    if (!cancelled) {
+                        setIsValidSession(false);
+                        setIsReady(true);
+                    }
+                    return;
+                }
+
+                saveDoctorActorSession({
+                    ...actorSession,
+                    actorType: validated.actor_type,
+                    assistantId: validated.assistant_id || null,
+                    actorDisplayName: validated.actor_display_name,
+                    sessionId: validated.session_id,
+                    expiresAt: validated.expires_at,
+                    canManageTeam: Boolean(validated.can_manage_team),
+                });
+
+                // Keep legacy key alive for compatibility with existing dashboard/session logic.
+                const legacyKey = getLegacyDoctorSessionKey(profile.id);
+                sessionStorage.setItem(legacyKey, JSON.stringify({
+                    doctorId,
+                    timestamp: Date.now(),
+                }));
+
+                if (!cancelled) {
+                    setIsValidSession(true);
+                    setIsReady(true);
+                }
+                return;
+            }
+
+            // Legacy doctor-only passcode flow
+            const sessionKey = getLegacyDoctorSessionKey(profile.id);
+            const savedSession = sessionStorage.getItem(sessionKey);
+
+            if (!savedSession) {
+                if (!cancelled) {
+                    setIsValidSession(false);
+                    setIsReady(true);
+                }
+                return;
+            }
+
+            try {
+                const { doctorId: savedDoctorId, timestamp } = JSON.parse(savedSession);
+                const isValid = savedDoctorId === doctorId &&
+                    (Date.now() - timestamp) < DOCTOR_SESSION_TIMEOUT;
+
+                if (!isValid) {
+                    sessionStorage.removeItem(sessionKey);
+                }
+
+                if (!cancelled) {
+                    setIsValidSession(isValid);
+                    setIsReady(true);
+                }
+            } catch (_e) {
+                sessionStorage.removeItem(sessionKey);
+                if (!cancelled) {
+                    setIsValidSession(false);
+                    setIsReady(true);
+                }
+            }
+        };
+
+        validate();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isInitialized, loading, profile?.id, doctorId]);
+
     if (!isReady || loading || !isInitialized || isValidSession === null) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
@@ -77,7 +146,6 @@ const DoctorProtectedRoute: React.FC<DoctorProtectedRouteProps> = ({ children })
         );
     }
 
-    // Verify enterprise role
     if (profile?.role !== 'enterprise') {
         return <Navigate to="/" replace />;
     }

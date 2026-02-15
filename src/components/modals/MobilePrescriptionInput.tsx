@@ -6,6 +6,28 @@ const parseSpecialists = (value: string) =>
         .map((s) => s.trim())
         .filter(Boolean);
 
+const splitDiagnosis = (value: string) =>
+    (value || '')
+        .split(',')
+        .map((d) => d.trim())
+        .filter(Boolean);
+
+const getReviewDaysLabel = (value: string): string => {
+    if (!value) return '';
+    const [y, m, d] = value.split('-').map(Number);
+    if (!y || !m || !d) return value;
+
+    const target = new Date(y, m - 1, d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+    if (diffDays > 0) return `In ${diffDays} days`;
+    if (diffDays === 0) return 'Today';
+    return `${Math.abs(diffDays)} days ago`;
+};
+
 // Types for medication
 interface Medication {
     name: string;
@@ -101,6 +123,25 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
     const [showDoseDropdown, setShowDoseDropdown] = React.useState<number | null>(null);
     const [showTimingDropdown, setShowTimingDropdown] = React.useState<number | null>(null);
     const [showSpecialistDropdown, setShowSpecialistDropdown] = React.useState(false);
+    const reviewDaysLabel = getReviewDaysLabel(formData.reviewDate);
+
+    const isDiagnosisSelected = (name: string): boolean => {
+        const selected = splitDiagnosis(formData.diagnosis).map((d) => d.toUpperCase());
+        return selected.includes(String(name || '').toUpperCase());
+    };
+
+    const toggleDiagnosisSelection = (name: string) => {
+        const normalizedName = String(name || '').toUpperCase().trim();
+        if (!normalizedName) return;
+        const selected = splitDiagnosis(formData.diagnosis).map((d) => d.toUpperCase());
+        const updated = selected.includes(normalizedName)
+            ? selected.filter((d) => d !== normalizedName)
+            : [...selected, normalizedName];
+
+        setFormData({ ...formData, diagnosis: updated.join(', ') });
+        setDiagnosisSearchQuery('');
+        setShowDiagnosisDropdown(true);
+    };
 
     return (
         <div className="fixed inset-0 z-[60] flex flex-col bg-gray-50 overflow-hidden">
@@ -149,13 +190,15 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                                 <button
                                                     key={diag.id}
                                                     type="button"
-                                                    className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-sm font-medium border-b border-gray-100 last:border-0"
+                                                    className={`w-full text-left px-3 py-2 text-sm font-medium border-b border-gray-100 last:border-0 flex items-center justify-between ${isDiagnosisSelected(diag.name) ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-emerald-50'}`}
                                                     onMouseDown={() => {
-                                                        setFormData({ ...formData, diagnosis: diag.name });
-                                                        setShowDiagnosisDropdown(false);
+                                                        toggleDiagnosisSelection(diag.name);
                                                     }}
                                                 >
-                                                    {diag.name}
+                                                    <span>{diag.name}</span>
+                                                    {isDiagnosisSelected(diag.name) && (
+                                                        <span className="text-[10px] font-black">SELECTED</span>
+                                                    )}
                                                 </button>
                                             ))}
                                     </div>
@@ -450,6 +493,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                 readOnly={readOnly}
                                 min={new Date().toISOString().split('T')[0]}
                             />
+                            {reviewDaysLabel && (
+                                <p className="mt-1 text-sm font-bold text-gray-800">{reviewDaysLabel}</p>
+                            )}
                         </div>
                         <div>
                             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tests to Review</label>

@@ -575,7 +575,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionStorage.removeItem('enterprise_pharmacy_authenticated');
         // Clear all doctor sessions
         Object.keys(sessionStorage).forEach(key => {
-          if (key.startsWith('enterprise_doctor_session_')) {
+          if (
+            key.startsWith('enterprise_doctor_session_') ||
+            key.startsWith('enterprise_doctor_actor_session_')
+          ) {
             sessionStorage.removeItem(key);
           }
         });
@@ -605,7 +608,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Clear hospital name cache
         localStorage.removeItem('hospital_name_cache');
         Object.keys(sessionStorage).forEach(key => {
-          if (key.startsWith('enterprise_doctor_session_')) {
+          if (
+            key.startsWith('enterprise_doctor_session_') ||
+            key.startsWith('enterprise_doctor_actor_session_')
+          ) {
             sessionStorage.removeItem(key);
           }
         });

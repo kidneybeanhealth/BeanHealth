@@ -12,6 +12,7 @@ export const ENTERPRISE_SESSION_KEYS = {
     RECEPTION: 'enterprise_reception_authenticated',
     PHARMACY: 'enterprise_pharmacy_authenticated',
     DOCTOR_SESSION_PREFIX: 'enterprise_doctor_session_',
+    DOCTOR_ACTOR_SESSION_PREFIX: 'enterprise_doctor_actor_session_',
     TAB_ID: 'beanhealth_tab_id',
     TRIAL_VERIFIED: 'beanhealth_trial_verified',
     AUTH_VIEW: 'authView',
@@ -32,7 +33,13 @@ export function clearEnterpriseSessions(): void {
         const keysToRemove: string[] = [];
         for (let i = 0; i < sessionStorage.length; i++) {
             const key = sessionStorage.key(i);
-            if (key && key.startsWith(ENTERPRISE_SESSION_KEYS.DOCTOR_SESSION_PREFIX)) {
+            if (
+                key &&
+                (
+                    key.startsWith(ENTERPRISE_SESSION_KEYS.DOCTOR_SESSION_PREFIX) ||
+                    key.startsWith(ENTERPRISE_SESSION_KEYS.DOCTOR_ACTOR_SESSION_PREFIX)
+                )
+            ) {
                 keysToRemove.push(key);
             }
         }
@@ -78,7 +85,13 @@ export function hasStaleEnterpriseSessions(): boolean {
         let hasDoctorSession = false;
         for (let i = 0; i < sessionStorage.length; i++) {
             const key = sessionStorage.key(i);
-            if (key && key.startsWith(ENTERPRISE_SESSION_KEYS.DOCTOR_SESSION_PREFIX)) {
+            if (
+                key &&
+                (
+                    key.startsWith(ENTERPRISE_SESSION_KEYS.DOCTOR_SESSION_PREFIX) ||
+                    key.startsWith(ENTERPRISE_SESSION_KEYS.DOCTOR_ACTOR_SESSION_PREFIX)
+                )
+            ) {
                 hasDoctorSession = true;
                 break;
             }

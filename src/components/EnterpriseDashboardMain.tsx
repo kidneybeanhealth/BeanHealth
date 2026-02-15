@@ -282,11 +282,17 @@ const EnterpriseDashboardMain: React.FC = () => {
                 const nameA = a.name.toLowerCase();
                 const nameB = b.name.toLowerCase();
 
-                if (nameA.includes('prabhakar')) return -1;
-                if (nameB.includes('prabhakar')) return 1;
-                if (nameA.includes('divakar')) return -1;
-                if (nameB.includes('divakar')) return 1;
-                return 0;
+                const isPrabhakarA = nameA.includes('prabhakar');
+                const isPrabhakarB = nameB.includes('prabhakar');
+                if (isPrabhakarA && !isPrabhakarB) return -1;
+                if (!isPrabhakarA && isPrabhakarB) return 1;
+
+                const isDivakarA = nameA.includes('divakar');
+                const isDivakarB = nameB.includes('divakar');
+                if (isDivakarA && !isDivakarB) return -1;
+                if (!isDivakarA && isDivakarB) return 1;
+
+                return nameA.localeCompare(nameB);
             });
 
             setDoctors(sortedDoctors);

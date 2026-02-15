@@ -54,7 +54,10 @@ const EnterpriseLogin: React.FC<EnterpriseLoginProps> = ({ onSwitchToChooser }) 
                 sessionStorage.removeItem('enterprise_pharmacy_authenticated');
                 // Clear any doctor sessions (pattern: enterprise_doctor_session_*)
                 Object.keys(sessionStorage).forEach(key => {
-                    if (key.startsWith('enterprise_doctor_session_')) {
+                    if (
+                        key.startsWith('enterprise_doctor_session_') ||
+                        key.startsWith('enterprise_doctor_actor_session_')
+                    ) {
                         sessionStorage.removeItem(key);
                     }
                 });

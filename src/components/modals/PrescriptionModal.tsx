@@ -3,6 +3,7 @@ import { useReactToPrint } from 'react-to-print';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import MobilePrescriptionInput from './MobilePrescriptionInput';
+import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 
 interface SavedDrug {
   id: string;
@@ -60,6 +61,11 @@ interface PrescriptionModalProps {
   readOnly?: boolean;
   existingData?: any;
   clinicLogo?: string;
+  actorAttribution?: {
+    actorType: 'chief' | 'assistant';
+    actorDisplayName: string;
+  };
+  onPrintOpen?: () => void;
 }
 
 // Dose mappings for auto-populate: Morning, Noon, Evening, Night
@@ -92,7 +98,39 @@ const parseSpecialists = (value: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, onClose, onSendToPharmacy, readOnly = false, existingData = null, clinicLogo }) => {
+const splitDiagnosis = (value: string) =>
+  (value || '')
+    .split(',')
+    .map((d) => d.trim())
+    .filter(Boolean);
+
+const getReviewDaysLabel = (value: string): string => {
+  if (!value) return '';
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return value;
+
+  const target = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  if (diffDays > 0) return `In ${diffDays} days`;
+  if (diffDays === 0) return 'Today';
+  return `${Math.abs(diffDays)} days ago`;
+};
+
+const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
+  doctor,
+  patient,
+  onClose,
+  onSendToPharmacy,
+  readOnly = false,
+  existingData = null,
+  clinicLogo,
+  actorAttribution,
+  onPrintOpen,
+}) => {
   // Form States matching the PDF structure
   const [formData, setFormData] = useState({
     fatherName: '',
@@ -150,6 +188,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   const [showTimeDropdown, setShowTimeDropdown] = useState<{ index: number, field: string } | null>(null);
   const [timeSearchQuery, setTimeSearchQuery] = useState('');
   const [showSpecialistDropdown, setShowSpecialistDropdown] = useState(false);
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
 
   // Refs for printing
   const componentRef = useRef<HTMLDivElement>(null);
@@ -441,6 +480,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     removeAfterPrint: true
   } as any);
 
+  const triggerPrint = () => {
+    onPrintOpen?.();
+    handlePrint();
+  };
+
   // Medicine Handlers
   const addRow = () => {
     if (readOnly) return;
@@ -471,9 +515,26 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     setMedications(newMeds);
   };
 
-  const handleSend = () => {
-    if (readOnly) return;
-    // Convert to pharmacy format
+  const isDiagnosisSelected = (name: string): boolean => {
+    const selected = splitDiagnosis(formData.diagnosis).map((d) => d.toUpperCase());
+    return selected.includes(String(name || '').toUpperCase());
+  };
+
+  const toggleDiagnosisSelection = (name: string) => {
+    const normalizedName = String(name || '').toUpperCase().trim();
+    if (!normalizedName) return;
+
+    const selected = splitDiagnosis(formData.diagnosis).map((d) => d.toUpperCase());
+    const updated = selected.includes(normalizedName)
+      ? selected.filter((d) => d !== normalizedName)
+      : [...selected, normalizedName];
+
+    setFormData({ ...formData, diagnosis: updated.join(', ') });
+    setDiagnosisSearchQuery('');
+    setShowDiagnosisDropdown(true);
+  };
+
+  const sendToPharmacy = () => {
     const pharmacyMeds = medications.filter(m => m.name).map(m => {
       const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.evening || '0'}-${m.night || '0'}`;
       return {
@@ -491,7 +552,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
       };
     });
 
-    // We pack the extra metadata (Place, Phone, etc) into the notes field so it persists without schema changes
     const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
     if (onSendToPharmacy) {
       onSendToPharmacy(pharmacyMeds, notes, {
@@ -502,38 +562,87 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     }
   };
 
+  const handleSend = () => {
+    if (readOnly) return;
+    setShowSendConfirm(true);
+  };
+
+  const reviewDaysLabel = getReviewDaysLabel(formData.reviewDate);
+  const prescriberIdentityLabel = (() => {
+    const existingActorType = String(existingData?.prescribed_by_actor_type || '').toLowerCase();
+    const existingPrescribedByName =
+      existingData?.prescribed_by_name ||
+      existingData?.prescribed_by_assistant?.assistant_name ||
+      existingData?.prescribed_by_assistant_name ||
+      '';
+
+    if (existingActorType === 'assistant') {
+      return existingPrescribedByName
+        ? `Prescribed by PA: ${existingPrescribedByName}`
+        : 'Prescribed by PA';
+    }
+    if (existingActorType === 'chief') {
+      return 'Prescribed by Chief Doctor';
+    }
+
+    if (actorAttribution?.actorType === 'assistant') {
+      return `Prescribed by PA: ${actorAttribution.actorDisplayName}`;
+    }
+    if (actorAttribution?.actorType === 'chief') {
+      return 'Prescribed by Chief Doctor';
+    }
+    return '';
+  })();
+
   if (isMobile && !showPrintView) {
     return (
-      <MobilePrescriptionInput
-        doctor={doctor}
-        patient={patient}
-        medications={medications}
-        updateMed={updateMed}
-        addRow={addRow}
-        removeRow={removeRow}
-        formData={formData}
-        setFormData={setFormData}
-        onClose={onClose}
-        onPrint={() => setShowPrintView(true)}
-        onSend={handleSend}
-        readOnly={readOnly}
-        savedDiagnoses={savedDiagnoses}
-        diagnosisSearchQuery={diagnosisSearchQuery}
-        setDiagnosisSearchQuery={setDiagnosisSearchQuery}
-        showDiagnosisDropdown={showDiagnosisDropdown}
-        setShowDiagnosisDropdown={setShowDiagnosisDropdown}
-        DOSE_OPTIONS={DOSE_OPTIONS}
-        DOSE_MAPPINGS={DOSE_MAPPINGS}
-        FOOD_TIMING_OPTIONS={FOOD_TIMING_OPTIONS}
-        TIME_OPTIONS={TIME_OPTIONS}
-        drugSearchQuery={drugSearchQuery}
-        setDrugSearchQuery={setDrugSearchQuery}
-        filteredDrugs={filteredDrugs}
-        handleSelectDrug={handleSelectDrug}
-        showDrugDropdown={showDrugDropdown}
-        setShowDrugDropdown={setShowDrugDropdown}
-        SPECIALIST_OPTIONS={SPECIALIST_OPTIONS}
-      />
+      <>
+        <MobilePrescriptionInput
+          doctor={doctor}
+          patient={patient}
+          medications={medications}
+          updateMed={updateMed}
+          addRow={addRow}
+          removeRow={removeRow}
+          formData={formData}
+          setFormData={setFormData}
+          onClose={onClose}
+          onPrint={() => {
+            onPrintOpen?.();
+            setShowPrintView(true);
+          }}
+          onSend={handleSend}
+          readOnly={readOnly}
+          savedDiagnoses={savedDiagnoses}
+          diagnosisSearchQuery={diagnosisSearchQuery}
+          setDiagnosisSearchQuery={setDiagnosisSearchQuery}
+          showDiagnosisDropdown={showDiagnosisDropdown}
+          setShowDiagnosisDropdown={setShowDiagnosisDropdown}
+          DOSE_OPTIONS={DOSE_OPTIONS}
+          DOSE_MAPPINGS={DOSE_MAPPINGS}
+          FOOD_TIMING_OPTIONS={FOOD_TIMING_OPTIONS}
+          TIME_OPTIONS={TIME_OPTIONS}
+          drugSearchQuery={drugSearchQuery}
+          setDrugSearchQuery={setDrugSearchQuery}
+          filteredDrugs={filteredDrugs}
+          handleSelectDrug={handleSelectDrug}
+          showDrugDropdown={showDrugDropdown}
+          setShowDrugDropdown={setShowDrugDropdown}
+          SPECIALIST_OPTIONS={SPECIALIST_OPTIONS}
+        />
+        <TwoStepConfirmModal
+          isOpen={showSendConfirm}
+          singleStep={true}
+          title="Send To Pharmacy?"
+          description="Send this prescription to pharmacy queue?"
+          confirmLabel="Yes, Send"
+          onCancel={() => setShowSendConfirm(false)}
+          onConfirm={() => {
+            setShowSendConfirm(false);
+            sendToPharmacy();
+          }}
+        />
+      </>
     );
   }
 
@@ -759,13 +868,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                       <button
                                         key={diag.id}
                                         type="button"
-                                        className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-xs font-bold border-b border-gray-100 last:border-0"
+                                        className={`w-full text-left px-3 py-2 text-xs font-bold border-b border-gray-100 last:border-0 flex items-center justify-between ${isDiagnosisSelected(diag.name) ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-emerald-50'}`}
                                         onMouseDown={() => {
-                                          setFormData({ ...formData, diagnosis: diag.name });
-                                          setShowDiagnosisDropdown(false);
+                                          toggleDiagnosisSelection(diag.name);
                                         }}
                                       >
-                                        {diag.name}
+                                        <span>{diag.name}</span>
+                                        {isDiagnosisSelected(diag.name) && (
+                                          <span className="text-[10px] font-black">SELECTED</span>
+                                        )}
                                       </button>
                                     ))}
                                 </div>
@@ -1174,14 +1285,21 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
                             <div className="flex gap-2 items-end">
                               <div className="shrink-0 w-80 whitespace-nowrap">மீண்டும் வரவேண்டிய நாள் / Review on :</div>
-                              <input
-                                type="date"
-                                className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent"
-                                value={formData.reviewDate}
-                                onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
-                                readOnly={readOnly}
-                                min={new Date().toISOString().split('T')[0]}
-                              />
+                              <div className="flex-1">
+                                <input
+                                  type="date"
+                                  className="w-full border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent"
+                                  value={formData.reviewDate}
+                                  onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
+                                  readOnly={readOnly}
+                                  min={new Date().toISOString().split('T')[0]}
+                                />
+                                {reviewDaysLabel && (
+                                  <div className="text-sm text-gray-800 mt-1 font-bold">
+                                    {reviewDaysLabel}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                             <div className="flex gap-2 items-end">
                               <div className="shrink-0 w-80 whitespace-nowrap">செய்ய வேண்டிய பரிசோதனைகள் / Tests :</div>
@@ -1260,6 +1378,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                               <div className={`font-bold border-t border-black px-4 pt-1 ${scale.textSize}`}>
                                 டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.
                               </div>
+                              {prescriberIdentityLabel && (
+                                <div className="mt-1 text-[11px] font-bold text-gray-800">
+                                  {prescriberIdentityLabel}
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -1296,7 +1419,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
           </button>
           <div className="flex flex-1 sm:flex-none gap-3 order-1 sm:order-2">
             <button
-              onClick={handlePrint}
+              onClick={triggerPrint}
               className="flex-1 sm:flex-none px-4 sm:px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 whitespace-nowrap"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
@@ -1429,6 +1552,18 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
             </div>
           </div>
         )}
+        <TwoStepConfirmModal
+          isOpen={showSendConfirm}
+          singleStep={true}
+          title="Send To Pharmacy?"
+          description="Send this prescription to pharmacy queue?"
+          confirmLabel="Yes, Send"
+          onCancel={() => setShowSendConfirm(false)}
+          onConfirm={() => {
+            setShowSendConfirm(false);
+            sendToPharmacy();
+          }}
+        />
       </div>
     </div >
   );
