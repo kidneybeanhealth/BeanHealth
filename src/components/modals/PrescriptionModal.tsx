@@ -578,18 +578,18 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
     if (existingActorType === 'assistant') {
       return existingPrescribedByName
-        ? `Prescribed by PA: ${existingPrescribedByName}`
-        : 'Prescribed by PA';
+        ? `Prepared by ${existingPrescribedByName}`
+        : 'Prepared by PA';
     }
     if (existingActorType === 'chief') {
-      return 'Prescribed by Chief Doctor';
+      return 'Prepared by Chief Doctor';
     }
 
     if (actorAttribution?.actorType === 'assistant') {
-      return `Prescribed by PA: ${actorAttribution.actorDisplayName}`;
+      return `Prepared by ${actorAttribution.actorDisplayName}`;
     }
     if (actorAttribution?.actorType === 'chief') {
-      return 'Prescribed by Chief Doctor';
+      return 'Prepared by Chief Doctor';
     }
     return '';
   })();
@@ -1285,19 +1285,19 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
                             <div className="flex gap-2 items-end">
                               <div className="shrink-0 w-80 whitespace-nowrap">மீண்டும் வரவேண்டிய நாள் / Review on :</div>
-                              <div className="flex-1">
+                              <div className="flex-1 flex items-center gap-3">
                                 <input
                                   type="date"
-                                  className="w-full border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent"
+                                  className="border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent"
                                   value={formData.reviewDate}
                                   onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
                                   readOnly={readOnly}
                                   min={new Date().toISOString().split('T')[0]}
                                 />
                                 {reviewDaysLabel && (
-                                  <div className="text-sm text-gray-800 mt-1 font-bold">
+                                  <span className="text-sm text-gray-800 font-bold whitespace-nowrap">
                                     {reviewDaysLabel}
-                                  </div>
+                                  </span>
                                 )}
                               </div>
                             </div>
