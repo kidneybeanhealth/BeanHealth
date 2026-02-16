@@ -1142,23 +1142,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                       return (
                         <div className="mt-auto">
                           {/* Doctor Notes */}
-                          <div className="border-t border-black pt-1.5 mt-1 mb-1">
-                            <div className="flex gap-2 items-start text-[14px] font-bold">
-                              <span className="shrink-0 pt-0.5">குறிப்புகள் / Notes:</span>
-                              <textarea
-                                className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-[14px] resize-none leading-normal min-h-[72px]"
-                                value={formData.doctorNotes}
-                                onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value })}
-                                readOnly={readOnly}
-                                rows={4}
-                                placeholder="Additional notes..."
-                              />
-                            </div>
-                          </div>
+
                           {/* Salt and Fluid Intake - Parallel Layout */}
                           <div className="border-t border-black pt-2 mt-1 mb-2">
-                            <p className="font-bold underline italic text-[10px] mb-1.5">To be specified / monitored:</p>
-                            <div className="flex gap-6 text-[10px] font-bold">
+                            <p className="font-bold underline italic text-sm mb-1.5">To be specified / monitored:</p>
+                            <div className="flex gap-6 text-sm font-bold">
                               <div className="flex gap-1 items-baseline">
                                 <span className="shrink-0">Salt intake (உப்பு):</span>
                                 <input
@@ -1257,12 +1245,28 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                             </div>
                           </div>
 
-                          {/* Signature */}
-                          <div className="flex justify-end mt-4 mb-2">
-                            <div className="text-center min-w-[150px] flex flex-col items-center justify-end">
-                              {/* Dynamic Signature Image - Takes real space now */}
+                          {/* Bottom Row: Notes on Left, Signature on Right */}
+                          <div className="flex gap-4 items-end mt-4 mb-2">
+                            {/* Doctor Notes (Relocated) */}
+                            <div className="flex-1">
+                              <div className="flex gap-2 items-start text-sm font-bold">
+                                <span className="shrink-0 pt-0.5">குறிப்புகள் / Notes:</span>
+                                <textarea
+                                  className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-sm resize-none leading-normal min-h-[48px]"
+                                  value={formData.doctorNotes}
+                                  onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value })}
+                                  readOnly={readOnly}
+                                  rows={2}
+                                  placeholder="Additional notes..."
+                                />
+                              </div>
+                            </div>
+
+                            {/* Signature */}
+                            <div className="text-center min-w-[150px] flex flex-col items-center justify-end shrink-0">
+                              {/* Dynamic Signature Image - Reduced size */}
                               {doctor?.signature_url ? (
-                                <div className="h-16 w-40 mb-1 flex items-end justify-center">
+                                <div className="h-10 w-32 mb-1 flex items-end justify-center">
                                   <img
                                     src={doctor.signature_url}
                                     alt="Signature"
@@ -1270,11 +1274,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                   />
                                 </div>
                               ) : (
-                                /* Empty space for manual signature if no digital one */
-                                <div className="h-16 w-40"></div>
+                                <div className="h-10 w-32"></div>
                               )}
 
-                              <div className={`font-bold border-t border-black px-4 pt-1 ${scale.textSize}`}>
+                              <div className={`font-bold border-t border-black px-4 pt-0.5 ${scale.textSize}`}>
                                 டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.
                               </div>
                             </div>
