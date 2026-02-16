@@ -604,7 +604,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
             }
           `}</style>
             {(() => {
-              const FIRST_PAGE_ITEMS = 15;
+              const FIRST_PAGE_ITEMS = 12;
               const SUBSEQUENT_PAGE_ITEMS = 25; // High capacity for additional pages if needed
               const totalMeds = medications.length;
               const chunks = [];
@@ -740,7 +740,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                             <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / Diagnosis</div>
                             <div className="flex-1 relative flex">
                               <textarea
-                                className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent resize-none leading-tight"
+                                className="flex-1 py-1 px-1.5 outline-none font-bold w-full bg-transparent resize-none leading-tight"
                                 value={formData.diagnosis}
                                 onChange={e => {
                                   setFormData({ ...formData, diagnosis: e.target.value.toUpperCase() });
@@ -779,12 +779,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                     {/* Medicine Table Box */}
                     {chunk.length > 0 && (
                       <div className={`border-2 border-black flex flex-col ${pageIndex < chunks.length - 1 ? 'flex-1 mb-1' : 'mb-4'}`}>
-                        <div className="text-center font-bold border-b border-black py-1 text-xs shrink-0">
+                        <div className="text-center font-bold border-b border-black py-1 text-sm shrink-0">
                           மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS
                         </div>
 
                         {/* Table Headers */}
-                        <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
+                        <div className="flex border-b border-black text-center font-bold text-sm shrink-0">
                           <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
                             வ.எ<br />S.N
                           </div>
@@ -794,30 +794,30 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           <div className="w-[446px] shrink-0 flex flex-col">
                             <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
                             <div className="flex flex-1 items-stretch">
-                              <div className="w-28 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-28 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>Qty</span>
                                 <span>எண்</span>
                               </div>
-                              <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-10 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>Freq</span>
                               </div>
-                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>M</span>
                                 <span>கா</span>
                               </div>
-                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>N</span>
                                 <span>ம</span>
                               </div>
-                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>E</span>
                                 <span>மா</span>
                               </div>
-                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>Nt</span>
                                 <span>இ</span>
                               </div>
-                              <div className="w-8 py-1 text-[9px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-8 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>B/F</span>
                                 <span>A/F</span>
                               </div>
@@ -846,7 +846,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 </div>
                                 <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
                                   <input
-                                    className="w-full outline-none font-bold uppercase text-xs"
+                                    className="w-full outline-none font-bold uppercase text-sm"
                                     placeholder="Type drug name..."
                                     value={med.name}
                                     onChange={e => {
@@ -951,7 +951,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
                                         value={(med as any).morningTime || ''}
                                         onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value); setTimeSearchQuery(e.target.value); }}
@@ -984,7 +984,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
                                         value={(med as any).noonTime || ''}
                                         onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value); setTimeSearchQuery(e.target.value); }}
@@ -1017,7 +1017,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
                                         value={med.eveningTime || ''}
                                         onChange={e => { updateMed(globalIndex, 'eveningTime', e.target.value); setTimeSearchQuery(e.target.value); }}
@@ -1050,7 +1050,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
                                         value={med.nightTime || ''}
                                         onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); }}
