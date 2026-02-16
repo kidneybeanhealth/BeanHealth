@@ -24,7 +24,7 @@ const PharmacyQueueDisplay: React.FC = () => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isInitialized, setIsInitialized] = useState(false);
-    const lastCalledTokenRef = useRef<string | null>(null);
+    const lastAnnouncedCallRef = useRef<string | null>(null);
 
     // Update time every second
     useEffect(() => {
@@ -73,10 +73,10 @@ const PharmacyQueueDisplay: React.FC = () => {
 
             const newCalling = callingData && callingData.length > 0 ? callingData[0] as QueueItem : null;
 
-            // Announce if new patient is being called
-            if (newCalling && newCalling.token_number !== lastCalledTokenRef.current) {
-                console.log('[QueueDisplay] New patient calling:', newCalling.token_number);
-                lastCalledTokenRef.current = newCalling.token_number;
+            // Announce if new patient is being called or same patient is re-called
+            if (newCalling && newCalling.called_at !== lastAnnouncedCallRef.current) {
+                console.log('[QueueDisplay] New/Re-called patient:', newCalling.token_number, 'at', newCalling.called_at);
+                lastAnnouncedCallRef.current = newCalling.called_at;
                 voiceService.announceTokenFormatted(newCalling.token_number);
             }
 
