@@ -4,9 +4,12 @@ import { toast } from 'react-hot-toast';
 import PrescriptionModal from './modals/PrescriptionModal';
 import ManageDrugsModal from './modals/ManageDrugsModal';
 import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
+import DoctorTeamAuditModal from './modals/DoctorTeamAuditModal';
+import TwoStepConfirmModal from './common/TwoStepConfirmModal';
 import EnterpriseCKDSnapshotView from './EnterpriseCKDSnapshotView';
 import { LogoIcon } from './icons/LogoIcon';
 import DoctorSettingsModal from './modals/DoctorSettingsModal';
+import { type DoctorActorSession } from '../utils/doctorActorSession';
 
 interface DoctorProfile {
     id: string;
@@ -28,6 +31,7 @@ interface QueueItem {
     patient_id: string;
     doctor_id: string;
     queue_number: number;
+    token_number: string;
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
     created_at: string;
     updated_at?: string;
@@ -52,7 +56,19 @@ const formatDoctorName = (name: string) => {
     return `Dr. ${cleanName}`;
 };
 
-const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () => void }> = ({ doctor, onBack }) => {
+interface EnterpriseDoctorDashboardProps {
+    doctor: DoctorProfile;
+    onBack: () => void;
+    actorSession?: DoctorActorSession | null;
+    paActorAuthEnabled?: boolean;
+}
+
+const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
+    doctor,
+    onBack,
+    actorSession = null,
+    paActorAuthEnabled = false,
+}) => {
     const [queue, setQueue] = useState<QueueItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showRxModal, setShowRxModal] = useState(false);
@@ -70,9 +86,44 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [showManageDrugsModal, setShowManageDrugsModal] = useState(false);
     const [showManageDiagnosesModal, setShowManageDiagnosesModal] = useState(false);
+    const [showTeamAuditModal, setShowTeamAuditModal] = useState(false);
     // Local doctor state to handle updates (e.g. after signature upload)
     const [currentDoctor, setCurrentDoctor] = useState<DoctorProfile>(doctor);
     const isSendingToPharmacyRef = useRef(false);
+
+    const actorType = actorSession?.actorType || 'chief';
+    const actorDisplayName = actorSession?.actorDisplayName || formatDoctorName(doctor.name);
+    const canManageTeamAudit = Boolean(paActorAuthEnabled && actorSession?.actorType === 'chief' && actorSession?.sessionToken);
+
+    const logViewEvent = useCallback(async (
+        eventType: string,
+        payload?: {
+            eventCategory?: 'view' | 'print' | 'auth' | 'write';
+            patientId?: string | null;
+            queueId?: string | null;
+            prescriptionId?: string | null;
+            route?: string;
+            metadata?: Record<string, any>;
+        }
+    ) => {
+        if (!paActorAuthEnabled || !actorSession?.sessionToken) return;
+        try {
+            await (supabase as any).rpc('doctor_log_view_event', {
+                p_hospital_id: doctor.hospital_id,
+                p_chief_doctor_id: doctor.id,
+                p_session_token: actorSession.sessionToken,
+                p_event_type: eventType,
+                p_event_category: payload?.eventCategory || 'view',
+                p_patient_id: payload?.patientId || null,
+                p_queue_id: payload?.queueId || null,
+                p_prescription_id: payload?.prescriptionId || null,
+                p_route: payload?.route || `/enterprise-dashboard/doctors/${doctor.id}/dashboard`,
+                p_metadata: payload?.metadata || {},
+            });
+        } catch (error) {
+            console.warn('[EnterpriseDoctorDashboard] logViewEvent failed:', error);
+        }
+    }, [paActorAuthEnabled, actorSession?.sessionToken, doctor.hospital_id, doctor.id]);
 
     useEffect(() => {
         setCurrentDoctor(doctor);
@@ -358,6 +409,14 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [viewMode, fetchQueue, fetchHistory, fetchPastRecords]);
 
+    useEffect(() => {
+        if (viewMode === 'queue') {
+            logViewEvent('view.queue.open', {
+                route: `/enterprise-dashboard/doctors/${doctor.id}/dashboard`,
+            });
+        }
+    }, [viewMode, logViewEvent, doctor.id]);
+
     // Fetch hospital logo
     useEffect(() => {
         const fetchHospitalLogo = async () => {
@@ -421,6 +480,11 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
 
             toast.dismiss(toastId);
             setSelectedHistoryItem(data);
+            logViewEvent('view.prescription.open', {
+                patientId: data.patient_id || historyItem.patient_id || null,
+                queueId: historyItem.id || null,
+                prescriptionId: data.id || null,
+            });
         } catch (err) {
             console.error(err);
             toast.dismiss(toastId);
@@ -430,10 +494,27 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
 
     const handleUpdateStatus = async (queueId: string, status: string) => {
         try {
-            const { error } = await (supabase
-                .from('hospital_queues') as any)
-                .update({ status } as any)
-                .eq('id', queueId);
+            let error: any = null;
+            if (paActorAuthEnabled && status === 'completed' && !actorSession?.sessionToken) {
+                toast.error('Session expired. Please log in again.');
+                return;
+            }
+
+            if (paActorAuthEnabled && actorSession?.sessionToken && status === 'completed') {
+                const rpcResult = await (supabase as any).rpc('doctor_mark_queue_done', {
+                    p_hospital_id: doctor.hospital_id,
+                    p_chief_doctor_id: doctor.id,
+                    p_session_token: actorSession.sessionToken,
+                    p_queue_id: queueId,
+                });
+                error = rpcResult.error;
+            } else {
+                const updateResult = await (supabase
+                    .from('hospital_queues') as any)
+                    .update({ status } as any)
+                    .eq('id', queueId);
+                error = updateResult.error;
+            }
 
             if (error) throw error;
             toast.success(`Patient marked as ${status.replace('_', ' ')}`);
@@ -471,6 +552,39 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
         const toastId = toast.loading('Sending to pharmacy...');
 
         try {
+            if (paActorAuthEnabled && !actorSession?.sessionToken) {
+                throw new Error('Session expired. Please log in again.');
+            }
+
+            if (paActorAuthEnabled && actorSession?.sessionToken) {
+                const { data, error } = await (supabase as any).rpc('doctor_save_prescription_and_send', {
+                    p_hospital_id: doctor.hospital_id,
+                    p_chief_doctor_id: doctor.id,
+                    p_session_token: actorSession.sessionToken,
+                    p_patient_id: selectedPatient.id,
+                    p_queue_id: selectedQueueId,
+                    p_token_number: selectedPatient.token_number,
+                    p_medications: prescriptionMeds,
+                    p_notes: prescriptionNotes,
+                    p_next_review_date: reviewContext?.nextReviewDate || null,
+                    p_tests_to_review: reviewContext?.testsToReview || null,
+                    p_specialists_to_review: reviewContext?.specialistsToReview || null,
+                });
+
+                if (error) throw error;
+                const row = Array.isArray(data) ? data[0] : null;
+                if (!row?.saved_prescription_id) {
+                    throw new Error('Prescription was not saved');
+                }
+
+                toast.success('Prescription sent to Pharmacy!', { id: toastId });
+                setShowRxModal(false);
+                setSelectedQueueId(null);
+                setSelectedPatient(null);
+                fetchQueue(true);
+                return;
+            }
+
             let prescriptionId: string | null = null;
 
             // Idempotency: one prescription per queue visit.
@@ -641,12 +755,13 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
 
     // View Item for History
     const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
+    const [markDoneCandidate, setMarkDoneCandidate] = useState<{ queueId: string; patientName: string } | null>(null);
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-black font-sans selection:bg-secondary-100 selection:text-secondary-900">
             {/* Nav - Floating Glassmorphism Header */}
             <div className="sticky top-0 z-50 flex justify-center pointer-events-none px-4 sm:px-6">
-                <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-gray-100 via-gray-100/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent" />
+                <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-gray-100 via-gray-100/80 to-transparent dark:from-black dark:via-black/80 dark:to-transparent pointer-events-none" />
 
                 <header className="pointer-events-auto relative mt-2 sm:mt-4 w-full max-w-7xl h-16 sm:h-20 bg-white/80 dark:bg-[#8AC43C]/[0.08] backdrop-blur-xl saturate-150 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-[#8AC43C]/15 flex items-center transition-all duration-300 shadow-sm md:shadow-2xl dark:shadow-[0_0_20px_rgba(138,196,60,0.1)]">
                     <div className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -654,7 +769,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                         <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
                             <button
                                 onClick={onBack}
-                                className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-all flex-shrink-0"
+                                className="p-2 sm:p-3 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-all flex-shrink-0 active:scale-95"
                                 title="Back to Doctors List"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -663,7 +778,10 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                             </button>
                             <div className="w-px h-8 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
 
-                            <div className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform">
+                            <div
+                                onClick={onBack}
+                                className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform group/logo"
+                            >
                                 <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center flex-shrink-0 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all duration-300">
                                     <LogoIcon className="w-6 h-6 sm:w-8 sm:h-8 transition-transform duration-300" />
                                 </div>
@@ -696,6 +814,11 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                         {formatDoctorName(currentDoctor.name)}
                                     </p>
                                     <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-wide mt-1 uppercase leading-none">{currentDoctor.specialty || 'GENERAL MEDICINE'}</p>
+                                    {paActorAuthEnabled && (
+                                        <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
+                                            <span>{actorType === 'chief' ? 'Chief' : `PA: ${actorDisplayName}`}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -711,6 +834,11 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                             {formatDoctorName(currentDoctor.name)}
                         </h2>
                         <p className="text-base md:text-lg text-gray-700 mt-2">Manage your patient queue and consultations</p>
+                        {paActorAuthEnabled && (
+                            <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold">
+                                {actorType === 'chief' ? 'Logged in as Chief' : `Logged in as PA: ${actorDisplayName}`}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full lg:w-auto">
@@ -767,6 +895,15 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
 
                             {/* Settings & Reload Buttons */}
                             <div className="flex items-center gap-2 justify-end md:justify-start">
+                                {canManageTeamAudit && (
+                                    <button
+                                        onClick={() => setShowTeamAuditModal(true)}
+                                        className="px-3 sm:px-4 py-2.5 sm:py-3 bg-white text-gray-700 hover:text-blue-700 rounded-2xl border border-gray-200 hover:border-blue-200 transition-all shadow-sm shrink-0 text-xs sm:text-sm font-bold"
+                                        title="Team & Audit"
+                                    >
+                                        Team & Audit
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setShowSettingsModal(true)}
                                     className={`p-2.5 sm:p-3 bg-white text-gray-500 hover:text-blue-600 rounded-2xl border border-gray-200 hover:border-blue-200 transition-all shadow-sm shrink-0 ${currentDoctor.signature_url ? '' : 'animate-pulse ring-2 ring-blue-500/20'}`}
@@ -884,9 +1021,17 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
 
                                                 <button
                                                     onClick={() => {
-                                                        setSelectedPatient(item.patient);
+                                                        // Ensure token_number is included from queue record
+                                                        setSelectedPatient({
+                                                            ...item.patient,
+                                                            token_number: item.patient.token_number || item.token_number
+                                                        });
                                                         setSelectedQueueId(item.id);
                                                         setShowRxModal(true);
+                                                        logViewEvent('view.patient.open', {
+                                                            patientId: item.patient_id,
+                                                            queueId: item.id,
+                                                        });
                                                     }}
                                                     className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
                                                 >
@@ -896,7 +1041,7 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                                                 </button>
 
                                                 <button
-                                                    onClick={() => handleUpdateStatus(item.id, 'completed')}
+                                                    onClick={() => setMarkDoneCandidate({ queueId: item.id, patientName: item.patient.name })}
                                                     className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors whitespace-nowrap"
                                                 >
                                                     Mark Done
@@ -1143,6 +1288,14 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     }}
                     onSendToPharmacy={handleSendToPharmacy}
                     clinicLogo={hospitalLogo || undefined}
+                    actorAttribution={{ actorType, actorDisplayName }}
+                    onPrintOpen={() => {
+                        logViewEvent('print.preview.open', {
+                            eventCategory: 'print',
+                            patientId: selectedPatient.id,
+                            queueId: selectedQueueId || null,
+                        });
+                    }}
                 />
             )}
 
@@ -1158,6 +1311,14 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     readOnly={true}
                     existingData={selectedHistoryItem}
                     clinicLogo={hospitalLogo || undefined}
+                    onPrintOpen={() => {
+                        logViewEvent('print.preview.open', {
+                            eventCategory: 'print',
+                            patientId: selectedHistoryItem.patient_id || null,
+                            queueId: selectedHistoryItem.queue_id || null,
+                            prescriptionId: selectedHistoryItem.id || null,
+                        });
+                    }}
                 />
             )}
 
@@ -1186,6 +1347,30 @@ const EnterpriseDoctorDashboard: React.FC<{ doctor: DoctorProfile; onBack: () =>
                     onClose={() => setShowManageDiagnosesModal(false)}
                 />
             )}
+
+            {showTeamAuditModal && canManageTeamAudit && actorSession?.sessionToken && (
+                <DoctorTeamAuditModal
+                    isOpen={showTeamAuditModal}
+                    onClose={() => setShowTeamAuditModal(false)}
+                    hospitalId={currentDoctor.hospital_id}
+                    chiefDoctorId={currentDoctor.id}
+                    sessionToken={actorSession.sessionToken}
+                />
+            )}
+
+            <TwoStepConfirmModal
+                isOpen={Boolean(markDoneCandidate)}
+                title="Mark Patient As Done?"
+                description={markDoneCandidate ? `${markDoneCandidate.patientName} will be moved to completed history.` : ''}
+                continueLabel="Continue"
+                confirmLabel="Yes, Mark Done"
+                onCancel={() => setMarkDoneCandidate(null)}
+                onConfirm={() => {
+                    if (!markDoneCandidate) return;
+                    handleUpdateStatus(markDoneCandidate.queueId, 'completed');
+                    setMarkDoneCandidate(null);
+                }}
+            />
         </div>
     );
 };

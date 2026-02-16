@@ -60,6 +60,11 @@ interface PrescriptionModalProps {
   readOnly?: boolean;
   existingData?: any;
   clinicLogo?: string;
+  actorAttribution?: {
+    actorType: 'chief' | 'assistant';
+    actorDisplayName: string;
+  };
+  onPrintOpen?: () => void;
 }
 
 // Dose mappings for auto-populate: Morning, Noon, Evening, Night
@@ -86,13 +91,40 @@ const SPECIALIST_OPTIONS = [
   'Dr. A. Divakar'
 ];
 
-const parseSpecialists = (value: string) =>
+const splitDiagnosis = (value: string) =>
   (value || '')
     .split(',')
-    .map((s) => s.trim())
+    .map((d) => d.trim())
     .filter(Boolean);
 
-const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, onClose, onSendToPharmacy, readOnly = false, existingData = null, clinicLogo }) => {
+const getReviewDaysLabel = (value: string): string => {
+  if (!value) return '';
+  const dateOnly = value.split('T')[0];
+  const [y, m, d] = dateOnly.split('-').map(Number);
+  if (!y || !m || !d) return value;
+
+  const target = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  if (diffDays > 0) return `In ${diffDays} days`;
+  if (diffDays === 0) return 'Today';
+  return `${Math.abs(diffDays)} days ago`;
+};
+
+const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
+  doctor,
+  patient,
+  onClose,
+  onSendToPharmacy,
+  readOnly = false,
+  existingData = null,
+  clinicLogo,
+  actorAttribution,
+  onPrintOpen,
+}) => {
   // Form States matching the PDF structure
   const [formData, setFormData] = useState({
     fatherName: '',
@@ -117,6 +149,30 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
   ]);
 
   // Time options for timing dropdowns (removed internal constant, uses outside one)
+
+  const prescribedByName = (() => {
+    const existingActorType = existingData?.metadata?.actorType;
+    const existingPrescribedByName = existingData?.metadata?.actorDisplayName;
+
+    if (existingActorType === 'assistant') {
+      return existingPrescribedByName
+        ? `Prepared by ${existingPrescribedByName}`
+        : 'Prepared by PA';
+    }
+    if (existingActorType === 'chief') {
+      return 'Prepared by Chief Doctor';
+    }
+
+    if (actorAttribution?.actorType === 'assistant') {
+      return `Prepared by ${actorAttribution.actorDisplayName}`;
+    }
+    if (actorAttribution?.actorType === 'chief') {
+      return 'Prepared by Chief Doctor';
+    }
+    return '';
+  })();
+
+  const reviewDaysLabel = getReviewDaysLabel(formData.reviewDate);
 
   // Medication and Mobile States
   const [isMobile, setIsMobile] = useState(false);
@@ -411,7 +467,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
         setFormData(prev => ({
           ...prev,
           diagnosis,
-          reviewDate: review,
+          reviewDate: review ? review.split('T')[0] : '',
           testsToReview: tests,
           specialistToReview: specialists,
           place: place || prev.place,
@@ -432,6 +488,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
     documentTitle: `Prescription-${patient?.name || 'Patient'}-${new Date().toLocaleDateString()}`,
     onPrintError: (error) => console.error('Print failed:', error),
     onBeforeGetContent: () => {
+      onPrintOpen?.();
       return new Promise<void>((resolve) => {
         setTimeout(() => {
           resolve();
@@ -588,6 +645,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
               .grow { flex-grow: 1 !important; }
               .shrink-0 { flex-shrink: 0 !important; }
               .w-full { width: 100% !important; }
+              .w-28 { width: 112px !important; }
               .h-full { height: 100% !important; }
               .absolute { position: absolute !important; }
               .relative { position: relative !important; }
@@ -1146,11 +1204,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           {/* Salt and Fluid Intake - Parallel Layout */}
                           <div className="border-t border-black pt-2 mt-1 mb-2">
                             <p className="font-bold underline italic text-sm mb-1.5">To be specified / monitored:</p>
-                            <div className="flex gap-6 text-sm font-bold">
+                            <div className="flex gap-10 text-sm font-bold">
                               <div className="flex gap-1 items-baseline">
                                 <span className="shrink-0">Salt intake (உப்பு):</span>
                                 <input
-                                  className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
+                                  className="w-28 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
                                   value={formData.saltIntake}
                                   onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
                                   placeholder="____"
@@ -1161,7 +1219,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                               <div className="flex gap-1 items-baseline">
                                 <span className="shrink-0">Fluid intake (நீர்/திரவம்):</span>
                                 <input
-                                  className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
+                                  className="w-28 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
                                   value={formData.fluidIntake}
                                   onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
                                   placeholder="____"
@@ -1179,14 +1237,21 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
                             <div className="flex gap-2 items-end">
                               <div className="shrink-0 w-80 whitespace-nowrap">மீண்டும் வரவேண்டிய நாள் / Review on :</div>
-                              <input
-                                type="date"
-                                className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent"
-                                value={formData.reviewDate}
-                                onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
-                                readOnly={readOnly}
-                                min={new Date().toISOString().split('T')[0]}
-                              />
+                              <div className="flex-1 flex items-center gap-3">
+                                <input
+                                  type="date"
+                                  className="border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent"
+                                  value={formData.reviewDate}
+                                  onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
+                                  readOnly={readOnly}
+                                  min={new Date().toISOString().split('T')[0]}
+                                />
+                                {reviewDaysLabel && (
+                                  <span className="text-sm text-gray-800 font-bold whitespace-nowrap">
+                                    {reviewDaysLabel}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex gap-2 items-end">
                               <div className="shrink-0 w-80 whitespace-nowrap">செய்ய வேண்டிய பரிசோதனைகள் / Tests :</div>
@@ -1287,9 +1352,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                           <div className="w-full border-2 border-black p-2 text-[12px] leading-[1.5] flex flex-col justify-center font-bold mt-2 bg-gray-50 print:bg-white">
                             <p className="text-center mb-1.5">முன்பதிவு காலதாமதத்தை குறைக்கும் / Prior registration avoids delay</p>
                             <p className="text-center mb-1">Appt: 0422-2494333, 73588 41555, 41666 | Time: 8am - 6pm</p>
-                            <p className="text-center border-t border-gray-300 mt-1.5 pt-1.5">
-                              Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)
-                            </p>
+                            <div className="flex-1 text-center pr-24">
+                              <div className="font-bold text-gray-900 border-t border-black pt-2 text-sm">
+                                {prescribedByName || (
+                                  <>Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)</>
+                                )}
+                              </div>
+                            </div>
                             <p className="text-center mt-1">அவசர உதவிக்கு / Emergency: 0422 - 2494333 (24 மணி நேரமும் / 24 hrs Service)</p>
                           </div>
                         </div>

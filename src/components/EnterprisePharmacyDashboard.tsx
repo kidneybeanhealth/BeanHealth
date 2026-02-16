@@ -28,6 +28,7 @@ interface Prescription {
         gender?: string;
         phone?: string;
         mr_number?: string;
+        token_number?: string;
     };
 }
 
@@ -57,7 +58,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select(`
                     *,
                     doctor:hospital_doctors(name, specialty, signature_url),
-                    patient:hospital_patients(name, age, mr_number)
+                    patient:hospital_patients(name, age, mr_number, token_number)
                 `)
                 .eq('hospital_id', hospitalId)
                 .in('status', ['pending', 'dispensed'])
@@ -69,7 +70,6 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 throw error;
             }
 
-            console.log('Prescriptions found:', data?.length);
             setPrescriptions(data || []);
         } catch (error) {
             console.error('Error fetching prescriptions:', error);
@@ -878,7 +878,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                             <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
                                                 <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-sm flex-shrink-0
                                                     ${item.status === 'pending' ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
-                                                    {item.token_number}
+                                                    {item.token_number || item.patient?.token_number}
                                                 </div>
                                                 <div className="flex-1">
                                                     <h4 className="text-lg font-bold text-gray-900 flex flex-wrap items-center gap-2">
@@ -953,7 +953,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                 <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
                                     Prescription Details
                                 </h3>
-                                <p className="text-sm font-medium text-gray-700 mt-1">Token: <span className="text-gray-900">{selectedPrescription.token_number}</span></p>
+                                <p className="text-sm font-medium text-gray-700 mt-1">Token: <span className="text-gray-900">{selectedPrescription.token_number || selectedPrescription.patient?.token_number}</span></p>
                             </div>
                             <button onClick={() => setSelectedPrescription(null)} className="text-gray-400 hover:text-black p-2 hover:bg-gray-100 rounded-full transition-colors">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1050,7 +1050,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     doctor={selectedPrescription.doctor}
                     patient={{
                         ...selectedPrescription.patient,
-                        token_number: selectedPrescription.token_number
+                        token_number: selectedPrescription.token_number || selectedPrescription.patient?.token_number
                     }}
                     onClose={() => setShowPrintModal(false)}
                     readOnly={true}

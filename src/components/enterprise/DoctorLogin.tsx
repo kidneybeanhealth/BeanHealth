@@ -4,6 +4,13 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useHospitalName } from '../../hooks/useHospitalName';
+import {
+    getLegacyDoctorSessionKey,
+    loadDoctorActorSession,
+    saveDoctorActorSession,
+    clearDoctorActorSession,
+    type DoctorActorType,
+} from '../../utils/doctorActorSession';
 
 interface DoctorProfile {
     id: string;
@@ -12,6 +19,16 @@ interface DoctorProfile {
     hospital_id: string;
     avatar_url?: string;
     access_code: string;
+}
+
+interface DoctorActorLoginResponse {
+    session_token: string;
+    session_id: string;
+    actor_type: DoctorActorType;
+    assistant_id: string | null;
+    actor_display_name: string;
+    expires_at: string;
+    can_manage_team?: boolean;
 }
 
 // Session timeout: 4 hours
@@ -52,15 +69,18 @@ const DoctorLogin: React.FC = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(true);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [paAuthEnabled, setPaAuthEnabled] = useState(false);
+    const [authMode, setAuthMode] = useState<DoctorActorType>('chief');
+    const [assistantCode, setAssistantCode] = useState('');
 
     const [showPassword, setShowPassword] = useState(false);
 
-    // Session storage key (scoped per hospital)
-    const getSessionKey = () => `enterprise_doctor_session_${profile?.id}`;
+    const getLegacySessionKey = () => getLegacyDoctorSessionKey(profile?.id || '');
 
-    // If doctorId is in URL, check session or prompt for password
+    // If doctorId is in URL, check actor/legacy session or prompt for password
     useEffect(() => {
-        if (!doctorId || doctors.length === 0) return;
+        if (!doctorId || doctors.length === 0 || !profile?.id) return;
 
         const doctor = doctors.find(d => d.id === doctorId);
         if (!doctor) {
@@ -69,32 +89,87 @@ const DoctorLogin: React.FC = () => {
             return;
         }
 
-        // Check for existing valid session
-        const sessionKey = getSessionKey();
-        const savedSession = sessionStorage.getItem(sessionKey);
+        let isCancelled = false;
 
-        if (savedSession) {
-            try {
-                const { doctorId: savedDoctorId, timestamp } = JSON.parse(savedSession);
-                const isValid = savedDoctorId === doctorId &&
-                    (Date.now() - timestamp) < DOCTOR_SESSION_TIMEOUT;
+        const promptLogin = () => {
+            if (isCancelled) return;
+            setSelectedDoctor(doctor);
+            setAuthMode('chief');
+            setAssistantCode('');
+            setPassword('');
+            setShowPasswordModal(true);
+        };
 
-                if (isValid) {
-                    // Valid session, redirect to dashboard
-                    navigate(`/enterprise-dashboard/doctors/${doctorId}/dashboard`);
-                    return;
-                } else {
+        const checkSessions = async () => {
+            if (paAuthEnabled) {
+                const actorSession = loadDoctorActorSession(profile.id, doctorId);
+                if (actorSession) {
+                    const { data, error } = await (supabase as any).rpc('doctor_actor_validate', {
+                        p_hospital_id: profile.id,
+                        p_chief_doctor_id: doctorId,
+                        p_session_token: actorSession.sessionToken,
+                    });
+
+                    const validated = Array.isArray(data) ? data[0] : null;
+                    if (!error && validated?.session_id) {
+                        saveDoctorActorSession({
+                            ...actorSession,
+                            actorType: validated.actor_type,
+                            assistantId: validated.assistant_id || null,
+                            actorDisplayName: validated.actor_display_name,
+                            sessionId: validated.session_id,
+                            expiresAt: validated.expires_at,
+                            canManageTeam: Boolean(validated.can_manage_team),
+                        });
+
+                        const legacyKey = getLegacySessionKey();
+                        sessionStorage.setItem(legacyKey, JSON.stringify({
+                            doctorId,
+                            timestamp: Date.now(),
+                        }));
+
+                        if (!isCancelled) {
+                            navigate(`/enterprise-dashboard/doctors/${doctorId}/dashboard`);
+                        }
+                        return;
+                    }
+
+                    clearDoctorActorSession(profile.id, doctorId);
+                }
+
+                promptLogin();
+                return;
+            }
+
+            // Legacy flow
+            const sessionKey = getLegacySessionKey();
+            const savedSession = sessionStorage.getItem(sessionKey);
+            if (savedSession) {
+                try {
+                    const { doctorId: savedDoctorId, timestamp } = JSON.parse(savedSession);
+                    const isValid = savedDoctorId === doctorId &&
+                        (Date.now() - timestamp) < DOCTOR_SESSION_TIMEOUT;
+
+                    if (isValid) {
+                        if (!isCancelled) {
+                            navigate(`/enterprise-dashboard/doctors/${doctorId}/dashboard`);
+                        }
+                        return;
+                    }
+                    sessionStorage.removeItem(sessionKey);
+                } catch (_e) {
                     sessionStorage.removeItem(sessionKey);
                 }
-            } catch (e) {
-                sessionStorage.removeItem(sessionKey);
             }
-        }
 
-        // No valid session, show password prompt
-        setSelectedDoctor(doctor);
-        setShowPasswordModal(true);
-    }, [doctorId, doctors]);
+            promptLogin();
+        };
+
+        checkSessions();
+        return () => {
+            isCancelled = true;
+        };
+    }, [doctorId, doctors, paAuthEnabled, profile?.id, navigate]);
 
     const fetchDoctors = async () => {
         if (!profile?.id) {
@@ -104,16 +179,28 @@ const DoctorLogin: React.FC = () => {
         console.log('[DoctorLogin] Fetching doctors for hospital:', profile.id);
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('hospital_doctors')
-                .select('*')
-                .eq('hospital_id', profile.id)
-                .eq('is_active', true);
+            const [doctorResult, featureResult] = await Promise.all([
+                supabase
+                    .from('hospital_doctors')
+                    .select('*')
+                    .eq('hospital_id', profile.id)
+                    .eq('is_active', true),
+                (supabase
+                    .from('hospital_profiles' as any)
+                    .select('enable_pa_actor_auth')
+                    .eq('id', profile.id)
+                    .maybeSingle() as any),
+            ]);
+
+            const { data, error } = doctorResult;
 
             if (error) {
                 console.error('[DoctorLogin] Error fetching doctors:', error);
                 throw error;
             }
+
+            const featureEnabled = Boolean(featureResult?.data?.enable_pa_actor_auth);
+            setPaAuthEnabled(featureEnabled);
 
             // Custom sort: Prabhakar first, Divakar second, others after
             const doctorsList = (data as DoctorProfile[]) || [];
@@ -121,17 +208,24 @@ const DoctorLogin: React.FC = () => {
                 const nameA = a.name.toLowerCase();
                 const nameB = b.name.toLowerCase();
 
-                if (nameA.includes('prabhakar')) return -1;
-                if (nameB.includes('prabhakar')) return 1;
-                if (nameA.includes('divakar')) return -1;
-                if (nameB.includes('divakar')) return 1;
-                return 0;
+                const isPrabhakarA = nameA.includes('prabhakar');
+                const isPrabhakarB = nameB.includes('prabhakar');
+                if (isPrabhakarA && !isPrabhakarB) return -1;
+                if (!isPrabhakarA && isPrabhakarB) return 1;
+
+                const isDivakarA = nameA.includes('divakar');
+                const isDivakarB = nameB.includes('divakar');
+                if (isDivakarA && !isDivakarB) return -1;
+                if (!isDivakarA && isDivakarB) return 1;
+
+                return nameA.localeCompare(nameB);
             });
 
             console.log('[DoctorLogin] Found doctors:', sortedDoctors.length);
             setDoctors(sortedDoctors);
         } catch (error) {
             console.error('[DoctorLogin] Error fetching doctors:', error);
+            setPaAuthEnabled(false);
             toast.error('Failed to load doctors list');
         } finally {
             setLoading(false);
@@ -161,30 +255,128 @@ const DoctorLogin: React.FC = () => {
         navigate(`/enterprise-dashboard/doctors/${doctor.id}`);
     };
 
-    const handlePasswordSubmit = (e: React.FormEvent) => {
+    const handlePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!selectedDoctor) return;
+        if (!selectedDoctor || !profile?.id) return;
 
-        if (password === selectedDoctor.access_code) {
-            // Store session
-            const sessionKey = getSessionKey();
-            sessionStorage.setItem(sessionKey, JSON.stringify({
-                doctorId: selectedDoctor.id,
-                timestamp: Date.now()
-            }));
+        if (paAuthEnabled) {
+            if (authMode === 'assistant' && !assistantCode.trim()) {
+                toast.error('Assistant code is required');
+                return;
+            }
 
-            toast.success(`Welcome Dr. ${selectedDoctor.name.split(' ').pop()}`);
-            setShowPasswordModal(false);
-            navigate(`/enterprise-dashboard/doctors/${selectedDoctor.id}/dashboard`);
-        } else {
-            toast.error('Invalid Passcode');
+            setIsSubmitting(true);
+            try {
+                const { data, error } = await (supabase as any).rpc('doctor_actor_login', {
+                    p_hospital_id: profile.id,
+                    p_chief_doctor_id: selectedDoctor.id,
+                    p_actor_type: authMode,
+                    p_assistant_code: authMode === 'assistant' ? assistantCode.trim().toUpperCase() : null,
+                    p_passcode: password,
+                    p_device_info: {
+                        userAgent: navigator.userAgent,
+                        platform: navigator.platform,
+                        language: navigator.language,
+                        isMobile: window.innerWidth < 768,
+                    },
+                });
+
+                const actorData: DoctorActorLoginResponse | null = Array.isArray(data) ? data[0] : null;
+                if (error || !actorData?.session_token) {
+                    toast.error('Invalid credentials');
+                    return;
+                }
+
+                saveDoctorActorSession({
+                    hospitalId: profile.id,
+                    chiefDoctorId: selectedDoctor.id,
+                    sessionToken: actorData.session_token,
+                    sessionId: actorData.session_id,
+                    actorType: actorData.actor_type,
+                    assistantId: actorData.assistant_id || null,
+                    actorDisplayName: actorData.actor_display_name,
+                    expiresAt: actorData.expires_at,
+                    canManageTeam: actorData.actor_type === 'chief',
+                    loginAt: Date.now(),
+                });
+
+                const legacyKey = getLegacySessionKey();
+                sessionStorage.setItem(legacyKey, JSON.stringify({
+                    doctorId: selectedDoctor.id,
+                    timestamp: Date.now(),
+                }));
+
+                toast.success(`Welcome ${actorData.actor_display_name}`);
+                setShowPasswordModal(false);
+                navigate(`/enterprise-dashboard/doctors/${selectedDoctor.id}/dashboard`);
+            } catch (error) {
+                console.error('[DoctorLogin] doctor_actor_login failed:', error);
+                toast.error('Invalid credentials');
+            } finally {
+                setIsSubmitting(false);
+            }
+            return;
         }
+
+        // Legacy fallback or hashed check
+        // If we reach here, either the cleartext check failed OR the code is already hashed.
+        try {
+            setIsSubmitting(true);
+            const { data, error } = await (supabase as any).rpc('doctor_actor_login', {
+                p_hospital_id: profile.id,
+                p_chief_doctor_id: selectedDoctor.id,
+                p_actor_type: 'chief',
+                p_assistant_code: null,
+                p_passcode: password.trim(),
+                p_device_info: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    isMobile: window.innerWidth < 768,
+                },
+            });
+            const actorData: DoctorActorLoginResponse | null = Array.isArray(data) ? data[0] : null;
+            if (!error && actorData?.session_token) {
+                saveDoctorActorSession({
+                    hospitalId: profile.id,
+                    chiefDoctorId: selectedDoctor.id,
+                    sessionToken: actorData.session_token,
+                    sessionId: actorData.session_id,
+                    actorType: actorData.actor_type,
+                    assistantId: actorData.assistant_id || null,
+                    actorDisplayName: actorData.actor_display_name,
+                    expiresAt: actorData.expires_at,
+                    canManageTeam: true,
+                    loginAt: Date.now(),
+                });
+
+                // Also set legacy session for safety
+                const sessionKey = getLegacySessionKey();
+                sessionStorage.setItem(sessionKey, JSON.stringify({
+                    doctorId: selectedDoctor.id,
+                    timestamp: Date.now()
+                }));
+
+                toast.success(`Welcome ${actorData.actor_display_name}`);
+                setShowPasswordModal(false);
+                navigate(`/enterprise-dashboard/doctors/${selectedDoctor.id}/dashboard`);
+                return;
+            }
+        } catch (error) {
+            console.warn('[DoctorLogin] RPC fallback failed:', error);
+        } finally {
+            setIsSubmitting(false);
+        }
+
+        toast.error('Invalid Passcode');
     };
 
     const handleCloseModal = () => {
         setShowPasswordModal(false);
         setPassword('');
+        setAssistantCode('');
+        setAuthMode('chief');
         selectedDoctor && setSelectedDoctor(null);
         navigate('/enterprise-dashboard/doctors');
     };
@@ -249,9 +441,52 @@ const DoctorLogin: React.FC = () => {
                         </div>
 
                         <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                            {paAuthEnabled && (
+                                <div className="space-y-3">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                        Sign In As
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2 p-1 bg-gray-50 rounded-xl border border-gray-100">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setAuthMode('chief');
+                                                setAssistantCode('');
+                                            }}
+                                            className={`py-2.5 rounded-lg text-sm font-bold transition-colors ${authMode === 'chief' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                                        >
+                                            Chief
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAuthMode('assistant')}
+                                            className={`py-2.5 rounded-lg text-sm font-bold transition-colors ${authMode === 'assistant' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                                        >
+                                            PA
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {paAuthEnabled && authMode === 'assistant' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">
+                                        Assistant Code
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={assistantCode}
+                                        onChange={(e) => setAssistantCode(e.target.value.toUpperCase())}
+                                        className="w-full px-4 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:bg-white focus:border-primary-500 focus:ring-0 outline-none transition-all text-center text-lg font-bold tracking-wider"
+                                        placeholder="PA CODE"
+                                        autoComplete="off"
+                                    />
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">
-                                    Enter Your Passcode
+                                    {paAuthEnabled ? (authMode === 'chief' ? 'Chief Passcode' : 'PA Passcode') : 'Enter Your Passcode'}
                                 </label>
                                 <div className="relative">
                                     <input
@@ -287,15 +522,16 @@ const DoctorLogin: React.FC = () => {
                                     type="button"
                                     onClick={handleCloseModal}
                                     className="px-4 py-3.5 text-gray-500 bg-gray-50 rounded-xl hover:bg-gray-100 font-bold transition-all active:scale-[0.98]"
+                                    disabled={isSubmitting}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={!password}
+                                    disabled={!password || isSubmitting || (paAuthEnabled && authMode === 'assistant' && !assistantCode.trim())}
                                     className="px-4 py-3.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-bold transition-all shadow-lg shadow-primary-600/20 disabled:opacity-50 active:scale-[0.98]"
                                 >
-                                    Unlock
+                                    {isSubmitting ? 'Checking...' : 'Unlock'}
                                 </button>
                             </div>
                         </form>
