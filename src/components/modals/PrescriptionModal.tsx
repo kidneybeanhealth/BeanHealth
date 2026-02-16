@@ -817,7 +817,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                 <span>Nt</span>
                                 <span>இ</span>
                               </div>
-                              <div className="w-8 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="flex-1 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center leading-tight">
                                 <span>B/F</span>
                                 <span>A/F</span>
                               </div>
@@ -1080,9 +1080,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                                     </div>
                                   </div>
                                   {/* Food Timing - Searchable Combobox */}
-                                  <div className="w-8 flex items-center justify-center shrink-0 relative">
+                                  <div className="flex-1 flex items-center justify-center relative">
                                     <input
-                                      className="w-full h-full text-center font-bold text-[8px] outline-none bg-transparent uppercase"
+                                      className="w-full h-full text-center font-bold text-[10px] outline-none bg-transparent uppercase"
                                       value={med.foodTiming}
                                       onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
                                       onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''))}
