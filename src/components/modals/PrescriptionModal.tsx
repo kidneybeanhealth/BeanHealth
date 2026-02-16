@@ -677,52 +677,174 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             }}
           >
             <style>{`
+            /* BASE styles (applied both screen and print in the iframe) */
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            
+            /* Flexbox */
+            .flex { display: flex !important; }
+            .flex-col { flex-direction: column !important; }
+            .flex-row { flex-direction: row !important; }
+            .flex-1 { flex: 1 1 0% !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            .items-center { align-items: center !important; }
+            .items-start { align-items: flex-start !important; }
+            .items-end { align-items: flex-end !important; }
+            .items-stretch { align-items: stretch !important; }
+            .justify-between { justify-content: space-between !important; }
+            .justify-center { justify-content: center !important; }
+            .justify-end { justify-content: flex-end !important; }
+            .grow { flex-grow: 1 !important; }
+            .shrink-0 { flex-shrink: 0 !important; }
+            .self-start { align-self: flex-start !important; }
+            .self-end { align-self: flex-end !important; }
+            
+            /* Sizing */
+            .w-full { width: 100% !important; }
+            .w-8 { width: 2rem !important; }
+            .w-10 { width: 2.5rem !important; }
+            .w-14 { width: 3.5rem !important; }
+            .w-16 { width: 4rem !important; }
+            .w-24 { width: 6rem !important; }
+            .w-28 { width: 7rem !important; }
+            .w-32 { width: 8rem !important; }
+            .w-48 { width: 12rem !important; }
+            .w-\\[446px\\] { width: 446px !important; }
+            .w-\\[70px\\] { width: 70px !important; }
+            .h-full { height: 100% !important; }
+            .h-16 { height: 4rem !important; }
+            .h-\\[70px\\] { height: 70px !important; }
+            .min-w-0 { min-width: 0 !important; }
+            .min-h-\\[40px\\] { min-height: 40px !important; }
+            .max-w-\\[210mm\\] { max-width: 210mm !important; }
+            
+            /* Spacing */
+            .p-1 { padding: 0.25rem !important; }
+            .p-2 { padding: 0.5rem !important; }
+            .p-4 { padding: 1rem !important; }
+            .px-0\\.5 { padding-left: 0.125rem !important; padding-right: 0.125rem !important; }
+            .px-1 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+            .px-1\\.5 { padding-left: 0.375rem !important; padding-right: 0.375rem !important; }
+            .px-2 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+            .px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+            .py-0\\.5 { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
+            .py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+            .py-1\\.5 { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; }
+            .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+            .mb-1 { margin-bottom: 0.25rem !important; }
+            .mb-2 { margin-bottom: 0.5rem !important; }
+            .mb-4 { margin-bottom: 1rem !important; }
+            .mt-1 { margin-top: 0.25rem !important; }
+            .mt-2 { margin-top: 0.5rem !important; }
+            .mt-4 { margin-top: 1rem !important; }
+            .mr-1 { margin-right: 0.25rem !important; }
+            .ml-1 { margin-left: 0.25rem !important; }
+            .gap-1 { gap: 0.25rem !important; }
+            .gap-2 { gap: 0.5rem !important; }
+            .gap-3 { gap: 0.75rem !important; }
+            .gap-4 { gap: 1rem !important; }
+            .space-y-1 > * + * { margin-top: 0.25rem !important; }
+            .space-y-2 > * + * { margin-top: 0.5rem !important; }
+            
+            /* Positioning */
+            .absolute { position: absolute !important; }
+            .relative { position: relative !important; }
+            .top-0 { top: 0 !important; }
+            .right-0 { right: 0 !important; }
+            .left-0 { left: 0 !important; }
+            .-top-1 { top: -0.25rem !important; }
+            
+            /* Borders */
+            .border { border-width: 1px !important; border-style: solid !important; }
+            .border-2 { border-width: 2px !important; border-style: solid !important; }
+            .border-b { border-bottom-width: 1px !important; border-bottom-style: solid !important; }
+            .border-b-2 { border-bottom-width: 2px !important; border-bottom-style: solid !important; }
+            .border-r { border-right-width: 1px !important; border-right-style: solid !important; }
+            .border-t { border-top-width: 1px !important; border-top-style: solid !important; }
+            .border-t-2 { border-top-width: 2px !important; border-top-style: solid !important; }
+            .border-black { border-color: black !important; }
+            .border-gray-200 { border-color: #e5e7eb !important; }
+            .border-gray-300 { border-color: #d1d5db !important; }
+            .rounded-lg { border-radius: 0.5rem !important; }
+            
+            /* Typography */
+            .text-xs { font-size: 0.75rem !important; line-height: 1rem !important; }
+            .text-sm { font-size: 0.875rem !important; line-height: 1.25rem !important; }
+            .text-base { font-size: 1rem !important; line-height: 1.5rem !important; }
+            .text-lg { font-size: 1.125rem !important; line-height: 1.75rem !important; }
+            .text-xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
+            .text-\\[9px\\] { font-size: 9px !important; }
+            .text-\\[10px\\] { font-size: 10px !important; }
+            .text-\\[11px\\] { font-size: 11px !important; }
+            .font-bold { font-weight: 700 !important; }
+            .font-medium { font-weight: 500 !important; }
+            .font-semibold { font-weight: 600 !important; }
+            .uppercase { text-transform: uppercase !important; }
+            .text-center { text-align: center !important; }
+            .text-right { text-align: right !important; }
+            .text-left { text-align: left !important; }
+            .leading-tight { line-height: 1.25 !important; }
+            .leading-none { line-height: 1 !important; }
+            .tracking-wide { letter-spacing: 0.025em !important; }
+            .italic { font-style: italic !important; }
+            .underline { text-decoration: underline !important; }
+            
+            /* Colors */
+            .text-black { color: black !important; }
+            .text-gray-500 { color: #6b7280 !important; }
+            .text-gray-600 { color: #4b5563 !important; }
+            .text-gray-700 { color: #374151 !important; }
+            .text-gray-800 { color: #1f2937 !important; }
+            .text-gray-900 { color: #111827 !important; }
+            .text-blue-900 { color: #1e3a5f !important; }
+            .text-emerald-700 { color: #047857 !important; }
+            .text-red-600 { color: #dc2626 !important; }
+            .bg-white { background-color: white !important; }
+            .bg-gray-50 { background-color: #f9fafb !important; }
+            .bg-gray-100 { background-color: #f3f4f6 !important; }
+            .bg-transparent { background-color: transparent !important; }
+            
+            /* Display & Overflow */
+            .hidden { display: none !important; }
+            .block { display: block !important; }
+            .inline { display: inline !important; }
+            .inline-block { display: inline-block !important; }
+            .overflow-hidden { overflow: hidden !important; }
+            .object-contain { object-fit: contain !important; }
+            
+            /* Print-specific overrides */
+            .print\\:hidden { display: none !important; }
+            .print\\:bg-white { background-color: white !important; }
+            
+            /* Form inputs - ensure values are visible */
+            input {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color: black !important;
+              -webkit-text-fill-color: black !important;
+              opacity: 1 !important;
+              visibility: visible !important;
+              background: transparent !important;
+              border: none !important;
+              font-size: inherit !important;
+              outline: none !important;
+              font-family: inherit !important;
+              font-weight: inherit !important;
+              text-transform: inherit !important;
+            }
+            
+            /* Grid layout */
+            .grid { display: grid !important; }
+            
             @media print {
               .print-content {
                 transform: none !important;
                 width: 100% !important;
                 margin: 0 !important;
                 min-width: 0 !important;
+                padding: 0 !important;
               }
               
-              /* Critical Layout Fixes for Print */
-              .flex { display: flex !important; }
-              .flex-col { flex-direction: column !important; }
-              .flex-row { flex-direction: row !important; }
-              .items-center { align-items: center !important; }
-              .items-end { align-items: flex-end !important; }
-              .justify-between { justify-content: space-between !important; }
-              .justify-center { justify-content: center !important; }
-              .justify-end { justify-content: flex-end !important; }
-              .grow { flex-grow: 1 !important; }
-              .shrink-0 { flex-shrink: 0 !important; }
-              .w-full { width: 100% !important; }
-              .h-full { height: 100% !important; }
-              .absolute { position: absolute !important; }
-              .relative { position: relative !important; }
-              .border { border-width: 1px !important; }
-              .border-2 { border-width: 2px !important; }
-              .border-b { border-bottom-width: 1px !important; }
-              .border-r { border-right-width: 1px !important; }
-              .border-t { border-top-width: 1px !important; }
-              .border-black { border-color: black !important; }
-              .text-center { text-align: center !important; }
-              .text-right { text-align: right !important; }
-              .font-bold { font-weight: 700 !important; }
-              .uppercase { text-transform: uppercase !important; }
-              
-              /* Fix: Ensure ALL input values are visible in print */
-              input {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color: black !important;
-                -webkit-text-fill-color: black !important;
-                opacity: 1 !important;
-                visibility: visible !important;
-                background: transparent !important;
-                border: none !important;
-                font-size: inherit !important;
-              }
+              body { margin: 0 !important; padding: 0 !important; }
               
               /* Show print-only text spans, hide screen-only inputs */
               .print-drug-name {
