@@ -18,6 +18,10 @@ interface Prescription {
     token_number: string;
     status: string;
     created_at: string;
+    next_review_date?: string;
+    dispensed_days?: number;
+    dispensed_at?: string;
+    dispensed_by?: string;
     doctor: {
         name: string;
         specialty: string;
@@ -39,6 +43,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
     const [showPrintModal, setShowPrintModal] = useState(false);
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'queue' | 'history' | 'past_records'>('queue');
+    const [dispensingDays, setDispensingDays] = useState<number>(0);
 
     // Helper to get today's ISO date
     const getTodayISO = () => {
@@ -70,6 +75,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 throw error;
             }
 
+            console.log('Prescriptions found:', data?.length);
             setPrescriptions(data || []);
         } catch (error) {
             console.error('Error fetching prescriptions:', error);
@@ -204,10 +210,10 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select(`
                     *,
                     doctor:hospital_doctors(name, specialty, signature_url),
-                    patient:hospital_patients(name, age, mr_number)
+                    patient:hospital_patients(name, age, mr_number, token_number)
                 `)
                 .eq('id', id)
-                .single();
+                .single() as any;
 
             if (data && !error) {
                 setPrescriptions(prev => {
@@ -320,29 +326,84 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         fetchHospitalLogo();
     }, [hospitalId]);
 
+    // Initialize dispensing days when prescription is selected
+    useEffect(() => {
+        if (selectedPrescription && selectedPrescription.status !== 'dispensed') {
+            // Calculate prescribed days from next_review_date
+            if (selectedPrescription.next_review_date) {
+                try {
+                    const reviewDate = new Date(selectedPrescription.next_review_date);
+
+                    // Check for invalid date
+                    if (isNaN(reviewDate.getTime())) {
+                        console.warn('Invalid review date:', selectedPrescription.next_review_date);
+                        setDispensingDays(30); // Default to 30 days
+                        return;
+                    }
+
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const diffTime = reviewDate.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    // Only use calculated days if reasonable (1-365 days in future)
+                    if (diffDays > 0 && diffDays <= 365) {
+                        setDispensingDays(diffDays);
+                    } else if (diffDays > 365) {
+                        setDispensingDays(365); // Cap at max
+                    } else {
+                        setDispensingDays(30); // Default for past dates
+                    }
+                } catch (error) {
+                    console.error('Error calculating dispensing days:', error);
+                    setDispensingDays(30); // Fallback default
+                }
+            } else {
+                setDispensingDays(30); // Default when no review date
+            }
+        }
+    }, [selectedPrescription]);
+
     // Note: Periodic interval removed to save resources, relying on Realtime + Visibility.
 
     const handleMarkDispensed = async () => {
         if (!selectedPrescription) return;
 
+        // Allow 0 or empty to mean "not tracked" - don't block workflow
+        const daysToDispense = dispensingDays || 0;
+
+        // Validate only if a value was entered
+        if (daysToDispense > 365) {
+            toast.error('Dispensing days cannot exceed 365');
+            return;
+        }
+
         const previousStatus = selectedPrescription.status;
-        const optimisticUpdated = { ...selectedPrescription, status: 'dispensed' };
+        const optimisticUpdated = {
+            ...selectedPrescription,
+            status: 'dispensed',
+            dispensed_days: daysToDispense > 0 ? daysToDispense : null,
+            dispensed_at: new Date().toISOString()
+        };
 
         // 1. Optimistic Update
         setSelectedPrescription(optimisticUpdated as any);
-        setPrescriptions(prev => prev.map(p => p.id === optimisticUpdated.id ? { ...p, status: 'dispensed' } : p));
-        toast.success('Medicine Delivered');
+        setPrescriptions(prev => prev.map(p => p.id === optimisticUpdated.id ? { ...p, status: 'dispensed', dispensed_days: daysToDispense > 0 ? daysToDispense : null } : p));
+        toast.success(daysToDispense > 0 ? `Medicine Delivered (${daysToDispense} days)` : 'Medicine Delivered');
 
         try {
-            // 2. Update prescription status
+            // 2. Update prescription status with dispensing data
             const { error } = await (supabase
                 .from('hospital_prescriptions') as any)
-                .update({ status: 'dispensed' } as any)
+                .update({
+                    status: 'dispensed',
+                    dispensed_days: daysToDispense > 0 ? daysToDispense : null,
+                    dispensed_at: new Date().toISOString()
+                } as any)
                 .eq('id', selectedPrescription.id);
 
             if (error) throw error;
 
-            // 3. Also update the display queue to mark as dispensed
             // 3. Also update the display queue to mark as dispensed
             await (supabase
                 .from('hospital_pharmacy_queue' as any) as any)
@@ -377,7 +438,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('id')
                 .eq('prescription_id', prescription.id)
                 .in('status', ['waiting', 'calling'])
-                .single();
+                .single() as any;
 
             if (existing) {
                 // Update existing entry to "calling"
@@ -415,7 +476,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('id, status')
                 .eq('prescription_id', prescription.id)
                 .in('status', ['waiting', 'calling'])
-                .single();
+                .single() as any;
 
             if (existing) {
                 toast('Patient already in queue', { icon: 'ℹ️' });
@@ -448,7 +509,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('patient_name')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling')
-                .single();
+                .single() as any;
 
             if (current) {
                 // Set back to waiting
@@ -486,7 +547,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .eq('status', 'waiting')
                 .order('created_at', { ascending: true })
                 .limit(1)
-                .single();
+                .single() as any;
 
             if (nextPatient) {
                 await (supabase
@@ -513,7 +574,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('patient_name')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling')
-                .single();
+                .single() as any;
 
             if (current) {
                 await (supabase
@@ -542,7 +603,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .select('patient_name')
                 .eq('hospital_id', hospitalId)
                 .eq('status', 'calling')
-                .single();
+                .single() as any;
 
             if (current) {
                 await (supabase
@@ -753,7 +814,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                                                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
                                                                     {initial}
                                                                 </div>
-                                                                <p className="font-semibold text-gray-900 text-sm truncate">{patient.name}</p>
+                                                                <p className="font-semibold text-gray-900 text-sm truncate flex items-center gap-2">
+                                                                    {patient.name}
+                                                                    {patient.token_number && (
+                                                                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] rounded font-bold border border-blue-100">
+                                                                            Token: {patient.token_number}
+                                                                        </span>
+                                                                    )}
+                                                                </p>
                                                             </div>
 
                                                             <span className="text-sm text-gray-700">{patient.age || '—'}</span>
@@ -943,100 +1011,234 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 )}
             </div>
 
-            {/* Prescription Detail Modal */}
+            {/* Prescription Detail Modal - Redesigned */}
             {selectedPrescription && !showPrintModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] animate-scale-in overflow-hidden">
-                        {/* Header */}
-                        <div className="p-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                            <div>
-                                <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
-                                    Prescription Details
-                                </h3>
-                                <p className="text-sm font-medium text-gray-700 mt-1">Token: <span className="text-gray-900">{selectedPrescription.token_number || selectedPrescription.patient?.token_number}</span></p>
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full flex flex-col max-h-[90vh] animate-scale-in overflow-hidden">
+                        {/* Header with Close Button */}
+                        <div className="p-4 sm:p-5 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                    Rx
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">Prescription Sheet</h3>
+                                    <p className="text-xs text-gray-600">Token #{selectedPrescription.token_number}</p>
+                                </div>
                             </div>
-                            <button onClick={() => setSelectedPrescription(null)} className="text-gray-400 hover:text-black p-2 hover:bg-gray-100 rounded-full transition-colors">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            <button
+                                onClick={() => setSelectedPrescription(null)}
+                                className="text-gray-400 hover:text-gray-900 p-2 hover:bg-white/50 rounded-full transition-all"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                             </button>
                         </div>
 
                         {/* Content */}
-                        <div className="p-5 sm:p-8 overflow-y-auto flex-1 font-serif bg-white">
-                            <div className="text-center mb-6 sm:mb-8 pb-4 sm:pb-6 border-b border-gray-100">
-                                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">BeanHealth Hospital</h2>
-                                <p className="text-gray-700 text-sm tracking-wide uppercase">Excellence in Care</p>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-8 text-sm">
-                                <div className="space-y-1">
-                                    <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Patient</p>
-                                    <p className="font-bold text-gray-900 text-lg">{selectedPrescription.patient?.name}</p>
-                                    <p className="text-gray-800 font-sans">
-                                        Age: {selectedPrescription.patient?.age}
-                                        {selectedPrescription.patient?.mr_number && (
-                                            <span className="ml-2 text-gray-600">| MR: {selectedPrescription.patient.mr_number}</span>
-                                        )}
-                                    </p>
-                                </div>
-                                <div className="space-y-1 sm:text-right">
-                                    <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Doctor</p>
-                                    <p className="font-bold text-gray-900 text-lg">
-                                        {selectedPrescription.doctor?.name?.toLowerCase().startsWith('dr.') ? selectedPrescription.doctor.name : `Dr. ${selectedPrescription.doctor?.name}`}
-                                    </p>
-                                    <p className="text-gray-800 font-sans">{selectedPrescription.doctor?.specialty}</p>
-                                    <p className="text-gray-600 text-xs mt-2 font-sans">{new Date(selectedPrescription.created_at).toLocaleDateString()}</p>
-                                </div>
-                            </div>
-
-                            <div className="mb-8">
-                                <h4 className="font-bold text-gray-900 mb-6 flex items-center gap-3">
-                                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 font-serif text-lg">Rx</span>
-                                    Medications
-                                </h4>
-                                <div className="space-y-6">
-                                    {(selectedPrescription.medications || []).map((med: any, i: number) => (
-                                        <div key={i} className="flex justify-between items-start pb-4 border-b border-gray-50 last:border-0 last:pb-0">
-                                            <div>
-                                                <p className="font-bold text-gray-900 text-lg">{med.name} <span className="text-gray-600 font-normal text-sm ml-1">({med.dosage})</span></p>
-                                                <p className="text-gray-700 italic mt-1">{med.instruction}</p>
-                                            </div>
-                                            <div className="text-right text-sm font-sans">
-                                                <div className="inline-block px-3 py-1 bg-gray-100 rounded-lg text-gray-700 font-medium">{med.frequency}</div>
-                                                <p className="text-gray-600 mt-1">{med.duration}</p>
-                                            </div>
+                        <div className="p-6 sm:p-8 overflow-y-auto flex-1 bg-white">
+                            {/* Patient Information Card */}
+                            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 mb-6 border border-gray-200">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <h2 className="text-2xl font-bold text-gray-900">{selectedPrescription.patient?.name}</h2>
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                                                Token {selectedPrescription.token_number || selectedPrescription.patient?.token_number}
+                                            </span>
                                         </div>
-                                    ))}
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                                <span className="text-gray-700 font-medium">Age: <strong className="text-gray-900">{selectedPrescription.patient?.age}</strong></span>
+                                            </div>
+                                            {selectedPrescription.patient?.mr_number && (
+                                                <div className="flex items-center gap-2">
+                                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    <span className="text-gray-700 font-medium">MR: <strong className="text-gray-900">{selectedPrescription.patient.mr_number}</strong></span>
+                                                </div>
+                                            )}
+                                            {(() => {
+                                                const phoneMatch = selectedPrescription.notes?.match(/Phone:\s*([^\n]+)/);
+                                                const phone = phoneMatch ? phoneMatch[1].trim() : null;
+                                                return phone && (
+                                                    <div className="flex items-center gap-2">
+                                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                        </svg>
+                                                        <span className="text-gray-700 font-medium">Ph: <strong className="text-gray-900">{phone}</strong></span>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="pt-3 border-t border-gray-300 flex items-center justify-between text-xs text-gray-600">
+                                    <span>
+                                        Dr. {selectedPrescription.doctor?.name?.toLowerCase().startsWith('dr.')
+                                            ? selectedPrescription.doctor.name.replace(/^dr\.\s*/i, '')
+                                            : selectedPrescription.doctor?.name}
+                                    </span>
+                                    <span>{new Date(selectedPrescription.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                                 </div>
                             </div>
 
-                            {selectedPrescription.notes && (
-                                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
-                                    <p className="text-xs font-bold text-orange-800 uppercase tracking-wider mb-2">Doctor's Notes</p>
-                                    <p className="text-gray-800 font-medium leading-relaxed">{selectedPrescription.notes}</p>
+                            {/* Duration Tracking Boxes */}
+                            <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Prescribed Duration Box */}
+                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-5">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                        </svg>
+                                        <h5 className="text-xs font-bold text-blue-900 uppercase tracking-wider">Prescribed Duration</h5>
+                                    </div>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-4xl font-bold text-blue-900">
+                                            {(() => {
+                                                if (!selectedPrescription.next_review_date) return 'N/A';
+                                                const reviewDate = new Date(selectedPrescription.next_review_date);
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+                                                const diffTime = reviewDate.getTime() - today.getTime();
+                                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                return diffDays > 0 ? diffDays : 'N/A';
+                                            })()}
+                                        </span>
+                                        {selectedPrescription.next_review_date && (
+                                            <span className="text-sm text-blue-700 font-medium">days</span>
+                                        )}
+                                    </div>
+                                    {selectedPrescription.next_review_date && (
+                                        <p className="text-xs text-blue-600 mt-1">
+                                            Until {new Date(selectedPrescription.next_review_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </p>
+                                    )}
                                 </div>
-                            )}
+
+                                {/* Dispensing Duration Input Box */}
+                                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl p-5">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <h5 className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Dispensing Duration</h5>
+                                    </div>
+                                    {selectedPrescription.status === 'dispensed' && selectedPrescription.dispensed_days ? (
+                                        <div>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-4xl font-bold text-emerald-900">{selectedPrescription.dispensed_days}</span>
+                                                <span className="text-sm text-emerald-700 font-medium">days</span>
+                                            </div>
+                                            {selectedPrescription.dispensed_at && (
+                                                <p className="text-xs text-emerald-600 mt-1">
+                                                    Dispensed on {new Date(selectedPrescription.dispensed_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="365"
+                                                value={dispensingDays || ''}
+                                                onChange={(e) => setDispensingDays(parseInt(e.target.value) || 0)}
+                                                className="w-24 text-3xl font-bold text-emerald-900 bg-white border-2 border-emerald-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                                placeholder="0"
+                                            />
+                                            <span className="text-sm text-emerald-700 font-medium">days</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Medications Table */}
+                            <div className="mb-6">
+                                <h4 className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <span className="w-1 h-4 bg-blue-600 rounded-full"></span>
+                                    Prescribed Medications
+                                </h4>
+                                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="bg-gray-50 border-b border-gray-200">
+                                                <th className="text-left p-3 text-xs font-bold text-gray-700 uppercase tracking-wider">#</th>
+                                                <th className="text-left p-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Medicine</th>
+                                                <th className="text-center p-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Frequency</th>
+                                                <th className="text-left p-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Instructions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {(selectedPrescription.medications || []).map((med: any, i: number) => (
+                                                <tr key={i} className="hover:bg-blue-50/30 transition-colors">
+                                                    <td className="p-3 text-sm text-gray-600 font-medium">{i + 1}</td>
+                                                    <td className="p-3">
+                                                        <p className="font-bold text-gray-900 text-sm">{med.name}</p>
+                                                        <p className="text-xs text-gray-600 mt-0.5">{med.dosage}</p>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="flex items-center justify-center">
+                                                            <span className="px-3 py-1.5 bg-blue-100 text-blue-900 text-sm font-mono font-bold rounded-lg">
+                                                                {med.frequency}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 text-center mt-1">{med.duration}</p>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <span className="inline-flex items-center gap-1 text-sm text-gray-700">
+                                                            {med.instruction && (
+                                                                <>
+                                                                    <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                    {med.instruction}
+                                                                </>
+                                                            )}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="p-5 sm:p-6 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row gap-4">
+                        <div className="p-5 sm:p-6 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={() => setShowPrintModal(true)}
-                                className="w-full sm:flex-1 px-6 py-3 sm:py-4 bg-white border border-gray-200 text-gray-900 font-bold rounded-2xl hover:bg-gray-50 transition-colors shadow-sm order-2 sm:order-1"
+                                className="w-full sm:flex-1 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center justify-center gap-2"
                             >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
                                 Print PDF
                             </button>
 
                             {selectedPrescription.status !== 'dispensed' && (
                                 <button
                                     onClick={handleMarkDispensed}
-                                    className="w-full sm:flex-[2] px-6 py-3 sm:py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 shadow-xl shadow-emerald-600/20 transition-all transform hover:scale-[1.01] active:scale-95 order-1 sm:order-2"
+                                    className="w-full sm:flex-[2] px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all transform hover:scale-[1.02] active:scale-98 flex items-center justify-center gap-2"
                                 >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
                                     Mark as Dispensed
                                 </button>
                             )}
                             {selectedPrescription.status === 'dispensed' && (
-                                <div className="w-full sm:flex-[2] py-3 sm:py-4 flex items-center justify-center text-emerald-700 font-bold bg-emerald-100 rounded-2xl border border-emerald-200 order-1 sm:order-2">
-                                    ✓ Already Dispensed
+                                <div className="w-full sm:flex-[2] py-3 flex items-center justify-center text-emerald-700 font-bold bg-emerald-100 rounded-xl border-2 border-emerald-300 gap-2">
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                    </svg>
+                                    Already Dispensed
                                 </div>
                             )}
                         </div>
@@ -1050,7 +1252,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     doctor={selectedPrescription.doctor}
                     patient={{
                         ...selectedPrescription.patient,
-                        token_number: selectedPrescription.token_number || selectedPrescription.patient?.token_number
+                        token_number: selectedPrescription.token_number
                     }}
                     onClose={() => setShowPrintModal(false)}
                     readOnly={true}
