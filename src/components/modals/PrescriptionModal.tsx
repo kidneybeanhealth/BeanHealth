@@ -710,6 +710,27 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               .text-right { text-align: right !important; }
               .font-bold { font-weight: 700 !important; }
               .uppercase { text-transform: uppercase !important; }
+              
+              /* Fix: Ensure ALL input values are visible in print */
+              input {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color: black !important;
+                -webkit-text-fill-color: black !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                background: transparent !important;
+                border: none !important;
+                font-size: inherit !important;
+              }
+              
+              /* Show print-only text spans, hide screen-only inputs */
+              .print-drug-name {
+                display: block !important;
+              }
+              .screen-drug-input {
+                display: none !important;
+              }
             }
           `}</style>
             {(() => {
@@ -956,8 +977,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   {globalIndex + 1}
                                 </div>
                                 <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
+                                  {/* Print-only: plain text drug name (visible only in print) */}
+                                  <span className="print-drug-name hidden font-bold uppercase text-xs w-full">{med.name}</span>
+                                  {/* Screen-only: interactive input (hidden in print) */}
                                   <input
-                                    className="w-full outline-none font-bold uppercase text-xs"
+                                    className="screen-drug-input w-full outline-none font-bold uppercase text-xs"
                                     placeholder="Type drug name..."
                                     value={med.name}
                                     onChange={e => {
