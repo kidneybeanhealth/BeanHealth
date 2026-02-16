@@ -387,7 +387,8 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
                             </form>
 
                             <div className="border border-gray-200 rounded-2xl overflow-hidden">
-                                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-bold uppercase tracking-wide text-gray-500">
+                                {/* Desktop: Table Header - Hidden on mobile */}
+                                <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_2fr] gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-bold uppercase tracking-wide text-gray-500">
                                     <span>Name</span>
                                     <span>Code</span>
                                     <span>Status</span>
@@ -400,85 +401,180 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
                                     <div className="p-8 text-sm text-gray-500">No assistants configured.</div>
                                 ) : (
                                     assistants.map((assistant) => (
-                                        <div key={assistant.assistant_id} className="grid grid-cols-[2fr_1fr_1fr_1fr_2fr] gap-3 px-4 py-3 border-b border-gray-100 last:border-0 items-center text-sm">
-                                            <div>
-                                                {editingAssistantId === assistant.assistant_id ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editName}
-                                                        onChange={(e) => setEditName(e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-gray-200 rounded"
-                                                    />
-                                                ) : assistant.assistant_name}
+                                        <div key={assistant.assistant_id}>
+                                            {/* Desktop: Grid Row - Hidden on mobile */}
+                                            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_2fr] gap-3 px-4 py-3 border-b border-gray-100 last:border-0 items-center text-sm">
+                                                <div>
+                                                    {editingAssistantId === assistant.assistant_id ? (
+                                                        <input
+                                                            type="text"
+                                                            value={editName}
+                                                            onChange={(e) => setEditName(e.target.value)}
+                                                            className="w-full px-2 py-1.5 border border-gray-200 rounded"
+                                                        />
+                                                    ) : assistant.assistant_name}
+                                                </div>
+                                                <div>
+                                                    {editingAssistantId === assistant.assistant_id ? (
+                                                        <input
+                                                            type="text"
+                                                            value={editCode}
+                                                            onChange={(e) => setEditCode(e.target.value.toUpperCase())}
+                                                            className="w-full px-2 py-1.5 border border-gray-200 rounded uppercase"
+                                                        />
+                                                    ) : assistant.assistant_code}
+                                                </div>
+                                                <div>
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${assistant.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                        {assistant.is_active ? 'Active' : 'Inactive'}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-gray-600">
+                                                    {assistant.last_login_at ? new Date(assistant.last_login_at).toLocaleString('en-IN') : 'Never'}
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {editingAssistantId === assistant.assistant_id ? (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleSaveAssistant}
+                                                                className="px-2.5 py-1.5 text-xs font-bold rounded bg-blue-600 text-white"
+                                                            >
+                                                                Save
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setEditingAssistantId(null);
+                                                                    setEditName('');
+                                                                    setEditCode('');
+                                                                }}
+                                                                className="px-2.5 py-1.5 text-xs font-bold rounded bg-gray-100 text-gray-700"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openEditAssistant(assistant)}
+                                                                className="px-2.5 py-1.5 text-xs font-bold rounded bg-gray-100 text-gray-700"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setResetAssistantId(assistant.assistant_id);
+                                                                    setNewPasscode('');
+                                                                }}
+                                                                className="px-2.5 py-1.5 text-xs font-bold rounded bg-amber-100 text-amber-700"
+                                                            >
+                                                                Reset Passcode
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleToggleAssistantActive(assistant)}
+                                                                className={`px-2.5 py-1.5 text-xs font-bold rounded ${assistant.is_active ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+                                                            >
+                                                                {assistant.is_active ? 'Deactivate' : 'Activate'}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div>
-                                                {editingAssistantId === assistant.assistant_id ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editCode}
-                                                        onChange={(e) => setEditCode(e.target.value.toUpperCase())}
-                                                        className="w-full px-2 py-1.5 border border-gray-200 rounded uppercase"
-                                                    />
-                                                ) : assistant.assistant_code}
-                                            </div>
-                                            <div>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${assistant.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                    {assistant.is_active ? 'Active' : 'Inactive'}
-                                                </span>
-                                            </div>
-                                            <div className="text-xs text-gray-600">
-                                                {assistant.last_login_at ? new Date(assistant.last_login_at).toLocaleString('en-IN') : 'Never'}
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {editingAssistantId === assistant.assistant_id ? (
-                                                    <>
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleSaveAssistant}
-                                                            className="px-2.5 py-1.5 text-xs font-bold rounded bg-blue-600 text-white"
-                                                        >
-                                                            Save
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setEditingAssistantId(null);
-                                                                setEditName('');
-                                                                setEditCode('');
-                                                            }}
-                                                            className="px-2.5 py-1.5 text-xs font-bold rounded bg-gray-100 text-gray-700"
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => openEditAssistant(assistant)}
-                                                            className="px-2.5 py-1.5 text-xs font-bold rounded bg-gray-100 text-gray-700"
-                                                        >
-                                                            Edit
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setResetAssistantId(assistant.assistant_id);
-                                                                setNewPasscode('');
-                                                            }}
-                                                            className="px-2.5 py-1.5 text-xs font-bold rounded bg-amber-100 text-amber-700"
-                                                        >
-                                                            Reset Passcode
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleToggleAssistantActive(assistant)}
-                                                            className={`px-2.5 py-1.5 text-xs font-bold rounded ${assistant.is_active ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
-                                                        >
-                                                            {assistant.is_active ? 'Deactivate' : 'Activate'}
-                                                        </button>
-                                                    </>
-                                                )}
+
+                                            {/* Mobile: Card Layout - Hidden on desktop */}
+                                            <div className="md:hidden p-4 border-b border-gray-100 last:border-0 space-y-3">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1">
+                                                        {editingAssistantId === assistant.assistant_id ? (
+                                                            <input
+                                                                type="text"
+                                                                value={editName}
+                                                                onChange={(e) => setEditName(e.target.value)}
+                                                                className="w-full px-3 py-2 border border-gray-200 rounded-lg font-bold"
+                                                                placeholder="Assistant Name"
+                                                            />
+                                                        ) : (
+                                                            <div className="font-bold text-gray-900">{assistant.assistant_name}</div>
+                                                        )}
+                                                        {editingAssistantId === assistant.assistant_id ? (
+                                                            <input
+                                                                type="text"
+                                                                value={editCode}
+                                                                onChange={(e) => setEditCode(e.target.value.toUpperCase())}
+                                                                className="w-full px-3 py-2 border border-gray-200 rounded-lg uppercase mt-2"
+                                                                placeholder="Code"
+                                                            />
+                                                        ) : (
+                                                            <div className="text-sm text-gray-600 mt-1">Code: {assistant.assistant_code}</div>
+                                                        )}
+                                                        <div className="mt-2">
+                                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${assistant.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                {assistant.is_active ? 'Active' : 'Inactive'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="text-xs text-gray-600">
+                                                    Last Login: {assistant.last_login_at ? new Date(assistant.last_login_at).toLocaleString('en-IN') : 'Never'}
+                                                </div>
+
+                                                {/* Mobile Action Buttons - Full Width */}
+                                                <div className="flex flex-col gap-2">
+                                                    {editingAssistantId === assistant.assistant_id ? (
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleSaveAssistant}
+                                                                className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-blue-600 text-white"
+                                                            >
+                                                                Save Changes
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setEditingAssistantId(null);
+                                                                    setEditName('');
+                                                                    setEditCode('');
+                                                                }}
+                                                                className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-gray-100 text-gray-700"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openEditAssistant(assistant)}
+                                                                className="w-full py-2.5 text-sm font-bold rounded-lg bg-gray-100 text-gray-700"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setResetAssistantId(assistant.assistant_id);
+                                                                    setNewPasscode('');
+                                                                }}
+                                                                className="w-full py-2.5 text-sm font-bold rounded-lg bg-amber-100 text-amber-700"
+                                                            >
+                                                                Reset Passcode
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleToggleAssistantActive(assistant)}
+                                                                className={`col-span-2 w-full py-2.5 text-sm font-bold rounded-lg ${assistant.is_active ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+                                                            >
+                                                                {assistant.is_active ? 'Deactivate Assistant' : 'Activate Assistant'}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))
