@@ -601,6 +601,23 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
               .text-right { text-align: right !important; }
               .font-bold { font-weight: 700 !important; }
               .uppercase { text-transform: uppercase !important; }
+              
+              /* Font Sizes */
+              .text-base { font-size: 16px !important; }
+              .text-sm { font-size: 14px !important; }
+              .text-xs { font-size: 12px !important; }
+              .text-\[10px\] { font-size: 10px !important; }
+              .text-\[11px\] { font-size: 11px !important; }
+              .text-\[9px\] { font-size: 9px !important; }
+              
+              /* Padding/Spacing */
+              .py-1 { padding-top: 4px !important; padding-bottom: 4px !important; }
+              .py-1\.5 { padding-top: 6px !important; padding-bottom: 6px !important; }
+              .px-0\.5 { padding-left: 2px !important; padding-right: 2px !important; }
+              .px-1 { padding-left: 4px !important; padding-right: 4px !important; }
+              .px-1\.5 { padding-left: 6px !important; padding-right: 6px !important; }
+              .mb-1 { margin-bottom: 4px !important; }
+              .mb-4 { margin-bottom: 16px !important; }
             }
           `}</style>
             {(() => {
@@ -779,12 +796,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                     {/* Medicine Table Box */}
                     {chunk.length > 0 && (
                       <div className={`border-2 border-black flex flex-col ${pageIndex < chunks.length - 1 ? 'flex-1 mb-1' : 'mb-4'}`}>
-                        <div className="text-center font-bold border-b border-black py-1 text-sm shrink-0">
+                        <div className="text-center font-bold border-b border-black py-1 text-base shrink-0">
                           மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS
                         </div>
 
                         {/* Table Headers */}
-                        <div className="flex border-b border-black text-center font-bold text-sm shrink-0">
+                        <div className="flex border-b border-black text-center font-bold text-base shrink-0">
                           <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
                             வ.எ<br />S.N
                           </div>
@@ -792,7 +809,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ doctor, patient, 
                             மருந்துக்கள் / DRUGS
                           </div>
                           <div className="w-[446px] shrink-0 flex flex-col">
-                            <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
+                            <div className="border-b border-black py-1 text-base">எத்தனை முறை - Frequency</div>
                             <div className="flex flex-1 items-stretch">
                               <div className="w-28 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>Qty</span>
