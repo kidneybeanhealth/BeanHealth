@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION public.doctor_save_prescription_and_send(
     p_specialists_to_review TEXT,
     p_metadata JSONB DEFAULT '{}'
 )
-RETURNS JSONB
+RETURNS TABLE(saved_prescription_id UUID)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -62,16 +62,8 @@ BEGIN
     SET status = 'completed'
     WHERE id = p_queue_id;
 
-    -- 3. Return success with the ID
-    RETURN jsonb_build_object(
-        'success', true,
-        'saved_prescription_id', v_prescription_id
-    );
-EXCEPTION WHEN OTHERS THEN
-    RETURN jsonb_build_object(
-        'success', false,
-        'error', SQLERRM
-    );
+    -- 3. Return the ID in a table format (Supabase returns this as an array of objects)
+    RETURN QUERY SELECT v_prescription_id;
 END;
 $$;
 
