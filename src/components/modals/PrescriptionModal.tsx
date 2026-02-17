@@ -867,10 +867,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
                         {/* Table Headers */}
                         <div className="flex border-b border-black text-center font-bold text-base shrink-0">
-                          <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
+                          <div className="w-12 border-r border-black py-1.5 flex items-center justify-center shrink-0">
                             வ.எ<br />S.N
                           </div>
-                          <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
+                          <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0 px-1.5">
                             மருந்துக்கள் / DRUGS
                           </div>
                           <div className="w-[446px] shrink-0 flex flex-col">
@@ -923,7 +923,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 key={globalIndex}
                                 className={`flex border-b border-black ${shouldExpandRow ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}
                               >
-                                <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
+                                <div className="w-12 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
                                   {globalIndex + 1}
                                 </div>
                                 <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
