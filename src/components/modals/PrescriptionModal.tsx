@@ -1216,7 +1216,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
                           {/* Salt and Fluid Intake - Parallel Layout */}
                           <div className="border-t border-black pt-2 mt-1 mb-2">
-                            <p className="font-bold underline italic text-sm mb-1.5">TO BE SPECIFIED / MONITORED:</p>
+                            <div className="flex justify-between items-baseline mb-1.5">
+                              <p className="font-bold underline italic text-sm">TO BE SPECIFIED / MONITORED:</p>
+                              <span className="font-bold text-sm">VEG ONLY DIET</span>
+                            </div>
                             <div className="flex gap-10 text-sm font-bold">
                               <div className="flex gap-1 items-baseline">
                                 <span className="shrink-0 uppercase">SALT INTAKE (உப்பு):</span>
@@ -1239,9 +1242,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   readOnly={readOnly}
                                 />
                                 <span className="shrink-0 uppercase">LIT/DAY</span>
-                              </div>
-                              <div className="flex items-baseline">
-                                <span className="shrink-0">VEG ONLY DIET</span>
                               </div>
                             </div>
                           </div>
