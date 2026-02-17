@@ -191,7 +191,13 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 .from('hospital_queues' as any)
                 .select(`
                     *,
-                    patient:hospital_patients!hospital_queues_patient_id_fkey(*)
+                    patient:hospital_patients!hospital_queues_patient_id_fkey(*),
+                    prescription:hospital_prescriptions!hospital_prescriptions_queue_id_fkey(
+                        id,
+                        status,
+                        dispensed_at,
+                        created_at
+                    )
                 `)
                 .eq('doctor_id', doctor.id)
                 .eq('status', 'completed')
@@ -1084,6 +1090,20 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                         <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 text-xs">#{item.patient?.token_number}</span>
                                                         <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                                         <span>{new Date(item.updated_at || item.created_at).toLocaleTimeString()}</span>
+                                                        {(() => {
+                                                            const prescription = Array.isArray(item.prescription) ? item.prescription[0] : item.prescription;
+                                                            if (prescription?.dispensed_at) {
+                                                                return (
+                                                                    <>
+                                                                        <span className="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                                                                        <span className="text-xs text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">
+                                                                            Dispensed {new Date(prescription.dispensed_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                                        </span>
+                                                                    </>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
                                                     </div>
                                                 </div>
 

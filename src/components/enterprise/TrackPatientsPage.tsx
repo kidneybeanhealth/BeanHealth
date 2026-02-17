@@ -301,21 +301,21 @@ const TrackPatientsPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+                <div className="flex flex-col gap-4 mb-6 sm:mb-8">
                     <div>
                         <button
                             onClick={() => navigate('/enterprise-dashboard/reception/dashboard')}
-                            className="text-sm font-semibold text-gray-500 hover:text-gray-800 mb-2"
+                            className="text-sm font-semibold text-gray-500 hover:text-gray-800 mb-2 inline-flex items-center gap-1"
                         >
                             ← Back to Reception
                         </button>
-                        <h2 className="text-3xl font-bold tracking-tight text-gray-900">Track Patients</h2>
-                        <p className="text-gray-600 mt-1">Review tracking by patient with visit history and prescription print view.</p>
+                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Track Patients</h2>
+                        <p className="text-sm sm:text-base text-gray-600 mt-1">Review tracking by patient with visit history and prescription print view.</p>
                     </div>
                     <button
                         onClick={fetchReviews}
-                        className="px-4 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50"
+                        className="w-full sm:w-auto px-4 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 self-start"
                     >
                         Refresh
                     </button>
@@ -356,52 +356,124 @@ const TrackPatientsPage: React.FC = () => {
                             <div className="p-16 text-center text-gray-600">No tracked patients found.</div>
                         ) : (
                             <>
-                                <div className="grid grid-cols-[2.8rem_1.2fr_0.9fr_0.9fr_0.85fr_0.8fr_0.9fr_1.3fr] gap-2 px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
-                                    <span>#</span>
-                                    <span>Patient</span>
-                                    <span>MR Number</span>
-                                    <span>Phone</span>
-                                    <span>Next Review</span>
-                                    <span>Bucket</span>
-                                    <span>Status</span>
-                                    <span>Actions</span>
+                                {/* Desktop Table View - Hidden on mobile/tablet */}
+                                <div className="hidden lg:block">
+                                    <div className="grid grid-cols-[2.8rem_1.2fr_0.9fr_0.9fr_0.85fr_0.8fr_0.9fr_1.3fr] gap-2 px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
+                                        <span>#</span>
+                                        <span>Patient</span>
+                                        <span>MR Number</span>
+                                        <span>Phone</span>
+                                        <span>Next Review</span>
+                                        <span>Bucket</span>
+                                        <span>Status</span>
+                                        <span>Actions</span>
+                                    </div>
+                                    <div className="divide-y divide-gray-100">
+                                        {filteredReviews.map((row, idx) => {
+                                            const bucket = getBucket(row);
+                                            return (
+                                                <div key={row.id} className="grid grid-cols-[2.8rem_1.2fr_0.9fr_0.9fr_0.85fr_0.8fr_0.9fr_1.3fr] gap-2 px-6 py-3 text-sm items-center hover:bg-gray-50">
+                                                    <span className="text-gray-500 font-semibold">{idx + 1}</span>
+                                                    <span className="font-semibold text-gray-900 truncate">{row.patient?.name || 'Unknown'}</span>
+                                                    <span className="text-gray-800 truncate">{row.patient?.mr_number || '--'}</span>
+                                                    <span className="text-gray-800 truncate">{row.patient?.phone || '--'}</span>
+                                                    <span className={`${row.next_review_date ? 'text-orange-700 font-semibold' : 'text-gray-400'}`}>{formatDDMMYYYY(row.next_review_date)}</span>
+                                                    <span><span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${bucketChipClass(bucket)}`}>{bucketLabel(bucket)}</span></span>
+                                                    <span><span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${statusChipClass(row.status)}`}>{row.status}</span></span>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <button
+                                                            onClick={() => handleOpenRxPopup(row)}
+                                                            className="px-2 py-1 text-[10px] font-semibold rounded-md border border-gray-200 text-gray-700 hover:bg-gray-100"
+                                                        >
+                                                            Open Rx
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleOpenReschedule(row)}
+                                                            className="px-2 py-1 text-[10px] font-semibold rounded-md border border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                        >
+                                                            Reschedule
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleCancelReview(row)}
+                                                            className="px-2 py-1 text-[10px] font-semibold rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleMarkCompleted(row)}
+                                                            className="px-2 py-1 text-[10px] font-semibold rounded-md border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                                        >
+                                                            Mark Completed
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                                <div className="divide-y divide-gray-100">
+
+                                {/* Mobile/Tablet Card View - Hidden on desktop */}
+                                <div className="lg:hidden divide-y divide-gray-100">
                                     {filteredReviews.map((row, idx) => {
                                         const bucket = getBucket(row);
                                         return (
-                                            <div key={row.id} className="grid grid-cols-[2.8rem_1.2fr_0.9fr_0.9fr_0.85fr_0.8fr_0.9fr_1.3fr] gap-2 px-6 py-3 text-sm items-center hover:bg-gray-50">
-                                                <span className="text-gray-500 font-semibold">{idx + 1}</span>
-                                                <span className="font-semibold text-gray-900 truncate">{row.patient?.name || 'Unknown'}</span>
-                                                <span className="text-gray-800 truncate">{row.patient?.mr_number || '--'}</span>
-                                                <span className="text-gray-800 truncate">{row.patient?.phone || '--'}</span>
-                                                <span className={`${row.next_review_date ? 'text-orange-700 font-semibold' : 'text-gray-400'}`}>{formatDDMMYYYY(row.next_review_date)}</span>
-                                                <span><span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${bucketChipClass(bucket)}`}>{bucketLabel(bucket)}</span></span>
-                                                <span><span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${statusChipClass(row.status)}`}>{row.status}</span></span>
-                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                            <div key={row.id} className="p-4 hover:bg-gray-50 transition-colors">
+                                                <div className="flex items-start justify-between gap-3 mb-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-xs font-bold text-gray-400">#{idx + 1}</span>
+                                                            <h3 className="font-bold text-gray-900 text-base truncate">{row.patient?.name || 'Unknown'}</h3>
+                                                        </div>
+                                                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                                                            {row.patient?.mr_number && (
+                                                                <span className="bg-gray-100 px-2 py-0.5 rounded font-medium">MR: {row.patient.mr_number}</span>
+                                                            )}
+                                                            {row.patient?.phone && (
+                                                                <span className="bg-gray-100 px-2 py-0.5 rounded font-medium">{row.patient.phone}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col gap-1.5 items-end">
+                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${bucketChipClass(bucket)}`}>
+                                                            {bucketLabel(bucket)}
+                                                        </span>
+                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${statusChipClass(row.status)}`}>
+                                                            {row.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mb-3 bg-gray-50 rounded-lg p-2.5">
+                                                    <p className="text-xs text-gray-500 mb-0.5">Next Review Date</p>
+                                                    <p className={`text-sm font-bold ${row.next_review_date ? 'text-orange-700' : 'text-gray-400'}`}>
+                                                        {formatDDMMYYYY(row.next_review_date)}
+                                                    </p>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
                                                     <button
                                                         onClick={() => handleOpenRxPopup(row)}
-                                                        className="px-2 py-1 text-[10px] font-semibold rounded-md border border-gray-200 text-gray-700 hover:bg-gray-100"
+                                                        className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 bg-white"
                                                     >
-                                                        Open Rx
+                                                        📋 Open Rx
                                                     </button>
                                                     <button
                                                         onClick={() => handleOpenReschedule(row)}
-                                                        className="px-2 py-1 text-[10px] font-semibold rounded-md border border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                        className="px-3 py-2 text-xs font-semibold rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 bg-white"
                                                     >
-                                                        Reschedule
+                                                        📅 Reschedule
                                                     </button>
                                                     <button
                                                         onClick={() => handleCancelReview(row)}
-                                                        className="px-2 py-1 text-[10px] font-semibold rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100"
+                                                        className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 bg-white"
                                                     >
-                                                        Cancel
+                                                        ✕ Cancel
                                                     </button>
                                                     <button
                                                         onClick={() => handleMarkCompleted(row)}
-                                                        className="px-2 py-1 text-[10px] font-semibold rounded-md border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                                        className="px-3 py-2 text-xs font-semibold rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 bg-white"
                                                     >
-                                                        Mark Completed
+                                                        ✓ Complete
                                                     </button>
                                                 </div>
                                             </div>
