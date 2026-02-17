@@ -167,8 +167,8 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                             <input
                                 type="text"
                                 value={formData.allergy}
-                                onChange={e => setFormData({ ...formData, allergy: e.target.value })}
-                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                                onChange={e => setFormData({ ...formData, allergy: e.target.value.toUpperCase() })}
+                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none uppercase font-bold text-red-600"
                                 placeholder="Nil"
                                 readOnly={readOnly}
                             />
@@ -303,8 +303,8 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                             <input
                                                 type="text"
                                                 value={med.number}
-                                                onChange={e => updateMed(index, 'number', e.target.value)}
-                                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-center focus:ring-2 focus:ring-emerald-500 outline-none"
+                                                onChange={e => updateMed(index, 'number', e.target.value.toUpperCase())}
+                                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-center focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
                                                 placeholder="10"
                                                 readOnly={readOnly}
                                             />
@@ -371,8 +371,8 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                                 <input
                                                     type="text"
                                                     value={(med as any)[slot.field] || ''}
-                                                    onChange={e => updateMed(index, slot.field, e.target.value)}
-                                                    className={`w-full py-1 border ${slot.border} rounded-lg text-center text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none bg-white text-gray-900 h-8`}
+                                                    onChange={e => updateMed(index, slot.field, e.target.value.toUpperCase())}
+                                                    className={`w-full py-1 border ${slot.border} rounded-lg text-center text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none bg-white text-gray-900 h-8 uppercase`}
                                                     placeholder="0"
                                                     readOnly={readOnly}
                                                 />
@@ -399,9 +399,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                     <h3 className="font-bold text-gray-900 mb-3">Notes</h3>
                     <textarea
                         value={formData.doctorNotes}
-                        onChange={e => setFormData({ ...formData, doctorNotes: e.target.value })}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-                        placeholder="Additional notes for the patient..."
+                        onChange={e => setFormData({ ...formData, doctorNotes: e.target.value.toUpperCase() })}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none uppercase"
+                        placeholder="ADDITIONAL NOTES FOR THE PATIENT..."
                         readOnly={readOnly}
                         rows={5}
                     />
@@ -416,9 +416,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                             <input
                                 type="text"
                                 value={formData.saltIntake}
-                                onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
-                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                placeholder="e.g., 5"
+                                onChange={e => setFormData({ ...formData, saltIntake: e.target.value.toUpperCase() })}
+                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
+                                placeholder="E.G., 5"
                                 readOnly={readOnly}
                             />
                         </div>
@@ -427,9 +427,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                             <input
                                 type="text"
                                 value={formData.fluidIntake}
-                                onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
-                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                placeholder="e.g., 1.5"
+                                onChange={e => setFormData({ ...formData, fluidIntake: e.target.value.toUpperCase() })}
+                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
+                                placeholder="E.G., 1.5"
                                 readOnly={readOnly}
                             />
                         </div>
@@ -456,9 +456,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                             <input
                                 type="text"
                                 value={formData.testsToReview}
-                                onChange={e => setFormData({ ...formData, testsToReview: e.target.value })}
-                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                placeholder="Blood tests, X-ray, etc."
+                                onChange={e => setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })}
+                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
+                                placeholder="BLOOD TESTS, X-RAY, ETC."
                                 readOnly={readOnly}
                             />
                         </div>
@@ -468,10 +468,10 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                 <input
                                     type="text"
                                     value={formData.specialistToReview}
-                                    onChange={e => setFormData({ ...formData, specialistToReview: e.target.value })}
+                                    onChange={e => setFormData({ ...formData, specialistToReview: e.target.value.toUpperCase() })}
                                     onFocus={() => !readOnly && setShowSpecialistDropdown(true)}
-                                    className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    placeholder="Type or select specialists..."
+                                    className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
+                                    placeholder="TYPE OR SELECT SPECIALISTS..."
                                     readOnly={readOnly}
                                 />
                                 {!readOnly && showSpecialistDropdown && (
