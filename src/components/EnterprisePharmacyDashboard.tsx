@@ -1252,11 +1252,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     doctor={selectedPrescription.doctor}
                     patient={{
                         ...selectedPrescription.patient,
-                        token_number: selectedPrescription.token_number
+                        token_number: selectedPrescription.token_number || selectedPrescription.patient?.token_number
                     }}
                     onClose={() => setShowPrintModal(false)}
                     readOnly={true}
-                    existingData={selectedPrescription}
+                    existingData={{
+                        ...selectedPrescription,
+                        dispensed_days: dispensingDays || (selectedPrescription as any).dispensed_days
+                    }}
                     clinicLogo={hospitalLogo || undefined}
                 />
             )}

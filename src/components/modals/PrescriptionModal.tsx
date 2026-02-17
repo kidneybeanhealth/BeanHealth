@@ -1257,6 +1257,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     {reviewDaysLabel}
                                   </span>
                                 )}
+                                {existingData?.dispensed_days && (
+                                  <span className="text-sm text-emerald-700 font-bold whitespace-nowrap border-l border-gray-300 pl-3 ml-3">
+                                    Dispensed: {existingData.dispensed_days} days
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="flex gap-2 items-end">
