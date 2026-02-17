@@ -91,6 +91,12 @@ const SPECIALIST_OPTIONS = [
   'Dr. A. Divakar'
 ];
 
+const parseSpecialists = (value: string) =>
+  (value || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
 const splitDiagnosis = (value: string) =>
   (value || '')
     .split(',')
@@ -1342,8 +1348,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 <div className="h-10 w-32"></div>
                               )}
 
-                              <div className={`font-bold border-t border-black px-4 pt-0.5 ${scale.textSize}`}>
-                                டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.
+                              <div className={`font-bold border-t border-black px-4 pt-0.5 ${scale.textSize} flex flex-col items-center`}>
+                                <span>டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.</span>
+                                {prescribedByName && (
+                                  <span className="text-[10px] mt-0.5">{prescribedByName}</span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1352,13 +1361,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <div className="w-full border-2 border-black p-2 text-[12px] leading-[1.5] flex flex-col justify-center font-bold mt-2 bg-gray-50 print:bg-white">
                             <p className="text-center mb-1.5">முன்பதிவு காலதாமதத்தை குறைக்கும் / Prior registration avoids delay</p>
                             <p className="text-center mb-1">Appt: 0422-2494333, 73588 41555, 41666 | Time: 8am - 6pm</p>
-                            <div className="flex-1 text-center pr-24">
-                              <div className="font-bold text-gray-900 border-t border-black pt-2 text-sm">
-                                {prescribedByName || (
-                                  <>Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)</>
-                                )}
-                              </div>
-                            </div>
+                            <p className="text-center border-t border-gray-400 mt-1.5 pt-1.5">
+                              Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)
+                            </p>
                             <p className="text-center mt-1">அவசர உதவிக்கு / Emergency: 0422 - 2494333 (24 மணி நேரமும் / 24 hrs Service)</p>
                           </div>
                         </div>
