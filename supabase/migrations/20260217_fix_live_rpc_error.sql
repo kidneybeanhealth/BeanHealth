@@ -5,6 +5,9 @@
 ALTER TABLE public.hospital_prescriptions 
 ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 
+-- Postgres requires dropping the function if the return type changes (JSONB -> TABLE)
+DROP FUNCTION IF EXISTS public.doctor_save_prescription_and_send(UUID, UUID, TEXT, UUID, UUID, INTEGER, JSONB, TEXT, DATE, TEXT, TEXT, JSONB);
+
 CREATE OR REPLACE FUNCTION public.doctor_save_prescription_and_send(
     p_hospital_id UUID,
     p_chief_doctor_id UUID,
