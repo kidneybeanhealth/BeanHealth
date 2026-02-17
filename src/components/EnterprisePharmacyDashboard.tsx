@@ -173,7 +173,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
             const { data, error } = await supabase
                 .from('hospital_prescriptions' as any)
                 .select(`
-                    id, medications, notes, status, token_number, created_at, patient_id,
+                    id, medications, notes, status, token_number, created_at, patient_id, metadata,
                     doctor:hospital_doctors(name, specialty, signature_url),
                     patient:hospital_patients!inner(*)
                 `)
