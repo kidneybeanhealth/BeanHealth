@@ -652,6 +652,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               .shrink-0 { flex-shrink: 0 !important; }
               .w-full { width: 100% !important; }
               .w-28 { width: 112px !important; }
+              .w-14 { width: 56px !important; }
               .h-full { height: 100% !important; }
               .absolute { position: absolute !important; }
               .relative { position: relative !important; }
@@ -872,15 +873,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
                             மருந்துக்கள் / DRUGS
                           </div>
-                          <div className="w-[446px] shrink-0 flex flex-col">
-                            <div className="border-b border-black py-1 text-base">எத்தனை முறை - Frequency</div>
+                          <div className="w-[390px] shrink-0 flex flex-col">
+                            <div className="border-b border-black py-1 text-base">எத்தனை முறை - FREQUENCY</div>
                             <div className="flex flex-1 items-stretch">
-                              <div className="w-28 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>Qty</span>
+                              <div className="w-14 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight">
+                                <span>QTY</span>
                                 <span>எண்</span>
                               </div>
                               <div className="w-10 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>Freq</span>
+                                <span>FREQ</span>
                               </div>
                               <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>M</span>
@@ -895,7 +896,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 <span>மா</span>
                               </div>
                               <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>Nt</span>
+                                <span>NT</span>
                                 <span>இ</span>
                               </div>
                               <div className="flex-1 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center leading-tight">
@@ -996,9 +997,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     )}
                                   </div>
                                 </div>
-                                <div className="w-[446px] flex shrink-0 items-stretch">
+                                <div className="w-[390px] flex shrink-0 items-stretch">
                                   {/* Quantity */}
-                                  <div className="w-28 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                  <div className="w-14 border-r border-black px-0.5 flex items-center justify-center shrink-0">
                                     <input
                                       className="w-full text-center outline-none text-xs bg-transparent font-bold"
                                       placeholder={readOnly ? '' : '1'}
@@ -1326,13 +1327,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             {/* Doctor Notes (Relocated) */}
                             <div className="flex-1">
                               <div className="flex gap-2 items-start text-sm font-bold">
-                                <span className="shrink-0 pt-0.5">குறிப்புகள் / Notes:</span>
+                                <div className="flex flex-col shrink-0 pt-0.5 leading-tight mr-2">
+                                  <span>குறிப்புகள்</span>
+                                  <span>/ Notes:</span>
+                                </div>
                                 <textarea
-                                  className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-sm resize-none leading-normal min-h-[48px]"
+                                  className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-sm resize-none leading-normal min-h-[80px]"
                                   value={formData.doctorNotes}
                                   onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value })}
                                   readOnly={readOnly}
-                                  rows={2}
+                                  rows={3}
                                   placeholder="Additional notes..."
                                 />
                               </div>
@@ -1354,7 +1358,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                               )}
 
                               <div className={`font-bold border-t border-black px-4 pt-0.5 ${scale.textSize} flex flex-col items-center`}>
-                                <span>டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.</span>
+                                <span>DOCTOR SIGNATURE.</span>
                                 {prescribedByName && (
                                   <span className="text-[10px] mt-0.5">{prescribedByName}</span>
                                 )}

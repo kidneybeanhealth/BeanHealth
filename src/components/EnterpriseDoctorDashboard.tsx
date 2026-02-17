@@ -569,6 +569,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     p_next_review_date: reviewContext?.nextReviewDate || null,
                     p_tests_to_review: reviewContext?.testsToReview || null,
                     p_specialists_to_review: reviewContext?.specialistsToReview || null,
+                    p_metadata: {
+                        actorType,
+                        actorDisplayName
+                    }
                 });
 
                 if (error) throw error;
@@ -633,7 +637,11 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         next_review_date: reviewContext?.nextReviewDate || null,
                         tests_to_review: reviewContext?.testsToReview || null,
                         specialists_to_review: reviewContext?.specialistsToReview || null,
-                        status: 'pending'
+                        status: 'pending',
+                        metadata: {
+                            actorType,
+                            actorDisplayName
+                        }
                     } as any)
                     .select('id')
                     .single();
