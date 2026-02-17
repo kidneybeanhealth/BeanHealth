@@ -873,15 +873,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
                             மருந்துக்கள் / DRUGS
                           </div>
-                          <div className="w-[390px] shrink-0 flex flex-col">
-                            <div className="border-b border-black py-1 text-base">எத்தனை முறை - FREQUENCY</div>
+                          <div className="w-[446px] shrink-0 flex flex-col">
+                            <div className="border-b border-black py-1 text-base">எத்தனை முறை - Frequency</div>
                             <div className="flex flex-1 items-stretch">
-                              <div className="w-14 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>QTY</span>
+                              <div className="w-28 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight">
+                                <span>Qty</span>
                                 <span>எண்</span>
                               </div>
                               <div className="w-10 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>FREQ</span>
+                                <span>Freq</span>
                               </div>
                               <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
                                 <span>M</span>
@@ -896,7 +896,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 <span>மா</span>
                               </div>
                               <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>NT</span>
+                                <span>Nt</span>
                                 <span>இ</span>
                               </div>
                               <div className="flex-1 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center leading-tight">
@@ -997,9 +997,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     )}
                                   </div>
                                 </div>
-                                <div className="w-[390px] flex shrink-0 items-stretch">
+                                <div className="w-[446px] flex shrink-0 items-stretch">
                                   {/* Quantity */}
-                                  <div className="w-14 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                  <div className="w-28 border-r border-black px-0.5 flex items-center justify-center shrink-0">
                                     <input
                                       className="w-full text-center outline-none text-xs bg-transparent font-bold"
                                       placeholder={readOnly ? '' : '1'}
