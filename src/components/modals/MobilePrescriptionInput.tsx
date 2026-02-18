@@ -6,6 +6,23 @@ const parseSpecialists = (value: string) =>
         .map((s) => s.trim())
         .filter(Boolean);
 
+const getReviewDaysLabel = (value: string): string => {
+    if (!value) return '';
+    const dateOnly = value.split('T')[0];
+    const [y, m, d] = dateOnly.split('-').map(Number);
+    if (!y || !m || !d) return value;
+
+    const target = new Date(y, m - 1, d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+    if (diffDays > 0) return `In ${diffDays} days`;
+    if (diffDays === 0) return 'Today';
+    return `${Math.abs(diffDays)} days ago`;
+};
+
 // Types for medication
 interface Medication {
     name: string;
@@ -480,6 +497,16 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                 readOnly={readOnly}
                                 min={new Date().toISOString().split('T')[0]}
                             />
+                            {formData.reviewDate && getReviewDaysLabel(formData.reviewDate) && (
+                                <div className="mt-1.5 flex items-center gap-1.5">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-200">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        Review {getReviewDaysLabel(formData.reviewDate)}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tests to Review</label>

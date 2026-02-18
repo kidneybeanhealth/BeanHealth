@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
@@ -183,6 +183,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Medication and Mobile States
   const [isMobile, setIsMobile] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
+  const [showConfirmSendModal, setShowConfirmSendModal] = useState(false);
+  const [showConfirmCloseModal, setShowConfirmCloseModal] = useState(false);
 
   // Saved Drugs State
   const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
@@ -212,11 +214,68 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   const [showTimeDropdown, setShowTimeDropdown] = useState<{ index: number, field: string } | null>(null);
   const [timeSearchQuery, setTimeSearchQuery] = useState('');
   const [showSpecialistDropdown, setShowSpecialistDropdown] = useState(false);
+  // Keyboard navigation state for all dropdowns
+  const [highlightedDropdownIndex, setHighlightedDropdownIndex] = useState(-1);
+  const dropdownListRef = useRef<HTMLDivElement>(null);
 
   // Refs for printing
   const componentRef = useRef<HTMLDivElement>(null);
   const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Helper: scroll highlighted dropdown item into view
+  const scrollHighlightedIntoView = useCallback((index: number) => {
+    if (dropdownListRef.current) {
+      const items = dropdownListRef.current.querySelectorAll('[data-dropdown-item]');
+      if (items[index]) {
+        items[index].scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, []);
+
+  // Generic keyboard handler for searchable dropdowns
+  const handleDropdownKeyDown = useCallback((
+    e: React.KeyboardEvent,
+    isOpen: boolean,
+    itemCount: number,
+    onSelect: (index: number) => void,
+    onClose: () => void
+  ) => {
+    if (!isOpen || itemCount === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedDropdownIndex(prev => {
+        const next = prev < itemCount - 1 ? prev + 1 : 0;
+        setTimeout(() => scrollHighlightedIntoView(next), 0);
+        return next;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedDropdownIndex(prev => {
+        const next = prev > 0 ? prev - 1 : itemCount - 1;
+        setTimeout(() => scrollHighlightedIntoView(next), 0);
+        return next;
+      });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < itemCount) {
+        onSelect(highlightedDropdownIndex);
+        setHighlightedDropdownIndex(-1);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+      setHighlightedDropdownIndex(-1);
+    } else if (e.key === 'Tab') {
+      // Select current highlighted item and let Tab move focus naturally
+      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < itemCount) {
+        onSelect(highlightedDropdownIndex);
+      }
+      onClose();
+      setHighlightedDropdownIndex(-1);
+    }
+  }, [highlightedDropdownIndex, scrollHighlightedIntoView]);
 
   // Scaling Logic
   const [layoutState, setLayoutState] = useState({ scale: 1, marginLeft: 0 });
@@ -534,8 +593,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     setMedications(newMeds);
   };
 
+  // Show confirmation popup instead of sending directly
   const handleSend = () => {
     if (readOnly) return;
+    setShowConfirmSendModal(true);
+  };
+
+  // Actually send to pharmacy after confirmation
+  const confirmSendToPharmacy = () => {
+    setShowConfirmSendModal(false);
     // Convert to pharmacy format
     const pharmacyMeds = medications.filter(m => m.name).map(m => {
       const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.evening || '0'}-${m.night || '0'}`;
@@ -565,38 +631,140 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     }
   };
 
+  // Confirmation Modal Component (shared between mobile and desktop)
+  const ConfirmSendModal = () => (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowConfirmSendModal(false)}>
+      <div
+        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-scale-in"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-5 flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Send to Pharmacy</h3>
+            <p className="text-emerald-100 text-sm">Confirm prescription submission</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5">
+          <p className="text-gray-700 text-sm leading-relaxed">
+            Are you sure you want to send this prescription to the <strong>Pharmacy</strong>?
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-5 flex gap-3">
+          <button
+            onClick={() => setShowConfirmSendModal(false)}
+            className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={confirmSendToPharmacy}
+            className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Yes, Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Confirmation Modal for closing the prescription (shared between mobile and desktop)
+  const ConfirmCloseModal = () => (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowConfirmCloseModal(false)}>
+      <div
+        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-scale-in"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-5 flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Close Prescription</h3>
+            <p className="text-emerald-100 text-sm">Confirm before closing</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5">
+          <p className="text-gray-700 text-sm leading-relaxed">
+            Are you sure you want to <strong>close</strong> this prescription? Any unsaved changes will be lost.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-5 flex gap-3">
+          <button
+            onClick={() => setShowConfirmCloseModal(false)}
+            className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+          >
+            Go Back
+          </button>
+          <button
+            onClick={() => { setShowConfirmCloseModal(false); onClose(); }}
+            className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Yes, Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (isMobile && !showPrintView) {
     return (
-      <MobilePrescriptionInput
-        doctor={doctor}
-        patient={patient}
-        medications={medications}
-        updateMed={updateMed}
-        addRow={addRow}
-        removeRow={removeRow}
-        formData={formData}
-        setFormData={setFormData}
-        onClose={onClose}
-        onPrint={() => setShowPrintView(true)}
-        onSend={handleSend}
-        readOnly={readOnly}
-        savedDiagnoses={savedDiagnoses}
-        diagnosisSearchQuery={diagnosisSearchQuery}
-        setDiagnosisSearchQuery={setDiagnosisSearchQuery}
-        showDiagnosisDropdown={showDiagnosisDropdown}
-        setShowDiagnosisDropdown={setShowDiagnosisDropdown}
-        DOSE_OPTIONS={DOSE_OPTIONS}
-        DOSE_MAPPINGS={DOSE_MAPPINGS}
-        FOOD_TIMING_OPTIONS={FOOD_TIMING_OPTIONS}
-        TIME_OPTIONS={TIME_OPTIONS}
-        drugSearchQuery={drugSearchQuery}
-        setDrugSearchQuery={setDrugSearchQuery}
-        filteredDrugs={filteredDrugs}
-        handleSelectDrug={handleSelectDrug}
-        showDrugDropdown={showDrugDropdown}
-        setShowDrugDropdown={setShowDrugDropdown}
-        SPECIALIST_OPTIONS={SPECIALIST_OPTIONS}
-      />
+      <>
+        <MobilePrescriptionInput
+          doctor={doctor}
+          patient={patient}
+          medications={medications}
+          updateMed={updateMed}
+          addRow={addRow}
+          removeRow={removeRow}
+          formData={formData}
+          setFormData={setFormData}
+          onClose={() => setShowConfirmCloseModal(true)}
+          onPrint={() => setShowPrintView(true)}
+          onSend={handleSend}
+          readOnly={readOnly}
+          savedDiagnoses={savedDiagnoses}
+          diagnosisSearchQuery={diagnosisSearchQuery}
+          setDiagnosisSearchQuery={setDiagnosisSearchQuery}
+          showDiagnosisDropdown={showDiagnosisDropdown}
+          setShowDiagnosisDropdown={setShowDiagnosisDropdown}
+          DOSE_OPTIONS={DOSE_OPTIONS}
+          DOSE_MAPPINGS={DOSE_MAPPINGS}
+          FOOD_TIMING_OPTIONS={FOOD_TIMING_OPTIONS}
+          TIME_OPTIONS={TIME_OPTIONS}
+          drugSearchQuery={drugSearchQuery}
+          setDrugSearchQuery={setDrugSearchQuery}
+          filteredDrugs={filteredDrugs}
+          handleSelectDrug={handleSelectDrug}
+          showDrugDropdown={showDrugDropdown}
+          setShowDrugDropdown={setShowDrugDropdown}
+          SPECIALIST_OPTIONS={SPECIALIST_OPTIONS}
+        />
+        {showConfirmSendModal && <ConfirmSendModal />}
+        {showConfirmCloseModal && <ConfirmCloseModal />}
+      </>
     );
   }
 
@@ -833,14 +1001,70 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   const currentQuery = parts[parts.length - 1].trim();
                                   setDiagnosisSearchQuery(currentQuery);
                                   setShowDiagnosisDropdown(true);
+                                  setHighlightedDropdownIndex(-1);
                                 }}
                                 onFocus={() => {
                                   const parts = (formData.diagnosis || '').split('/');
                                   const currentQuery = parts[parts.length - 1].trim();
                                   setDiagnosisSearchQuery(currentQuery);
                                   setShowDiagnosisDropdown(true);
+                                  setHighlightedDropdownIndex(-1);
                                 }}
                                 onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
+                                onKeyDown={e => {
+                                  // Compute filtered list inline so arrow/enter work on the correct items
+                                  const selectedDiags = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+                                  const filteredDiags = savedDiagnoses.filter(d => {
+                                    const matchesQuery = d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase());
+                                    const notSelected = !selectedDiags.includes(d.name);
+                                    return matchesQuery && notSelected;
+                                  });
+                                  const isOpen = showDiagnosisDropdown && diagnosisSearchQuery.length > 0 && filteredDiags.length > 0;
+                                  if (!isOpen) return;
+
+                                  if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    setHighlightedDropdownIndex(prev => {
+                                      const next = prev < filteredDiags.length - 1 ? prev + 1 : 0;
+                                      setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                      return next;
+                                    });
+                                  } else if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    setHighlightedDropdownIndex(prev => {
+                                      const next = prev > 0 ? prev - 1 : filteredDiags.length - 1;
+                                      setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                      return next;
+                                    });
+                                  } else if (e.key === 'Enter') {
+                                    if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                      e.preventDefault();
+                                      const diag = filteredDiags[highlightedDropdownIndex];
+                                      const parts = (formData.diagnosis || '').split('/');
+                                      parts[parts.length - 1] = '';
+                                      const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
+                                      setFormData({ ...formData, diagnosis: newValue });
+                                      setDiagnosisSearchQuery('');
+                                      setShowDiagnosisDropdown(false);
+                                      setHighlightedDropdownIndex(-1);
+                                    }
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    setShowDiagnosisDropdown(false);
+                                    setHighlightedDropdownIndex(-1);
+                                  } else if (e.key === 'Tab') {
+                                    if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                      const diag = filteredDiags[highlightedDropdownIndex];
+                                      const parts = (formData.diagnosis || '').split('/');
+                                      parts[parts.length - 1] = '';
+                                      const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
+                                      setFormData({ ...formData, diagnosis: newValue });
+                                      setDiagnosisSearchQuery('');
+                                    }
+                                    setShowDiagnosisDropdown(false);
+                                    setHighlightedDropdownIndex(-1);
+                                  }
+                                }}
                                 rows={2}
                               />
                               {(() => {
@@ -858,12 +1082,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 });
 
                                 return showDiagnosisDropdown && diagnosisSearchQuery.length > 0 && filteredDiags.length > 0 && (
-                                  <div className="absolute left-0 right-0 top-full z-[100] bg-white border-2 border-black shadow-xl max-h-48 overflow-y-auto">
-                                    {filteredDiags.map(diag => (
+                                  <div ref={dropdownListRef} className="absolute left-0 right-0 top-full z-[100] bg-white border-2 border-black shadow-xl max-h-48 overflow-y-auto">
+                                    {filteredDiags.map((diag, dIdx) => (
                                       <button
                                         key={diag.id}
                                         type="button"
-                                        className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-xs font-bold border-b border-gray-100 last:border-0"
+                                        data-dropdown-item
+                                        className={`w-full text-left px-3 py-2 text-xs font-bold border-b border-gray-100 last:border-0 ${highlightedDropdownIndex === dIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}
                                         onMouseDown={() => {
                                           // Get all parts except the last (which is being typed)
                                           const parts = (formData.diagnosis || '').split('/');
@@ -875,6 +1100,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                           setDiagnosisSearchQuery('');
                                           setShowDiagnosisDropdown(false);
                                         }}
+                                        onMouseEnter={() => setHighlightedDropdownIndex(dIdx)}
                                       >
                                         {diag.name}
                                       </button>
@@ -965,6 +1191,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       const val = e.target.value.toUpperCase();
                                       updateMed(globalIndex, 'name', val);
                                       setDrugSearchQuery(val);
+                                      setHighlightedDropdownIndex(-1);
                                       if (!readOnly && allDrugOptions.length > 0) {
                                         setShowDrugDropdown(globalIndex);
                                       }
@@ -973,17 +1200,37 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       if (!readOnly && allDrugOptions.length > 0) {
                                         setShowDrugDropdown(globalIndex);
                                         setDrugSearchQuery(med.name.toUpperCase());
+                                        setHighlightedDropdownIndex(-1);
                                       }
                                     }}
+                                    onKeyDown={e => handleDropdownKeyDown(
+                                      e,
+                                      showDrugDropdown === globalIndex && filteredDrugs.length > 0,
+                                      filteredDrugs.length,
+                                      (idx) => {
+                                        const drug = filteredDrugs[idx];
+                                        if (drug) {
+                                          const newMeds = [...medications];
+                                          const prefix = drug.drugType ? `${drug.drugType}. ` : '';
+                                          newMeds[globalIndex].name = `${prefix}${drug.name}`.toUpperCase();
+                                          newMeds[globalIndex].drugType = drug.drugType || '';
+                                          setMedications(newMeds);
+                                          setShowDrugDropdown(null);
+                                          setDrugSearchQuery('');
+                                        }
+                                      },
+                                      () => setShowDrugDropdown(null)
+                                    )}
                                     readOnly={readOnly}
                                   />
                                   {!readOnly && showDrugDropdown === globalIndex && filteredDrugs.length > 0 && (
-                                    <div className="absolute left-0 top-full z-[100] w-[400px] bg-white border-2 border-black shadow-xl max-h-64 overflow-y-auto print:hidden">
-                                      {filteredDrugs.map(drug => (
+                                    <div ref={dropdownListRef} className="absolute left-0 top-full z-[100] w-[400px] bg-white border-2 border-black shadow-xl max-h-64 overflow-y-auto print:hidden">
+                                      {filteredDrugs.map((drug, dIdx) => (
                                         <button
                                           key={drug.id}
                                           type="button"
-                                          className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
+                                          data-dropdown-item
+                                          className={`w-full px-3 py-2 text-left border-b border-gray-100 last:border-0 ${highlightedDropdownIndex === dIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}
                                           onMouseDown={() => {
                                             const newMeds = [...medications];
                                             const prefix = drug.drugType ? `${drug.drugType}. ` : '';
@@ -993,6 +1240,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                             setShowDrugDropdown(null);
                                             setDrugSearchQuery('');
                                           }}
+                                          onMouseEnter={() => setHighlightedDropdownIndex(dIdx)}
                                         >
                                           <div className="flex items-center gap-2">
                                             <span className="font-bold text-sm text-gray-900">{drug.name}</span>
@@ -1047,22 +1295,36 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         const val = e.target.value.toUpperCase();
                                         updateMed(globalIndex, 'dose', val);
                                         setDoseSearchQuery(val);
+                                        setHighlightedDropdownIndex(-1);
                                         !readOnly && setShowDoseDropdown(globalIndex);
                                       }}
-                                      onFocus={() => !readOnly && (setShowDoseDropdown(globalIndex), setDoseSearchQuery(''))}
+                                      onFocus={() => !readOnly && (setShowDoseDropdown(globalIndex), setDoseSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                       onBlur={() => setTimeout(() => setShowDoseDropdown(null), 150)}
+                                      onKeyDown={e => {
+                                        const filtered = DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery));
+                                        handleDropdownKeyDown(
+                                          e,
+                                          showDoseDropdown === globalIndex,
+                                          filtered.length,
+                                          (idx) => { updateMed(globalIndex, 'dose', filtered[idx]); setShowDoseDropdown(null); },
+                                          () => setShowDoseDropdown(null)
+                                        );
+                                      }}
                                       readOnly={readOnly}
                                       placeholder="--"
                                     />
-                                    {!readOnly && showDoseDropdown === globalIndex && (
-                                      <div className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
-                                        {DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery)).map(opt => (
-                                          <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'dose', opt); setShowDoseDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-xs font-bold border-b border-gray-50 last:border-0">
-                                            {opt}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
+                                    {!readOnly && showDoseDropdown === globalIndex && (() => {
+                                      const filtered = DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery));
+                                      return filtered.length > 0 && (
+                                        <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
+                                          {filtered.map((opt, oIdx) => (
+                                            <button type="button" key={opt} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'dose', opt); setShowDoseDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(oIdx)} className={`w-full px-2 py-1.5 text-left text-xs font-bold border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === oIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                              {opt}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                   {/* M dosage container - Split: Top time, Bottom value */}
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
@@ -1071,20 +1333,27 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
                                         placeholder=""
                                         value={(med as any).morningTime || ''}
-                                        onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); }}
-                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'morningTime' }), setTimeSearchQuery(''))}
+                                        onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); }}
+                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'morningTime' }), setTimeSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        onKeyDown={e => {
+                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime', filtered.length, (idx) => { updateMed(globalIndex, 'morningTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
+                                        }}
                                         readOnly={readOnly}
                                       />
-                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime' && (
-                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'morningTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                              {t}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime' && (() => {
+                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        return filtered.length > 0 && (
+                                          <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                            {filtered.map((t, tIdx) => (
+                                              <button type="button" key={t} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'morningTime', t); setShowTimeDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(tIdx)} className={`w-full px-1 py-1 text-left text-[9px] border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === tIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                                {t}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
@@ -1104,20 +1373,27 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
                                         placeholder=""
                                         value={(med as any).noonTime || ''}
-                                        onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); }}
-                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'noonTime' }), setTimeSearchQuery(''))}
+                                        onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); }}
+                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'noonTime' }), setTimeSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        onKeyDown={e => {
+                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime', filtered.length, (idx) => { updateMed(globalIndex, 'noonTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
+                                        }}
                                         readOnly={readOnly}
                                       />
-                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime' && (
-                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'noonTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                              {t}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime' && (() => {
+                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        return filtered.length > 0 && (
+                                          <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                            {filtered.map((t, tIdx) => (
+                                              <button type="button" key={t} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'noonTime', t); setShowTimeDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(tIdx)} className={`w-full px-1 py-1 text-left text-[9px] border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === tIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                                {t}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
@@ -1137,20 +1413,27 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
                                         value={med.eveningTime || ''}
-                                        onChange={e => { updateMed(globalIndex, 'eveningTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'eveningTime' })}
+                                        onChange={e => { updateMed(globalIndex, 'eveningTime', e.target.value); setTimeSearchQuery(e.target.value); setHighlightedDropdownIndex(-1); }}
+                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'eveningTime' }), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        onKeyDown={e => {
+                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime', filtered.length, (idx) => { updateMed(globalIndex, 'eveningTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
+                                        }}
                                         readOnly={readOnly}
                                       />
-                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime' && (
-                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'eveningTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                              {t}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime' && (() => {
+                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        return filtered.length > 0 && (
+                                          <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                            {filtered.map((t, tIdx) => (
+                                              <button type="button" key={t} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'eveningTime', t); setShowTimeDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(tIdx)} className={`w-full px-1 py-1 text-left text-[9px] border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === tIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                                {t}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
@@ -1170,20 +1453,27 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
                                         value={med.nightTime || ''}
-                                        onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'nightTime' })}
+                                        onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); setHighlightedDropdownIndex(-1); }}
+                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'nightTime' }), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        onKeyDown={e => {
+                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime', filtered.length, (idx) => { updateMed(globalIndex, 'nightTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
+                                        }}
                                         readOnly={readOnly}
                                       />
-                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime' && (
-                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'nightTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                              {t}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime' && (() => {
+                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        return filtered.length > 0 && (
+                                          <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                            {filtered.map((t, tIdx) => (
+                                              <button type="button" key={t} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'nightTime', t); setShowTimeDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(tIdx)} className={`w-full px-1 py-1 text-left text-[9px] border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === tIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                                {t}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
@@ -1201,21 +1491,34 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     <input
                                       className="w-full h-full text-center font-bold text-[10px] outline-none bg-transparent uppercase"
                                       value={med.foodTiming}
-                                      onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
-                                      onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''))}
+                                      onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
+                                      onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                       onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
+                                      onKeyDown={e => {
+                                        const filtered = FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery));
+                                        handleDropdownKeyDown(
+                                          e,
+                                          showFoodTimingDropdown === globalIndex,
+                                          filtered.length,
+                                          (idx) => { updateMed(globalIndex, 'foodTiming', filtered[idx]); setShowFoodTimingDropdown(null); },
+                                          () => setShowFoodTimingDropdown(null)
+                                        );
+                                      }}
                                       readOnly={readOnly}
                                       placeholder=""
                                     />
-                                    {!readOnly && showFoodTimingDropdown === globalIndex && (
-                                      <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
-                                        {FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery)).map(opt => (
-                                          <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-[10px] font-bold border-b border-gray-50 last:border-0">
-                                            {opt}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
+                                    {!readOnly && showFoodTimingDropdown === globalIndex && (() => {
+                                      const filtered = FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery));
+                                      return filtered.length > 0 && (
+                                        <div ref={dropdownListRef} className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
+                                          {filtered.map((opt, oIdx) => (
+                                            <button type="button" key={opt} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(oIdx)} className={`w-full px-2 py-1.5 text-left text-[10px] font-bold border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === oIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                              {opt}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
                               </div>
@@ -1225,7 +1528,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
                         {/* Empty space - Add button now on last row, Manage Drugs moved to dashboard */}
                       </div>
-                    )}
+                    )
+                    }
 
                     {/* Footer Section - ONLY on the final page */}
                     {isLastPage && (() => {
@@ -1306,7 +1610,41 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   className="w-full border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase"
                                   value={formData.specialistToReview}
                                   onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value.toUpperCase() })}
-                                  onFocus={() => !readOnly && setShowSpecialistDropdown(true)}
+                                  onFocus={() => { if (!readOnly) { setShowSpecialistDropdown(true); setHighlightedDropdownIndex(-1); } }}
+                                  onKeyDown={e => {
+                                    if (!showSpecialistDropdown || SPECIALIST_OPTIONS.length === 0) return;
+                                    if (e.key === 'ArrowDown') {
+                                      e.preventDefault();
+                                      setHighlightedDropdownIndex(prev => {
+                                        const next = prev < SPECIALIST_OPTIONS.length - 1 ? prev + 1 : 0;
+                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                        return next;
+                                      });
+                                    } else if (e.key === 'ArrowUp') {
+                                      e.preventDefault();
+                                      setHighlightedDropdownIndex(prev => {
+                                        const next = prev > 0 ? prev - 1 : SPECIALIST_OPTIONS.length - 1;
+                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                        return next;
+                                      });
+                                    } else if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < SPECIALIST_OPTIONS.length) {
+                                        const opt = SPECIALIST_OPTIONS[highlightedDropdownIndex];
+                                        const currentSpecs = parseSpecialists(formData.specialistToReview || '');
+                                        const isSelected = currentSpecs.includes(opt);
+                                        const newSpecs = isSelected ? currentSpecs.filter(s => s !== opt) : [...currentSpecs, opt];
+                                        setFormData({ ...formData, specialistToReview: newSpecs.join(', ') });
+                                      }
+                                    } else if (e.key === 'Escape') {
+                                      e.preventDefault();
+                                      setShowSpecialistDropdown(false);
+                                      setHighlightedDropdownIndex(-1);
+                                    } else if (e.key === 'Tab') {
+                                      setShowSpecialistDropdown(false);
+                                      setHighlightedDropdownIndex(-1);
+                                    }
+                                  }}
                                   placeholder="TYPE OR SELECT SPECIALIST..."
                                   readOnly={readOnly}
                                 />
@@ -1316,15 +1654,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       className="fixed inset-0 z-[110]"
                                       onClick={() => setShowSpecialistDropdown(false)}
                                     />
-                                    <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[120] max-h-48 overflow-y-auto py-1 font-normal">
-                                      {SPECIALIST_OPTIONS.map((opt) => {
+                                    <div ref={dropdownListRef} className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[120] max-h-48 overflow-y-auto py-1 font-normal">
+                                      {SPECIALIST_OPTIONS.map((opt, sIdx) => {
                                         const currentSpecs = parseSpecialists(formData.specialistToReview || '');
                                         const isSelected = currentSpecs.includes(opt);
                                         return (
                                           <button
                                             key={opt}
                                             type="button"
-                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between ${isSelected ? 'text-emerald-700 font-bold bg-emerald-50/30' : 'text-gray-700'}`}
+                                            data-dropdown-item
+                                            className={`w-full text-left px-3 py-2 text-sm transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between ${highlightedDropdownIndex === sIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'} ${isSelected ? 'text-emerald-700 font-bold' : 'text-gray-700'}`}
                                             onMouseDown={(e) => {
                                               e.preventDefault();
                                               e.stopPropagation();
@@ -1336,6 +1675,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                               }
                                               setFormData({ ...formData, specialistToReview: newSpecs.join(', ') });
                                             }}
+                                            onMouseEnter={() => setHighlightedDropdownIndex(sIdx)}
                                           >
                                             <span>{opt}</span>
                                             {isSelected && <span className="text-emerald-600">✓</span>}
@@ -1424,7 +1764,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
         {/* Footer Controls */}
         <div className="bg-white p-4 sm:p-6 border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-          <button onClick={onClose} className="w-full sm:w-auto px-6 py-3 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors order-2 sm:order-1">
+          <button onClick={() => setShowConfirmCloseModal(true)} className="w-full sm:w-auto px-6 py-3 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors order-2 sm:order-1">
             Cancel
           </button>
           <div className="flex flex-1 sm:flex-none gap-3 order-1 sm:order-2">
@@ -1562,6 +1902,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             </div>
           </div>
         )}
+        {showConfirmSendModal && <ConfirmSendModal />}
+        {showConfirmCloseModal && <ConfirmCloseModal />}
       </div>
     </div >
   );
