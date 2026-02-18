@@ -1129,10 +1129,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0 px-1.5">
                             மருந்துக்கள் / DRUGS
                           </div>
-                          <div className="w-[446px] shrink-0 flex flex-col uppercase">
+                          <div className="w-[398px] shrink-0 flex flex-col uppercase">
                             <div className="border-b border-black py-1 text-base uppercase">எத்தனை முறை - FREQUENCY</div>
                             <div className="flex flex-1 items-stretch uppercase">
-                              <div className="w-28 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight uppercase">
+                              <div className="w-16 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight uppercase">
                                 <span>QTY</span>
                                 <span>எண்</span>
                               </div>
@@ -1183,10 +1183,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   {globalIndex + 1}
                                 </div>
                                 <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
-                                  <input
-                                    className="w-full outline-none font-bold uppercase text-sm"
+                                  <textarea
+                                    className="w-full outline-none font-bold uppercase text-sm bg-transparent resize-none leading-tight py-1 overflow-hidden"
                                     placeholder="Type drug name..."
                                     value={med.name}
+                                    rows={2}
                                     onChange={e => {
                                       const val = e.target.value.toUpperCase();
                                       updateMed(globalIndex, 'name', val);
@@ -1275,9 +1276,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     )}
                                   </div>
                                 </div>
-                                <div className="w-[446px] flex shrink-0 items-stretch">
+                                <div className="w-[398px] flex shrink-0 items-stretch">
                                   {/* Quantity */}
-                                  <div className="w-28 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                  <div className="w-16 border-r border-black px-0.5 flex items-center justify-center shrink-0">
                                     <input
                                       className="w-full text-center outline-none text-xs bg-transparent font-bold uppercase"
                                       placeholder={readOnly ? '' : '1'}
