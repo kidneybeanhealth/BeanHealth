@@ -1581,8 +1581,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
                           {/* Footer Review Section */}
                           <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
-                            <div className="flex gap-2 items-end">
-                              <div className="shrink-0 w-80 whitespace-nowrap uppercase">மீண்டும் வரவேண்டிய நாள் / REVIEW ON :</div>
+                            <div className="flex gap-4 items-end">
+                              <div className="shrink-0 whitespace-nowrap uppercase">மீண்டும் வரவேண்டிய நாள் / REVIEW ON :</div>
                               <div className="flex-1 flex items-center gap-3">
                                 <input
                                   type="date"
@@ -1599,13 +1599,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 )}
                               </div>
                             </div>
-                            <div className="flex gap-2 items-end">
-                              <div className="shrink-0 w-80 whitespace-nowrap uppercase">செய்ய வேண்டிய பரிசோதனைகள் / TESTS :</div>
-                              <input className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })} readOnly={readOnly} />
+                            <div className="flex gap-4 items-end">
+                              <div className="shrink-0 whitespace-nowrap uppercase">செய்ய வேண்டிய பரிசோதனைகள் / TESTS :</div>
+                              <input className="flex-1 min-w-0 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })} readOnly={readOnly} />
                             </div>
-                            <div className="flex gap-2 items-end">
-                              <div className="shrink-0 w-80 whitespace-nowrap uppercase">பார்க்க வேண்டிய டாக்டர்கள் / SPECIALISTS :</div>
-                              <div className="relative flex-1">
+                            <div className="flex gap-4 items-end">
+                              <div className="shrink-0 whitespace-nowrap uppercase">பார்க்க வேண்டிய டாக்டர்கள் / SPECIALISTS :</div>
+                              <div className="relative flex-1 min-w-0">
                                 <input
                                   className="w-full border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase"
                                   value={formData.specialistToReview}
