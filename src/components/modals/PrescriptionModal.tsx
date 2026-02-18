@@ -1593,7 +1593,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   min={new Date().toISOString().split('T')[0]}
                                 />
                                 {reviewDaysLabel && (
-                                  <span className="text-sm text-gray-800 font-bold whitespace-nowrap">
+                                  <span className="text-sm font-bold whitespace-nowrap border-2 border-black rounded px-2 py-0.5 bg-gray-100 print:bg-gray-100 tracking-wide">
                                     {reviewDaysLabel}
                                   </span>
                                 )}
