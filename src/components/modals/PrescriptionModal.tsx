@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import MobilePrescriptionInput from './MobilePrescriptionInput';
-import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 
 interface SavedDrug {
   id: string;
@@ -83,7 +82,7 @@ const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: st
 
 const DOSE_OPTIONS = Object.keys(DOSE_MAPPINGS);
 
-const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'SC', 'SC A/F'];
+const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'SC', 'SC B/F'];
 
 const TIME_OPTIONS = ['6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'];
 
@@ -106,7 +105,8 @@ const splitDiagnosis = (value: string) =>
 
 const getReviewDaysLabel = (value: string): string => {
   if (!value) return '';
-  const [y, m, d] = value.split('-').map(Number);
+  const dateOnly = value.split('T')[0];
+  const [y, m, d] = dateOnly.split('-').map(Number);
   if (!y || !m || !d) return value;
 
   const target = new Date(y, m - 1, d);
@@ -156,9 +156,35 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
   // Time options for timing dropdowns (removed internal constant, uses outside one)
 
+  const prescribedByName = (() => {
+    const existingActorType = existingData?.metadata?.actorType;
+    const existingPrescribedByName = existingData?.metadata?.actorDisplayName;
+
+    if (existingActorType === 'assistant') {
+      return existingPrescribedByName
+        ? `Prepared by ${existingPrescribedByName}`
+        : 'Prepared by PA';
+    }
+    if (existingActorType === 'chief') {
+      return 'Prepared by Chief Doctor';
+    }
+
+    if (actorAttribution?.actorType === 'assistant') {
+      return `Prepared by ${actorAttribution.actorDisplayName}`;
+    }
+    if (actorAttribution?.actorType === 'chief') {
+      return 'Prepared by Chief Doctor';
+    }
+    return '';
+  })();
+
+  const reviewDaysLabel = getReviewDaysLabel(formData.reviewDate);
+
   // Medication and Mobile States
   const [isMobile, setIsMobile] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
+  const [showConfirmSendModal, setShowConfirmSendModal] = useState(false);
+  const [showConfirmCloseModal, setShowConfirmCloseModal] = useState(false);
 
   // Saved Drugs State
   const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
@@ -188,12 +214,68 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   const [showTimeDropdown, setShowTimeDropdown] = useState<{ index: number, field: string } | null>(null);
   const [timeSearchQuery, setTimeSearchQuery] = useState('');
   const [showSpecialistDropdown, setShowSpecialistDropdown] = useState(false);
-  const [showSendConfirm, setShowSendConfirm] = useState(false);
+  // Keyboard navigation state for all dropdowns
+  const [highlightedDropdownIndex, setHighlightedDropdownIndex] = useState(-1);
+  const dropdownListRef = useRef<HTMLDivElement>(null);
 
   // Refs for printing
   const componentRef = useRef<HTMLDivElement>(null);
   const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Helper: scroll highlighted dropdown item into view
+  const scrollHighlightedIntoView = useCallback((index: number) => {
+    if (dropdownListRef.current) {
+      const items = dropdownListRef.current.querySelectorAll('[data-dropdown-item]');
+      if (items[index]) {
+        items[index].scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, []);
+
+  // Generic keyboard handler for searchable dropdowns
+  const handleDropdownKeyDown = useCallback((
+    e: React.KeyboardEvent,
+    isOpen: boolean,
+    itemCount: number,
+    onSelect: (index: number) => void,
+    onClose: () => void
+  ) => {
+    if (!isOpen || itemCount === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedDropdownIndex(prev => {
+        const next = prev < itemCount - 1 ? prev + 1 : 0;
+        setTimeout(() => scrollHighlightedIntoView(next), 0);
+        return next;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedDropdownIndex(prev => {
+        const next = prev > 0 ? prev - 1 : itemCount - 1;
+        setTimeout(() => scrollHighlightedIntoView(next), 0);
+        return next;
+      });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < itemCount) {
+        onSelect(highlightedDropdownIndex);
+        setHighlightedDropdownIndex(-1);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+      setHighlightedDropdownIndex(-1);
+    } else if (e.key === 'Tab') {
+      // Select current highlighted item and let Tab move focus naturally
+      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < itemCount) {
+        onSelect(highlightedDropdownIndex);
+      }
+      onClose();
+      setHighlightedDropdownIndex(-1);
+    }
+  }, [highlightedDropdownIndex, scrollHighlightedIntoView]);
 
   // Scaling Logic
   const [layoutState, setLayoutState] = useState({ scale: 1, marginLeft: 0 });
@@ -450,7 +532,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         setFormData(prev => ({
           ...prev,
           diagnosis,
-          reviewDate: review,
+          reviewDate: review ? review.split('T')[0] : '',
           testsToReview: tests,
           specialistToReview: specialists,
           place: place || prev.place,
@@ -471,6 +553,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     documentTitle: `Prescription-${patient?.name || 'Patient'}-${new Date().toLocaleDateString()}`,
     onPrintError: (error) => console.error('Print failed:', error),
     onBeforeGetContent: () => {
+      onPrintOpen?.();
       return new Promise<void>((resolve) => {
         setTimeout(() => {
           resolve();
@@ -479,11 +562,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     },
     removeAfterPrint: true
   } as any);
-
-  const triggerPrint = () => {
-    onPrintOpen?.();
-    handlePrint();
-  };
 
   // Medicine Handlers
   const addRow = () => {
@@ -515,26 +593,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     setMedications(newMeds);
   };
 
-  const isDiagnosisSelected = (name: string): boolean => {
-    const selected = splitDiagnosis(formData.diagnosis).map((d) => d.toUpperCase());
-    return selected.includes(String(name || '').toUpperCase());
+  // Show confirmation popup instead of sending directly
+  const handleSend = () => {
+    if (readOnly) return;
+    setShowConfirmSendModal(true);
   };
 
-  const toggleDiagnosisSelection = (name: string) => {
-    const normalizedName = String(name || '').toUpperCase().trim();
-    if (!normalizedName) return;
-
-    const selected = splitDiagnosis(formData.diagnosis).map((d) => d.toUpperCase());
-    const updated = selected.includes(normalizedName)
-      ? selected.filter((d) => d !== normalizedName)
-      : [...selected, normalizedName];
-
-    setFormData({ ...formData, diagnosis: updated.join(', ') });
-    setDiagnosisSearchQuery('');
-    setShowDiagnosisDropdown(true);
-  };
-
-  const sendToPharmacy = () => {
+  // Actually send to pharmacy after confirmation
+  const confirmSendToPharmacy = () => {
+    setShowConfirmSendModal(false);
+    // Convert to pharmacy format
     const pharmacyMeds = medications.filter(m => m.name).map(m => {
       const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.evening || '0'}-${m.night || '0'}`;
       return {
@@ -552,6 +620,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       };
     });
 
+    // We pack the extra metadata (Place, Phone, etc) into the notes field so it persists without schema changes
     const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
     if (onSendToPharmacy) {
       onSendToPharmacy(pharmacyMeds, notes, {
@@ -562,37 +631,103 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     }
   };
 
-  const handleSend = () => {
-    if (readOnly) return;
-    setShowSendConfirm(true);
-  };
+  // Confirmation Modal Component (shared between mobile and desktop)
+  const ConfirmSendModal = () => (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowConfirmSendModal(false)}>
+      <div
+        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-scale-in"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-5 flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Send to Pharmacy</h3>
+            <p className="text-emerald-100 text-sm">Confirm prescription submission</p>
+          </div>
+        </div>
 
-  const reviewDaysLabel = getReviewDaysLabel(formData.reviewDate);
-  const prescriberIdentityLabel = (() => {
-    const existingActorType = String(existingData?.prescribed_by_actor_type || '').toLowerCase();
-    const existingPrescribedByName =
-      existingData?.prescribed_by_name ||
-      existingData?.prescribed_by_assistant?.assistant_name ||
-      existingData?.prescribed_by_assistant_name ||
-      '';
+        {/* Body */}
+        <div className="px-6 py-5">
+          <p className="text-gray-700 text-sm leading-relaxed">
+            Are you sure you want to send this prescription to the <strong>Pharmacy</strong>?
+          </p>
+        </div>
 
-    if (existingActorType === 'assistant') {
-      return existingPrescribedByName
-        ? `Prepared by ${existingPrescribedByName}`
-        : 'Prepared by PA';
-    }
-    if (existingActorType === 'chief') {
-      return 'Prepared by Chief Doctor';
-    }
+        {/* Actions */}
+        <div className="px-6 pb-5 flex gap-3">
+          <button
+            onClick={() => setShowConfirmSendModal(false)}
+            className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={confirmSendToPharmacy}
+            className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Yes, Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
-    if (actorAttribution?.actorType === 'assistant') {
-      return `Prepared by ${actorAttribution.actorDisplayName}`;
-    }
-    if (actorAttribution?.actorType === 'chief') {
-      return 'Prepared by Chief Doctor';
-    }
-    return '';
-  })();
+  // Confirmation Modal for closing the prescription (shared between mobile and desktop)
+  const ConfirmCloseModal = () => (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowConfirmCloseModal(false)}>
+      <div
+        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-scale-in"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-5 flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Close Prescription</h3>
+            <p className="text-emerald-100 text-sm">Confirm before closing</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5">
+          <p className="text-gray-700 text-sm leading-relaxed">
+            Are you sure you want to <strong>close</strong> this prescription? Any unsaved changes will be lost.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-5 flex gap-3">
+          <button
+            onClick={() => setShowConfirmCloseModal(false)}
+            className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+          >
+            Go Back
+          </button>
+          <button
+            onClick={() => { setShowConfirmCloseModal(false); onClose(); }}
+            className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Yes, Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   if (isMobile && !showPrintView) {
     return (
@@ -606,11 +741,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           removeRow={removeRow}
           formData={formData}
           setFormData={setFormData}
-          onClose={onClose}
-          onPrint={() => {
-            onPrintOpen?.();
-            setShowPrintView(true);
-          }}
+          onClose={() => setShowConfirmCloseModal(true)}
+          onPrint={() => setShowPrintView(true)}
           onSend={handleSend}
           readOnly={readOnly}
           savedDiagnoses={savedDiagnoses}
@@ -630,18 +762,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           setShowDrugDropdown={setShowDrugDropdown}
           SPECIALIST_OPTIONS={SPECIALIST_OPTIONS}
         />
-        <TwoStepConfirmModal
-          isOpen={showSendConfirm}
-          singleStep={true}
-          title="Send To Pharmacy?"
-          description="Send this prescription to pharmacy queue?"
-          confirmLabel="Yes, Send"
-          onCancel={() => setShowSendConfirm(false)}
-          onConfirm={() => {
-            setShowSendConfirm(false);
-            sendToPharmacy();
-          }}
-        />
+        {showConfirmSendModal && <ConfirmSendModal />}
+        {showConfirmCloseModal && <ConfirmCloseModal />}
       </>
     );
   }
@@ -677,186 +799,62 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             }}
           >
             <style>{`
-            /* BASE styles (applied both screen and print in the iframe) */
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            
-            /* Flexbox */
-            .flex { display: flex !important; }
-            .flex-col { flex-direction: column !important; }
-            .flex-row { flex-direction: row !important; }
-            .flex-1 { flex: 1 1 0% !important; }
-            .flex-wrap { flex-wrap: wrap !important; }
-            .items-center { align-items: center !important; }
-            .items-start { align-items: flex-start !important; }
-            .items-end { align-items: flex-end !important; }
-            .items-stretch { align-items: stretch !important; }
-            .justify-between { justify-content: space-between !important; }
-            .justify-center { justify-content: center !important; }
-            .justify-end { justify-content: flex-end !important; }
-            .grow { flex-grow: 1 !important; }
-            .shrink-0 { flex-shrink: 0 !important; }
-            .self-start { align-self: flex-start !important; }
-            .self-end { align-self: flex-end !important; }
-            
-            /* Sizing */
-            .w-full { width: 100% !important; }
-            .w-8 { width: 2rem !important; }
-            .w-10 { width: 2.5rem !important; }
-            .w-14 { width: 3.5rem !important; }
-            .w-16 { width: 4rem !important; }
-            .w-24 { width: 6rem !important; }
-            .w-28 { width: 7rem !important; }
-            .w-32 { width: 8rem !important; }
-            .w-48 { width: 12rem !important; }
-            .w-\\[446px\\] { width: 446px !important; }
-            .w-\\[70px\\] { width: 70px !important; }
-            .h-full { height: 100% !important; }
-            .h-16 { height: 4rem !important; }
-            .h-\\[70px\\] { height: 70px !important; }
-            .min-w-0 { min-width: 0 !important; }
-            .min-h-\\[40px\\] { min-height: 40px !important; }
-            .max-w-\\[210mm\\] { max-width: 210mm !important; }
-            
-            /* Spacing */
-            .p-1 { padding: 0.25rem !important; }
-            .p-2 { padding: 0.5rem !important; }
-            .p-4 { padding: 1rem !important; }
-            .px-0\\.5 { padding-left: 0.125rem !important; padding-right: 0.125rem !important; }
-            .px-1 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
-            .px-1\\.5 { padding-left: 0.375rem !important; padding-right: 0.375rem !important; }
-            .px-2 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
-            .px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
-            .py-0\\.5 { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
-            .py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
-            .py-1\\.5 { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; }
-            .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
-            .mb-1 { margin-bottom: 0.25rem !important; }
-            .mb-2 { margin-bottom: 0.5rem !important; }
-            .mb-4 { margin-bottom: 1rem !important; }
-            .mt-1 { margin-top: 0.25rem !important; }
-            .mt-2 { margin-top: 0.5rem !important; }
-            .mt-4 { margin-top: 1rem !important; }
-            .mr-1 { margin-right: 0.25rem !important; }
-            .ml-1 { margin-left: 0.25rem !important; }
-            .gap-1 { gap: 0.25rem !important; }
-            .gap-2 { gap: 0.5rem !important; }
-            .gap-3 { gap: 0.75rem !important; }
-            .gap-4 { gap: 1rem !important; }
-            .space-y-1 > * + * { margin-top: 0.25rem !important; }
-            .space-y-2 > * + * { margin-top: 0.5rem !important; }
-            
-            /* Positioning */
-            .absolute { position: absolute !important; }
-            .relative { position: relative !important; }
-            .top-0 { top: 0 !important; }
-            .right-0 { right: 0 !important; }
-            .left-0 { left: 0 !important; }
-            .-top-1 { top: -0.25rem !important; }
-            
-            /* Borders */
-            .border { border-width: 1px !important; border-style: solid !important; }
-            .border-2 { border-width: 2px !important; border-style: solid !important; }
-            .border-b { border-bottom-width: 1px !important; border-bottom-style: solid !important; }
-            .border-b-2 { border-bottom-width: 2px !important; border-bottom-style: solid !important; }
-            .border-r { border-right-width: 1px !important; border-right-style: solid !important; }
-            .border-t { border-top-width: 1px !important; border-top-style: solid !important; }
-            .border-t-2 { border-top-width: 2px !important; border-top-style: solid !important; }
-            .border-black { border-color: black !important; }
-            .border-gray-200 { border-color: #e5e7eb !important; }
-            .border-gray-300 { border-color: #d1d5db !important; }
-            .rounded-lg { border-radius: 0.5rem !important; }
-            
-            /* Typography */
-            .text-xs { font-size: 0.75rem !important; line-height: 1rem !important; }
-            .text-sm { font-size: 0.875rem !important; line-height: 1.25rem !important; }
-            .text-base { font-size: 1rem !important; line-height: 1.5rem !important; }
-            .text-lg { font-size: 1.125rem !important; line-height: 1.75rem !important; }
-            .text-xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
-            .text-\\[9px\\] { font-size: 9px !important; }
-            .text-\\[10px\\] { font-size: 10px !important; }
-            .text-\\[11px\\] { font-size: 11px !important; }
-            .font-bold { font-weight: 700 !important; }
-            .font-medium { font-weight: 500 !important; }
-            .font-semibold { font-weight: 600 !important; }
-            .uppercase { text-transform: uppercase !important; }
-            .text-center { text-align: center !important; }
-            .text-right { text-align: right !important; }
-            .text-left { text-align: left !important; }
-            .leading-tight { line-height: 1.25 !important; }
-            .leading-none { line-height: 1 !important; }
-            .tracking-wide { letter-spacing: 0.025em !important; }
-            .italic { font-style: italic !important; }
-            .underline { text-decoration: underline !important; }
-            
-            /* Colors */
-            .text-black { color: black !important; }
-            .text-gray-500 { color: #6b7280 !important; }
-            .text-gray-600 { color: #4b5563 !important; }
-            .text-gray-700 { color: #374151 !important; }
-            .text-gray-800 { color: #1f2937 !important; }
-            .text-gray-900 { color: #111827 !important; }
-            .text-blue-900 { color: #1e3a5f !important; }
-            .text-emerald-700 { color: #047857 !important; }
-            .text-red-600 { color: #dc2626 !important; }
-            .bg-white { background-color: white !important; }
-            .bg-gray-50 { background-color: #f9fafb !important; }
-            .bg-gray-100 { background-color: #f3f4f6 !important; }
-            .bg-transparent { background-color: transparent !important; }
-            
-            /* Display & Overflow */
-            .hidden { display: none !important; }
-            .block { display: block !important; }
-            .inline { display: inline !important; }
-            .inline-block { display: inline-block !important; }
-            .overflow-hidden { overflow: hidden !important; }
-            .object-contain { object-fit: contain !important; }
-            
-            /* Print-specific overrides */
-            .print\\:hidden { display: none !important; }
-            .print\\:bg-white { background-color: white !important; }
-            
-            /* Form inputs - ensure values are visible */
-            input {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color: black !important;
-              -webkit-text-fill-color: black !important;
-              opacity: 1 !important;
-              visibility: visible !important;
-              background: transparent !important;
-              border: none !important;
-              font-size: inherit !important;
-              outline: none !important;
-              font-family: inherit !important;
-              font-weight: inherit !important;
-              text-transform: inherit !important;
-            }
-            
-            /* Grid layout */
-            .grid { display: grid !important; }
-            
             @media print {
               .print-content {
                 transform: none !important;
                 width: 100% !important;
                 margin: 0 !important;
                 min-width: 0 !important;
-                padding: 0 !important;
               }
               
-              body { margin: 0 !important; padding: 0 !important; }
+              /* Critical Layout Fixes for Print */
+              .flex { display: flex !important; }
+              .flex-col { flex-direction: column !important; }
+              .flex-row { flex-direction: row !important; }
+              .items-center { align-items: center !important; }
+              .items-end { align-items: flex-end !important; }
+              .justify-between { justify-content: space-between !important; }
+              .justify-center { justify-content: center !important; }
+              .justify-end { justify-content: flex-end !important; }
+              .grow { flex-grow: 1 !important; }
+              .shrink-0 { flex-shrink: 0 !important; }
+              .w-full { width: 100% !important; }
+              .w-28 { width: 112px !important; }
+              .w-14 { width: 56px !important; }
+              .h-full { height: 100% !important; }
+              .absolute { position: absolute !important; }
+              .relative { position: relative !important; }
+              .border { border-width: 1px !important; }
+              .border-2 { border-width: 2px !important; }
+              .border-b { border-bottom-width: 1px !important; }
+              .border-r { border-right-width: 1px !important; }
+              .border-t { border-top-width: 1px !important; }
+              .border-black { border-color: black !important; }
+              .text-center { text-align: center !important; }
+              .text-right { text-align: right !important; }
+              .font-bold { font-weight: 700 !important; }
+              .uppercase { text-transform: uppercase !important; }
               
-              /* Show print-only text spans, hide screen-only inputs */
-              .print-drug-name {
-                display: block !important;
-              }
-              .screen-drug-input {
-                display: none !important;
-              }
+              /* Font Sizes */
+              .text-base { font-size: 16px !important; }
+              .text-sm { font-size: 14px !important; }
+              .text-xs { font-size: 12px !important; }
+              .text-\[10px\] { font-size: 10px !important; }
+              .text-\[11px\] { font-size: 11px !important; }
+              .text-\[9px\] { font-size: 9px !important; }
+              
+              /* Padding/Spacing */
+              .py-1 { padding-top: 4px !important; padding-bottom: 4px !important; }
+              .py-1\.5 { padding-top: 6px !important; padding-bottom: 6px !important; }
+              .px-0\.5 { padding-left: 2px !important; padding-right: 2px !important; }
+              .px-1 { padding-left: 4px !important; padding-right: 4px !important; }
+              .px-1\.5 { padding-left: 6px !important; padding-right: 6px !important; }
+              .mb-1 { margin-bottom: 4px !important; }
+              .mb-4 { margin-bottom: 16px !important; }
             }
           `}</style>
             {(() => {
-              const FIRST_PAGE_ITEMS = 15;
+              const FIRST_PAGE_ITEMS = 12;
               const SUBSEQUENT_PAGE_ITEMS = 25; // High capacity for additional pages if needed
               const totalMeds = medications.length;
               const chunks = [];
@@ -906,13 +904,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <img src={clinicLogo || "/logo.png"} alt="Clinic Logo" className="w-[70px] h-[70px] object-contain absolute -top-1 left-0" />
                         </div>
                         <div className="text-center flex-1">
-                          <h1 className="text-lg font-bold text-blue-900 leading-tight">KONGUNAD KIDNEY CENTRE, Coimbatore - 641 012</h1>
+                          <h1 className="text-lg font-bold text-blue-900 leading-tight">KONGUNAD KIDNEY CENTRE, COIMBATORE - 641 012</h1>
                           <h2 className="text-base font-bold text-blue-900 leading-tight">கொங்குநாடு கிட்னி சென்டர், கோயம்புத்தூர் - 641 012</h2>
                         </div>
                         {/* Page Number Indicator */}
                         {chunks.length > 1 && (
-                          <div className="absolute top-0 right-0 text-xs font-bold text-gray-500">
-                            Page {pageIndex + 1} of {chunks.length}
+                          <div className="absolute top-0 right-0 text-xs font-bold text-gray-500 uppercase">
+                            PAGE {pageIndex + 1} OF {chunks.length}
                           </div>
                         )}
                       </div>
@@ -929,7 +927,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           </div>
                           <div className="w-1/2 flex">
                             <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வயது-AGE / ஆ/பெ-M/F</div>
-                            <div className="flex-1 py-1 px-1.5 flex items-center">{patient.age} / {patient.gender || 'M'}</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase">{patient.age} / {patient.gender || 'M'}</div>
                           </div>
                         </div>
                         {/* Row 2 */}
@@ -943,10 +941,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             />
                           </div>
                           <div className="w-1/2 flex">
-                            <div className="w-24 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">பதிவு எண் / REG. No.</div>
-                            <div className="flex-1 py-1 px-1.5 flex items-center border-r border-black">{patient.token_number}</div>
+                            <div className="w-24 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">பதிவு எண் / REG. NO.</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center border-r border-black uppercase">{patient.token_number}</div>
                             <div className="w-16 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">MR. NO</div>
-                            <div className="flex-1 py-1 px-1.5 flex items-center">{patient.mr_number || ''}</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase">{patient.mr_number || ''}</div>
                           </div>
                         </div>
                         {/* Row 3 */}
@@ -978,52 +976,138 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                         {/* Row 5 */}
                         <div className="flex border-b border-black min-h-[24px]">
                           <div className="flex-1 flex">
-                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">மருந்து/Drug அலர்ஜி/Allergy</div>
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center italic">மருந்து/DRUG அலர்ஜி/ALLERGY</div>
                             <input
-                              className="flex-1 py-1 px-1.5 outline-none font-normal text-red-600 bg-transparent"
+                              className="flex-1 py-1 px-1.5 outline-none font-bold text-red-600 bg-transparent uppercase"
                               value={formData.allergy}
-                              onChange={e => setFormData({ ...formData, allergy: e.target.value })}
+                              onChange={e => setFormData({ ...formData, allergy: e.target.value.toUpperCase() })}
                             />
                           </div>
                         </div>
                         {/* Row 6 */}
                         <div className="flex min-h-[48px]">
                           <div className="flex-1 flex relative">
-                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / Diagnosis</div>
+                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / DIAGNOSIS</div>
                             <div className="flex-1 relative flex">
                               <textarea
-                                className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent resize-none leading-tight"
+                                className="flex-1 py-1 px-1.5 outline-none font-bold w-full bg-transparent resize-none leading-tight uppercase"
                                 value={formData.diagnosis}
                                 onChange={e => {
-                                  setFormData({ ...formData, diagnosis: e.target.value.toUpperCase() });
-                                  setDiagnosisSearchQuery(e.target.value);
+                                  const val = e.target.value.toUpperCase();
+                                  setFormData({ ...formData, diagnosis: val });
+
+                                  // Extract the current typing part (after last "/")
+                                  const parts = val.split('/');
+                                  const currentQuery = parts[parts.length - 1].trim();
+                                  setDiagnosisSearchQuery(currentQuery);
                                   setShowDiagnosisDropdown(true);
+                                  setHighlightedDropdownIndex(-1);
                                 }}
-                                onFocus={() => setShowDiagnosisDropdown(true)}
+                                onFocus={() => {
+                                  const parts = (formData.diagnosis || '').split('/');
+                                  const currentQuery = parts[parts.length - 1].trim();
+                                  setDiagnosisSearchQuery(currentQuery);
+                                  setShowDiagnosisDropdown(true);
+                                  setHighlightedDropdownIndex(-1);
+                                }}
                                 onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
+                                onKeyDown={e => {
+                                  // Compute filtered list inline so arrow/enter work on the correct items
+                                  const selectedDiags = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+                                  const filteredDiags = savedDiagnoses.filter(d => {
+                                    const matchesQuery = d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase());
+                                    const notSelected = !selectedDiags.includes(d.name);
+                                    return matchesQuery && notSelected;
+                                  });
+                                  const isOpen = showDiagnosisDropdown && diagnosisSearchQuery.length > 0 && filteredDiags.length > 0;
+                                  if (!isOpen) return;
+
+                                  if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    setHighlightedDropdownIndex(prev => {
+                                      const next = prev < filteredDiags.length - 1 ? prev + 1 : 0;
+                                      setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                      return next;
+                                    });
+                                  } else if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    setHighlightedDropdownIndex(prev => {
+                                      const next = prev > 0 ? prev - 1 : filteredDiags.length - 1;
+                                      setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                      return next;
+                                    });
+                                  } else if (e.key === 'Enter') {
+                                    if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                      e.preventDefault();
+                                      const diag = filteredDiags[highlightedDropdownIndex];
+                                      const parts = (formData.diagnosis || '').split('/');
+                                      parts[parts.length - 1] = '';
+                                      const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
+                                      setFormData({ ...formData, diagnosis: newValue });
+                                      setDiagnosisSearchQuery('');
+                                      setShowDiagnosisDropdown(false);
+                                      setHighlightedDropdownIndex(-1);
+                                    }
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    setShowDiagnosisDropdown(false);
+                                    setHighlightedDropdownIndex(-1);
+                                  } else if (e.key === 'Tab') {
+                                    if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                      const diag = filteredDiags[highlightedDropdownIndex];
+                                      const parts = (formData.diagnosis || '').split('/');
+                                      parts[parts.length - 1] = '';
+                                      const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
+                                      setFormData({ ...formData, diagnosis: newValue });
+                                      setDiagnosisSearchQuery('');
+                                    }
+                                    setShowDiagnosisDropdown(false);
+                                    setHighlightedDropdownIndex(-1);
+                                  }
+                                }}
                                 rows={2}
                               />
-                              {showDiagnosisDropdown && savedDiagnoses.filter(d => d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase())).length > 0 && (
-                                <div className="absolute left-0 right-0 top-full z-[100] bg-white border-2 border-black shadow-xl max-h-48 overflow-y-auto">
-                                  {savedDiagnoses
-                                    .filter(d => d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase()))
-                                    .map(diag => (
+                              {(() => {
+                                // Get already selected diagnoses
+                                const selectedDiags = (formData.diagnosis || '')
+                                  .split('/')
+                                  .map(d => d.trim())
+                                  .filter(Boolean);
+
+                                // Filter: match current query AND exclude already selected
+                                const filteredDiags = savedDiagnoses.filter(d => {
+                                  const matchesQuery = d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase());
+                                  const notSelected = !selectedDiags.includes(d.name);
+                                  return matchesQuery && notSelected;
+                                });
+
+                                return showDiagnosisDropdown && diagnosisSearchQuery.length > 0 && filteredDiags.length > 0 && (
+                                  <div ref={dropdownListRef} className="absolute left-0 right-0 top-full z-[100] bg-white border-2 border-black shadow-xl max-h-48 overflow-y-auto">
+                                    {filteredDiags.map((diag, dIdx) => (
                                       <button
                                         key={diag.id}
                                         type="button"
-                                        className={`w-full text-left px-3 py-2 text-xs font-bold border-b border-gray-100 last:border-0 flex items-center justify-between ${isDiagnosisSelected(diag.name) ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-emerald-50'}`}
+                                        data-dropdown-item
+                                        className={`w-full text-left px-3 py-2 text-xs font-bold border-b border-gray-100 last:border-0 ${highlightedDropdownIndex === dIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}
                                         onMouseDown={() => {
-                                          toggleDiagnosisSelection(diag.name);
+                                          // Get all parts except the last (which is being typed)
+                                          const parts = (formData.diagnosis || '').split('/');
+                                          parts[parts.length - 1] = ''; // Clear the typing part
+
+                                          // Add the selected diagnosis and prepare for next
+                                          const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
+                                          setFormData({ ...formData, diagnosis: newValue });
+                                          setDiagnosisSearchQuery('');
+                                          setShowDiagnosisDropdown(false);
                                         }}
+                                        onMouseEnter={() => setHighlightedDropdownIndex(dIdx)}
                                       >
-                                        <span>{diag.name}</span>
-                                        {isDiagnosisSelected(diag.name) && (
-                                          <span className="text-[10px] font-black">SELECTED</span>
-                                        )}
+                                        {diag.name}
                                       </button>
                                     ))}
-                                </div>
-                              )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>
@@ -1033,45 +1117,45 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                     {/* Medicine Table Box */}
                     {chunk.length > 0 && (
                       <div className={`border-2 border-black flex flex-col ${pageIndex < chunks.length - 1 ? 'flex-1 mb-1' : 'mb-4'}`}>
-                        <div className="text-center font-bold border-b border-black py-1 text-xs shrink-0">
+                        <div className="text-center font-bold border-b border-black py-1 text-base shrink-0">
                           மருந்துகள் பரிந்துரை விபரம் - MEDICINES PRESCRIPTION DETAILS
                         </div>
 
                         {/* Table Headers */}
-                        <div className="flex border-b border-black text-center font-bold text-xs shrink-0">
-                          <div className="w-8 border-r border-black py-1.5 flex items-center justify-center shrink-0">
+                        <div className="flex border-b border-black text-center font-bold text-base shrink-0">
+                          <div className="w-12 border-r border-black py-1.5 flex items-center justify-center shrink-0">
                             வ.எ<br />S.N
                           </div>
-                          <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0">
+                          <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0 px-1.5">
                             மருந்துக்கள் / DRUGS
                           </div>
-                          <div className="w-[446px] shrink-0 flex flex-col">
-                            <div className="border-b border-black py-1">எத்தனை முறை - Frequency</div>
-                            <div className="flex flex-1 items-stretch">
-                              <div className="w-28 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>Qty</span>
+                          <div className="w-[398px] shrink-0 flex flex-col uppercase">
+                            <div className="border-b border-black py-1 text-base uppercase">எத்தனை முறை - FREQUENCY</div>
+                            <div className="flex flex-1 items-stretch uppercase">
+                              <div className="w-16 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight uppercase">
+                                <span>QTY</span>
                                 <span>எண்</span>
                               </div>
-                              <div className="w-10 border-r border-black py-1 text-[10px] flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>Freq</span>
+                              <div className="w-10 border-r border-black py-1 text-xs flex flex-col items-center justify-center shrink-0 leading-tight uppercase">
+                                <span>FREQ</span>
                               </div>
-                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight uppercase">
                                 <span>M</span>
                                 <span>கா</span>
                               </div>
-                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight uppercase">
                                 <span>N</span>
                                 <span>ம</span>
                               </div>
-                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight uppercase">
                                 <span>E</span>
                                 <span>மா</span>
                               </div>
-                              <div className="w-14 border-r border-black py-1 text-[10px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
-                                <span>Nt</span>
+                              <div className="w-14 border-r border-black py-1 text-xs px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight uppercase">
+                                <span>NT</span>
                                 <span>இ</span>
                               </div>
-                              <div className="w-8 py-1 text-[9px] px-0.5 flex flex-col items-center justify-center shrink-0 leading-tight">
+                              <div className="flex-1 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center leading-tight">
                                 <span>B/F</span>
                                 <span>A/F</span>
                               </div>
@@ -1095,21 +1179,20 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 key={globalIndex}
                                 className={`flex border-b border-black ${shouldExpandRow ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}
                               >
-                                <div className="w-8 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
+                                <div className="w-12 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
                                   {globalIndex + 1}
                                 </div>
                                 <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
-                                  {/* Print-only: plain text drug name (visible only in print) */}
-                                  <span className="print-drug-name hidden font-bold uppercase text-xs w-full">{med.name}</span>
-                                  {/* Screen-only: interactive input (hidden in print) */}
-                                  <input
-                                    className="screen-drug-input w-full outline-none font-bold uppercase text-xs"
+                                  <textarea
+                                    className="w-full outline-none font-bold uppercase text-sm bg-transparent resize-none leading-tight py-1 overflow-hidden"
                                     placeholder="Type drug name..."
                                     value={med.name}
+                                    rows={2}
                                     onChange={e => {
-                                      const val = e.target.value;
+                                      const val = e.target.value.toUpperCase();
                                       updateMed(globalIndex, 'name', val);
                                       setDrugSearchQuery(val);
+                                      setHighlightedDropdownIndex(-1);
                                       if (!readOnly && allDrugOptions.length > 0) {
                                         setShowDrugDropdown(globalIndex);
                                       }
@@ -1117,18 +1200,38 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     onFocus={() => {
                                       if (!readOnly && allDrugOptions.length > 0) {
                                         setShowDrugDropdown(globalIndex);
-                                        setDrugSearchQuery(med.name);
+                                        setDrugSearchQuery(med.name.toUpperCase());
+                                        setHighlightedDropdownIndex(-1);
                                       }
                                     }}
+                                    onKeyDown={e => handleDropdownKeyDown(
+                                      e,
+                                      showDrugDropdown === globalIndex && filteredDrugs.length > 0,
+                                      filteredDrugs.length,
+                                      (idx) => {
+                                        const drug = filteredDrugs[idx];
+                                        if (drug) {
+                                          const newMeds = [...medications];
+                                          const prefix = drug.drugType ? `${drug.drugType}. ` : '';
+                                          newMeds[globalIndex].name = `${prefix}${drug.name}`.toUpperCase();
+                                          newMeds[globalIndex].drugType = drug.drugType || '';
+                                          setMedications(newMeds);
+                                          setShowDrugDropdown(null);
+                                          setDrugSearchQuery('');
+                                        }
+                                      },
+                                      () => setShowDrugDropdown(null)
+                                    )}
                                     readOnly={readOnly}
                                   />
                                   {!readOnly && showDrugDropdown === globalIndex && filteredDrugs.length > 0 && (
-                                    <div className="absolute left-0 top-full z-[100] w-[400px] bg-white border-2 border-black shadow-xl max-h-64 overflow-y-auto print:hidden">
-                                      {filteredDrugs.map(drug => (
+                                    <div ref={dropdownListRef} className="absolute left-0 top-full z-[100] w-[400px] bg-white border-2 border-black shadow-xl max-h-64 overflow-y-auto print:hidden">
+                                      {filteredDrugs.map((drug, dIdx) => (
                                         <button
                                           key={drug.id}
                                           type="button"
-                                          className="w-full px-3 py-2 text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0"
+                                          data-dropdown-item
+                                          className={`w-full px-3 py-2 text-left border-b border-gray-100 last:border-0 ${highlightedDropdownIndex === dIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}
                                           onMouseDown={() => {
                                             const newMeds = [...medications];
                                             const prefix = drug.drugType ? `${drug.drugType}. ` : '';
@@ -1138,6 +1241,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                             setShowDrugDropdown(null);
                                             setDrugSearchQuery('');
                                           }}
+                                          onMouseEnter={() => setHighlightedDropdownIndex(dIdx)}
                                         >
                                           <div className="flex items-center gap-2">
                                             <span className="font-bold text-sm text-gray-900">{drug.name}</span>
@@ -1172,14 +1276,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     )}
                                   </div>
                                 </div>
-                                <div className="w-[446px] flex shrink-0 items-stretch">
+                                <div className="w-[398px] flex shrink-0 items-stretch">
                                   {/* Quantity */}
-                                  <div className="w-28 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                  <div className="w-16 border-r border-black px-0.5 flex items-center justify-center shrink-0">
                                     <input
-                                      className="w-full text-center outline-none text-xs bg-transparent font-bold"
+                                      className="w-full text-center outline-none text-xs bg-transparent font-bold uppercase"
                                       placeholder={readOnly ? '' : '1'}
                                       value={med.number}
-                                      onChange={e => updateMed(globalIndex, 'number', e.target.value)}
+                                      onChange={e => updateMed(globalIndex, 'number', e.target.value.toUpperCase())}
                                       readOnly={readOnly}
                                     />
                                   </div>
@@ -1188,50 +1292,76 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     <input
                                       className="w-full text-center outline-none text-[9px] font-bold uppercase bg-transparent"
                                       value={med.dose}
-                                      onChange={e => { updateMed(globalIndex, 'dose', e.target.value.toUpperCase()); setDoseSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowDoseDropdown(globalIndex); }}
-                                      onFocus={() => !readOnly && (setShowDoseDropdown(globalIndex), setDoseSearchQuery(''))}
+                                      onChange={e => {
+                                        const val = e.target.value.toUpperCase();
+                                        updateMed(globalIndex, 'dose', val);
+                                        setDoseSearchQuery(val);
+                                        setHighlightedDropdownIndex(-1);
+                                        !readOnly && setShowDoseDropdown(globalIndex);
+                                      }}
+                                      onFocus={() => !readOnly && (setShowDoseDropdown(globalIndex), setDoseSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                       onBlur={() => setTimeout(() => setShowDoseDropdown(null), 150)}
+                                      onKeyDown={e => {
+                                        const filtered = DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery));
+                                        handleDropdownKeyDown(
+                                          e,
+                                          showDoseDropdown === globalIndex,
+                                          filtered.length,
+                                          (idx) => { updateMed(globalIndex, 'dose', filtered[idx]); setShowDoseDropdown(null); },
+                                          () => setShowDoseDropdown(null)
+                                        );
+                                      }}
                                       readOnly={readOnly}
                                       placeholder="--"
                                     />
-                                    {!readOnly && showDoseDropdown === globalIndex && (
-                                      <div className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
-                                        {DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery)).map(opt => (
-                                          <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'dose', opt); setShowDoseDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-xs font-bold border-b border-gray-50 last:border-0">
-                                            {opt}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
+                                    {!readOnly && showDoseDropdown === globalIndex && (() => {
+                                      const filtered = DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery));
+                                      return filtered.length > 0 && (
+                                        <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-24 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-y-auto print:hidden">
+                                          {filtered.map((opt, oIdx) => (
+                                            <button type="button" key={opt} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'dose', opt); setShowDoseDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(oIdx)} className={`w-full px-2 py-1.5 text-left text-xs font-bold border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === oIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                              {opt}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                   {/* M dosage container - Split: Top time, Bottom value */}
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
                                         placeholder=""
                                         value={(med as any).morningTime || ''}
-                                        onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'morningTime' })}
+                                        onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); }}
+                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'morningTime' }), setTimeSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        onKeyDown={e => {
+                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime', filtered.length, (idx) => { updateMed(globalIndex, 'morningTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
+                                        }}
                                         readOnly={readOnly}
                                       />
-                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime' && (
-                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'morningTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                              {t}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime' && (() => {
+                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        return filtered.length > 0 && (
+                                          <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                            {filtered.map((t, tIdx) => (
+                                              <button type="button" key={t} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'morningTime', t); setShowTimeDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(tIdx)} className={`w-full px-1 py-1 text-left text-[9px] border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === tIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                                {t}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
-                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
                                         placeholder={readOnly ? '' : '0'}
                                         value={readOnly ? (med.morning && med.morning !== '0' ? med.morning : '-') : med.morning}
-                                        onChange={e => updateMed(globalIndex, 'morning', e.target.value)}
+                                        onChange={e => updateMed(globalIndex, 'morning', e.target.value.toUpperCase())}
                                         readOnly={readOnly}
                                         rows={1}
                                       />
@@ -1241,30 +1371,37 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
                                         placeholder=""
                                         value={(med as any).noonTime || ''}
-                                        onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'noonTime' })}
+                                        onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); }}
+                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'noonTime' }), setTimeSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        onKeyDown={e => {
+                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime', filtered.length, (idx) => { updateMed(globalIndex, 'noonTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
+                                        }}
                                         readOnly={readOnly}
                                       />
-                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime' && (
-                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'noonTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                              {t}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime' && (() => {
+                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        return filtered.length > 0 && (
+                                          <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                            {filtered.map((t, tIdx) => (
+                                              <button type="button" key={t} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'noonTime', t); setShowTimeDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(tIdx)} className={`w-full px-1 py-1 text-left text-[9px] border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === tIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                                {t}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
-                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
                                         placeholder={readOnly ? '' : '0'}
                                         value={readOnly ? (med.noon && med.noon !== '0' ? med.noon : '-') : med.noon}
-                                        onChange={e => updateMed(globalIndex, 'noon', e.target.value)}
+                                        onChange={e => updateMed(globalIndex, 'noon', e.target.value.toUpperCase())}
                                         readOnly={readOnly}
                                         rows={1}
                                       />
@@ -1274,30 +1411,37 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
                                         value={med.eveningTime || ''}
-                                        onChange={e => { updateMed(globalIndex, 'eveningTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'eveningTime' })}
+                                        onChange={e => { updateMed(globalIndex, 'eveningTime', e.target.value); setTimeSearchQuery(e.target.value); setHighlightedDropdownIndex(-1); }}
+                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'eveningTime' }), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        onKeyDown={e => {
+                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime', filtered.length, (idx) => { updateMed(globalIndex, 'eveningTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
+                                        }}
                                         readOnly={readOnly}
                                       />
-                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime' && (
-                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'eveningTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                              {t}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime' && (() => {
+                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        return filtered.length > 0 && (
+                                          <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                            {filtered.map((t, tIdx) => (
+                                              <button type="button" key={t} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'eveningTime', t); setShowTimeDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(tIdx)} className={`w-full px-1 py-1 text-left text-[9px] border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === tIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                                {t}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
-                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
                                         placeholder={readOnly ? '' : '0'}
                                         value={readOnly ? (med.evening && med.evening !== '0' ? med.evening : '-') : med.evening}
-                                        onChange={e => updateMed(globalIndex, 'evening', e.target.value)}
+                                        onChange={e => updateMed(globalIndex, 'evening', e.target.value.toUpperCase())}
                                         readOnly={readOnly}
                                         rows={1}
                                       />
@@ -1307,55 +1451,75 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[9px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
                                         value={med.nightTime || ''}
-                                        onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); }}
-                                        onFocus={() => !readOnly && setShowTimeDropdown({ index: globalIndex, field: 'nightTime' })}
+                                        onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); setHighlightedDropdownIndex(-1); }}
+                                        onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'nightTime' }), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
+                                        onKeyDown={e => {
+                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime', filtered.length, (idx) => { updateMed(globalIndex, 'nightTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
+                                        }}
                                         readOnly={readOnly}
                                       />
-                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime' && (
-                                        <div className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
-                                          {TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase())).map(t => (
-                                            <button type="button" key={t} onMouseDown={() => { updateMed(globalIndex, 'nightTime', t); setShowTimeDropdown(null); }} className="w-full px-1 py-1 text-left hover:bg-emerald-50 text-[9px] border-b border-gray-50 last:border-0">
-                                              {t}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
+                                      {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime' && (() => {
+                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        return filtered.length > 0 && (
+                                          <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
+                                            {filtered.map((t, tIdx) => (
+                                              <button type="button" key={t} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'nightTime', t); setShowTimeDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(tIdx)} className={`w-full px-1 py-1 text-left text-[9px] border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === tIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                                {t}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
-                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight"
+                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
                                         placeholder={readOnly ? '' : '0'}
                                         value={readOnly ? (med.night && med.night !== '0' ? med.night : '-') : med.night}
-                                        onChange={e => updateMed(globalIndex, 'night', e.target.value)}
+                                        onChange={e => updateMed(globalIndex, 'night', e.target.value.toUpperCase())}
                                         readOnly={readOnly}
                                         rows={1}
                                       />
                                     </div>
                                   </div>
                                   {/* Food Timing - Searchable Combobox */}
-                                  <div className="w-8 flex items-center justify-center shrink-0 relative">
+                                  <div className="flex-1 flex items-center justify-center relative">
                                     <input
-                                      className="w-full h-full text-center font-bold text-[8px] outline-none bg-transparent uppercase"
+                                      className="w-full h-full text-center font-bold text-[10px] outline-none bg-transparent uppercase"
                                       value={med.foodTiming}
-                                      onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
-                                      onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''))}
+                                      onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
+                                      onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                       onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
+                                      onKeyDown={e => {
+                                        const filtered = FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery));
+                                        handleDropdownKeyDown(
+                                          e,
+                                          showFoodTimingDropdown === globalIndex,
+                                          filtered.length,
+                                          (idx) => { updateMed(globalIndex, 'foodTiming', filtered[idx]); setShowFoodTimingDropdown(null); },
+                                          () => setShowFoodTimingDropdown(null)
+                                        );
+                                      }}
                                       readOnly={readOnly}
                                       placeholder=""
                                     />
-                                    {!readOnly && showFoodTimingDropdown === globalIndex && (
-                                      <div className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
-                                        {FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery)).map(opt => (
-                                          <button type="button" key={opt} onMouseDown={() => { updateMed(globalIndex, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} className="w-full px-2 py-1.5 text-left hover:bg-emerald-50 text-[10px] font-bold border-b border-gray-50 last:border-0">
-                                            {opt}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
+                                    {!readOnly && showFoodTimingDropdown === globalIndex && (() => {
+                                      const filtered = FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery));
+                                      return filtered.length > 0 && (
+                                        <div ref={dropdownListRef} className="absolute right-0 top-full z-50 w-16 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
+                                          {filtered.map((opt, oIdx) => (
+                                            <button type="button" key={opt} data-dropdown-item onMouseDown={() => { updateMed(globalIndex, 'foodTiming', opt); setShowFoodTimingDropdown(null); }} onMouseEnter={() => setHighlightedDropdownIndex(oIdx)} className={`w-full px-2 py-1.5 text-left text-[10px] font-bold border-b border-gray-50 last:border-0 ${highlightedDropdownIndex === oIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
+                                              {opt}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
                               </div>
@@ -1365,7 +1529,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
                         {/* Empty space - Add button now on last row, Manage Drugs moved to dashboard */}
                       </div>
-                    )}
+                    )
+                    }
 
                     {/* Footer Section - ONLY on the final page */}
                     {isLastPage && (() => {
@@ -1382,55 +1547,43 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                       return (
                         <div className="mt-auto">
                           {/* Doctor Notes */}
-                          <div className="border-t border-black pt-1.5 mt-1 mb-1">
-                            <div className="flex gap-2 items-start text-[14px] font-bold">
-                              <span className="shrink-0 pt-0.5">குறிப்புகள் / Notes:</span>
-                              <textarea
-                                className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-[14px] resize-none leading-normal min-h-[72px]"
-                                value={formData.doctorNotes}
-                                onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value })}
-                                readOnly={readOnly}
-                                rows={4}
-                                placeholder="Additional notes..."
-                              />
-                            </div>
-                          </div>
+
                           {/* Salt and Fluid Intake - Parallel Layout */}
                           <div className="border-t border-black pt-2 mt-1 mb-2">
-                            <p className="font-bold underline italic text-[10px] mb-1.5">To be specified / monitored:</p>
-                            <div className="flex gap-6 text-[10px] font-bold">
+                            <div className="flex justify-between items-baseline mb-1.5">
+                              <p className="font-bold underline italic text-sm">TO BE SPECIFIED / MONITORED:</p>
+                              <span className="font-bold text-sm">VEG ONLY DIET</span>
+                            </div>
+                            <div className="flex gap-10 text-sm font-bold">
                               <div className="flex gap-1 items-baseline">
-                                <span className="shrink-0">Salt intake (உப்பு):</span>
+                                <span className="shrink-0 uppercase">SALT INTAKE (உப்பு):</span>
                                 <input
-                                  className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
+                                  className="w-28 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
                                   value={formData.saltIntake}
-                                  onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
+                                  onChange={e => setFormData({ ...formData, saltIntake: e.target.value.toUpperCase() })}
                                   placeholder="____"
                                   readOnly={readOnly}
                                 />
-                                <span className="shrink-0">gm/day</span>
+                                <span className="shrink-0 uppercase">GM/DAY</span>
                               </div>
                               <div className="flex gap-1 items-baseline">
-                                <span className="shrink-0">Fluid intake (நீர்/திரவம்):</span>
+                                <span className="shrink-0 uppercase">FLUID INTAKE (நீர்/திரவம்):</span>
                                 <input
-                                  className="w-16 border-b border-gray-300 border-dotted outline-none bg-transparent text-center"
+                                  className="w-28 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
                                   value={formData.fluidIntake}
-                                  onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
+                                  onChange={e => setFormData({ ...formData, fluidIntake: e.target.value.toUpperCase() })}
                                   placeholder="____"
                                   readOnly={readOnly}
                                 />
-                                <span className="shrink-0">lit/day</span>
-                              </div>
-                              <div className="flex items-baseline">
-                                <span className="shrink-0">VEG ONLY DIET</span>
+                                <span className="shrink-0 uppercase">LIT/DAY</span>
                               </div>
                             </div>
                           </div>
 
                           {/* Footer Review Section */}
                           <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
-                            <div className="flex gap-2 items-end">
-                              <div className="shrink-0 w-80 whitespace-nowrap">மீண்டும் வரவேண்டிய நாள் / Review on :</div>
+                            <div className="flex gap-4 items-end">
+                              <div className="shrink-0 whitespace-nowrap uppercase">மீண்டும் வரவேண்டிய நாள் / REVIEW ON :</div>
                               <div className="flex-1 flex items-center gap-3">
                                 <input
                                   type="date"
@@ -1441,25 +1594,59 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   min={new Date().toISOString().split('T')[0]}
                                 />
                                 {reviewDaysLabel && (
-                                  <span className="text-sm text-gray-800 font-bold whitespace-nowrap">
+                                  <span className="text-sm font-bold whitespace-nowrap border-2 border-black rounded px-2 py-0.5 bg-gray-100 print:bg-gray-100 tracking-wide">
                                     {reviewDaysLabel}
                                   </span>
                                 )}
                               </div>
                             </div>
-                            <div className="flex gap-2 items-end">
-                              <div className="shrink-0 w-80 whitespace-nowrap">செய்ய வேண்டிய பரிசோதனைகள் / Tests :</div>
-                              <input className="flex-1 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value })} readOnly={readOnly} />
+                            <div className="flex gap-4 items-end">
+                              <div className="shrink-0 whitespace-nowrap uppercase">செய்ய வேண்டிய பரிசோதனைகள் / TESTS :</div>
+                              <input className="flex-1 min-w-0 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })} readOnly={readOnly} />
                             </div>
-                            <div className="flex gap-2 items-end">
-                              <div className="shrink-0 w-80 whitespace-nowrap">பார்க்க வேண்டிய டாக்டர்கள் / Specialists :</div>
-                              <div className="relative flex-1">
+                            <div className="flex gap-4 items-end">
+                              <div className="shrink-0 whitespace-nowrap uppercase">பார்க்க வேண்டிய டாக்டர்கள் / SPECIALISTS :</div>
+                              <div className="relative flex-1 min-w-0">
                                 <input
-                                  className="w-full border-b border-gray-300 border-dashed outline-none px-1 bg-transparent"
+                                  className="w-full border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase"
                                   value={formData.specialistToReview}
-                                  onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value })}
-                                  onFocus={() => !readOnly && setShowSpecialistDropdown(true)}
-                                  placeholder="Type or select specialist..."
+                                  onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value.toUpperCase() })}
+                                  onFocus={() => { if (!readOnly) { setShowSpecialistDropdown(true); setHighlightedDropdownIndex(-1); } }}
+                                  onKeyDown={e => {
+                                    if (!showSpecialistDropdown || SPECIALIST_OPTIONS.length === 0) return;
+                                    if (e.key === 'ArrowDown') {
+                                      e.preventDefault();
+                                      setHighlightedDropdownIndex(prev => {
+                                        const next = prev < SPECIALIST_OPTIONS.length - 1 ? prev + 1 : 0;
+                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                        return next;
+                                      });
+                                    } else if (e.key === 'ArrowUp') {
+                                      e.preventDefault();
+                                      setHighlightedDropdownIndex(prev => {
+                                        const next = prev > 0 ? prev - 1 : SPECIALIST_OPTIONS.length - 1;
+                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                        return next;
+                                      });
+                                    } else if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < SPECIALIST_OPTIONS.length) {
+                                        const opt = SPECIALIST_OPTIONS[highlightedDropdownIndex];
+                                        const currentSpecs = parseSpecialists(formData.specialistToReview || '');
+                                        const isSelected = currentSpecs.includes(opt);
+                                        const newSpecs = isSelected ? currentSpecs.filter(s => s !== opt) : [...currentSpecs, opt];
+                                        setFormData({ ...formData, specialistToReview: newSpecs.join(', ') });
+                                      }
+                                    } else if (e.key === 'Escape') {
+                                      e.preventDefault();
+                                      setShowSpecialistDropdown(false);
+                                      setHighlightedDropdownIndex(-1);
+                                    } else if (e.key === 'Tab') {
+                                      setShowSpecialistDropdown(false);
+                                      setHighlightedDropdownIndex(-1);
+                                    }
+                                  }}
+                                  placeholder="TYPE OR SELECT SPECIALIST..."
                                   readOnly={readOnly}
                                 />
                                 {!readOnly && showSpecialistDropdown && (
@@ -1468,15 +1655,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       className="fixed inset-0 z-[110]"
                                       onClick={() => setShowSpecialistDropdown(false)}
                                     />
-                                    <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[120] max-h-48 overflow-y-auto py-1 font-normal">
-                                      {SPECIALIST_OPTIONS.map((opt) => {
+                                    <div ref={dropdownListRef} className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[120] max-h-48 overflow-y-auto py-1 font-normal">
+                                      {SPECIALIST_OPTIONS.map((opt, sIdx) => {
                                         const currentSpecs = parseSpecialists(formData.specialistToReview || '');
                                         const isSelected = currentSpecs.includes(opt);
                                         return (
                                           <button
                                             key={opt}
                                             type="button"
-                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between ${isSelected ? 'text-emerald-700 font-bold bg-emerald-50/30' : 'text-gray-700'}`}
+                                            data-dropdown-item
+                                            className={`w-full text-left px-3 py-2 text-sm transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between ${highlightedDropdownIndex === sIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'} ${isSelected ? 'text-emerald-700 font-bold' : 'text-gray-700'}`}
                                             onMouseDown={(e) => {
                                               e.preventDefault();
                                               e.stopPropagation();
@@ -1488,6 +1676,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                               }
                                               setFormData({ ...formData, specialistToReview: newSpecs.join(', ') });
                                             }}
+                                            onMouseEnter={() => setHighlightedDropdownIndex(sIdx)}
                                           >
                                             <span>{opt}</span>
                                             {isSelected && <span className="text-emerald-600">✓</span>}
@@ -1504,12 +1693,31 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Signature */}
-                          <div className="flex justify-end mt-4 mb-2">
-                            <div className="text-center min-w-[150px] flex flex-col items-center justify-end">
-                              {/* Dynamic Signature Image - Takes real space now */}
+                          {/* Bottom Row: Notes on Left, Signature on Right */}
+                          <div className="flex gap-4 items-end mt-4 mb-2">
+                            {/* Doctor Notes (Relocated) */}
+                            <div className="flex-1">
+                              <div className="flex gap-2 items-start text-sm font-bold uppercase">
+                                <div className="flex flex-col shrink-0 pt-0.5 leading-tight mr-2 uppercase">
+                                  <span>குறிப்புகள்</span>
+                                  <span>/ NOTES:</span>
+                                </div>
+                                <textarea
+                                  className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-sm resize-none leading-normal min-h-[80px] uppercase"
+                                  value={formData.doctorNotes}
+                                  onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value.toUpperCase() })}
+                                  readOnly={readOnly}
+                                  rows={3}
+                                  placeholder="ADDITIONAL NOTES..."
+                                />
+                              </div>
+                            </div>
+
+                            {/* Signature */}
+                            <div className="text-center min-w-[150px] flex flex-col items-center justify-end shrink-0">
+                              {/* Dynamic Signature Image - Reduced size */}
                               {doctor?.signature_url ? (
-                                <div className="h-16 w-40 mb-1 flex items-end justify-center">
+                                <div className="h-10 w-32 mb-1 flex items-end justify-center">
                                   <img
                                     src={doctor.signature_url}
                                     alt="Signature"
@@ -1517,29 +1725,26 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   />
                                 </div>
                               ) : (
-                                /* Empty space for manual signature if no digital one */
-                                <div className="h-16 w-40"></div>
+                                <div className="h-10 w-32"></div>
                               )}
 
-                              <div className={`font-bold border-t border-black px-4 pt-1 ${scale.textSize}`}>
-                                டாக்டர் கையொப்பம். / DOCTOR SIGNATURE.
+                              <div className={`font-bold border-t border-black px-4 pt-0.5 ${scale.textSize} flex flex-col items-center`}>
+                                <span>DOCTOR SIGNATURE.</span>
+                                {prescribedByName && (
+                                  <span className="text-[10px] mt-0.5">{prescribedByName}</span>
+                                )}
                               </div>
-                              {prescriberIdentityLabel && (
-                                <div className="mt-1 text-[11px] font-bold text-gray-800">
-                                  {prescriberIdentityLabel}
-                                </div>
-                              )}
                             </div>
                           </div>
 
                           {/* Footer Box - Full Width with Larger Font */}
-                          <div className="w-full border-2 border-black p-2 text-[12px] leading-[1.5] flex flex-col justify-center font-bold mt-2 bg-gray-50 print:bg-white">
-                            <p className="text-center mb-1.5">முன்பதிவு காலதாமதத்தை குறைக்கும் / Prior registration avoids delay</p>
-                            <p className="text-center mb-1">Appt: 0422-2494333, 73588 41555, 41666 | Time: 8am - 6pm</p>
-                            <p className="text-center border-t border-gray-300 mt-1.5 pt-1.5">
-                              Dr. A. பிரபாகர் MD., DNB (Nephrology) | Dr. A. திவாகர் MS., M.ch (Urology)
+                          <div className="w-full border-2 border-black p-2 text-[12px] leading-[1.5] flex flex-col justify-center font-bold mt-2 bg-gray-50 print:bg-white uppercase">
+                            <p className="text-center mb-1.5">முன்பதிவு காலதாமதத்தை குறைக்கும் / PRIOR REGISTRATION AVOIDS DELAY</p>
+                            <p className="text-center mb-1">APPT: 0422-2494333, 73588 41555, 41666 | TIME: 8AM - 6PM</p>
+                            <p className="text-center border-t border-gray-400 mt-1.5 pt-1.5">
+                              DR. A. பிரபாகர் MD., DNB (NEPHROLOGY) | DR. A. திவாகர் MS., M.CH (UROLOGY)
                             </p>
-                            <p className="text-center mt-1">அவசர உதவிக்கு / Emergency: 0422 - 2494333 (24 மணி நேரமும் / 24 hrs Service)</p>
+                            <p className="text-center mt-1">அவசர உதவிக்கு / EMERGENCY: 0422 - 2494333 (24 மணி நேரமும் / 24 HRS SERVICE)</p>
                           </div>
                         </div>
                       );
@@ -1547,8 +1752,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
                     {/* PTO (Please Turn Over) - Only show on non-final pages */}
                     {!isLastPage && (
-                      <div className="text-right mt-auto pb-2 text-xs font-bold text-gray-700 italic">
-                        தொடர்ச்சி அடுத்த பக்கத்தில் / PTO (Please Turn Over)
+                      <div className="text-right mt-auto pb-2 text-xs font-bold text-gray-700 italic uppercase">
+                        தொடர்ச்சி அடுத்த பக்கத்தில் / PTO (PLEASE TURN OVER)
                       </div>
                     )}
                   </div>
@@ -1560,12 +1765,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
         {/* Footer Controls */}
         <div className="bg-white p-4 sm:p-6 border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-          <button onClick={onClose} className="w-full sm:w-auto px-6 py-3 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors order-2 sm:order-1">
+          <button onClick={() => setShowConfirmCloseModal(true)} className="w-full sm:w-auto px-6 py-3 text-gray-600 font-bold hover:bg-gray-50 rounded-xl transition-colors order-2 sm:order-1">
             Cancel
           </button>
           <div className="flex flex-1 sm:flex-none gap-3 order-1 sm:order-2">
             <button
-              onClick={triggerPrint}
+              onClick={handlePrint}
               className="flex-1 sm:flex-none px-4 sm:px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 whitespace-nowrap"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
@@ -1698,18 +1903,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             </div>
           </div>
         )}
-        <TwoStepConfirmModal
-          isOpen={showSendConfirm}
-          singleStep={true}
-          title="Send To Pharmacy?"
-          description="Send this prescription to pharmacy queue?"
-          confirmLabel="Yes, Send"
-          onCancel={() => setShowSendConfirm(false)}
-          onConfirm={() => {
-            setShowSendConfirm(false);
-            sendToPharmacy();
-          }}
-        />
+        {showConfirmSendModal && <ConfirmSendModal />}
+        {showConfirmCloseModal && <ConfirmCloseModal />}
       </div>
     </div >
   );

@@ -241,23 +241,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const tabId = tabIdRef.current;
     console.log(`[AuthContext][${tabId}] Auth state change:`, event, 'initialized:', isInitializedRef.current);
 
-    // Skip if tab is not visible (prevents background tab conflicts)
-    if (!isTabVisibleRef.current && event === 'TOKEN_REFRESHED') {
-      console.log(`[AuthContext][${tabId}] Skipping TOKEN_REFRESHED - tab not visible`);
-      return;
-    }
-
-    // Prevent concurrent processing
-    if (isProcessingAuthRef.current) {
-      console.log(`[AuthContext][${tabId}] Already processing auth, skipping`);
-      return;
-    }
-
-    // Skip duplicate session processing (prevents infinite loops)
-    const sessionId = newSession?.access_token?.substring(0, 20) || 'no-session';
-    if (event === 'TOKEN_REFRESHED' && lastSessionIdRef.current === sessionId && isStableRef.current) {
-      console.log(`[AuthContext][${tabId}] Skipping duplicate TOKEN_REFRESHED`);
-      return;
+    // Allow token refresh even in background tabs to prevent session loss
+    if (event === 'TOKEN_REFRESHED') {
+      const sessionId = newSession?.access_token?.substring(0, 20) || 'no-session';
+      if (lastSessionIdRef.current === sessionId && isStableRef.current) {
+        console.log(`[AuthContext][${tabId}] Skipping duplicate TOKEN_REFRESHED`);
+        return;
+      }
     }
 
     // For INITIAL_SESSION during OAuth callback, we need to process it
@@ -378,8 +368,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log(`[AuthContext][${tabId}] Tab visibility:`, !document.hidden);
 
       // When tab becomes visible and is stable, just verify session is valid
-      if (!document.hidden && isStableRef.current && isInitializedRef.current) {
-        console.log(`[AuthContext][${tabId}] Tab visible - session is stable, no reload needed`);
+      // When tab becomes visible and is stable, verify session is valid
+      if (!document.hidden && isStableRef.current) {
+        console.log(`[AuthContext][${tabId}] Tab visible - verifying session stability`);
+        supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+          if (!currentSession && user) {
+            console.warn(`[AuthContext][${tabId}] Session lost while tab was hidden. Re-initializing.`);
+            handleAuthStateChange('SIGNED_OUT', null);
+          }
+        });
       }
     };
 
@@ -575,10 +572,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionStorage.removeItem('enterprise_pharmacy_authenticated');
         // Clear all doctor sessions
         Object.keys(sessionStorage).forEach(key => {
-          if (
-            key.startsWith('enterprise_doctor_session_') ||
-            key.startsWith('enterprise_doctor_actor_session_')
-          ) {
+          if (key.startsWith('enterprise_doctor_session_')) {
             sessionStorage.removeItem(key);
           }
         });
@@ -608,10 +602,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Clear hospital name cache
         localStorage.removeItem('hospital_name_cache');
         Object.keys(sessionStorage).forEach(key => {
-          if (
-            key.startsWith('enterprise_doctor_session_') ||
-            key.startsWith('enterprise_doctor_actor_session_')
-          ) {
+          if (key.startsWith('enterprise_doctor_session_')) {
             sessionStorage.removeItem(key);
           }
         });

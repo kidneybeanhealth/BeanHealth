@@ -6,15 +6,10 @@ const parseSpecialists = (value: string) =>
         .map((s) => s.trim())
         .filter(Boolean);
 
-const splitDiagnosis = (value: string) =>
-    (value || '')
-        .split(',')
-        .map((d) => d.trim())
-        .filter(Boolean);
-
 const getReviewDaysLabel = (value: string): string => {
     if (!value) return '';
-    const [y, m, d] = value.split('-').map(Number);
+    const dateOnly = value.split('T')[0];
+    const [y, m, d] = dateOnly.split('-').map(Number);
     if (!y || !m || !d) return value;
 
     const target = new Date(y, m - 1, d);
@@ -123,25 +118,6 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
     const [showDoseDropdown, setShowDoseDropdown] = React.useState<number | null>(null);
     const [showTimingDropdown, setShowTimingDropdown] = React.useState<number | null>(null);
     const [showSpecialistDropdown, setShowSpecialistDropdown] = React.useState(false);
-    const reviewDaysLabel = getReviewDaysLabel(formData.reviewDate);
-
-    const isDiagnosisSelected = (name: string): boolean => {
-        const selected = splitDiagnosis(formData.diagnosis).map((d) => d.toUpperCase());
-        return selected.includes(String(name || '').toUpperCase());
-    };
-
-    const toggleDiagnosisSelection = (name: string) => {
-        const normalizedName = String(name || '').toUpperCase().trim();
-        if (!normalizedName) return;
-        const selected = splitDiagnosis(formData.diagnosis).map((d) => d.toUpperCase());
-        const updated = selected.includes(normalizedName)
-            ? selected.filter((d) => d !== normalizedName)
-            : [...selected, normalizedName];
-
-        setFormData({ ...formData, diagnosis: updated.join(', ') });
-        setDiagnosisSearchQuery('');
-        setShowDiagnosisDropdown(true);
-    };
 
     return (
         <div className="fixed inset-0 z-[60] flex flex-col bg-gray-50 overflow-hidden">
@@ -171,38 +147,66 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                 <textarea
                                     value={formData.diagnosis}
                                     onChange={e => {
-                                        setFormData({ ...formData, diagnosis: e.target.value.toUpperCase() });
-                                        setDiagnosisSearchQuery(e.target.value);
+                                        const val = e.target.value.toUpperCase();
+                                        setFormData({ ...formData, diagnosis: val });
+
+                                        // Extract the current typing part (after last "/")
+                                        const parts = val.split('/');
+                                        const currentQuery = parts[parts.length - 1].trim();
+                                        setDiagnosisSearchQuery(currentQuery);
                                         setShowDiagnosisDropdown(true);
                                     }}
-                                    onFocus={() => setShowDiagnosisDropdown(true)}
+                                    onFocus={() => {
+                                        const parts = (formData.diagnosis || '').split('/');
+                                        const currentQuery = parts[parts.length - 1].trim();
+                                        setDiagnosisSearchQuery(currentQuery);
+                                        setShowDiagnosisDropdown(true);
+                                    }}
                                     onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
                                     className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none leading-tight"
                                     placeholder="Enter diagnosis..."
                                     readOnly={readOnly}
                                     rows={2}
                                 />
-                                {showDiagnosisDropdown && savedDiagnoses.filter(d => d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase())).length > 0 && (
-                                    <div className="absolute left-0 right-0 top-full z-50 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto mt-1">
-                                        {savedDiagnoses
-                                            .filter(d => d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase()))
-                                            .map(diag => (
+                                {(() => {
+                                    // Get already selected diagnoses
+                                    const selectedDiags = (formData.diagnosis || '')
+                                        .split('/')
+                                        .map(d => d.trim())
+                                        .filter(Boolean);
+
+                                    // Filter: match current query AND exclude already selected
+                                    const filteredDiags = savedDiagnoses.filter(d => {
+                                        const matchesQuery = d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase());
+                                        const notSelected = !selectedDiags.includes(d.name);
+                                        return matchesQuery && notSelected;
+                                    });
+
+                                    return showDiagnosisDropdown && diagnosisSearchQuery.length > 0 && filteredDiags.length > 0 && (
+                                        <div className="absolute left-0 right-0 top-full z-50 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto mt-1">
+                                            {filteredDiags.map(diag => (
                                                 <button
                                                     key={diag.id}
                                                     type="button"
-                                                    className={`w-full text-left px-3 py-2 text-sm font-medium border-b border-gray-100 last:border-0 flex items-center justify-between ${isDiagnosisSelected(diag.name) ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-emerald-50'}`}
+                                                    className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-sm font-medium border-b border-gray-100 last:border-0"
                                                     onMouseDown={() => {
-                                                        toggleDiagnosisSelection(diag.name);
+                                                        // Get all parts except the last (which is being typed)
+                                                        const parts = (formData.diagnosis || '').split('/');
+                                                        parts[parts.length - 1] = ''; // Clear the typing part
+
+                                                        // Add the selected diagnosis and prepare for next
+                                                        const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
+                                                        setFormData({ ...formData, diagnosis: newValue });
+                                                        setDiagnosisSearchQuery('');
+                                                        setShowDiagnosisDropdown(false);
                                                     }}
                                                 >
-                                                    <span>{diag.name}</span>
-                                                    {isDiagnosisSelected(diag.name) && (
-                                                        <span className="text-[10px] font-black">SELECTED</span>
-                                                    )}
+                                                    {diag.name}
                                                 </button>
                                             ))}
-                                    </div>
-                                )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                         <div>
@@ -210,8 +214,8 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                             <input
                                 type="text"
                                 value={formData.allergy}
-                                onChange={e => setFormData({ ...formData, allergy: e.target.value })}
-                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                                onChange={e => setFormData({ ...formData, allergy: e.target.value.toUpperCase() })}
+                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none uppercase font-bold text-red-600"
                                 placeholder="Nil"
                                 readOnly={readOnly}
                             />
@@ -346,8 +350,8 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                             <input
                                                 type="text"
                                                 value={med.number}
-                                                onChange={e => updateMed(index, 'number', e.target.value)}
-                                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-center focus:ring-2 focus:ring-emerald-500 outline-none"
+                                                onChange={e => updateMed(index, 'number', e.target.value.toUpperCase())}
+                                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-center focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
                                                 placeholder="10"
                                                 readOnly={readOnly}
                                             />
@@ -414,8 +418,8 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                                 <input
                                                     type="text"
                                                     value={(med as any)[slot.field] || ''}
-                                                    onChange={e => updateMed(index, slot.field, e.target.value)}
-                                                    className={`w-full py-1 border ${slot.border} rounded-lg text-center text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none bg-white text-gray-900 h-8`}
+                                                    onChange={e => updateMed(index, slot.field, e.target.value.toUpperCase())}
+                                                    className={`w-full py-1 border ${slot.border} rounded-lg text-center text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none bg-white text-gray-900 h-8 uppercase`}
                                                     placeholder="0"
                                                     readOnly={readOnly}
                                                 />
@@ -442,9 +446,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                     <h3 className="font-bold text-gray-900 mb-3">Notes</h3>
                     <textarea
                         value={formData.doctorNotes}
-                        onChange={e => setFormData({ ...formData, doctorNotes: e.target.value })}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-                        placeholder="Additional notes for the patient..."
+                        onChange={e => setFormData({ ...formData, doctorNotes: e.target.value.toUpperCase() })}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none uppercase"
+                        placeholder="ADDITIONAL NOTES FOR THE PATIENT..."
                         readOnly={readOnly}
                         rows={5}
                     />
@@ -459,9 +463,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                             <input
                                 type="text"
                                 value={formData.saltIntake}
-                                onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
-                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                placeholder="e.g., 5"
+                                onChange={e => setFormData({ ...formData, saltIntake: e.target.value.toUpperCase() })}
+                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
+                                placeholder="E.G., 5"
                                 readOnly={readOnly}
                             />
                         </div>
@@ -470,9 +474,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                             <input
                                 type="text"
                                 value={formData.fluidIntake}
-                                onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
-                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                placeholder="e.g., 1.5"
+                                onChange={e => setFormData({ ...formData, fluidIntake: e.target.value.toUpperCase() })}
+                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
+                                placeholder="E.G., 1.5"
                                 readOnly={readOnly}
                             />
                         </div>
@@ -493,8 +497,15 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                 readOnly={readOnly}
                                 min={new Date().toISOString().split('T')[0]}
                             />
-                            {reviewDaysLabel && (
-                                <p className="mt-1 text-sm font-bold text-gray-800">{reviewDaysLabel}</p>
+                            {formData.reviewDate && getReviewDaysLabel(formData.reviewDate) && (
+                                <div className="mt-1.5 flex items-center gap-1.5">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-200">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        Review {getReviewDaysLabel(formData.reviewDate)}
+                                    </span>
+                                </div>
                             )}
                         </div>
                         <div>
@@ -502,9 +513,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                             <input
                                 type="text"
                                 value={formData.testsToReview}
-                                onChange={e => setFormData({ ...formData, testsToReview: e.target.value })}
-                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                placeholder="Blood tests, X-ray, etc."
+                                onChange={e => setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })}
+                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
+                                placeholder="BLOOD TESTS, X-RAY, ETC."
                                 readOnly={readOnly}
                             />
                         </div>
@@ -514,10 +525,10 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                 <input
                                     type="text"
                                     value={formData.specialistToReview}
-                                    onChange={e => setFormData({ ...formData, specialistToReview: e.target.value })}
+                                    onChange={e => setFormData({ ...formData, specialistToReview: e.target.value.toUpperCase() })}
                                     onFocus={() => !readOnly && setShowSpecialistDropdown(true)}
-                                    className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    placeholder="Type or select specialists..."
+                                    className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none uppercase"
+                                    placeholder="TYPE OR SELECT SPECIALISTS..."
                                     readOnly={readOnly}
                                 />
                                 {!readOnly && showSpecialistDropdown && (

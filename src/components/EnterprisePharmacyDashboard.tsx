@@ -22,6 +22,7 @@ interface Prescription {
     dispensed_days?: number;
     dispensed_at?: string;
     dispensed_by?: string;
+    metadata?: any;
     doctor: {
         name: string;
         specialty: string;
@@ -62,6 +63,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .from('hospital_prescriptions' as any)
                 .select(`
                     *,
+                    metadata,
                     doctor:hospital_doctors(name, specialty, signature_url),
                     patient:hospital_patients(name, age, mr_number, token_number)
                 `)
@@ -131,7 +133,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
             const { data, error } = await supabase
                 .from('hospital_prescriptions' as any)
                 .select(`
-                    id, medications, notes, status, token_number, created_at, patient_id,
+                    id, medications, notes, status, token_number, created_at, patient_id, metadata,
                     doctor:hospital_doctors(name, specialty, signature_url),
                     patient:hospital_patients(*)
                 `)
@@ -171,7 +173,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
             const { data, error } = await supabase
                 .from('hospital_prescriptions' as any)
                 .select(`
-                    id, medications, notes, status, token_number, created_at, patient_id,
+                    id, medications, notes, status, token_number, created_at, patient_id, metadata,
                     doctor:hospital_doctors(name, specialty, signature_url),
                     patient:hospital_patients!inner(*)
                 `)
@@ -209,6 +211,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 .from('hospital_prescriptions' as any)
                 .select(`
                     *,
+                    metadata,
                     doctor:hospital_doctors(name, specialty, signature_url),
                     patient:hospital_patients(name, age, mr_number, token_number)
                 `)
@@ -392,25 +395,15 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         toast.success(daysToDispense > 0 ? `Medicine Delivered (${daysToDispense} days)` : 'Medicine Delivered');
 
         try {
-            // 2. Update prescription status with dispensing data
-            const { error } = await (supabase
-                .from('hospital_prescriptions') as any)
-                .update({
-                    status: 'dispensed',
-                    dispensed_days: daysToDispense > 0 ? daysToDispense : null,
-                    dispensed_at: new Date().toISOString()
-                } as any)
-                .eq('id', selectedPrescription.id);
+            // 2. Call the RPC function to update status with server time atomically
+            const { error } = await (supabase as any).rpc('pharmacy_mark_dispensed', {
+                p_prescription_id: selectedPrescription.id,
+                p_dispensing_days: daysToDispense
+            });
 
             if (error) throw error;
 
-            // 3. Also update the display queue to mark as dispensed
-            await (supabase
-                .from('hospital_pharmacy_queue' as any) as any)
-                .update({ status: 'dispensed' } as any)
-                .eq('prescription_id', selectedPrescription.id);
-
-            // Success - state already updated
+            // Success - state already updated optimistically
         } catch (error: any) {
             console.error('Dispense Error:', error);
             toast.error('Failed to update status: ' + (error.message || 'Unknown error'));
@@ -1252,11 +1245,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     doctor={selectedPrescription.doctor}
                     patient={{
                         ...selectedPrescription.patient,
-                        token_number: selectedPrescription.token_number
+                        token_number: selectedPrescription.token_number || selectedPrescription.patient?.token_number
                     }}
                     onClose={() => setShowPrintModal(false)}
                     readOnly={true}
-                    existingData={selectedPrescription}
+                    existingData={{
+                        ...selectedPrescription,
+                        dispensed_days: dispensingDays || (selectedPrescription as any).dispensed_days
+                    }}
                     clinicLogo={hospitalLogo || undefined}
                 />
             )}
