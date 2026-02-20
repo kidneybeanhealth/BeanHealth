@@ -88,7 +88,7 @@ export const DemoForm = () => {
                                 type="text"
                                 required
                                 className="bg-transparent border-b border-white/20 px-0 py-3 text-white focus:outline-none focus:border-clay transition-colors font-sans placeholder:text-white/20"
-                                placeholder="Dr. Jane Doe"
+                                placeholder="Dr. Bohra"
                                 value={formData.name}
                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
                             />
@@ -101,7 +101,7 @@ export const DemoForm = () => {
                                 type="email"
                                 required
                                 className="bg-transparent border-b border-white/20 px-0 py-3 text-white focus:outline-none focus:border-clay transition-colors font-sans placeholder:text-white/20"
-                                placeholder="jane.doe@hospital.org"
+                                placeholder="dr.bohra@hospital.com"
                                 value={formData.email}
                                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                             />
@@ -114,7 +114,7 @@ export const DemoForm = () => {
                                 required
                                 rows={3}
                                 className="bg-transparent border-b border-white/20 px-0 py-3 text-white focus:outline-none focus:border-clay transition-colors font-sans resize-none placeholder:text-white/20"
-                                placeholder="Currently experiencing issues tracking eGFR decline between visits..."
+                                placeholder="Tell us about your hospital/clinic and specific requirements..."
                                 value={formData.message}
                                 onChange={e => setFormData({ ...formData, message: e.target.value })}
                             />
