@@ -86,7 +86,7 @@ export const Team = () => {
                     <div className="team-animate">
                         <div className="team-card h-full bg-white/5 border border-white/10 p-8 rounded-[3rem] hover:bg-white/10 transition-all hover:-translate-y-2 duration-500 flex flex-col md:flex-row gap-6 items-center md:items-stretch group">
                             <div className="w-32 h-32 md:w-40 md:h-40 shrink-0 rounded-full border border-white/10 bg-cream flex items-center justify-center overflow-hidden">
-                                <img src="/Saran.png" alt="Saran Kathiravan" className="w-full h-full object-cover" />
+                                <img src="/Saran.jpg" alt="Saran Kathiravan" className="w-full h-full object-cover" />
                             </div>
                             <div className="flex flex-col flex-1 pt-2">
                                 <div className="mb-4 text-center md:text-left">
