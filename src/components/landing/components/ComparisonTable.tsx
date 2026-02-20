@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { Check, X } from 'lucide-react';
 
 const features = [
     { cap: 'Data aggregation (labs + discharge + meds)', telemed: false, bean: true },
@@ -8,7 +9,7 @@ const features = [
     { cap: 'Configurable clinical rules', telemed: false, bean: true },
     { cap: 'Audit trail for follow-up decisions', telemed: false, bean: true },
     { cap: 'Actionable next-step cues', telemed: false, bean: true },
-    { cap: 'Patient video consult', telemed: true, bean: false }
+    { cap: 'Patient video consult', telemed: true, bean: true }
 ];
 
 export const ComparisonTable = () => {
@@ -28,36 +29,48 @@ export const ComparisonTable = () => {
     }, []);
 
     return (
-        <section className="py-32 px-6 bg-cream relative">
-            <div className="max-w-6xl mx-auto" ref={tableRef}>
-                <div className="mb-16">
+        <section className="pt-0 pb-32 px-6 bg-cream relative">
+            <div className="max-w-5xl mx-auto" ref={tableRef}>
+                <div className="mb-12 text-center">
                     <h2 className="font-sans text-3xl md:text-4xl font-semibold tracking-tight text-moss">
-                        The Gap in Existing EMR & Telemedicine.
+                        The Gap in Existing EMR & Telemedicine
                     </h2>
                 </div>
 
-                <div className="w-full overflow-x-auto pb-8">
-                    <div className="min-w-[700px] border-t border-moss/20">
-                        {/* Header */}
-                        <div className="grid grid-cols-12 py-4 border-b border-moss/30 sticky top-0 bg-cream/90 backdrop-blur z-10">
-                            <div className="col-span-6 font-sans text-xs font-bold uppercase tracking-widest text-moss/50">Capability</div>
-                            <div className="col-span-3 text-center font-sans text-xs font-bold uppercase tracking-widest text-moss/50">Traditional EMR/Telemedicine</div>
-                            <div className="col-span-3 text-center font-sans text-xs font-bold uppercase tracking-widest text-clay">BeanHealth</div>
+                <div className="w-full bg-white rounded-[2rem] border border-moss/10 shadow-sm overflow-hidden flex flex-col">
+                    {/* Header */}
+                    <div className="grid grid-cols-12 bg-[#F6F4EE] border-b border-moss/10 items-stretch">
+                        <div className="col-span-6 px-6 md:px-10 py-6 md:py-8 flex items-center font-sans text-[15px] font-bold text-charcoal">
+                            Capability
                         </div>
+                        <div className="col-span-3 px-2 py-6 md:py-8 flex items-center justify-center text-center font-sans text-xs md:text-[13px] font-bold text-charcoal leading-tight">
+                            Traditional EMR<br className="hidden md:block" /> / Telemedicine
+                        </div>
+                        <div className="col-span-3 bg-[#36453F] rounded-bl-3xl flex items-center justify-center px-4 py-6 md:py-8 shadow-sm">
+                            <span className="font-sans text-xs md:text-sm font-semibold text-white tracking-wide">BeanHealth</span>
+                        </div>
+                    </div>
 
-                        {/* Rows */}
+                    {/* Body */}
+                    <div className="flex flex-col px-6 md:px-10 pt-4 pb-4">
                         {features.map((item, idx) => (
-                            <div key={idx} className="comp-row grid grid-cols-12 py-6 border-b border-moss/10 hover:bg-white/40 transition-colors duration-300 group cursor-default">
-                                <div className="col-span-6 flex items-center font-sans text-[1.05rem] text-moss group-hover:translate-x-2 transition-transform duration-300">{item.cap}</div>
-                                <div className="col-span-3 flex items-center justify-center">
-                                    <span className={`font-mono text-lg font-light ${item.telemed ? 'text-green-500' : 'text-red-500/60'}`}>
-                                        {item.telemed ? '✓' : '✗'}
-                                    </span>
+                            <div key={idx} className="comp-row grid grid-cols-12 py-5 border-b border-moss/10 last:border-0 hover:bg-black/[0.015] transition-colors duration-300">
+                                <div className="col-span-6 flex items-center font-sans text-[13px] md:text-[14px] text-charcoal/70 pr-4">
+                                    {item.cap}
                                 </div>
                                 <div className="col-span-3 flex items-center justify-center">
-                                    <span className={`font-mono text-lg font-bold ${item.bean ? 'text-green-600 scale-110' : 'text-red-500/60'} transition-transform duration-300 group-hover:scale-125`}>
-                                        {item.bean ? '✓' : '✗'}
-                                    </span>
+                                    {item.telemed ? (
+                                        <Check className="text-green-500 w-5 h-5 transform scale-110" strokeWidth={2.5} />
+                                    ) : (
+                                        <X className="text-red-400 w-5 h-5 opacity-75" strokeWidth={2} />
+                                    )}
+                                </div>
+                                <div className="col-span-3 flex items-center justify-center">
+                                    {item.bean ? (
+                                        <Check className="text-[#8AC43C] w-6 h-6 transform scale-110" strokeWidth={3} />
+                                    ) : (
+                                        <X className="text-red-400 w-5 h-5 opacity-75" strokeWidth={2} />
+                                    )}
                                 </div>
                             </div>
                         ))}

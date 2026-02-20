@@ -4,13 +4,13 @@ import { LogoIcon } from '../../icons/LogoIcon';
 
 export const Footer = () => {
     return (
-        <footer className="bg-charcoal text-cream rounded-t-[4rem] px-6 pt-24 pb-12 mt-[-4rem] relative z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+        <footer className="bg-charcoal text-cream rounded-t-[4rem] px-6 pt-16 pb-8 mt-[-4rem] relative z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
             <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-20 border-b border-white/10 pb-20">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-12 border-b border-white/10 pb-12">
                     <div className="col-span-1 md:col-span-4">
-                        <div className="flex items-center gap-2.5 mb-8">
+                        <a href="#" className="flex items-center gap-2.5 mb-8 hover:scale-105 active:scale-95 transition-all">
                             <div className="h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 bg-white shadow-lg">
-                                <LogoIcon className="w-7 h-7" />
+                                <LogoIcon className="w-10 h-10" />
                             </div>
                             <div className="flex flex-col justify-center">
                                 <h2 className="text-xl font-bold leading-none tracking-tight">
@@ -18,7 +18,7 @@ export const Footer = () => {
                                     <span className="text-secondary-500">Health</span>
                                 </h2>
                             </div>
-                        </div>
+                        </a>
                         <p className="text-sm font-sans text-cream/70 max-w-sm leading-relaxed mb-8">
                             Transforming chronic kidney care through intelligent patient monitoring and clinical workflow automation.
                         </p>
@@ -71,7 +71,7 @@ export const Footer = () => {
                 </div>
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                    <p className="text-xs font-sans text-white/30">&copy; 2026 BeanHealth Private Limited. All rights reserved.</p>
+                    <p className="text-xs font-sans text-white/30">&copy; 2025 BeanHealth Private Limited. All rights reserved.</p>
                 </div>
             </div>
         </footer>

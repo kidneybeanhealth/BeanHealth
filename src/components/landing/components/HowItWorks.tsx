@@ -37,12 +37,16 @@ export const HowItWorks = () => {
     ];
 
     return (
-        <section ref={cRef} className="py-32 px-6 bg-moss text-cream relative min-h-[300vh]">
+        <section ref={cRef} className="pt-32 pb-16 px-6 bg-moss-dark text-cream relative">
 
 
             <div className="max-w-4xl mx-auto relative z-10">
                 <div className="text-center mb-32">
-                    <h2 className="font-sans text-4xl md:text-5xl font-semibold mb-6">How BeanHealth Works</h2>
+                    <h2 className="font-sans text-4xl md:text-5xl font-semibold mb-6">
+                        <span className="text-white">How </span>
+                        <span className="text-[#D4B7A1]">Bean</span><span className="text-secondary-500">Health</span>
+                        <span className="text-white"> Works</span>
+                    </h2>
                     <p className="font-sans text-xl text-cream/70 mb-8 max-w-2xl mx-auto">
                         A closed-loop system: <span className="text-clay">AI Assists, Doctor Decides.</span>
                     </p>
@@ -61,7 +65,7 @@ export const HowItWorks = () => {
 
                 {/* Sticky Stacking Archive */}
                 {groupedSteps.map((group, groupIdx) => (
-                    <div key={groupIdx} className="sticky-card sticky top-32 w-full min-h-[50vh] bg-cream text-charcoal rounded-[3rem] p-10 md:p-16 mb-24 shadow-2xl border border-moss/10">
+                    <div key={groupIdx} className="sticky-card sticky top-32 w-full min-h-[50vh] bg-cream text-charcoal rounded-[3rem] p-10 md:p-16 mb-24 last:mb-0 shadow-2xl border border-moss/10">
                         <div className="flex items-center gap-4 mb-12 border-b border-moss/10 pb-6">
                             <span className="font-mono text-sm text-moss/50 uppercase tracking-widest">Phase 0{groupIdx + 1}</span>
                         </div>

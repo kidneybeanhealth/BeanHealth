@@ -13,7 +13,7 @@ export const FeaturesDashboard = () => {
     }, []);
 
     return (
-        <section ref={cRef} className="py-32 px-6 bg-cream text-charcoal relative">
+        <section id="features" ref={cRef} className="pt-32 pb-16 px-6 bg-cream text-charcoal relative">
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-20">
                     <h2 className="font-sans text-4xl md:text-5xl font-semibold mb-6 text-moss tracking-tight">
@@ -113,7 +113,7 @@ export const FeaturesDashboard = () => {
 
                     {/* RIGHT COLUMN: Embedded Live Widget Mockup */}
                     <div className="flex-1 flex justify-center items-center">
-                        <div className="w-full max-w-lg bg-white border border-moss/5 rounded-[2.5rem] p-8 shadow-2xl relative">
+                        <div className="w-full max-w-lg bg-white border border-moss/5 rounded-[2.5rem] p-8 shadow-2xl relative hover:-translate-y-2 transition-transform duration-500">
                             {/* Decorative Top Bar */}
                             <div className="flex items-center justify-between mb-8 pb-4 border-b border-moss/10">
                                 <div className="flex items-center gap-2">
@@ -141,10 +141,10 @@ export const FeaturesDashboard = () => {
                                     {/* Chart area */}
                                     <div className="flex-1 relative h-full">
                                         {/* Declining line */}
-                                        <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none">
-                                            <polyline points="0,20 50,40 100,50 150,70 200,80 250,110 320,130" fill="none" stroke="#CC5833" strokeWidth="3" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
-                                            <circle cx="320" cy="130" r="4" fill="#CC5833" />
+                                        <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                            <polyline points="0,13.75 20,31.25 40,47.5 60,60 80,90" fill="none" stroke="#CC5833" strokeWidth="3" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
                                         </svg>
+                                        <div className="absolute w-2.5 h-2.5 rounded-full bg-clay" style={{ left: '80%', top: '90%', transform: 'translate(-50%, -50%)' }} />
                                         {/* X-axis */}
                                         <div className="absolute inset-x-0 -bottom-6 flex justify-between font-mono text-[10px] text-moss/40 uppercase">
                                             <span>Jul</span>
@@ -193,15 +193,15 @@ export const FeaturesDashboard = () => {
 
                 {/* BOTTOM ROW (3 pills) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12 border-t border-moss/10">
-                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm">
+                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm hover:-translate-y-2 transition-transform duration-300">
                         <Lock size={18} className="text-clay" />
                         <span className="font-sans font-medium text-moss text-sm">End-to-end encryption</span>
                     </div>
-                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm">
+                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm hover:-translate-y-2 transition-transform duration-300">
                         <FileText size={18} className="text-clay" />
                         <span className="font-sans font-medium text-moss text-sm">Complete audit trails</span>
                     </div>
-                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm">
+                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm hover:-translate-y-2 transition-transform duration-300">
                         <CheckCircle2 size={18} className="text-clay" />
                         <span className="font-sans font-medium text-moss text-sm">Patient consent management</span>
                     </div>

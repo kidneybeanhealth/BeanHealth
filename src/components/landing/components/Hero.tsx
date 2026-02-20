@@ -89,13 +89,13 @@ export const Hero = () => {
 
                     <div className="hero-reveal mt-6">
                         <div className="flex flex-wrap items-center gap-4">
-                            <a href="#demo" className="group relative overflow-hidden bg-[#22B3A6] text-white px-8 py-4 rounded-full font-sans font-semibold text-sm uppercase tracking-wider transition-transform hover:scale-105 active:scale-95 duration-300 shadow-xl shadow-teal-500/20">
+                            <a href="#demo-section" className="group relative overflow-hidden bg-[#22B3A6] text-white px-8 py-4 rounded-full font-sans font-semibold text-sm uppercase tracking-wider transition-transform hover:scale-105 active:scale-95 duration-300 shadow-xl shadow-teal-500/20">
                                 <span className="relative z-10 flex items-center gap-2">
                                     Schedule Clinical Demo
                                     <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                                 </span>
                             </a>
-                            <a href="#solution" className="text-white border border-white/30 hover:bg-white hover:text-charcoal px-8 py-4 rounded-full font-sans font-medium text-sm transition-colors duration-300 uppercase tracking-widest backdrop-blur-sm">
+                            <a href="#solution" className="text-white border border-white/30 hover:bg-white hover:text-charcoal px-8 py-4 rounded-full font-sans font-medium text-sm transition-all duration-300 active:scale-95 uppercase tracking-widest backdrop-blur-sm">
                                 See How It Works
                             </a>
                         </div>
@@ -103,7 +103,7 @@ export const Hero = () => {
                 </div>
 
                 {/* Cinematic UI Frame mock */}
-                <div className="hero-cinematic-frame hidden md:block w-[400px] bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden border-t-white/20 flex-shrink-0" style={{ perspective: 1200 }}>
+                <div className="hero-cinematic-frame hidden md:block w-[400px] bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden border-t-white/20 flex-shrink-0 hover:-translate-y-2 transition-transform duration-500" style={{ perspective: 1200 }}>
                     <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-moss/20 to-transparent opacity-50 pointer-events-none" />
 
                     <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">

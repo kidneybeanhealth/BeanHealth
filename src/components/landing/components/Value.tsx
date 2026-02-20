@@ -10,7 +10,7 @@ export const Value = () => {
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="bg-white/40 border border-moss/10 p-10 rounded-[2.5rem] flex flex-col items-center text-center hover:bg-white/60 transition-colors duration-300 shadow-sm">
+                    <div className="bg-white/40 border border-moss/10 p-10 rounded-[2.5rem] flex flex-col items-center text-center hover:bg-white/60 transition-all hover:-translate-y-2 duration-300 shadow-sm">
                         <div className="w-16 h-16 rounded-full bg-clay/10 text-clay flex items-center justify-center mb-6">
                             <Hospital size={32} />
                         </div>
@@ -23,7 +23,7 @@ export const Value = () => {
                         </ul>
                     </div>
 
-                    <div className="bg-white/40 border border-moss/10 p-10 rounded-[2.5rem] flex flex-col items-center text-center hover:bg-white/60 transition-colors duration-300 shadow-sm">
+                    <div className="bg-white/40 border border-moss/10 p-10 rounded-[2.5rem] flex flex-col items-center text-center hover:bg-white/60 transition-all hover:-translate-y-2 duration-300 shadow-sm">
                         <div className="w-16 h-16 rounded-full bg-moss/10 text-moss flex items-center justify-center mb-6">
                             <Users size={32} />
                         </div>

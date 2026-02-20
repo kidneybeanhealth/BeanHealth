@@ -9,18 +9,18 @@ export const ComponentsArtifacts = () => {
         let ctx = gsap.context(() => {
             // Extraction Pipeline Animation
             gsap.to('.extract-token', {
-                x: '120%', opacity: 1, duration: 2, stagger: 0.5, repeat: -1, ease: 'power2.inOut'
+                x: '120%', opacity: 1, duration: 1.2, stagger: 0.2, repeat: -1, ease: 'power2.inOut'
             });
             // Audit Log Scroll Animation
             gsap.to('.audit-list', {
-                y: '-50%', duration: 10, ease: 'none', repeat: -1
+                y: '-50%', duration: 6, ease: 'none', repeat: -1
             });
         }, cRef);
         return () => ctx.revert();
     }, []);
 
     return (
-        <section ref={cRef} className="py-32 px-6 bg-charcoal text-cream relative">
+        <section id="solution" ref={cRef} className="py-32 px-6 bg-charcoal text-cream relative">
             <div className="max-w-7xl mx-auto">
                 <div className="text-center max-w-3xl mx-auto mb-20">
                     <p className="font-sans text-sm font-bold uppercase tracking-[0.2em] text-clay mb-6">How we fix it</p>
@@ -34,8 +34,8 @@ export const ComponentsArtifacts = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* Artifact 1: Provenance Peek */}
-                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-colors duration-500">
-                        <h3 className="font-sans text-xl font-semibold mb-4 flex items-center gap-3">
+                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-all hover:-translate-y-2 duration-500">
+                        <h3 className="font-sans text-xl font-semibold mb-4 flex items-center gap-3 text-cream">
                             <Search className="text-clay" size={20} />
                             Clinician Intelligence Console
                         </h3>
@@ -61,8 +61,8 @@ export const ComponentsArtifacts = () => {
                     </div>
 
                     {/* Artifact 2: Extraction Pipeline */}
-                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-colors duration-500">
-                        <h3 className="font-sans text-xl font-semibold mb-4 flex items-center gap-3">
+                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-all hover:-translate-y-2 duration-500">
+                        <h3 className="font-sans text-xl font-semibold mb-4 flex items-center gap-3 text-cream">
                             <Database className="text-clay" size={20} />
                             Extraction & Provenance Engine
                         </h3>
@@ -91,8 +91,8 @@ export const ComponentsArtifacts = () => {
                     </div>
 
                     {/* Artifact 3: Audit Ledger */}
-                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-colors duration-500">
-                        <h3 className="font-sans text-xl font-semibold mb-4 flex items-center gap-3">
+                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-all hover:-translate-y-2 duration-500">
+                        <h3 className="font-sans text-xl font-semibold mb-4 flex items-center gap-3 text-cream">
                             <Clock className="text-clay" size={20} />
                             Workflow Orchestration & Audit
                         </h3>
@@ -100,7 +100,7 @@ export const ComponentsArtifacts = () => {
                             Follow-up tracking, pending labs, acknowledgement/resolve flows, full audit trail
                         </p>
 
-                        <div className="relative h-48 bg-black/40 rounded-2xl border border-white/5 p-4 overflow-hidden mask-gradient-right">
+                        <div className="relative h-48 bg-black/40 rounded-2xl border border-white/5 p-4 overflow-hidden group-hover:border-clay/30 transition-colors">
                             {/* Scrolling List */}
                             <div className="audit-list flex flex-col gap-3">
                                 {[1, 2, 3, 4, 5, 6].map(i => (

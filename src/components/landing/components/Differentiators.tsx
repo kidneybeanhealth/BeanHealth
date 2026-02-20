@@ -14,13 +14,15 @@ export const Differentiators = () => {
     return (
         <section className="py-32 px-6 bg-charcoal text-cream relative">
             <div className="max-w-6xl mx-auto">
-                <h2 className="text-center font-sans text-3xl md:text-4xl font-semibold mb-16 tracking-tight text-white">
-                    What Makes Bean<span className="text-clay font-drama italic">Health</span> Unique
+                <h2 className="text-center font-sans text-3xl md:text-4xl font-semibold mb-16 tracking-tight">
+                    <span className="text-white">What Makes </span>
+                    <span className="text-[#D4B7A1]">Bean</span><span className="text-secondary-500">Health</span>
+                    <span className="text-white"> Unique</span>
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {items.map((it, idx) => (
-                        <div key={idx} className="bg-white/5 border border-white/10 p-8 rounded-[2rem] hover:bg-white/10 transition-colors duration-300">
+                        <div key={idx} className="bg-white/5 border border-white/10 p-8 rounded-[2rem] hover:bg-white/10 transition-all hover:-translate-y-2 duration-300">
                             <div className="w-12 h-12 rounded-full border border-clay/30 bg-clay/5 flex items-center justify-center mb-6 text-clay">
                                 <it.i size={20} />
                             </div>

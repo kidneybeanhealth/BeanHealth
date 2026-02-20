@@ -21,7 +21,7 @@ export const Deployment = () => {
                         { t: 'Enterprise Licensing', d: 'HL7/FHIR ready integration pipes for direct parsing of unstructured narrative fields.', i: PackageOpen },
                         { t: 'Device Kits Add-on (Phase 2)', d: 'Add-on module for BLE physiological monitoring devices prescribed to high-risk groups.', i: Activity },
                     ].map((c, i) => (
-                        <div key={i} className="bg-white/40 p-8 rounded-[2rem] border border-moss/5 hover:border-moss/20 transition-colors shadow-sm">
+                        <div key={i} className="bg-white/40 p-8 rounded-[2rem] border border-moss/5 hover:border-moss/20 transition-all hover:-translate-y-2 duration-300 shadow-sm">
                             <div className="w-10 h-10 rounded-full border border-moss/20 bg-moss/5 flex items-center justify-center mb-4 text-moss">
                                 <c.i size={16} />
                             </div>

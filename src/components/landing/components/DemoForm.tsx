@@ -68,7 +68,7 @@ export const DemoForm = () => {
 
                         <button
                             type="submit"
-                            className="mt-6 flex items-center justify-between w-full bg-clay text-white px-8 py-5 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-clay/90 transition-colors duration-300 shadow-xl"
+                            className="mt-6 flex items-center justify-between w-full bg-clay text-white px-8 py-5 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-clay/90 transition-all active:scale-95 duration-300 shadow-xl"
                         >
                             <span>Request Clinical Demo</span>
                             <ArrowRight size={16} />

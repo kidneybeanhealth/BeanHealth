@@ -11,7 +11,8 @@ export const ProblemArtifacts = () => {
                 { y: 30, autoAlpha: 0 },
                 {
                     y: 0, autoAlpha: 1,
-                    duration: 1,
+                    duration: 0.7,
+                    ease: 'power4.out',
                     scrollTrigger: { trigger: '.problem-title', start: 'top 80%' }
                 }
             );
@@ -20,9 +21,9 @@ export const ProblemArtifacts = () => {
                 { y: 40, autoAlpha: 0 },
                 {
                     y: 0, autoAlpha: 1,
-                    stagger: 0.2,
-                    duration: 1.2,
-                    ease: 'power3.out',
+                    stagger: 0.1,
+                    duration: 0.8,
+                    ease: 'power4.out',
                     scrollTrigger: { trigger: '.problem-artifacts-container', start: 'top 75%' }
                 }
             );
@@ -31,8 +32,9 @@ export const ProblemArtifacts = () => {
                 { x: -20, autoAlpha: 0 },
                 {
                     x: 0, autoAlpha: 1,
-                    stagger: 0.15,
-                    duration: 0.8,
+                    stagger: 0.1,
+                    duration: 0.6,
+                    ease: 'power4.out',
                     scrollTrigger: { trigger: '.who-suffers-container', start: 'top 80%' }
                 }
             );
@@ -56,7 +58,7 @@ export const ProblemArtifacts = () => {
                 {/* Problem Cards */}
                 <div className="problem-artifacts-container grid grid-cols-1 md:grid-cols-3 gap-6 mb-32">
                     {/* Card 1 */}
-                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all hover:-translate-y-2 duration-300">
                         <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-8">
                             <TrendingDown size={24} />
                         </div>
@@ -67,7 +69,7 @@ export const ProblemArtifacts = () => {
                     </div>
 
                     {/* Card 2 */}
-                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all hover:-translate-y-2 duration-300">
                         <div className="w-12 h-12 rounded-2xl bg-[#FFF6EB] text-[#E08D3A] flex items-center justify-center mb-8">
                             <FileText size={24} />
                         </div>
@@ -78,7 +80,7 @@ export const ProblemArtifacts = () => {
                     </div>
 
                     {/* Card 3 */}
-                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all hover:-translate-y-2 duration-300">
                         <div className="w-12 h-12 rounded-2xl bg-[#FFF3F1] text-[#E76C53] flex items-center justify-center mb-8">
                             <AlertTriangle size={24} />
                         </div>
