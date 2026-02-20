@@ -50,12 +50,12 @@ export const Hero = () => {
             {/* Parallax Background */}
             <div
                 ref={bgRef}
-                className="absolute -top-[10%] left-0 w-full h-[120%] bg-cover bg-center opacity-40 mix-blend-luminosity"
-                style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1470115636492-6d2b56f9146d?auto=format&fit=crop&q=80)', willChange: 'transform' }}
+                className="absolute -top-[10%] left-0 w-full h-[120%] bg-cover bg-center opacity-60 object-cover"
+                style={{ backgroundImage: 'url(/gpt-image-1.5-high-fidelity_a_make_this_image_Phot.png)', willChange: 'transform' }}
             />
 
             {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-moss/60 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
 
             {/* Content Container */}
             <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-12 pt-16">
