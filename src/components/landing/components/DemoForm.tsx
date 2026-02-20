@@ -1,8 +1,62 @@
 import React, { useState } from 'react';
-import { ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight, Lock, Loader2 } from 'lucide-react';
+import emailjs from '@emailjs/browser';
+import toast, { Toaster } from 'react-hot-toast';
 
 export const DemoForm = () => {
     const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+
+        try {
+            const templateParams = {
+                from_name: formData.name,
+                from_email: formData.email,
+                name: formData.name,
+                email: formData.email,
+                message: formData.message,
+                to_name: 'BeanHealth Team',
+            };
+
+            await emailjs.send(
+                import.meta.env.VITE_EMAILJS_SERVICE_ID,
+                import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+                templateParams,
+                import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+            );
+
+            toast.success('Demo request sent! We will contact you soon.', {
+                style: {
+                    background: '#1F2937',
+                    color: '#fff',
+                    borderRadius: '1rem',
+                    border: '1px border rgba(255,255,255,0.1)'
+                },
+                iconTheme: {
+                    primary: '#22B3A6',
+                    secondary: '#fff',
+                },
+            });
+
+            setFormData({ name: '', email: '', message: '' });
+        } catch (error: any) {
+            console.error('EmailJS Error:', error);
+            const errorMsg = error?.text || error?.message || 'Failed to send request.';
+            toast.error(`Error: ${errorMsg}. Please try again or email us directly.`, {
+                duration: 5000,
+                style: {
+                    background: '#1F2937',
+                    color: '#fff',
+                    borderRadius: '1rem',
+                }
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <section id="demo-section" className="py-32 px-6 bg-charcoal text-cream relative">
@@ -26,7 +80,7 @@ export const DemoForm = () => {
                 </div>
 
                 <div className="flex-1 md:w-1/2 bg-white/5 border border-white/10 p-10 md:p-14 rounded-[3rem]">
-                    <form className="flex flex-col gap-6 font-sans">
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-6 font-sans">
                         <div className="flex flex-col gap-2">
                             <label htmlFor="name" className="text-xs font-mono uppercase tracking-widest text-cream/60">Full Name *</label>
                             <input
@@ -68,15 +122,17 @@ export const DemoForm = () => {
 
                         <button
                             type="submit"
-                            className="mt-6 flex items-center justify-between w-full bg-clay text-white px-8 py-5 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-clay/90 transition-all active:scale-95 duration-300 shadow-xl"
+                            disabled={isLoading}
+                            className="mt-6 flex items-center justify-between w-full bg-clay text-white px-8 py-5 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-clay/90 transition-all active:scale-95 duration-300 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
                         >
-                            <span>Request Clinical Demo</span>
-                            <ArrowRight size={16} />
+                            <span>{isLoading ? 'Sending Request...' : 'Request Clinical Demo'}</span>
+                            {isLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                         </button>
                     </form>
                 </div>
 
             </div>
+            <Toaster position="bottom-right" />
         </section>
     );
 };
