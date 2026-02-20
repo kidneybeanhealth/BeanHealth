@@ -51,7 +51,7 @@ export const Hero = () => {
             <div
                 ref={bgRef}
                 className="absolute -top-[10%] left-0 w-full h-[120%] bg-cover bg-center opacity-60 object-cover"
-                style={{ backgroundImage: 'url(/gpt-image-1.5-high-fidelity_a_make_this_image_Phot.png)', willChange: 'transform' }}
+                style={{ backgroundImage: 'url(/gemini-3-pro-image-preview-2k_b_make_this_image_Phot.png)', willChange: 'transform' }}
             />
 
             {/* Gradient Overlay */}
