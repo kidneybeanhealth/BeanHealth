@@ -113,7 +113,7 @@ export const FeaturesDashboard = () => {
 
                     {/* RIGHT COLUMN: Embedded Live Widget Mockup */}
                     <div className="flex-1 flex justify-center items-center">
-                        <div className="w-full max-w-lg bg-white border border-moss/5 rounded-[2.5rem] p-8 shadow-2xl relative hover:-translate-y-2 transition-transform duration-500">
+                        <div className="w-full max-w-lg bg-white border border-moss/5 rounded-[2.5rem] p-8 shadow-2xl relative hover:-translate-y-2 transition-transform duration-500" style={{ willChange: 'transform' }}>
                             {/* Decorative Top Bar */}
                             <div className="flex items-center justify-between mb-8 pb-4 border-b border-moss/10">
                                 <div className="flex items-center gap-2">
@@ -193,15 +193,15 @@ export const FeaturesDashboard = () => {
 
                 {/* BOTTOM ROW (3 pills) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12 border-t border-moss/10">
-                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm hover:-translate-y-2 transition-transform duration-300">
+                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm hover:-translate-y-2 transition-transform duration-300" style={{ willChange: 'transform' }}>
                         <Lock size={18} className="text-clay" />
                         <span className="font-sans font-medium text-moss text-sm">End-to-end encryption</span>
                     </div>
-                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm hover:-translate-y-2 transition-transform duration-300">
+                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm hover:-translate-y-2 transition-transform duration-300" style={{ willChange: 'transform' }}>
                         <FileText size={18} className="text-clay" />
                         <span className="font-sans font-medium text-moss text-sm">Complete audit trails</span>
                     </div>
-                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm hover:-translate-y-2 transition-transform duration-300">
+                    <div className="flex items-center justify-center gap-3 bg-white/40 border border-moss/10 py-5 px-6 rounded-full shadow-sm hover:-translate-y-2 transition-transform duration-300" style={{ willChange: 'transform' }}>
                         <CheckCircle2 size={18} className="text-clay" />
                         <span className="font-sans font-medium text-moss text-sm">Patient consent management</span>
                     </div>

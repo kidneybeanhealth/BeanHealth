@@ -34,7 +34,7 @@ export const ComponentsArtifacts = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* Artifact 1: Provenance Peek */}
-                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-all hover:-translate-y-2 duration-500">
+                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-all hover:-translate-y-2 duration-500" style={{ willChange: 'transform' }}>
                         <h3 className="font-sans text-xl font-semibold mb-4 flex items-center gap-3 text-cream">
                             <Search className="text-clay" size={20} />
                             Clinician Intelligence Console
@@ -61,7 +61,7 @@ export const ComponentsArtifacts = () => {
                     </div>
 
                     {/* Artifact 2: Extraction Pipeline */}
-                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-all hover:-translate-y-2 duration-500">
+                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-all hover:-translate-y-2 duration-500" style={{ willChange: 'transform' }}>
                         <h3 className="font-sans text-xl font-semibold mb-4 flex items-center gap-3 text-cream">
                             <Database className="text-clay" size={20} />
                             Extraction & Provenance Engine
@@ -75,10 +75,10 @@ export const ComponentsArtifacts = () => {
                                 <FileText size={20} className="text-cream/50" />
                             </div>
                             {/* Tokens */}
-                            <div className="absolute left-1/4 top-1/2 -translate-y-1/2 w-8 h-8 rounded bg-clay/30 border border-clay flex items-center justify-center extract-token opacity-0">
+                            <div className="absolute left-1/4 top-1/2 -translate-y-1/2 w-8 h-8 rounded bg-clay/30 border border-clay flex items-center justify-center extract-token opacity-0" style={{ willChange: 'transform, opacity' }}>
                                 <span className="text-[10px] font-mono text-clay">HbA1c</span>
                             </div>
-                            <div className="absolute left-1/4 top-[40%] w-8 h-8 rounded bg-moss/50 border border-moss flex items-center justify-center extract-token opacity-0 delay-75">
+                            <div className="absolute left-1/4 top-[40%] w-8 h-8 rounded bg-moss/50 border border-moss flex items-center justify-center extract-token opacity-0 delay-75" style={{ willChange: 'transform, opacity' }}>
                                 <span className="text-[10px] font-mono text-moss/20 text-cream">BP</span>
                             </div>
 
@@ -91,7 +91,7 @@ export const ComponentsArtifacts = () => {
                     </div>
 
                     {/* Artifact 3: Audit Ledger */}
-                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-all hover:-translate-y-2 duration-500">
+                    <div className="group relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 overflow-hidden hover:bg-white/10 transition-all hover:-translate-y-2 duration-500" style={{ willChange: 'transform' }}>
                         <h3 className="font-sans text-xl font-semibold mb-4 flex items-center gap-3 text-cream">
                             <Clock className="text-clay" size={20} />
                             Workflow Orchestration & Audit
@@ -102,7 +102,7 @@ export const ComponentsArtifacts = () => {
 
                         <div className="relative h-48 bg-black/40 rounded-2xl border border-white/5 p-4 overflow-hidden group-hover:border-clay/30 transition-colors">
                             {/* Scrolling List */}
-                            <div className="audit-list flex flex-col gap-3">
+                            <div className="audit-list flex flex-col gap-3" style={{ willChange: 'transform' }}>
                                 {[1, 2, 3, 4, 5, 6].map(i => (
                                     <div key={i} className="flex gap-3 items-start border-b border-white/5 pb-2">
                                         <div className="w-1.5 h-1.5 rounded-full bg-clay mt-1.5 shrink-0" />

@@ -65,7 +65,7 @@ export const HowItWorks = () => {
 
                 {/* Sticky Stacking Archive */}
                 {groupedSteps.map((group, groupIdx) => (
-                    <div key={groupIdx} className="sticky-card sticky top-32 w-full min-h-[50vh] bg-cream text-charcoal rounded-[3rem] p-10 md:p-16 mb-24 last:mb-0 shadow-2xl border border-moss/10">
+                    <div key={groupIdx} className="sticky-card sticky top-32 w-full min-h-[50vh] bg-cream text-charcoal rounded-[3rem] p-10 md:p-16 mb-24 last:mb-0 shadow-2xl border border-moss/10" style={{ willChange: 'transform, opacity, filter' }}>
                         <div className="flex items-center gap-4 mb-12 border-b border-moss/10 pb-6">
                             <span className="font-mono text-sm text-moss/50 uppercase tracking-widest">Phase 0{groupIdx + 1}</span>
                         </div>

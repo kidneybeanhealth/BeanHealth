@@ -45,7 +45,7 @@ export const ProblemArtifacts = () => {
     return (
         <section id="problem" ref={sectionRef} className="py-32 px-6 bg-cream text-charcoal relative overflow-hidden">
             <div className="max-w-7xl mx-auto">
-                <div className="text-center max-w-4xl mx-auto mb-20 problem-title">
+                <div className="text-center max-w-4xl mx-auto mb-20 problem-title" style={{ willChange: 'transform, opacity' }}>
                     <h2 className="font-sans text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight leading-[1.1] mb-8 text-moss">
                         Clinician workflow is broken — <br className="hidden md:block" />
                         <span className="font-drama italic font-normal text-clay">not clinical knowledge.</span>
@@ -58,7 +58,7 @@ export const ProblemArtifacts = () => {
                 {/* Problem Cards */}
                 <div className="problem-artifacts-container grid grid-cols-1 md:grid-cols-3 gap-6 mb-32">
                     {/* Card 1 */}
-                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all hover:-translate-y-2 duration-300">
+                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all hover:-translate-y-2 duration-300" style={{ willChange: 'transform, opacity' }}>
                         <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-8">
                             <TrendingDown size={24} />
                         </div>
@@ -69,7 +69,7 @@ export const ProblemArtifacts = () => {
                     </div>
 
                     {/* Card 2 */}
-                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all hover:-translate-y-2 duration-300">
+                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all hover:-translate-y-2 duration-300" style={{ willChange: 'transform, opacity' }}>
                         <div className="w-12 h-12 rounded-2xl bg-[#FFF6EB] text-[#E08D3A] flex items-center justify-center mb-8">
                             <FileText size={24} />
                         </div>
@@ -80,7 +80,7 @@ export const ProblemArtifacts = () => {
                     </div>
 
                     {/* Card 3 */}
-                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all hover:-translate-y-2 duration-300">
+                    <div className="problem-artifact bg-white border border-moss/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all hover:-translate-y-2 duration-300" style={{ willChange: 'transform, opacity' }}>
                         <div className="w-12 h-12 rounded-2xl bg-[#FFF3F1] text-[#E76C53] flex items-center justify-center mb-8">
                             <AlertTriangle size={24} />
                         </div>
@@ -96,7 +96,7 @@ export const ProblemArtifacts = () => {
                     <p className="font-sans text-sm font-bold uppercase tracking-[0.2em] text-moss/50 mb-12 text-center">WHO SUFFERS?</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
                         {/* Patient */}
-                        <div className="who-suffers-card border-b md:border-b-0 md:border-r border-moss/10 p-8 flex flex-col gap-4">
+                        <div className="who-suffers-card border-b md:border-b-0 md:border-r border-moss/10 p-8 flex flex-col gap-4" style={{ willChange: 'transform, opacity' }}>
                             <div className="flex items-center gap-4">
                                 <User size={24} className="text-moss/40" />
                                 <h4 className="text-xl font-sans font-semibold text-moss">Patient</h4>
@@ -105,7 +105,7 @@ export const ProblemArtifacts = () => {
                         </div>
 
                         {/* Nephrologist */}
-                        <div className="who-suffers-card border-b md:border-b-0 md:border-r border-moss/10 p-8 flex flex-col gap-4">
+                        <div className="who-suffers-card border-b md:border-b-0 md:border-r border-moss/10 p-8 flex flex-col gap-4" style={{ willChange: 'transform, opacity' }}>
                             <div className="flex items-center gap-4">
                                 <Stethoscope size={24} className="text-moss/40" />
                                 <h4 className="text-xl font-sans font-semibold text-moss">Nephrologist</h4>
@@ -114,7 +114,7 @@ export const ProblemArtifacts = () => {
                         </div>
 
                         {/* Hospital */}
-                        <div className="who-suffers-card p-8 flex flex-col gap-4">
+                        <div className="who-suffers-card p-8 flex flex-col gap-4" style={{ willChange: 'transform, opacity' }}>
                             <div className="flex items-center gap-4">
                                 <Building2 size={24} className="text-moss/40" />
                                 <h4 className="text-xl font-sans font-semibold text-moss">Hospital</h4>

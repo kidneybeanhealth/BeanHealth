@@ -51,7 +51,7 @@ export const Hero = () => {
             <div
                 ref={bgRef}
                 className="absolute -top-[10%] left-0 w-full h-[120%] bg-cover bg-center opacity-40 mix-blend-luminosity"
-                style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1470115636492-6d2b56f9146d?auto=format&fit=crop&q=80)' }}
+                style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1470115636492-6d2b56f9146d?auto=format&fit=crop&q=80)', willChange: 'transform' }}
             />
 
             {/* Gradient Overlay */}
@@ -60,15 +60,15 @@ export const Hero = () => {
             {/* Content Container */}
             <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-12 pt-16">
                 <div className="flex-1 flex flex-col gap-6 max-w-3xl">
-                    <h1 className="hero-reveal font-sans text-5xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight font-light text-cream">
+                    <h1 className="hero-reveal font-sans text-5xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight font-light text-cream" style={{ willChange: 'transform, opacity' }}>
                         Turn CKD follow-up chaos into a <span className="font-drama italic text-clay font-medium block">single clinical snapshot</span>
                     </h1>
 
-                    <p className="hero-reveal text-lg md:text-xl text-cream/70 font-sans leading-relaxed max-w-2xl">
+                    <p className="hero-reveal text-lg md:text-xl text-cream/70 font-sans leading-relaxed max-w-2xl" style={{ willChange: 'transform, opacity' }}>
                         BeanHealth compresses fragmented patient data — labs, discharge summaries, vitals, medications — into a clinician-ready decision snapshot for faster, safer CKD care.
                     </p>
 
-                    <div className="hero-reveal flex flex-wrap items-center gap-3">
+                    <div className="hero-reveal flex flex-wrap items-center gap-3" style={{ willChange: 'transform, opacity' }}>
                         <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-2 text-sm text-cream font-mono tracking-wide">
                             <Activity size={16} className="text-clay" />
                             <span>Reduce clinical overload</span>
@@ -79,7 +79,7 @@ export const Hero = () => {
                         </div>
                     </div>
 
-                    <div className="hero-reveal mt-2 flex items-start gap-3 bg-moss/20 border border-moss/50 backdrop-blur-md p-4 rounded-3xl max-w-xl">
+                    <div className="hero-reveal mt-2 flex items-start gap-3 bg-moss/20 border border-moss/50 backdrop-blur-md p-4 rounded-3xl max-w-xl" style={{ willChange: 'transform, opacity' }}>
                         <BadgeInfo className="text-cream/50 !w-5 !h-5 shrink-0 mt-0.5" />
                         <p className="text-xs text-cream/70 font-mono tracking-wider leading-relaxed">
                             <em className="text-cream text-[11px] uppercase tracking-widest block mb-1">Disclaimer</em>
@@ -87,7 +87,7 @@ export const Hero = () => {
                         </p>
                     </div>
 
-                    <div className="hero-reveal mt-6">
+                    <div className="hero-reveal mt-6" style={{ willChange: 'transform, opacity' }}>
                         <div className="flex flex-wrap items-center gap-4">
                             <a href="#demo-section" className="group relative overflow-hidden bg-[#22B3A6] text-white px-8 py-4 rounded-full font-sans font-semibold text-sm uppercase tracking-wider transition-transform hover:scale-105 active:scale-95 duration-300 shadow-xl shadow-teal-500/20">
                                 <span className="relative z-10 flex items-center gap-2">
@@ -103,7 +103,7 @@ export const Hero = () => {
                 </div>
 
                 {/* Cinematic UI Frame mock */}
-                <div className="hero-cinematic-frame hidden md:block w-[400px] bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden border-t-white/20 flex-shrink-0 hover:-translate-y-2 transition-transform duration-500" style={{ perspective: 1200 }}>
+                <div className="hero-cinematic-frame hidden md:block w-[400px] bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden border-t-white/20 flex-shrink-0 hover:-translate-y-2 transition-transform duration-500" style={{ perspective: 1200, willChange: 'transform, opacity' }}>
                     <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-moss/20 to-transparent opacity-50 pointer-events-none" />
 
                     <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
