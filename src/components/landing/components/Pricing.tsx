@@ -49,7 +49,7 @@ export const Pricing = () => {
                             <li className="flex items-start gap-3"><Check size={16} className="text-clay shrink-0 mt-0.5" /> Branded Printouts</li>
                             <li className="flex items-start gap-3"><Check size={16} className="text-clay shrink-0 mt-0.5" /> Support</li>
                         </ul>
-                        <button className="w-full py-4 mt-8 rounded-full border border-moss/20 font-bold uppercase tracking-widest text-xs hover:bg-moss/5 transition-all active:scale-95 duration-300 text-moss">Get Started</button>
+                        <a href="#demo-section" className="w-full py-4 mt-8 rounded-full border border-moss/20 font-bold uppercase tracking-widest text-xs hover:bg-moss/5 transition-all active:scale-95 duration-300 text-moss flex items-center justify-center">Get Started</a>
                     </div>
 
                     {/* Plan 2: Most Popular */}
@@ -67,7 +67,7 @@ export const Pricing = () => {
                             <li className="flex items-start gap-3"><Check size={16} className="text-clay shrink-0 mt-0.5" /> Patient App</li>
                             <li className="flex items-start gap-3"><Check size={16} className="text-clay shrink-0 mt-0.5" /> Follow-up Alerts</li>
                         </ul>
-                        <button className="w-full py-4 mt-8 rounded-full bg-clay text-white font-bold uppercase tracking-widest text-xs hover:bg-clay/90 transition-all active:scale-95 duration-300 shadow-xl border border-clay">Get Started</button>
+                        <a href="#demo-section" className="w-full py-4 mt-8 rounded-full bg-clay text-white font-bold uppercase tracking-widest text-xs hover:bg-clay/90 transition-all active:scale-95 duration-300 shadow-xl border border-clay flex items-center justify-center">Get Started</a>
                     </div>
 
                     {/* Plan 3 */}
@@ -80,7 +80,7 @@ export const Pricing = () => {
                         <p className="text-sm text-charcoal/70 mb-auto leading-relaxed">
                             For those with existing EMR. Seamless integration of our CKD Snapshot engine into your current workflow.
                         </p>
-                        <button className="w-full py-4 mt-8 rounded-full border border-moss/20 font-bold uppercase tracking-widest text-xs hover:bg-moss/5 transition-all active:scale-95 duration-300 text-moss">Contact Sales</button>
+                        <a href="#demo-section" className="w-full py-4 mt-8 rounded-full border border-moss/20 font-bold uppercase tracking-widest text-xs hover:bg-moss/5 transition-all active:scale-95 duration-300 text-moss flex items-center justify-center">Contact Sales</a>
                     </div>
                 </div>
 
