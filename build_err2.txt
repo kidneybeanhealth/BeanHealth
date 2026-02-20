@@ -1,0 +1,69 @@
+
+> beanhealth-backend@1.0.0 build
+> vite build
+
+vite v7.3.0 building client environment for production...
+transforming...
+
+warn - The class `ease-[cubic-bezier(0.19,1,0.22,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.19,1,0.22,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.25,1,0.5,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.25,1,0.5,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.4,0,0.2,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.4,0,0.2,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.19,1,0.22,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.19,1,0.22,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.25,1,0.5,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.25,1,0.5,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.4,0,0.2,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.4,0,0.2,1)&rsqb;` to silence this warning.
+✓ 2237 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /Users/jnanismart/Downloads/BeanHealth-main/src/components/modals/TermsAndConditionsModal.tsx is dynamically imported by /Users/jnanismart/Downloads/BeanHealth-main/src/routes/index.tsx but also statically imported by /Users/jnanismart/Downloads/BeanHealth-main/src/components/auth/Auth.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/registerSW.js                                  0.13 kB
+dist/manifest.webmanifest                           0.43 kB
+dist/index.html                                     1.91 kB │ gzip:   0.88 kB
+dist/assets/index-BFnkolRR.css                    216.23 kB │ gzip:  31.04 kB
+dist/assets/UserGroupIcon-BgRKxmgB.js               0.47 kB │ gzip:   0.32 kB
+dist/assets/web-BObcdl9g.js                         0.48 kB │ gzip:   0.31 kB
+dist/assets/web-CmSYvhus.js                         0.86 kB │ gzip:   0.41 kB
+dist/assets/web-awZdT6kb.js                         1.35 kB │ gzip:   0.64 kB
+dist/assets/customLabTypesService-CUeFiiJ1.js       5.70 kB │ gzip:   1.42 kB
+dist/assets/OnboardingFlow-Dq7ECnfC.js             12.13 kB │ gzip:   3.39 kB
+dist/assets/labResultsService-AzsCh0Y_.js          13.45 kB │ gzip:   5.12 kB
+dist/assets/vendor-ui-B-3hjFIT.js                  20.01 kB │ gzip:   7.80 kB
+dist/assets/purify.es-Bzr520pe.js                  22.45 kB │ gzip:   8.59 kB
+dist/assets/NephrologistSnapshot-NkYdoUIX.js       29.83 kB │ gzip:   8.11 kB
+dist/assets/visitHistoryService-BtMl4f-s.js        30.51 kB │ gzip:   8.08 kB
+dist/assets/vendor-react-Di_1bMO6.js               46.97 kB │ gzip:  16.63 kB
+dist/assets/DoctorDashboardMain-BAd5C_6-.js        73.49 kB │ gzip:  15.77 kB
+dist/assets/VisitCard-BKg1Iuc7.js                  80.90 kB │ gzip:  17.82 kB
+dist/assets/AdminDashboardMain-DA1sv_Qb.js        110.88 kB │ gzip:  22.31 kB
+dist/assets/index.es-D4-zVm4-.js                  158.82 kB │ gzip:  52.92 kB
+dist/assets/vendor-supabase-tK7YCfLr.js           169.37 kB │ gzip:  44.16 kB
+dist/assets/html2canvas.esm-DXEQVQnt.js           201.04 kB │ gzip:  47.07 kB
+dist/assets/PatientDashboard-C8tR28JC.js          217.25 kB │ gzip:  51.18 kB
+dist/assets/index-BA5955J-.js                     314.50 kB │ gzip:  72.67 kB
+dist/assets/index-PSyb319i.js                     491.49 kB │ gzip: 151.24 kB
+dist/assets/patientInvitationService-CWm4ZOcO.js  552.77 kB │ gzip: 167.39 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 6.63s
+
+PWA v1.2.0
+mode      generateSW
+precache  34 entries (7613.25 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-b51dd497.js

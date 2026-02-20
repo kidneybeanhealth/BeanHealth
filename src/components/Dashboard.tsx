@@ -41,7 +41,7 @@ const VitalCard: React.FC<{
 }> = ({ icon, label, value, unit, trend, onSave, lastUpdatedFromRecord, isBloodPressure = false, colorClass = "text-gray-900" }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
-  
+
   // Initialize blood pressure values from the value prop
   const bpParts = value.split('/');
   const [systolic, setSystolic] = useState(bpParts[0] || '120');

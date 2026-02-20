@@ -83,20 +83,29 @@ module.exports = {
           '5': 'hsl(var(--chart-5))'
         },
         // Accent colors for the app
-        bean: {
-          DEFAULT: '#3A2524',
-          light: '#5a3d34',
-          dark: '#2a1b16',
+        moss: {
+          DEFAULT: '#2E4036',
+          light: '#3e5648',
+          dark: '#1d2a23',
         },
-        stem: {
-          DEFAULT: '#8AC43C',
-          light: '#a5d862',
-          dark: '#6ea530',
+        clay: {
+          DEFAULT: '#CC5833',
+          light: '#d66e4e',
+          dark: '#a84728',
+        },
+        cream: {
+          DEFAULT: '#F2F0E9',
+          dark: '#dcd8cb',
+        },
+        charcoal: {
+          DEFAULT: '#1A1A1A',
+          light: '#333333',
         },
       },
       fontFamily: {
-        sans: ['Nunito', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-        display: ['Inter', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Outfit', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        display: ['Outfit', 'sans-serif'],
+        drama: ['Cormorant Garamond', 'serif'],
       },
       fontSize: {
         'xs': ['0.75rem', { lineHeight: '1rem' }],

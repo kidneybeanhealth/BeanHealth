@@ -1,0 +1,118 @@
+
+> beanhealth-backend@1.0.0 build
+> vite build
+
+vite v7.3.0 building client environment for production...
+transforming...
+
+warn - The class `ease-[cubic-bezier(0.19,1,0.22,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.19,1,0.22,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.25,1,0.5,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.25,1,0.5,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.4,0,0.2,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.4,0,0.2,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.19,1,0.22,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.19,1,0.22,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.25,1,0.5,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.25,1,0.5,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.4,0,0.2,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.4,0,0.2,1)&rsqb;` to silence this warning.
+✓ 176 modules transformed.
+✗ Build failed in 2.59s
+error during build:
+[vite-plugin-pwa:build] [plugin vite-plugin-pwa:build] src/components/landing/components/FeaturesDashboard.tsx (129:56): There was an error during the build:
+  Transform failed with 8 errors:
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:129:56: ERROR: The character ">" is not valid inside a JSX element
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:129:57: ERROR: The character ">" is not valid inside a JSX element
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:130:56: ERROR: The character ">" is not valid inside a JSX element
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:130:57: ERROR: The character ">" is not valid inside a JSX element
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:131:56: ERROR: The character ">" is not valid inside a JSX element
+...
+Additionally, handling the error in the 'buildEnd' hook caused the following error:
+  Transform failed with 8 errors:
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:129:56: ERROR: The character ">" is not valid inside a JSX element
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:129:57: ERROR: The character ">" is not valid inside a JSX element
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:130:56: ERROR: The character ">" is not valid inside a JSX element
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:130:57: ERROR: The character ">" is not valid inside a JSX element
+/Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:131:56: ERROR: The character ">" is not valid inside a JSX element
+...
+file: /Users/jnanismart/Downloads/BeanHealth-main/src/components/landing/components/FeaturesDashboard.tsx:129:56
+
+The character ">" is not valid inside a JSX element
+127 |                                  <span className="text-clay tracking-widest uppercase">Live Feed</span>
+128 |                              </div>
+129 |                              <div className="opacity-40">>> PREP: Patient JM-04 pending labs</div>
+    |                                                          ^
+130 |                              <div className="opacity-60">>> EXPORT: Generating monthly compliance</div>
+131 |                              <div className="opacity-80">>> ALERT: Call scheduled for elevated K+</div>
+
+The character ">" is not valid inside a JSX element
+127 |                                  <span className="text-clay tracking-widest uppercase">Live Feed</span>
+128 |                              </div>
+129 |                              <div className="opacity-40">>> PREP: Patient JM-04 pending labs</div>
+    |                                                           ^
+130 |                              <div className="opacity-60">>> EXPORT: Generating monthly compliance</div>
+131 |                              <div className="opacity-80">>> ALERT: Call scheduled for elevated K+</div>
+
+The character ">" is not valid inside a JSX element
+128 |                              </div>
+129 |                              <div className="opacity-40">>> PREP: Patient JM-04 pending labs</div>
+130 |                              <div className="opacity-60">>> EXPORT: Generating monthly compliance</div>
+    |                                                          ^
+131 |                              <div className="opacity-80">>> ALERT: Call scheduled for elevated K+</div>
+132 |                              <div>>> WAIT... <span className="animate-pulse">_</span></div>
+
+The character ">" is not valid inside a JSX element
+128 |                              </div>
+129 |                              <div className="opacity-40">>> PREP: Patient JM-04 pending labs</div>
+130 |                              <div className="opacity-60">>> EXPORT: Generating monthly compliance</div>
+    |                                                           ^
+131 |                              <div className="opacity-80">>> ALERT: Call scheduled for elevated K+</div>
+132 |                              <div>>> WAIT... <span className="animate-pulse">_</span></div>
+
+The character ">" is not valid inside a JSX element
+129 |                              <div className="opacity-40">>> PREP: Patient JM-04 pending labs</div>
+130 |                              <div className="opacity-60">>> EXPORT: Generating monthly compliance</div>
+131 |                              <div className="opacity-80">>> ALERT: Call scheduled for elevated K+</div>
+    |                                                          ^
+132 |                              <div>>> WAIT... <span className="animate-pulse">_</span></div>
+133 |                          </div>
+
+The character ">" is not valid inside a JSX element
+129 |                              <div className="opacity-40">>> PREP: Patient JM-04 pending labs</div>
+130 |                              <div className="opacity-60">>> EXPORT: Generating monthly compliance</div>
+131 |                              <div className="opacity-80">>> ALERT: Call scheduled for elevated K+</div>
+    |                                                           ^
+132 |                              <div>>> WAIT... <span className="animate-pulse">_</span></div>
+133 |                          </div>
+
+The character ">" is not valid inside a JSX element
+130 |                              <div className="opacity-60">>> EXPORT: Generating monthly compliance</div>
+131 |                              <div className="opacity-80">>> ALERT: Call scheduled for elevated K+</div>
+132 |                              <div>>> WAIT... <span className="animate-pulse">_</span></div>
+    |                                   ^
+133 |                          </div>
+134 |                      </div>
+
+The character ">" is not valid inside a JSX element
+130 |                              <div className="opacity-60">>> EXPORT: Generating monthly compliance</div>
+131 |                              <div className="opacity-80">>> ALERT: Call scheduled for elevated K+</div>
+132 |                              <div>>> WAIT... <span className="animate-pulse">_</span></div>
+    |                                    ^
+133 |                          </div>
+134 |                      </div>
+
+    at getRollupError (file:///Users/jnanismart/Downloads/BeanHealth-main/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at file:///Users/jnanismart/Downloads/BeanHealth-main/node_modules/rollup/dist/es/shared/node-entry.js:23418:39
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async catchUnfinishedHookActions (file:///Users/jnanismart/Downloads/BeanHealth-main/node_modules/rollup/dist/es/shared/node-entry.js:22876:16)
+    at async rollupInternal (file:///Users/jnanismart/Downloads/BeanHealth-main/node_modules/rollup/dist/es/shared/node-entry.js:23401:5)
+    at async buildEnvironment (file:///Users/jnanismart/Downloads/BeanHealth-main/node_modules/vite/dist/node/chunks/config.js:33540:12)
+    at async Object.build (file:///Users/jnanismart/Downloads/BeanHealth-main/node_modules/vite/dist/node/chunks/config.js:33899:19)
+    at async Object.buildApp (file:///Users/jnanismart/Downloads/BeanHealth-main/node_modules/vite/dist/node/chunks/config.js:33896:153)
+    at async CAC.<anonymous> (file:///Users/jnanismart/Downloads/BeanHealth-main/node_modules/vite/dist/node/cli.js:629:3)
