@@ -789,7 +789,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         <div className="flex-1 overflow-y-auto p-2 bg-gray-100" ref={containerRef}>
           <div
             ref={componentRef}
-            className="print-content bg-white shadow-sm p-4 max-w-[210mm] text-black w-full origin-top-left"
+            className="print-content bg-white shadow-sm p-4 max-w-[210mm] text-black w-full origin-top-left font-tahoma"
             style={{
               fontFamily: '"Times New Roman", Times, serif',
               minWidth: '210mm',
@@ -888,7 +888,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                 return (
                   <div
                     key={pageIndex}
-                    className="flex flex-col relative bg-white"
+                    className="flex flex-col relative bg-white font-tahoma"
                     style={{
                       pageBreakAfter: pageIndex < chunks.length - 1 ? 'always' : 'auto',
                       minHeight: '260mm',

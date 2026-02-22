@@ -442,7 +442,7 @@ const PrescriptionPage: React.FC = () => {
                             const isFirstPage = pageIndex === 0;
                             const isLastPage = pageIndex === chunks.length - 1;
                             return (
-                                <div key={pageIndex} className="flex flex-col relative bg-white" style={{ pageBreakAfter: pageIndex < chunks.length - 1 ? 'always' : 'auto', minHeight: '260mm', display: 'flex', flexDirection: 'column' }}>
+                                <div key={pageIndex} className="flex flex-col relative bg-white font-tahoma" style={{ pageBreakAfter: pageIndex < chunks.length - 1 ? 'always' : 'auto', minHeight: '260mm', display: 'flex', flexDirection: 'column' }}>
                                     {isFirstPage && (
                                         <div className="flex items-center justify-between border-b-2 border-black pb-1 mb-1">
                                             <div className="w-16 h-16 relative"><img src={hospitalLogo || "/logo.png"} alt="Clinic Logo" className="w-[70px] h-[70px] object-contain absolute -top-1 left-0" /></div>

@@ -431,6 +431,11 @@ a:hover {
   .focus-ring-inset {
     @apply focus:outline-none focus:ring-2 focus:ring-inset focus:ring-secondary-700;
   }
+
+  /* Prescription-specific Tahoma Font */
+  .font-tahoma {
+    font-family: Tahoma, Verdana, Segoe UI, sans-serif !important;
+  }
 }
 
 /* Component Styles - Minimalist Design */

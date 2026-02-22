@@ -13,6 +13,7 @@ import Messages from "./Messages";
 import WhatsAppChatWindow from "./WhatsAppChatWindow";
 import Billing from "./Billing";
 import DoctorsPage from "./DoctorsPage";
+import NutritionDashboard from "./NutritionDashboard";
 import ExtractedMedicationsModal from "./ExtractedMedicationsModal";
 import { View, Patient, Vitals, Medication, MedicalRecord, User, Doctor, ChatMessage, ExtractedMedication } from "../types";
 import { MedicalRecordsService } from "../services/medicalRecordsService";
@@ -42,6 +43,7 @@ const PatientDashboard: React.FC = () => {
             case "messages": return "Messages";
             case "billing": return "Billing & Plan";
             case "doctors": return "My Doctors";
+            case "nutrition": return "Nutrition Tracker";
             default: return "Patient Portal";
         }
     };
@@ -777,6 +779,10 @@ const PatientDashboard: React.FC = () => {
                             }
                         }}
                     />
+                );
+            case "nutrition":
+                return (
+                    <NutritionDashboard />
                 );
             default:
                 return (

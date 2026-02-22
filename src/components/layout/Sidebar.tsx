@@ -1,5 +1,6 @@
 import React from 'react';
 import { View } from '../../types';
+import { NutritionIcon } from '../icons/NutritionIcon';
 import { DashboardIcon } from '../icons/DashboardIcon';
 import { RecordsIcon } from '../icons/RecordsIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -32,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { view: 'upload', label: 'Upload', icon: <UploadIcon /> },
     { view: 'doctors', label: 'Doctors', icon: <DoctorIcon /> },
     { view: 'messages', label: 'Messages', icon: <MessagesIcon /> },
+    { view: 'nutrition', label: 'Nutrition', icon: <NutritionIcon /> },
     { view: 'billing', label: 'Billing', icon: <BillingIcon /> },
   ];
 

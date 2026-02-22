@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'records' | 'upload' | 'messages' | 'billing' | 'doctors';
+export type View = 'dashboard' | 'records' | 'upload' | 'messages' | 'billing' | 'doctors' | 'nutrition';
 
 export type UserRole = 'patient' | 'doctor' | 'admin' | 'enterprise';
 
@@ -400,4 +400,33 @@ export interface CaseDetails {
   created_at?: string; // Database field
   updatedAt?: string;
   updated_at?: string; // Database field
+}
+
+export interface PatientMeal {
+  id: string;
+  patientId: string;
+  patient_id?: string;
+  mealType: 'breakfast' | 'lunch' | 'snack' | 'dinner';
+  meal_type?: 'breakfast' | 'lunch' | 'snack' | 'dinner';
+  foodName: string;
+  food_name?: string;
+  calories: number;
+  proteinG: number;
+  protein_g?: number;
+  fatG: number;
+  fat_g?: number;
+  carbG: number;
+  carb_g?: number;
+  quantity: number;
+  measure: string;
+  sodiumMg: number;
+  sodium_mg?: number;
+  potassiumMg: number;
+  potassium_mg?: number;
+  phosphorusMg: number;
+  phosphorus_mg?: number;
+  recordedAt: string;
+  recorded_at?: string;
+  createdAt: string;
+  created_at?: string;
 }
