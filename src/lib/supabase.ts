@@ -75,29 +75,72 @@ export function getSupabaseClient(): SupabaseClient<Database> {
         headers: {
           'x-client-info': 'beanhealth-app'
         },
-        // Add fetch wrapper to handle timeouts globally
-        // FIX: Compose signals instead of overwriting Supabase's internal signal
-        fetch: (url, options = {}) => {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort('Request timeout after 30s'), 30000); // 30s timeout
-
-          // If the caller (Supabase internals) already provided a signal, 
-          // forward its abort to our controller so both work correctly
+        // Fetch wrapper with retry logic for ISP resilience (Jio network fix)
+        // Uses 3 attempts × 10s timeout each instead of single 30s timeout.
+        // On throttled networks, the first attempt primes DNS/routing and retries succeed.
+        fetch: async (url, options = {}) => {
+          const MAX_RETRIES = 3;
+          const TIMEOUT_MS = 10000; // 10s per attempt
           const existingSignal = (options as any).signal as AbortSignal | undefined;
-          if (existingSignal) {
-            if (existingSignal.aborted) {
-              controller.abort(existingSignal.reason);
-            } else {
-              existingSignal.addEventListener('abort', () => {
-                controller.abort(existingSignal.reason);
-              }, { once: true });
+          let lastError: any;
+
+          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            // Check if the caller already aborted before we start
+            if (existingSignal?.aborted) {
+              throw new DOMException(
+                existingSignal.reason || 'Request aborted by caller',
+                'AbortError'
+              );
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(
+              () => controller.abort(`Request timeout after ${TIMEOUT_MS / 1000}s (attempt ${attempt}/${MAX_RETRIES})`),
+              TIMEOUT_MS
+            );
+
+            // Forward caller's abort signal to our controller
+            const onCallerAbort = () => controller.abort(existingSignal?.reason);
+            if (existingSignal) {
+              existingSignal.addEventListener('abort', onCallerAbort, { once: true });
+            }
+
+            try {
+              const response = await fetch(url, {
+                ...options,
+                signal: controller.signal,
+              });
+              clearTimeout(timeoutId);
+              if (existingSignal) existingSignal.removeEventListener('abort', onCallerAbort);
+              return response;
+            } catch (error: any) {
+              clearTimeout(timeoutId);
+              if (existingSignal) existingSignal.removeEventListener('abort', onCallerAbort);
+              lastError = error;
+
+              // If the caller explicitly aborted, don't retry
+              if (existingSignal?.aborted) {
+                throw error;
+              }
+
+              // If this was a timeout (our abort), retry with backoff
+              if (error.name === 'AbortError' && attempt < MAX_RETRIES) {
+                const backoffMs = 1000 * attempt; // 1s, 2s
+                console.warn(
+                  `[Supabase] Request timeout (attempt ${attempt}/${MAX_RETRIES}), retrying in ${backoffMs}ms...`,
+                  typeof url === 'string' ? url.replace(/https:\/\/[^/]+/, '***') : ''
+                );
+                await new Promise(resolve => setTimeout(resolve, backoffMs));
+                continue;
+              }
+
+              // Non-timeout error or final attempt — throw
+              throw error;
             }
           }
 
-          return fetch(url, {
-            ...options,
-            signal: controller.signal,
-          }).finally(() => clearTimeout(timeoutId));
+          // Should not reach here, but safety net
+          throw lastError;
         }
       },
       db: {

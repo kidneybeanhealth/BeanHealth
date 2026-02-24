@@ -152,10 +152,12 @@ const EnterpriseLogin: React.FC<EnterpriseLoginProps> = ({ onSwitchToChooser }) 
 
         } catch (error: any) {
             console.error('Enterprise login error:', error);
-            // FIX: Handle abort errors (timeout/signal conflicts) with user-friendly message
+            // Handle timeout/network errors with ISP-aware message
             let message = 'Failed to sign in';
-            if (error.name === 'AbortError' || error.message?.includes('abort')) {
-                message = 'Login request timed out. Please check your connection and try again.';
+            if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('abort')) {
+                message = 'Connection timed out. Your network may be slow — please try again, or switch to a different network.';
+            } else if (error.message?.includes('AuthRetryableFetchError') || error.message?.includes('fetch')) {
+                message = 'Network error. Please check your connection and try again.';
             } else if (error.message) {
                 message = error.message;
             }
