@@ -1,0 +1,47 @@
+-- Recreate Reception Tables to fix FK constraint issues
+-- This will wipe existing patients/queue data, which is acceptable for 'Walk-In' testing.
+
+-- 1. Drop existing tables (Order matters due to dependencies)
+DROP TABLE IF EXISTS public.hospital_queues CASCADE;
+DROP TABLE IF EXISTS public.hospital_patients CASCADE;
+
+-- 2. Recreate Hospital Patients
+CREATE TABLE public.hospital_patients (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    hospital_id UUID NOT NULL, -- We define FK below
+    name TEXT NOT NULL,
+    age INTEGER,
+    token_number TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    CONSTRAINT hospital_patients_hospital_id_fkey FOREIGN KEY (hospital_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
+
+-- 3. Recreate Hospital Queues
+CREATE TABLE public.hospital_queues (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    hospital_id UUID NOT NULL,
+    patient_id UUID NOT NULL,
+    doctor_id UUID,
+    queue_number INTEGER NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    CONSTRAINT hospital_queues_hospital_id_fkey FOREIGN KEY (hospital_id) REFERENCES public.users(id) ON DELETE CASCADE,
+    CONSTRAINT hospital_queues_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.hospital_patients(id) ON DELETE CASCADE,
+    CONSTRAINT hospital_queues_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.hospital_doctors(id) ON DELETE SET NULL
+);
+
+-- 4. Re-enable RLS
+ALTER TABLE public.hospital_patients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hospital_queues ENABLE ROW LEVEL SECURITY;
+
+-- 5. Re-apply Policies (WITH CHECK included)
+CREATE POLICY "Hospitals view/manage own patients" 
+ON public.hospital_patients FOR ALL 
+USING (auth.uid() = hospital_id)
+WITH CHECK (auth.uid() = hospital_id);
+
+CREATE POLICY "Hospitals view/manage own queues" 
+ON public.hospital_queues FOR ALL 
+USING (auth.uid() = hospital_id)
+WITH CHECK (auth.uid() = hospital_id);
