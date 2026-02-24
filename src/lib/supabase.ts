@@ -94,10 +94,8 @@ export function getSupabaseClient(): SupabaseClient<Database> {
             }
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(
-              () => controller.abort(`Request timeout after ${TIMEOUT_MS / 1000}s (attempt ${attempt}/${MAX_RETRIES})`),
-              TIMEOUT_MS
-            );
+            // IMPORTANT: abort() without a string reason so fetch throws a proper DOMException
+            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
             // Forward caller's abort signal to our controller
             const onCallerAbort = () => controller.abort(existingSignal?.reason);
@@ -123,8 +121,11 @@ export function getSupabaseClient(): SupabaseClient<Database> {
                 throw error;
               }
 
-              // If this was a timeout (our abort), retry with backoff
-              if (error.name === 'AbortError' && attempt < MAX_RETRIES) {
+              // Detect if this was OUR timeout (not a network error or caller abort)
+              // Use controller.signal.aborted as the reliable check — works across all browsers
+              const isOurTimeout = controller.signal.aborted;
+
+              if (isOurTimeout && attempt < MAX_RETRIES) {
                 const backoffMs = 1000 * attempt; // 1s, 2s
                 console.warn(
                   `[Supabase] Request timeout (attempt ${attempt}/${MAX_RETRIES}), retrying in ${backoffMs}ms...`,
@@ -134,7 +135,13 @@ export function getSupabaseClient(): SupabaseClient<Database> {
                 continue;
               }
 
-              // Non-timeout error or final attempt — throw
+              // Final attempt or non-timeout error — throw with clear message
+              if (isOurTimeout) {
+                throw new DOMException(
+                  `Request failed after ${MAX_RETRIES} attempts (${TIMEOUT_MS / 1000}s timeout each). Please check your network connection.`,
+                  'AbortError'
+                );
+              }
               throw error;
             }
           }
