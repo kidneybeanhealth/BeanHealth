@@ -2,12 +2,12 @@
   command = "npm run build"
   publish = "dist"
 
-# Edge function to proxy Supabase API calls (bypasses Jio ISP blocking of *.supabase.co)
+# Edge function for Supabase proxy (fallback if _redirects proxy doesn't work for POST)
 [[edge_functions]]
   path = "/supabase-proxy/*"
   function = "supabase-proxy"
 
-# SPA fallback — must be LAST
+# SPA fallback
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -14,31 +14,30 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Capacitor } from '@capacitor/core'
 import { CapacitorStorage } from './CapacitorStorage'
 
-const supabaseUrlRaw = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
-if (!supabaseUrlRaw || !supabaseAnonKey) {
+if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.')
 }
 
 // Validate URL format
 try {
-  new URL(supabaseUrlRaw);
+  new URL(supabaseUrl);
 } catch (e) {
   throw new Error('Invalid VITE_SUPABASE_URL format. Must be a valid URL.');
 }
 
-// In production, proxy Supabase requests through our domain to bypass ISP blocking
-// (e.g., Jio in India blocks *.supabase.co). Netlify proxies /supabase-proxy/* → supabase.co
-// In development (localhost), connect directly to Supabase.
-const isLocalDev = typeof window !== 'undefined' &&
+// Detect if running locally or in production
+// In production, we proxy Supabase requests through our domain to bypass ISP blocking
+// (e.g., Jio in India blocks *.supabase.co)
+const _isLocalDev = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const supabaseUrl = isLocalDev ? supabaseUrlRaw : `${window.location.origin}/supabase-proxy`;
+// Proxy base URL: same-origin path that Netlify proxies to supabase.co
+const _proxyBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/supabase-proxy` : '';
 
-console.log('[Supabase] Mode:', isLocalDev ? 'DIRECT' : 'PROXIED');
-console.log('[Supabase] Connecting to:', isLocalDev
-  ? supabaseUrlRaw.replace(/https:\/\/([^.]+)\./, 'https://*****.')
-  : `${window.location.origin}/supabase-proxy`);
+console.log('[Supabase] Mode:', _isLocalDev ? 'DIRECT' : 'PROXIED via /supabase-proxy');
+console.log('[Supabase] Supabase URL:', supabaseUrl.replace(/https:\/\/([^.]+)\./, 'https://*****.'));
 console.log('[Supabase] Anon key starts with:', supabaseAnonKey.substring(0, 20) + '...');
 
 // Determine redirect URL based on platform
@@ -85,14 +84,22 @@ export function getSupabaseClient(): SupabaseClient<Database> {
         headers: {
           'x-client-info': 'beanhealth-app'
         },
-        // Fetch wrapper with retry logic for ISP resilience (Jio network fix)
-        // Uses 3 attempts × 10s timeout each instead of single 30s timeout.
-        // On throttled networks, the first attempt primes DNS/routing and retries succeed.
+        // Fetch wrapper with ISP proxy + retry logic
+        // 1. In production, rewrites supabase.co URLs to go through our proxy
+        // 2. Retries 3 times with 10s timeout each for resilience
         fetch: async (url, options = {}) => {
           const MAX_RETRIES = 3;
           const TIMEOUT_MS = 10000; // 10s per attempt
           const existingSignal = (options as any).signal as AbortSignal | undefined;
           let lastError: any;
+
+          // In production, rewrite supabase.co URLs to go through our Netlify proxy
+          // This bypasses Jio ISP blocking of *.supabase.co
+          let fetchUrl = url;
+          if (!_isLocalDev && typeof url === 'string' && url.startsWith(supabaseUrl)) {
+            fetchUrl = url.replace(supabaseUrl, _proxyBaseUrl);
+            console.log('[Supabase] Proxying:', (url as string).replace(/https:\/\/[^/]+/, '***'), '→', (fetchUrl as string).replace(/https:\/\/[^/]+/, '***'));
+          }
 
           for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             // Check if the caller already aborted before we start
@@ -104,7 +111,6 @@ export function getSupabaseClient(): SupabaseClient<Database> {
             }
 
             const controller = new AbortController();
-            // IMPORTANT: abort() without a string reason so fetch throws a proper DOMException
             const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
             // Forward caller's abort signal to our controller
@@ -114,7 +120,7 @@ export function getSupabaseClient(): SupabaseClient<Database> {
             }
 
             try {
-              const response = await fetch(url, {
+              const response = await fetch(fetchUrl, {
                 ...options,
                 signal: controller.signal,
               });
