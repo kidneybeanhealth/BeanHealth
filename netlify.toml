@@ -2,12 +2,7 @@
   command = "npm run build"
   publish = "dist"
 
-# Edge function for Supabase proxy (fallback if _redirects proxy doesn't work for POST)
-[[edge_functions]]
-  path = "/supabase-proxy/*"
-  function = "supabase-proxy"
-
-# SPA fallback
+# SPA fallback only — proxy is handled by the serverless function via config.path
 [[redirects]]
   from = "/*"
   to = "/index.html"

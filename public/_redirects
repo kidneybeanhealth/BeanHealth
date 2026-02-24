@@ -1,6 +1,2 @@
-# Proxy Supabase API calls through Netlify (bypasses Jio ISP blocking of *.supabase.co)
-# Status 200 = reverse proxy (not redirect). Must be before the SPA fallback.
-/supabase-proxy/*  https://ektevcxubbtuxnaapyam.supabase.co/:splat  200
-
 # SPA fallback for client-side routing
 /*  /index.html  200
