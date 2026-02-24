@@ -1,19 +1,24 @@
 /**
- * Netlify Serverless Function v2: Supabase API Proxy
+ * Netlify Serverless Function: Supabase API Proxy
  * 
  * Proxies all requests from /supabase-proxy/* to the Supabase backend.
- * Uses path-based routing via config.path for reliable POST/PUT/PATCH handling.
+ * Netlify redirect routes /supabase-proxy/* to this function.
+ * The original path comes via x-nf-original-uri or the Referer header.
  * This bypasses ISP-level blocking of *.supabase.co (e.g., Jio in India).
  */
 
 const SUPABASE_URL = "https://ektevcxubbtuxnaapyam.supabase.co";
 
-export default async (req) => {
+export default async (req, context) => {
     const url = new URL(req.url);
 
-    // Strip the /supabase-proxy prefix to get the Supabase path
-    const supabasePath = url.pathname.replace(/^\/supabase-proxy/, '');
+    // Get the original path from Netlify's header or from the URL itself
+    // When redirected via netlify.toml, x-nf-original-uri has the original path
+    const originalUri = req.headers.get('x-nf-original-uri') || url.pathname;
+    const supabasePath = originalUri.replace(/^\/supabase-proxy/, '') || '/';
     const targetUrl = `${SUPABASE_URL}${supabasePath}${url.search}`;
+
+    console.log(`[Proxy] ${req.method} ${originalUri} → ${targetUrl}`);
 
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
@@ -29,33 +34,41 @@ export default async (req) => {
     }
 
     try {
-        // Build headers - forward everything except host-related headers
+        // Build headers - forward only relevant ones
         const headers = new Headers();
-        for (const [key, value] of req.headers.entries()) {
-            // Skip headers that should not be forwarded
-            if (['host', 'x-forwarded-host', 'x-forwarded-for', 'x-nf-request-id',
-                'x-nf-client-connection-ip', 'x-nf-account-id'].includes(key.toLowerCase())) {
-                continue;
-            }
-            headers.set(key, value);
-        }
-        // Set the correct Host for Supabase
-        headers.set('Host', 'ektevcxubbtuxnaapyam.supabase.co');
+        const forwardHeaders = [
+            'content-type', 'authorization', 'apikey', 'x-client-info',
+            'accept', 'accept-language', 'prefer', 'x-supabase-api-version'
+        ];
 
-        // Forward the request to Supabase
-        const response = await fetch(targetUrl, {
+        for (const key of forwardHeaders) {
+            const value = req.headers.get(key);
+            if (value) headers.set(key, value);
+        }
+
+        // Build fetch options
+        const fetchOptions = {
             method: req.method,
             headers,
-            body: req.body,
-            duplex: 'half', // Required for streaming request bodies
-        });
+        };
+
+        // Only include body for methods that have one
+        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+            fetchOptions.body = await req.text();
+        }
+
+        // Forward the request to Supabase
+        const response = await fetch(targetUrl, fetchOptions);
+
+        // Read the response body
+        const responseBody = await response.text();
 
         // Build response with CORS headers
-        const responseHeaders = new Headers(response.headers);
+        const responseHeaders = new Headers();
+        responseHeaders.set('Content-Type', response.headers.get('content-type') || 'application/json');
         responseHeaders.set('Access-Control-Allow-Origin', '*');
-        responseHeaders.delete('content-encoding'); // Prevent double-encoding
 
-        return new Response(response.body, {
+        return new Response(responseBody, {
             status: response.status,
             statusText: response.statusText,
             headers: responseHeaders,
@@ -70,10 +83,4 @@ export default async (req) => {
             }
         );
     }
-};
-
-// Netlify Functions v2 path-based routing
-export const config = {
-    path: "/supabase-proxy/*",
-    preferStatic: true,
 };

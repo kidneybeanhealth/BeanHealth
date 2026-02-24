@@ -2,7 +2,19 @@
   command = "npm run build"
   publish = "dist"
 
-# SPA fallback only — proxy is handled by the serverless function via config.path
+# Explicitly tell Netlify where to find serverless functions
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Route /supabase-proxy/* to the serverless function
+# This is more reliable than config.path for function routing
+[[redirects]]
+  from = "/supabase-proxy/*"
+  to = "/.netlify/functions/supabase-proxy"
+  status = 200
+
+# SPA fallback — must be LAST
 [[redirects]]
   from = "/*"
   to = "/index.html"
