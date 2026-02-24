@@ -82,9 +82,13 @@ const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: st
 
 const DOSE_OPTIONS = Object.keys(DOSE_MAPPINGS);
 
-const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'SC', 'SC B/F'];
+const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'S/C', 'S/C B/F'];
 
-const TIME_OPTIONS = ['12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'];
+// Slot-specific time ranges
+const MORNING_TIMES = ['4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM'];
+const NOON_TIMES = ['12 PM', '1 PM', '2 PM', '3 PM', '4 PM'];
+const EVENING_TIMES = ['5 PM', '6 PM', '7 PM', '8 PM'];
+const NIGHT_TIMES = ['7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM', '1 AM'];
 
 const SPECIALIST_OPTIONS = [
   'Dr. A. Prabhakar',
@@ -753,7 +757,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           DOSE_OPTIONS={DOSE_OPTIONS}
           DOSE_MAPPINGS={DOSE_MAPPINGS}
           FOOD_TIMING_OPTIONS={FOOD_TIMING_OPTIONS}
-          TIME_OPTIONS={TIME_OPTIONS}
           drugSearchQuery={drugSearchQuery}
           setDrugSearchQuery={setDrugSearchQuery}
           filteredDrugs={filteredDrugs}
@@ -1338,13 +1341,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'morningTime' }), setTimeSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
                                         onKeyDown={e => {
-                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          const filtered = MORNING_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                           handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime', filtered.length, (idx) => { updateMed(globalIndex, 'morningTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
                                         }}
                                         readOnly={readOnly}
                                       />
                                       {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime' && (() => {
-                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        const filtered = MORNING_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                         return filtered.length > 0 && (
                                           <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
                                             {filtered.map((t, tIdx) => (
@@ -1378,13 +1381,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'noonTime' }), setTimeSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
                                         onKeyDown={e => {
-                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          const filtered = NOON_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                           handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime', filtered.length, (idx) => { updateMed(globalIndex, 'noonTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
                                         }}
                                         readOnly={readOnly}
                                       />
                                       {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime' && (() => {
-                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        const filtered = NOON_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                         return filtered.length > 0 && (
                                           <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
                                             {filtered.map((t, tIdx) => (
@@ -1418,13 +1421,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'eveningTime' }), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
                                         onKeyDown={e => {
-                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          const filtered = EVENING_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                           handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime', filtered.length, (idx) => { updateMed(globalIndex, 'eveningTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
                                         }}
                                         readOnly={readOnly}
                                       />
                                       {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime' && (() => {
-                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        const filtered = EVENING_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                         return filtered.length > 0 && (
                                           <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
                                             {filtered.map((t, tIdx) => (
@@ -1458,13 +1461,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'nightTime' }), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
                                         onKeyDown={e => {
-                                          const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                          const filtered = NIGHT_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                           handleDropdownKeyDown(e, showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime', filtered.length, (idx) => { updateMed(globalIndex, 'nightTime', filtered[idx]); setShowTimeDropdown(null); }, () => setShowTimeDropdown(null));
                                         }}
                                         readOnly={readOnly}
                                       />
                                       {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime' && (() => {
-                                        const filtered = TIME_OPTIONS.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
+                                        const filtered = NIGHT_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                         return filtered.length > 0 && (
                                           <div ref={dropdownListRef} className="absolute left-0 top-full z-50 w-16 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto print:hidden">
                                             {filtered.map((t, tIdx) => (

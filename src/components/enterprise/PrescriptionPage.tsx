@@ -41,7 +41,7 @@ const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: st
 
 const DOSE_OPTIONS = Object.keys(DOSE_MAPPINGS);
 
-const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'SC', 'SC A/F'];
+const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'S/C', 'S/C A/F'];
 
 const TIMING_VALUE_OPTIONS = ['0', '1/2', '1', '1 + 1/2', '2'];
 

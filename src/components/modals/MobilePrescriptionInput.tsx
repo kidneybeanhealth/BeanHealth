@@ -1,5 +1,11 @@
 import React from 'react';
 
+// Slot-specific time ranges
+const MORNING_TIMES = ['4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM'];
+const NOON_TIMES = ['12 PM', '1 PM', '2 PM', '3 PM', '4 PM'];
+const EVENING_TIMES = ['5 PM', '6 PM', '7 PM', '8 PM'];
+const NIGHT_TIMES = ['7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM', '1 AM'];
+
 const parseSpecialists = (value: string) =>
     (value || '')
         .split(',')
@@ -64,7 +70,6 @@ interface MobilePrescriptionInputProps {
     DOSE_OPTIONS: string[];
     DOSE_MAPPINGS: Record<string, { morning: string; noon: string; night: string }>;
     FOOD_TIMING_OPTIONS: string[];
-    TIME_OPTIONS: string[];
     // Drug search
     drugSearchQuery: string;
     setDrugSearchQuery: (q: string) => void;
@@ -96,7 +101,6 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
     DOSE_OPTIONS,
     DOSE_MAPPINGS,
     FOOD_TIMING_OPTIONS,
-    TIME_OPTIONS,
     drugSearchQuery,
     setDrugSearchQuery,
     filteredDrugs,
@@ -133,6 +137,11 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                             <span>{patient?.age} yrs</span>
                         </div>
                     </div>
+                    {patient?.mr_number && (
+                        <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0">
+                            MR: {patient.mr_number}
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -397,10 +406,10 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                     {/* M / N / E / Nt Compact Horizontal Row */}
                                     <div className="flex border border-gray-100 rounded-xl overflow-hidden bg-gray-50/50 w-full">
                                         {[
-                                            { label: 'M', field: 'morning', timeField: 'morningTime', color: 'orange', bg: 'bg-orange-50/30', text: 'text-orange-600', border: 'border-orange-100', times: TIME_OPTIONS },
-                                            { label: 'N', field: 'noon', timeField: 'noonTime', color: 'yellow', bg: 'bg-yellow-50/30', text: 'text-yellow-600', border: 'border-yellow-100', times: TIME_OPTIONS },
-                                            { label: 'E', field: 'evening', timeField: 'eveningTime', color: 'gray', bg: 'bg-gray-100/30', text: 'text-gray-600', border: 'border-gray-200', times: TIME_OPTIONS },
-                                            { label: 'Nt', field: 'night', timeField: 'nightTime', color: 'indigo', bg: 'bg-indigo-50/30', text: 'text-indigo-600', border: 'border-indigo-100', times: TIME_OPTIONS }
+                                            { label: 'M', field: 'morning', timeField: 'morningTime', color: 'orange', bg: 'bg-orange-50/30', text: 'text-orange-600', border: 'border-orange-100', times: MORNING_TIMES },
+                                            { label: 'N', field: 'noon', timeField: 'noonTime', color: 'yellow', bg: 'bg-yellow-50/30', text: 'text-yellow-600', border: 'border-yellow-100', times: NOON_TIMES },
+                                            { label: 'E', field: 'evening', timeField: 'eveningTime', color: 'gray', bg: 'bg-gray-100/30', text: 'text-gray-600', border: 'border-gray-200', times: EVENING_TIMES },
+                                            { label: 'Nt', field: 'night', timeField: 'nightTime', color: 'indigo', bg: 'bg-indigo-50/30', text: 'text-indigo-600', border: 'border-indigo-100', times: NIGHT_TIMES }
                                         ].map((slot, i) => (
                                             <div key={slot.label} className={`${slot.bg} ${i < 3 ? 'border-r border-gray-100' : ''} flex-1 min-w-0 p-1.5 text-center flex flex-col gap-1`}>
                                                 <div className={`text-[9px] font-black ${slot.text} leading-none mb-0.5`}>{slot.label}</div>
