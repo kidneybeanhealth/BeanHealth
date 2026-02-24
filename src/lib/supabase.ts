@@ -14,22 +14,32 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Capacitor } from '@capacitor/core'
 import { CapacitorStorage } from './CapacitorStorage'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseUrlRaw = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrlRaw || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.')
 }
 
 // Validate URL format
 try {
-  new URL(supabaseUrl);
-  // Log connection info (mask the actual URL for security in console)
-  console.log('[Supabase] Connecting to:', supabaseUrl.replace(/https:\/\/([^.]+)\./, 'https://*****.'));
-  console.log('[Supabase] Anon key starts with:', supabaseAnonKey.substring(0, 20) + '...');
+  new URL(supabaseUrlRaw);
 } catch (e) {
   throw new Error('Invalid VITE_SUPABASE_URL format. Must be a valid URL.');
 }
+
+// In production, proxy Supabase requests through our domain to bypass ISP blocking
+// (e.g., Jio in India blocks *.supabase.co). Netlify proxies /supabase-proxy/* → supabase.co
+// In development (localhost), connect directly to Supabase.
+const isLocalDev = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const supabaseUrl = isLocalDev ? supabaseUrlRaw : `${window.location.origin}/supabase-proxy`;
+
+console.log('[Supabase] Mode:', isLocalDev ? 'DIRECT' : 'PROXIED');
+console.log('[Supabase] Connecting to:', isLocalDev
+  ? supabaseUrlRaw.replace(/https:\/\/([^.]+)\./, 'https://*****.')
+  : `${window.location.origin}/supabase-proxy`);
+console.log('[Supabase] Anon key starts with:', supabaseAnonKey.substring(0, 20) + '...');
 
 // Determine redirect URL based on platform
 const getRedirectUrl = () => {

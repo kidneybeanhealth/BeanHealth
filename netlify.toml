@@ -2,6 +2,16 @@
   command = "npm run build"
   publish = "dist"
 
+# Proxy Supabase API calls through Netlify to bypass ISP blocking (e.g. Jio in India)
+# Requests to beanhealth.in/supabase-proxy/* are forwarded server-side to supabase.co
+# Status 200 = proxy (not redirect), force = true ensures it takes priority
+[[redirects]]
+  from = "/supabase-proxy/*"
+  to = "https://ektevcxubbtuxnaapyam.supabase.co/:splat"
+  status = 200
+  force = true
+
+# SPA fallback — must be LAST (Netlify processes redirects in order)
 [[redirects]]
   from = "/*"
   to = "/index.html"
