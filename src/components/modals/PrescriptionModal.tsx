@@ -32,12 +32,16 @@ interface Medication {
   dose: string;
   morning: string;
   morningTime: string;
+  morningAmPm: string;
   noon: string;
   noonTime: string;
+  noonAmPm: string;
   evening: string;
   eveningTime: string;
+  eveningAmPm: string;
   night: string;
   nightTime: string;
+  nightAmPm: string;
   foodTiming: string;
   drugType?: string;
 }
@@ -151,11 +155,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   });
 
   const [medications, setMedications] = useState<Medication[]>([
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' }
+    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
+    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' }
   ]);
 
   // Time options for timing dropdowns (removed internal constant, uses outside one)
@@ -508,12 +512,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             dose: m.dose || '',
             morning: freqs[0] !== '0' ? freqs[0] : '',
             morningTime: m.morningTime || m.morning_time || '',
+            morningAmPm: m.morningAmPm || '',
             noon: freqs[1] !== '0' ? freqs[1] : '',
             noonTime: m.noonTime || m.noon_time || '',
+            noonAmPm: m.noonAmPm || '',
             evening: freqs[2] !== '0' ? freqs[2] : '',
             eveningTime: m.eveningTime || m.evening_time || '',
+            eveningAmPm: m.eveningAmPm || '',
             night: freqs[3] !== '0' ? freqs[3] : '',
             nightTime: m.nightTime || m.night_time || '',
+            nightAmPm: m.nightAmPm || '',
             foodTiming
           };
         });
@@ -570,7 +578,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Medicine Handlers
   const addRow = () => {
     if (readOnly) return;
-    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', noon: '', noonTime: '', evening: '', eveningTime: '', night: '', nightTime: '', foodTiming: '' }]);
+    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' }]);
   };
 
   const removeRow = (index: number) => {
@@ -1336,7 +1344,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       <input
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
                                         placeholder=""
-                                        value={(med as any).morningTime || ''}
+                                        value={((med as any).morningTime ? `${(med as any).morningTime}${(med as any).morningAmPm ? ' ' + (med as any).morningAmPm : ''}` : '')}
                                         onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); }}
                                         onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'morningTime' }), setTimeSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
@@ -1376,7 +1384,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       <input
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
                                         placeholder=""
-                                        value={(med as any).noonTime || ''}
+                                        value={((med as any).noonTime ? `${(med as any).noonTime}${(med as any).noonAmPm ? ' ' + (med as any).noonAmPm : ''}` : '')}
                                         onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); }}
                                         onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'noonTime' }), setTimeSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
@@ -1416,7 +1424,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       <input
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
-                                        value={med.eveningTime || ''}
+                                        value={(med.eveningTime ? `${med.eveningTime}${(med as any).eveningAmPm ? ' ' + (med as any).eveningAmPm : ''}` : '')}
                                         onChange={e => { updateMed(globalIndex, 'eveningTime', e.target.value); setTimeSearchQuery(e.target.value); setHighlightedDropdownIndex(-1); }}
                                         onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'eveningTime' }), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
@@ -1456,7 +1464,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       <input
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
-                                        value={med.nightTime || ''}
+                                        value={(med.nightTime ? `${med.nightTime}${(med as any).nightAmPm ? ' ' + (med as any).nightAmPm : ''}` : '')}
                                         onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); setHighlightedDropdownIndex(-1); }}
                                         onFocus={() => !readOnly && (setShowTimeDropdown({ index: globalIndex, field: 'nightTime' }), setHighlightedDropdownIndex(-1))}
                                         onBlur={() => setTimeout(() => setShowTimeDropdown(null), 150)}
