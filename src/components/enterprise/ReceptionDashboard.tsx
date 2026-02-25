@@ -1507,34 +1507,36 @@ const ReceptionDashboard: React.FC = () => {
                                         placeholder="City/Town"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
-                                    <div className="relative">
-                                        <input
-                                            type="tel"
-                                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900 ${bhidMatch ? 'border-green-400 bg-green-50/30' : 'border-gray-200'
-                                                }`}
-                                            value={walkInForm.phone}
-                                            onChange={e => {
-                                                setWalkInForm({ ...walkInForm, phone: e.target.value });
-                                                handlePhoneLookup(e.target.value);
-                                            }}
-                                            placeholder="Phone Number"
-                                        />
-                                        {isSearchingBhid && (
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                                            </div>
-                                        )}
-                                        {bhidMatch && (
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                        )}
+                                {profile?.email !== 'kongunadkc@gmail.com' && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
+                                        <div className="relative">
+                                            <input
+                                                type="tel"
+                                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900 ${bhidMatch ? 'border-green-400 bg-green-50/30' : 'border-gray-200'
+                                                    }`}
+                                                value={walkInForm.phone}
+                                                onChange={e => {
+                                                    setWalkInForm({ ...walkInForm, phone: e.target.value });
+                                                    handlePhoneLookup(e.target.value);
+                                                }}
+                                                placeholder="Phone Number"
+                                            />
+                                            {isSearchingBhid && (
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                                                </div>
+                                            )}
+                                            {bhidMatch && (
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
 
                             {/* BeanHealth ID Match Banner */}
