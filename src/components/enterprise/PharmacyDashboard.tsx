@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import EnterprisePharmacyDashboard from '../EnterprisePharmacyDashboard';
 import { LogoIcon } from '../icons/LogoIcon';
-import { supabase } from '../../lib/supabase';
+import { supabase, getProxiedUrl } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 const PharmacyDashboard: React.FC = () => {
@@ -101,7 +101,7 @@ const PharmacyDashboard: React.FC = () => {
                     .from('medical-records')
                     .getPublicUrl(filePath);
 
-                avatarUrl = urlData.publicUrl;
+                avatarUrl = getProxiedUrl(urlData.publicUrl);
             }
 
             // Update hospital_profiles table

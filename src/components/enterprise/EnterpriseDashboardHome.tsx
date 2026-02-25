@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { LogoIcon } from '../icons/LogoIcon';
-import { supabase } from '../../lib/supabase';
+import { supabase, getProxiedUrl } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useHospitalName } from '../../hooks/useHospitalName';
 
@@ -94,7 +94,7 @@ const EnterpriseDashboardHome: React.FC = () => {
                     .from('medical-records')
                     .getPublicUrl(filePath);
 
-                avatarUrl = urlData.publicUrl;
+                avatarUrl = getProxiedUrl(urlData.publicUrl);
             }
 
             // Update hospital_profiles table

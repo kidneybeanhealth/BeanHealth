@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
-import { supabase } from '../../lib/supabase';
+import { supabase, getProxiedUrl } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 interface SavedDrug {
@@ -743,7 +743,7 @@ const PrescriptionPage: React.FC = () => {
                                                     {doctor?.signature_url ? (
                                                         <div className="h-16 w-40 mb-1 flex items-end justify-center">
                                                             <img
-                                                                src={doctor.signature_url}
+                                                                src={getProxiedUrl(doctor.signature_url)}
                                                                 alt="Signature"
                                                                 className="max-h-full max-w-full object-contain mix-blend-multiply"
                                                             />

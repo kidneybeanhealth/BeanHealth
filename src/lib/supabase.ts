@@ -40,6 +40,24 @@ console.log('[Supabase] Mode:', _isLocalDev ? 'DIRECT' : 'PROXIED via /supabase-
 console.log('[Supabase] Supabase URL:', supabaseUrl.replace(/https:\/\/([^.]+)\./, 'https://*****.'));
 console.log('[Supabase] Anon key starts with:', supabaseAnonKey.substring(0, 20) + '...');
 
+/**
+ * Rewrites a direct Supabase URL to go through the Vercel proxy in production.
+ * Use this for any URL that will be loaded directly by the browser (e.g., <img src=...>)
+ * rather than via the fetch API (which already has proxy rewriting in the fetch wrapper).
+ * 
+ * Example:
+ *   Input:  https://ektevcxubbtuxnaapyam.supabase.co/storage/v1/object/public/signatures/doc.png
+ *   Output: https://beanhealth.in/supabase-proxy/storage/v1/object/public/signatures/doc.png
+ */
+export function getProxiedUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (_isLocalDev) return url;
+  if (typeof url === 'string' && url.includes(supabaseUrl.replace('https://', '').split('/')[0])) {
+    return url.replace(supabaseUrl, _proxyBaseUrl);
+  }
+  return url;
+}
+
 // Determine redirect URL based on platform
 const getRedirectUrl = () => {
   if (Capacitor.isNativePlatform()) {
