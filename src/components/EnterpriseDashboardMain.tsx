@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams, Routes, Route } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { supabase } from '../lib/supabase';
+import { supabase, getProxiedUrl } from '../lib/supabase';
 import EnterpriseDoctorDashboard from './EnterpriseDoctorDashboard';
 import EnterprisePharmacyDashboard from './EnterprisePharmacyDashboard';
 import { LogoIcon } from './icons/LogoIcon';
@@ -473,7 +473,7 @@ const EnterpriseDashboardMain: React.FC = () => {
                     .from('medical-records')
                     .getPublicUrl(filePath);
 
-                avatarUrl = urlData.publicUrl;
+                avatarUrl = getProxiedUrl(urlData.publicUrl);
             }
 
             // Update hospital_profiles table (only columns that exist in schema)

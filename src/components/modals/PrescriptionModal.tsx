@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { supabase } from '../../lib/supabase';
+import { supabase, getProxiedUrl } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import MobilePrescriptionInput from './MobilePrescriptionInput';
 
@@ -1730,7 +1730,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                               {doctor?.signature_url ? (
                                 <div className="h-10 w-32 mb-1 flex items-end justify-center">
                                   <img
-                                    src={doctor.signature_url}
+                                    src={getProxiedUrl(doctor.signature_url)}
                                     alt="Signature"
                                     className="max-h-full max-w-full object-contain mix-blend-multiply"
                                   />

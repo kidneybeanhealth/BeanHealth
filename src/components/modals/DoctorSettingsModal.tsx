@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../../lib/canvasUtils';
-import { supabase } from '../../lib/supabase';
+import { supabase, getProxiedUrl } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 interface DoctorSettingsModalProps {
@@ -26,7 +26,7 @@ const DoctorSettingsModal: React.FC<DoctorSettingsModalProps> = ({ doctor, onClo
     // Fetch current signature on mount
     useEffect(() => {
         if (doctor?.signature_url) {
-            setCurrentSignature(doctor.signature_url);
+            setCurrentSignature(getProxiedUrl(doctor.signature_url));
         }
     }, [doctor]);
 
@@ -134,7 +134,7 @@ const DoctorSettingsModal: React.FC<DoctorSettingsModalProps> = ({ doctor, onClo
                 .from('doctor-signatures')
                 .getPublicUrl(filePath);
 
-            const signatureUrl = data.publicUrl;
+            const signatureUrl = getProxiedUrl(data.publicUrl);
 
             // 5. Update Doctor Profile
             const { error: updateError } = await (supabase

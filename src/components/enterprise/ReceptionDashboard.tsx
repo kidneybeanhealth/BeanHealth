@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useHospitalName } from '../../hooks/useHospitalName';
-import { supabase } from '../../lib/supabase';
+import { supabase, getProxiedUrl } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { LogoIcon } from '../icons/LogoIcon';
 import PrinterSetupModal from '../PrinterSetupModal';
@@ -591,7 +591,7 @@ const ReceptionDashboard: React.FC = () => {
                     .from('medical-records')
                     .getPublicUrl(filePath);
 
-                avatarUrl = urlData.publicUrl;
+                avatarUrl = getProxiedUrl(urlData.publicUrl);
             }
 
             const { error: profileError } = await supabase

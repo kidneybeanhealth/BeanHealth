@@ -1,10 +1,10 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getProxiedUrl } from '../lib/supabase'
 
 // Optimized upload function with retry logic
 export const uploadFileToSupabaseSimple = async (
-  file: File, 
-  bucket: string = 'medical-records',
-  onProgress?: (progress: number) => void
+    file: File,
+    bucket: string = 'medical-records',
+    onProgress?: (progress: number) => void
 ): Promise<string> => {
     // Generate unique file name
     const fileExt = file.name.split('.').pop() || 'bin';
@@ -14,10 +14,10 @@ export const uploadFileToSupabaseSimple = async (
     const filePath = `uploads/${fileName}`;
 
     console.log('[Storage] Starting upload:', fileName, 'Size:', file.size);
-    
+
     let retries = 3;
     let lastError: Error | null = null;
-    
+
     while (retries > 0) {
         try {
             // Upload the file directly with timeout
@@ -27,12 +27,12 @@ export const uploadFileToSupabaseSimple = async (
                     cacheControl: '3600',
                     upsert: false
                 });
-            
+
             // Add timeout (30 seconds)
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('Upload timeout after 30s')), 30000);
             });
-            
+
             const { data: uploadData, error: uploadError } = await Promise.race([
                 uploadPromise,
                 timeoutPromise
@@ -43,7 +43,7 @@ export const uploadFileToSupabaseSimple = async (
             }
 
             console.log('[Storage] Upload successful:', uploadData.path);
-            
+
             // Get the public URL
             const { data: urlData } = supabase.storage
                 .from(bucket)
@@ -54,12 +54,12 @@ export const uploadFileToSupabaseSimple = async (
             }
 
             console.log('[Storage] Public URL generated:', urlData.publicUrl);
-            return urlData.publicUrl;
-            
+            return getProxiedUrl(urlData.publicUrl);
+
         } catch (error) {
             lastError = error as Error;
             retries--;
-            
+
             if (retries > 0) {
                 console.warn(`[Storage] Upload failed, retrying... (${retries} attempts left)`, lastError.message);
                 // Wait before retry (exponential backoff)
@@ -70,27 +70,27 @@ export const uploadFileToSupabaseSimple = async (
             }
         }
     }
-    
+
     throw lastError || new Error('Upload failed');
 };
 
 export const uploadFileToSupabase = async (file: File, bucket: string = 'medical-records'): Promise<string> => {
     // Check if the bucket exists
     const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-    
+
     if (bucketsError) {
         throw new Error(`Failed to access storage: ${bucketsError.message}`);
     }
 
     const bucketExists = buckets?.some(b => b.name === bucket);
-    
+
     if (!bucketExists) {
         // Try direct bucket access as fallback
         try {
             const { error: testError } = await supabase.storage
                 .from(bucket)
                 .list('', { limit: 1 });
-            
+
             if (testError) {
                 throw new Error(`Storage bucket '${bucket}' does not exist or is not accessible. Please verify it exists in your Supabase dashboard.`);
             }
@@ -127,13 +127,13 @@ export const uploadFileToSupabase = async (file: File, bucket: string = 'medical
         throw new Error('Failed to get public URL for uploaded file');
     }
 
-    return urlData.publicUrl;
+    return getProxiedUrl(urlData.publicUrl);
 }
 
 // Function to check if the medical-records bucket exists
 export const checkMedicalRecordsBucket = async (): Promise<{ exists: boolean; message: string }> => {
     const bucketName = 'medical-records';
-    
+
     try {
         const { data: buckets, error: listError } = await supabase.storage.listBuckets();
         if (listError) {
@@ -144,7 +144,7 @@ export const checkMedicalRecordsBucket = async (): Promise<{ exists: boolean; me
         }
 
         const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-        
+
         if (bucketExists) {
             return {
                 exists: true,
@@ -174,22 +174,22 @@ export const deleteFileFromSupabase = async (fileUrl: string, bucket: string = '
         // URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
         const urlParts = fileUrl.split('/');
         const bucketIndex = urlParts.findIndex(part => part === bucket);
-        
+
         if (bucketIndex === -1 || bucketIndex >= urlParts.length - 1) {
             return false;
         }
-        
+
         // Get the path after the bucket name
         const filePath = urlParts.slice(bucketIndex + 1).join('/');
-        
+
         const { error } = await supabase.storage
             .from(bucket)
             .remove([filePath]);
-        
+
         if (error) {
             return false;
         }
-        
+
         return true;
     } catch (error) {
         return false;
@@ -216,14 +216,14 @@ export const testBucketAccess = async (bucketName: string = 'medical-records'): 
         const { data, error } = await supabase.storage
             .from(bucketName)
             .list('', { limit: 1 });
-        
+
         if (error) {
             return {
                 accessible: false,
                 message: `Cannot access bucket: ${error.message}`
             };
         }
-        
+
         return {
             accessible: true,
             message: 'Bucket is accessible and ready for uploads'
@@ -240,9 +240,9 @@ export const uploadFileToGCS = uploadFileToSupabase;
 
 // Chat file upload functions
 export const uploadChatFile = async (
-    file: File, 
-    senderId: string, 
-    recipientId: string, 
+    file: File,
+    senderId: string,
+    recipientId: string,
     fileType: 'pdf' | 'image' | 'audio'
 ): Promise<{
     fileUrl: string;
@@ -257,7 +257,7 @@ export const uploadChatFile = async (
         const randomId = Math.random().toString(36).substring(2);
         const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const fileName = `${timestamp}-${randomId}-${sanitizedFileName}`;
-        
+
         // Organize files in folders by type and participants
         const conversationId = [senderId, recipientId].sort().join('-');
         const filePath = `chat-files/${conversationId}/${fileType}/${fileName}`;
@@ -284,7 +284,7 @@ export const uploadChatFile = async (
         }
 
         return {
-            fileUrl: urlData.publicUrl,
+            fileUrl: getProxiedUrl(urlData.publicUrl),
             fileName: file.name,
             fileSize: file.size,
             mimeType: file.type
@@ -297,9 +297,9 @@ export const uploadChatFile = async (
 
 // Convert audio blob to file and upload
 export const uploadAudioRecording = async (
-    audioBlob: Blob, 
-    senderId: string, 
-    recipientId: string, 
+    audioBlob: Blob,
+    senderId: string,
+    recipientId: string,
     duration: number
 ): Promise<{
     fileUrl: string;
@@ -311,8 +311,8 @@ export const uploadAudioRecording = async (
         // Create a file from the blob
         const timestamp = Date.now();
         const fileName = `voice-message-${timestamp}.webm`;
-        const audioFile = new File([audioBlob], fileName, { 
-            type: 'audio/webm;codecs=opus' 
+        const audioFile = new File([audioBlob], fileName, {
+            type: 'audio/webm;codecs=opus'
         });
 
         return await uploadChatFile(audioFile, senderId, recipientId, 'audio');
@@ -329,22 +329,22 @@ export const deleteChatFile = async (fileUrl: string): Promise<boolean> => {
         const url = new URL(fileUrl);
         const pathParts = url.pathname.split('/');
         const bucketIndex = pathParts.findIndex(part => part === 'chat-files');
-        
+
         if (bucketIndex === -1) {
             throw new Error('Invalid chat file URL');
         }
-        
+
         const filePath = pathParts.slice(bucketIndex + 1).join('/');
-        
+
         const { error } = await supabase.storage
             .from('chat-files')
             .remove([filePath]);
-            
+
         if (error) {
             console.error('File deletion error:', error);
             return false;
         }
-        
+
         return true;
     } catch (error) {
         console.error('Chat file deletion error:', error);
@@ -363,23 +363,23 @@ export const getChatFileInfo = async (fileUrl: string): Promise<{
         const url = new URL(fileUrl);
         const pathParts = url.pathname.split('/');
         const bucketIndex = pathParts.findIndex(part => part === 'chat-files');
-        
+
         if (bucketIndex === -1) {
             return null;
         }
-        
+
         const filePath = pathParts.slice(bucketIndex + 1).join('/');
-        
+
         const { data, error } = await supabase.storage
             .from('chat-files')
             .list(filePath.split('/').slice(0, -1).join('/'), {
                 search: filePath.split('/').pop()
             });
-            
+
         if (error || !data || data.length === 0) {
             return null;
         }
-        
+
         const fileInfo = data[0];
         return {
             size: fileInfo.metadata?.size || 0,
@@ -407,7 +407,7 @@ export const uploadPrescriptionPDF = async (
     try {
         const timestamp = Date.now();
         const fileName = `Prescription_${prescriptionId}_${timestamp}.pdf`;
-        
+
         // Organize in folders by conversation
         const conversationId = [doctorId, patientId].sort().join('-');
         const filePath = `chat-files/${conversationId}/pdf/${fileName}`;
@@ -438,7 +438,7 @@ export const uploadPrescriptionPDF = async (
         }
 
         return {
-            fileUrl: urlData.publicUrl,
+            fileUrl: getProxiedUrl(urlData.publicUrl),
             fileName: fileName,
             fileSize: pdfBlob.size,
             mimeType: 'application/pdf'
