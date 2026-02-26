@@ -470,7 +470,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     ...savedDrugs.map(d => ({
       id: d.id,
       name: d.name,
-      drugType: d.drug_type || 'TAB',
+      drugType: d.drug_type || '',
       isReference: false
     }))
   ];

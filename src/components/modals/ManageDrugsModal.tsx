@@ -364,7 +364,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
                     {editingDrug && (
                         <button
-                            onClick={() => { setEditingDrug(null); setNewDrugName(''); setNewDrugType('TAB'); }}
+                            onClick={() => { setEditingDrug(null); setNewDrugName(''); setNewDrugType(''); }}
                             className="text-xs text-purple-600 hover:underline mt-2"
                         >
                             ✕ Cancel Edit
