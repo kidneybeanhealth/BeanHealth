@@ -73,23 +73,23 @@ const SlotRow: React.FC<{
     onTimeFocus: () => void;
     readOnly: boolean;
 }> = ({ label, value, timeValue, amPm, onValueChange, onTimeChange, onAmPmChange, onTimeFocus, readOnly }) => (
-    <div style={{ display: 'flex', alignItems: 'stretch', minHeight: '30px', borderBottom: '1px solid #f3f4f6', flex: 1 }}>
-        <div style={{ width: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#be123c', color: '#fff', fontSize: '9px', fontWeight: 900, flexShrink: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'stretch', minHeight: '34px', borderBottom: '1px solid rgba(190,18,60,0.08)', flex: 1 }}>
+        <div style={{ width: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#be123c,#e11d48)', color: '#fff', fontSize: '9px', fontWeight: 900, flexShrink: 0 }}>
             {label}
         </div>
         <input type="text" value={value} onChange={e => !readOnly && onValueChange(e.target.value)} readOnly={readOnly}
             placeholder="-"
-            style={{ width: '60px', borderLeft: '1px solid #f3f4f6', borderRight: '1px solid #f3f4f6', textAlign: 'center', fontSize: '11px', fontWeight: 700, outline: 'none', background: '#fff', color: '#1f2937' }} />
+            style={{ width: '60px', borderLeft: '1px solid rgba(190,18,60,0.1)', borderRight: '1px solid rgba(190,18,60,0.1)', textAlign: 'center', fontSize: '11px', fontWeight: 700, outline: 'none', background: 'rgba(255,255,255,0.8)', color: '#1f2937' }} />
         <input type="text" value={timeValue} onChange={e => !readOnly && onTimeChange(e.target.value)} onFocus={onTimeFocus} readOnly={readOnly}
             placeholder="-"
-            style={{ width: '28px', borderRight: '1px solid #f3f4f6', textAlign: 'center', fontSize: '11px', fontWeight: 700, outline: 'none', background: '#f9fafb', color: '#374151' }} />
+            style={{ width: '28px', borderRight: '1px solid rgba(190,18,60,0.1)', textAlign: 'center', fontSize: '11px', fontWeight: 700, outline: 'none', background: 'rgba(249,250,251,0.7)', color: '#374151' }} />
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             <button type="button" onClick={() => !readOnly && onAmPmChange('AM')}
-                style={{ flex: 1, fontSize: '8px', fontWeight: 900, border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: amPm === 'AM' ? '#be123c' : '#f9fafb', color: amPm === 'AM' ? '#fff' : '#9ca3af' }}>
+                style={{ flex: 1, fontSize: '8px', fontWeight: 900, border: 'none', borderBottom: '1px solid rgba(190,18,60,0.08)', cursor: 'pointer', background: amPm === 'AM' ? 'linear-gradient(135deg,#be123c,#e11d48)' : 'rgba(249,250,251,0.6)', color: amPm === 'AM' ? '#fff' : '#9ca3af', transition: 'all 0.15s' }}>
                 AM
             </button>
             <button type="button" onClick={() => !readOnly && onAmPmChange('PM')}
-                style={{ flex: 1, fontSize: '8px', fontWeight: 900, border: 'none', cursor: 'pointer', background: amPm === 'PM' ? '#be123c' : '#f9fafb', color: amPm === 'PM' ? '#fff' : '#9ca3af' }}>
+                style={{ flex: 1, fontSize: '8px', fontWeight: 900, border: 'none', cursor: 'pointer', background: amPm === 'PM' ? 'linear-gradient(135deg,#be123c,#e11d48)' : 'rgba(249,250,251,0.6)', color: amPm === 'PM' ? '#fff' : '#9ca3af', transition: 'all 0.15s' }}>
                 PM
             </button>
         </div>
@@ -132,18 +132,19 @@ const MedCard: React.FC<{
     };
 
     const sectionHeader = (label: string, bg = '#1f2937') => (
-        <div style={{ background: bg, padding: '2px 4px', textAlign: 'center' }}>
-            <span style={{ color: '#e5e7eb', fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
+        <div style={{ background: bg, padding: '4px 4px', textAlign: 'center' }}>
+            <span style={{ color: 'rgba(255,255,255,0.95)', fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>{label}</span>
         </div>
     );
 
     const freqBtn = (opt: string) => (
         <button key={opt} type="button" onMouseDown={() => !readOnly && applyFrequency(opt)}
             style={{
-                flex: 1, padding: '3px 0', fontSize: '8px', fontWeight: 900, borderRadius: '3px', border: 'none', cursor: 'pointer',
-                background: med.dose === opt ? '#8AC43C' : '#f3f4f6',
-                color: med.dose === opt ? '#fff' : '#4b5563',
-                transition: 'background 0.15s'
+                flex: 1, padding: '3px 0', fontSize: '8px', fontWeight: 900, borderRadius: '5px', border: 'none', cursor: 'pointer',
+                background: med.dose === opt ? 'linear-gradient(135deg,#5ba028,#8AC43C)' : 'rgba(138,196,60,0.1)',
+                color: med.dose === opt ? '#fff' : '#5ba028',
+                boxShadow: med.dose === opt ? '0 2px 6px rgba(138,196,60,0.4)' : 'none',
+                transition: 'all 0.15s'
             }}>
             {opt}
         </button>
@@ -152,21 +153,22 @@ const MedCard: React.FC<{
     const timingBtn = (opt: string) => (
         <button key={opt} type="button" onMouseDown={() => !readOnly && updateMed(index, 'foodTiming', opt)}
             style={{
-                width: '100%', flex: 1, minHeight: '24px', fontSize: '8px', fontWeight: 900, borderRadius: '3px', border: 'none', cursor: 'pointer',
-                background: med.foodTiming === opt ? '#3B82F6' : '#f3f4f6',
-                color: med.foodTiming === opt ? '#fff' : '#4b5563',
-                transition: 'background 0.15s'
+                width: '100%', flex: 1, minHeight: '24px', fontSize: '8px', fontWeight: 900, borderRadius: '5px', border: 'none', cursor: 'pointer',
+                background: med.foodTiming === opt ? 'linear-gradient(135deg,#2563eb,#3B82F6)' : 'rgba(59,130,246,0.1)',
+                color: med.foodTiming === opt ? '#fff' : '#2563eb',
+                boxShadow: med.foodTiming === opt ? '0 2px 6px rgba(59,130,246,0.35)' : 'none',
+                transition: 'all 0.15s'
             }}>
             {opt}
         </button>
     );
 
     return (
-        <div style={{ background: '#fff', borderRadius: '10px', border: '1px solid #e5e7eb', overflow: 'hidden', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div style={{ background: 'linear-gradient(145deg,#ffffff,#f8faff)', borderRadius: '16px', border: '1px solid rgba(190,18,60,0.12)', overflow: 'hidden', marginBottom: '14px', boxShadow: '0 4px 20px rgba(0,0,0,0.08),0 1px 4px rgba(190,18,60,0.06)' }}>
 
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
-                <span style={{ width: '18px', height: '18px', background: '#8AC43C', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900, color: '#fff', flexShrink: 0 }}>{index + 1}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', background: 'linear-gradient(135deg,rgba(138,196,60,0.08),rgba(255,255,255,0.9))', borderBottom: '1px solid rgba(138,196,60,0.15)' }}>
+                <span style={{ width: '20px', height: '20px', background: 'linear-gradient(135deg,#5ba028,#8AC43C)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: '0 2px 6px rgba(138,196,60,0.4)' }}>{index + 1}</span>
                 <span style={{ flex: 1, fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Medication</span>
                 {showRemove && !readOnly && (
                     <button onClick={() => removeRow(index)} style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>✕</button>
@@ -176,8 +178,8 @@ const MedCard: React.FC<{
             {/* Drug Name + QTY */}
             <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6' }}>
                 <div style={{ flex: 1, position: 'relative' }}>
-                    <div style={{ padding: '2px 8px', background: '#be123c' }}>
-                        <span style={{ fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#fff' }}>Drug Name</span>
+                    <div style={{ padding: '3px 10px', background: 'linear-gradient(135deg,#be123c,#e11d48)' }}>
+                        <span style={{ fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.95)' }}>Drug Name</span>
                     </div>
                     <input type="text" value={med.name}
                         ref={drugInputRef}
@@ -200,13 +202,13 @@ const MedCard: React.FC<{
                         onBlur={() => setTimeout(() => setShowDrugDropdown(null), 200)}
                         readOnly={readOnly}
                         placeholder="Type or select..."
-                        style={{ width: '100%', padding: '6px 8px', fontSize: '12px', fontWeight: 700, outline: 'none', border: 'none', background: '#fff', color: '#111827', textTransform: 'uppercase', boxSizing: 'border-box' }} />
+                        style={{ width: '100%', padding: '6px 10px', fontSize: '12px', fontWeight: 700, outline: 'none', border: 'none', background: 'transparent', color: '#111827', textTransform: 'uppercase', boxSizing: 'border-box' }} />
                     {showDrugDropdown === index && filteredDrugs.length > 0 && (
-                        <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0 0 8px 8px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: '160px', overflowY: 'auto' }}>
+                        <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(12px)', border: '1px solid rgba(190,18,60,0.15)', borderRadius: '0 0 12px 12px', boxShadow: '0 12px 32px rgba(0,0,0,0.12)', maxHeight: '160px', overflowY: 'auto' }}>
                             {filteredDrugs.slice(0, 8).map(drug => (
                                 <button key={drug.id} type="button" onMouseDown={() => handleSelectDrug(index, drug)}
                                     style={{ width: '100%', padding: '7px 12px', textAlign: 'left', fontSize: '12px', color: '#374151', background: 'none', border: 'none', borderBottom: '1px solid #f9fafb', cursor: 'pointer', fontWeight: 500 }}>
-                                    {drug.drugType && <span style={{ fontWeight: 700, color: '#6b7280', marginRight: '4px' }}>{drug.drugType}.</span>}
+                                    {drug.drugType && <span style={{ fontWeight: 700, color: '#be123c', marginRight: '4px' }}>{drug.drugType}.</span>}
                                     {drug.name}
                                 </button>
                             ))}
@@ -215,8 +217,8 @@ const MedCard: React.FC<{
                 </div>
                 {/* QTY */}
                 <div style={{ width: '70px', borderLeft: '1px solid #f3f4f6', flexShrink: 0 }}>
-                    <div style={{ padding: '2px 8px', background: '#374151' }}>
-                        <span style={{ fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#d1d5db' }}>QTY</span>
+                    <div style={{ padding: '3px 8px', background: 'linear-gradient(135deg,#374151,#4b5563)' }}>
+                        <span style={{ fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.9)' }}>QTY</span>
                     </div>
                     <input type="text" value={med.number} onChange={e => updateMed(index, 'number', e.target.value)}
                         readOnly={readOnly} placeholder="10"
@@ -225,14 +227,14 @@ const MedCard: React.FC<{
             </div>
 
             {/* 4-column grid */}
-            <div style={{ display: 'flex', alignItems: 'stretch' }}>
+            <div style={{ display: 'flex', alignItems: 'stretch', margin: '0 8px 8px 8px', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)', background: 'rgba(248,250,255,0.5)' }}>
 
                 {/* Col 1: Frequency */}
-                <div style={{ flex: '1.2', borderRight: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column' }}>
-                    {sectionHeader('Frequency', '#8AC43C')}
+                <div style={{ flex: '1.2', borderRight: '1px solid rgba(138,196,60,0.2)', display: 'flex', flexDirection: 'column' }}>
+                    {sectionHeader('Frequency', 'linear-gradient(135deg,#5ba028,#8AC43C)')}
                     <input type="text" value={med.dose} onChange={e => updateMed(index, 'dose', e.target.value.toUpperCase())} readOnly={readOnly}
                         placeholder="e.g. OD"
-                        style={{ padding: '4px 4px', fontSize: '10px', fontWeight: 700, textAlign: 'center', outline: 'none', border: 'none', borderBottom: '1px solid #f3f4f6', background: '#fafafa', color: '#111827' }} />
+                        style={{ padding: '4px 4px', fontSize: '10px', fontWeight: 700, textAlign: 'center', outline: 'none', border: 'none', borderBottom: '1px solid rgba(138,196,60,0.15)', background: 'rgba(255,255,255,0.6)', color: '#374151' }} />
                     <div style={{ flex: 1, padding: '4px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                         {FREQ_OPTIONS_ROWS.map((row, ri) => (
                             <div key={ri} style={{ display: 'flex', gap: '2px', flex: 1, marginBottom: ri < FREQ_OPTIONS_ROWS.length - 1 ? '3px' : '0' }}>
@@ -243,23 +245,23 @@ const MedCard: React.FC<{
                 </div>
 
                 {/* Col 2: Timing */}
-                <div style={{ flex: '0.6', borderRight: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column' }}>
-                    {sectionHeader('Timing', '#3B82F6')}
+                <div style={{ flex: '0.6', borderRight: '1px solid rgba(59,130,246,0.2)', display: 'flex', flexDirection: 'column' }}>
+                    {sectionHeader('Timing', 'linear-gradient(135deg,#2563eb,#3B82F6)')}
                     <input type="text" value={med.foodTiming} onChange={e => updateMed(index, 'foodTiming', e.target.value.toUpperCase())} readOnly={readOnly}
                         placeholder="A/F"
-                        style={{ padding: '4px 4px', fontSize: '10px', fontWeight: 700, textAlign: 'center', outline: 'none', border: 'none', borderBottom: '1px solid #f3f4f6', background: '#fafafa', color: '#111827' }} />
+                        style={{ padding: '4px 4px', fontSize: '10px', fontWeight: 700, textAlign: 'center', outline: 'none', border: 'none', borderBottom: '1px solid rgba(59,130,246,0.15)', background: 'rgba(255,255,255,0.6)', color: '#374151' }} />
                     <div style={{ flex: 1, padding: '4px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '3px' }}>
                         {TIMING_OPTIONS.map(opt => timingBtn(opt))}
                     </div>
                 </div>
 
                 {/* Col 3: M/N/E/NT */}
-                <div style={{ flex: '1.7', borderRight: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ background: '#be123c', display: 'grid', gridTemplateColumns: '28px 60px 28px 1fr', padding: '2px 0' }}>
+                <div style={{ flex: '1.7', borderRight: '1px solid rgba(190,18,60,0.15)', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ background: 'linear-gradient(135deg,#be123c,#e11d48)', display: 'grid', gridTemplateColumns: '28px 60px 28px 1fr', padding: '4px 0' }}>
                         <span style={{ fontSize: '6px', color: 'transparent' }}>.</span>
-                        <span style={{ fontSize: '6px', fontWeight: 900, color: '#e5e7eb', textAlign: 'center' }}>Dose</span>
-                        <span style={{ fontSize: '6px', fontWeight: 900, color: '#e5e7eb', textAlign: 'center' }}>Time</span>
-                        <span style={{ fontSize: '6px', fontWeight: 900, color: '#e5e7eb', textAlign: 'center' }}>AM/PM</span>
+                        <span style={{ fontSize: '6px', fontWeight: 900, color: 'rgba(255,255,255,0.9)', textAlign: 'center' }}>Dose</span>
+                        <span style={{ fontSize: '6px', fontWeight: 900, color: 'rgba(255,255,255,0.9)', textAlign: 'center' }}>Time</span>
+                        <span style={{ fontSize: '6px', fontWeight: 900, color: 'rgba(255,255,255,0.9)', textAlign: 'center' }}>AM/PM</span>
                     </div>
                     <SlotRow label="M" value={med.morning} timeValue={med.morningTime} amPm={med.morningAmPm || ''}
                         onValueChange={v => updateMed(index, 'morning', v)} onTimeChange={v => updateMed(index, 'morningTime', v)} onAmPmChange={v => updateMed(index, 'morningAmPm', v)}
@@ -277,11 +279,11 @@ const MedCard: React.FC<{
 
                 {/* Col 4: Choose Time */}
                 <div style={{ flex: '1.1', display: 'flex', flexDirection: 'column' }}>
-                    {sectionHeader('Time', '#8AC43C')}
-                    <div style={{ flex: 1, padding: '3px', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'repeat(6, 1fr)', gap: '2px', height: '100%', alignContent: 'stretch' }}>
+                    {sectionHeader('Time', 'linear-gradient(135deg,#5ba028,#8AC43C)')}
+                    <div style={{ flex: 1, padding: '3px', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'repeat(6, 1fr)', gap: '3px', height: '100%', alignContent: 'stretch' }}>
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
                             <button key={h} type="button" onMouseDown={() => !readOnly && updateMed(index, lastFocused, String(h))}
-                                style={{ height: '100%', minHeight: '26px', fontSize: '10px', fontWeight: 700, background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>
+                                style={{ height: '100%', minHeight: '26px', fontSize: '10px', fontWeight: 700, background: 'rgba(138,196,60,0.1)', color: '#5ba028', border: '1px solid rgba(138,196,60,0.18)', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.15s' }}>
                                 {h}
                             </button>
                         ))}
