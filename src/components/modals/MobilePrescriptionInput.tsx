@@ -5,8 +5,9 @@ const GLOBAL_STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800;900&display=swap');
 
 :root {
-  --crimson: #C0132C;
+  --crimson: #1A7A4A;
   --jade: #1A7A4A;
+  --orange: #D97706;
   --cobalt: #1546A0;
   --ink: #0D1117;
   --surface: #F5F7FA;
@@ -89,7 +90,7 @@ const FREQ_OPTIONS_ROWS = [
     ['OD', 'BD', 'TDS'],
     ['2OD', '2BD', '2TDS'],
     ['1/2OD', '1/2BD', '1/2TDS'],
-    ['Q6H'],
+    ['Q6H', 'HS'],
 ];
 
 const TIMING_OPTIONS = ['A/F', 'B/F', 'S/C B/F', 'S/C'];
@@ -106,6 +107,7 @@ const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: st
     '1/2OD': { morning: '1/2', noon: '0', evening: '0', night: '0' },
     '1/2BD': { morning: '1/2', noon: '0', evening: '0', night: '1/2' },
     '1/2TDS': { morning: '1/2', noon: '1/2', evening: '0', night: '1/2' },
+    'HS': { morning: '0', noon: '0', evening: '0', night: '1' },
 };
 
 const getReviewDaysLabel = (value: string): string => {
@@ -158,11 +160,11 @@ const SlotRow: React.FC<{
     onTimeFocus: () => void;
     readOnly: boolean;
 }> = ({ label, value, timeValue, amPm, onValueChange, onTimeChange, onAmPmChange, onTimeFocus, readOnly }) => (
-    <div style={{ display: 'flex', alignItems: 'stretch', minHeight: '34px', borderBottom: '1px solid rgba(192,19,44,0.08)', flex: 1 }}>
-        {/* Label cell — crimson gradient */}
+    <div style={{ display: 'flex', alignItems: 'stretch', minHeight: '34px', borderBottom: '1px solid rgba(217,119,6,0.08)', flex: 1 }}>
+        {/* Label cell — orange */}
         <div style={{
             width: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'linear-gradient(135deg, var(--crimson), #E81535)',
+            background: 'linear-gradient(135deg, var(--orange), #F59E0B)',
             color: '#fff', fontSize: '9px', fontWeight: 900, flexShrink: 0,
             fontFamily: "'JetBrains Mono', monospace",
         }}>
@@ -180,8 +182,8 @@ const SlotRow: React.FC<{
                 textAlign: 'center', fontSize: '12px', fontWeight: 800, outline: 'none',
                 background: 'rgba(255,255,255,0.85)', color: '#0D1117',
                 borderTop: 'none', borderBottom: 'none',
-                borderLeft: '1px solid rgba(192,19,44,0.1)',
-                borderRight: '1px solid rgba(192,19,44,0.1)',
+                borderLeft: '1px solid rgba(217,119,6,0.1)',
+                borderRight: '1px solid rgba(217,119,6,0.1)',
                 fontFamily: "'JetBrains Mono', monospace",
             }}
         />
@@ -196,7 +198,7 @@ const SlotRow: React.FC<{
             style={{
                 width: '28px', textAlign: 'center', fontSize: '11px', fontWeight: 700,
                 outline: 'none', background: '#F5F7FA', color: '#374151', border: 'none',
-                borderRight: '1px solid rgba(192,19,44,0.1)',
+                borderRight: '1px solid rgba(217,119,6,0.1)',
                 fontFamily: "'JetBrains Mono', monospace",
             }}
         />
@@ -207,8 +209,8 @@ const SlotRow: React.FC<{
                 onClick={() => !readOnly && onAmPmChange('AM')}
                 style={{
                     flex: 1, fontSize: '8px', fontWeight: 900, border: 'none',
-                    borderBottom: '1px solid rgba(192,19,44,0.08)', cursor: 'pointer',
-                    background: amPm === 'AM' ? 'linear-gradient(135deg, var(--crimson), #E8153A)' : 'rgba(245,247,250,0.8)',
+                    borderBottom: '1px solid rgba(217,119,6,0.08)', cursor: 'pointer',
+                    background: amPm === 'AM' ? 'linear-gradient(135deg, var(--orange), #F59E0B)' : 'rgba(245,247,250,0.8)',
                     color: amPm === 'AM' ? '#fff' : '#94A3B8',
                     transition: 'all 0.15s ease',
                     fontFamily: "'JetBrains Mono', monospace",
@@ -220,7 +222,7 @@ const SlotRow: React.FC<{
                 style={{
                     flex: 1, fontSize: '8px', fontWeight: 900, border: 'none',
                     cursor: 'pointer',
-                    background: amPm === 'PM' ? 'linear-gradient(135deg, var(--crimson), #E8153A)' : 'rgba(245,247,250,0.8)',
+                    background: amPm === 'PM' ? 'linear-gradient(135deg, var(--orange), #F59E0B)' : 'rgba(245,247,250,0.8)',
                     color: amPm === 'PM' ? '#fff' : '#94A3B8',
                     transition: 'all 0.15s ease',
                     fontFamily: "'JetBrains Mono', monospace",
@@ -337,7 +339,7 @@ const MedCard: React.FC<{
                 background: 'var(--card-bg)', borderRadius: '18px',
                 border: '1px solid var(--border)', overflow: 'hidden', marginBottom: '14px',
                 boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-                animation: `slideUp 0.36s ease ${cardDelay} both`,
+                animation: `slideUp 0.36s ease ${cardDelay} forwards`,
             }}
         >
             {/* Card Header */}
@@ -360,15 +362,8 @@ const MedCard: React.FC<{
                     textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700,
                     fontFamily: "'Outfit', sans-serif",
                 }}>Medication</span>
-                {showRemove && !readOnly && (
-                    <button
-                        onClick={() => removeRow(index)}
-                        style={{
-                            fontSize: '13px', color: '#94A3B8', background: 'none',
-                            border: 'none', cursor: 'pointer', padding: '0 2px',
-                            lineHeight: 1,
-                        }}
-                    >✕</button>
+{showRemove && !readOnly && (
+                    <RemoveConfirmBtn index={index} removeRow={removeRow} />
                 )}
             </div>
 
@@ -556,11 +551,11 @@ const MedCard: React.FC<{
 
                 {/* Col 3: M/N/E/NT */}
                 <div style={{
-                    flex: '1.7', borderRight: '1px solid rgba(192,19,44,0.15)',
+                    flex: '1.7', borderRight: '1px solid rgba(217,119,6,0.15)',
                     display: 'flex', flexDirection: 'column',
                 }}>
                     <div style={{
-                        background: 'linear-gradient(135deg, var(--crimson), #E8153A)',
+                        background: 'linear-gradient(135deg, var(--orange), #F59E0B)',
                         display: 'grid', gridTemplateColumns: '28px 60px 28px 1fr', padding: '4px 0',
                     }}>
                         <span style={{ fontSize: '6px', color: 'transparent' }}>.</span>
@@ -613,6 +608,38 @@ const MedCard: React.FC<{
 };
 
 // ── Section card header helper ────────────────────────────────────────────
+// ── Remove Drug Confirmation Button ────────────────────────────────────────
+const RemoveConfirmBtn: React.FC<{ index: number; removeRow: (i: number) => void }> = ({ index, removeRow }) => {
+    const [open, setOpen] = React.useState(false);
+    return (
+        <>
+            <button
+                onClick={() => setOpen(true)}
+                style={{ fontSize: '13px', color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
+            >✕</button>
+            {open && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(13,17,23,0.55)', padding: '24px' }}>
+                    <div style={{ background: '#fff', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '320px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '32px', marginBottom: '12px' }}>💊</div>
+                        <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '16px', color: '#0D1117', margin: '0 0 8px' }}>Remove Medication?</h3>
+                        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '13px', color: '#64748B', margin: '0 0 20px', lineHeight: 1.5 }}>This will delete the drug and all its dose details. This cannot be undone.</p>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                                onClick={() => setOpen(false)}
+                                style={{ flex: 1, padding: '12px', background: '#F1F5F9', color: '#475569', fontWeight: 800, borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '13px', fontFamily: "'Outfit', sans-serif" }}
+                            >No, Keep It</button>
+                            <button
+                                onClick={() => { removeRow(index); setOpen(false); }}
+                                style={{ flex: 1, padding: '12px', background: '#1A7A4A', color: '#fff', fontWeight: 800, borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '13px', fontFamily: "'Outfit', sans-serif", boxShadow: '0 4px 14px rgba(26,122,74,0.35)' }}
+                            >Yes, Remove</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+};
+
 const SectionCard: React.FC<{ emoji: string; label: string; children: React.ReactNode; delay?: string }> = ({
     emoji, label, children, delay = '0s',
 }) => (
@@ -621,7 +648,7 @@ const SectionCard: React.FC<{ emoji: string; label: string; children: React.Reac
         border: '1px solid var(--border)',
         boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
         overflow: 'hidden',
-        animation: `slideUp 0.36s ease ${delay} both`,
+        animation: `slideUp 0.36s ease ${delay} forwards`,
     }}>
         <div style={{
             display: 'flex', alignItems: 'center', gap: '7px',
@@ -706,13 +733,12 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
             <div style={{
                 position: 'fixed', inset: 0, zIndex: 60,
                 display: 'flex', flexDirection: 'column',
-                background: 'var(--surface)', overflow: 'hidden',
+                background: 'var(--surface)',
                 fontFamily: "'Outfit', sans-serif",
             }}>
                 {/* ── Header ────────────────────────────────────────────── */}
                 <div style={{
                     background: 'var(--ink)', padding: '10px 16px 0 16px',
-                    position: 'sticky', top: 0, zIndex: 10,
                     flexShrink: 0,
                 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -754,8 +780,11 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
 
                 {/* ── Scrollable body ────────────────────────────────────── */}
                 <div style={{
-                    flex: 1, overflowY: 'auto',
-                    padding: '14px 12px 100px 12px',
+                    flex: '1 1 0',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    WebkitOverflowScrolling: 'touch' as any,
+                    padding: '14px 12px 16px 12px',
                     display: 'flex', flexDirection: 'column', gap: '12px',
                 }}>
 
@@ -837,7 +866,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                     </SectionCard>
 
                     {/* Medications section */}
-                    <div style={{ animation: 'slideUp 0.36s ease 0.06s both' }}>
+                    <div style={{ animation: 'slideUp 0.36s ease 0.06s forwards' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                             <h3 style={{
                                 fontFamily: "'Outfit', sans-serif",
@@ -1054,11 +1083,11 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
 
                 {/* ── Footer ────────────────────────────────────────────── */}
                 <div style={{
-                    position: 'fixed', bottom: 0, left: 0, right: 0,
+                    flexShrink: 0,
                     background: '#fff', borderTop: '1px solid var(--border)',
                     padding: '10px 12px',
                     boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
-                    display: 'flex', gap: '8px', zIndex: 20,
+                    display: 'flex', gap: '8px',
                 }}>
                     {/* Cancel */}
                     <button
@@ -1103,7 +1132,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                 border: 'none', cursor: 'pointer', fontSize: '13px',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                                 fontFamily: "'Outfit', sans-serif",
-                                boxShadow: '0 4px 18px rgba(192,19,44,0.35)',
+                                boxShadow: '0 4px 18px rgba(26,122,74,0.35)',
                                 transition: 'all 0.15s ease',
                             }}
                         >
