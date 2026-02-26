@@ -33,7 +33,9 @@ try {
 // (e.g., Jio in India blocks *.supabase.co)
 const _isLocalDev = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-// Proxy base URL: same-origin path that Netlify proxies to supabase.co
+// Proxy base URL: same-origin path that Vercel proxies to supabase.co
+// vercel.json rewrite: /supabase-proxy/:path* → https://ektevcxubbtuxnaapyam.supabase.co/:path*
+// Vercel's edge network resolves DNS fine — Jio users hit Vercel, Vercel hits Supabase.
 const _proxyBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/supabase-proxy` : '';
 
 console.log('[Supabase] Mode:', _isLocalDev ? 'DIRECT' : 'PROXIED via /supabase-proxy');
@@ -111,8 +113,9 @@ export function getSupabaseClient(): SupabaseClient<Database> {
           const existingSignal = (options as any).signal as AbortSignal | undefined;
           let lastError: any;
 
-          // In production, rewrite supabase.co URLs to go through our Netlify proxy
-          // This bypasses Jio ISP blocking of *.supabase.co
+          // In production, rewrite supabase.co URLs to go through Vercel's proxy
+          // vercel.json routes /supabase-proxy/* → supabase.co/*
+          // This bypasses Jio ISP DNS blocking of *.supabase.co
           let fetchUrl = url;
           if (!_isLocalDev && typeof url === 'string' && url.startsWith(supabaseUrl)) {
             fetchUrl = url.replace(supabaseUrl, _proxyBaseUrl);

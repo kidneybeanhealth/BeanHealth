@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { subscribeWithFallback } from '../lib/realtimeHelper';
 import { toast } from 'react-hot-toast';
-import PrescriptionModal from './modals/PrescriptionModal';
+import PrescriptionModalSelector from './prescriptions/PrescriptionModalSelector';
 import ManageDrugsModal from './modals/ManageDrugsModal';
 import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
 import DoctorTeamAuditModal from './modals/DoctorTeamAuditModal';
@@ -341,52 +342,44 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         }
     }, [doctor.id, viewMode, fetchQueue, fetchHistory, fetchPastRecords]);
 
-    // Realtime subscription for queue updates with error handling
+    // Realtime subscription for queue updates — with automatic polling fallback for Jio/ISP-blocked networks
     useEffect(() => {
         if (!doctor.id) return;
 
-        const channel = supabase
-            .channel(`doctor-queue-${doctor.id}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'hospital_queues',
-                    filter: `doctor_id=eq.${doctor.id}`
-                },
-                (payload) => {
-                    console.log('Queue update received:', payload.eventType);
-                    if (payload.eventType === 'INSERT') {
-                        // Check if it's for today
-                        if (new Date(payload.new.created_at) >= new Date(new Date().setHours(0, 0, 0, 0))) {
-                            toast.success('New patient added to queue!', { duration: 3000 });
+        const unsub = subscribeWithFallback({
+            name: `doctor-queue-${doctor.id}`,
+            channelFactory: () =>
+                supabase
+                    .channel(`doctor-queue-${doctor.id}`)
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: '*',
+                            schema: 'public',
+                            table: 'hospital_queues',
+                            filter: `doctor_id=eq.${doctor.id}`
+                        },
+                        (payload) => {
+                            console.log('Queue update received:', payload.eventType);
+                            if (payload.eventType === 'INSERT') {
+                                if (new Date(payload.new.created_at) >= new Date(new Date().setHours(0, 0, 0, 0))) {
+                                    toast.success('New patient added to queue!', { duration: 3000 });
+                                }
+                            }
+                            if (viewMode === 'queue') fetchQueue(true);
+                            else if (viewMode === 'history') fetchHistory(true);
                         }
-                    }
-                    // Refetch in background based on viewMode
-                    if (viewMode === 'queue') {
-                        fetchQueue(true);
-                    } else if (viewMode === 'history') {
-                        fetchHistory(true);
-                    } else if (viewMode === 'past_records') {
-                        // Past records usually don't change by self-updates unless we modify them, strict reload might not be needed but safe
-                    }
-                }
-            )
-            .subscribe((status, err) => {
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.error('Doctor realtime error:', err);
-                    setTimeout(() => {
-                        if (viewMode === 'queue') fetchQueue(true);
-                        else if (viewMode === 'history') fetchHistory(true);
-                        else if (viewMode === 'past_records') fetchPastRecords(true);
-                    }, 3000);
-                }
-            });
+                    ),
+            // Polling fallback: refresh queue every 8s when WebSocket is blocked
+            pollFn: () => {
+                if (viewMode === 'queue') fetchQueue(true);
+                else if (viewMode === 'history') fetchHistory(true);
+                else if (viewMode === 'past_records') fetchPastRecords(true);
+            },
+            pollIntervalMs: 8000,
+        });
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return unsub;
     }, [doctor.id, viewMode, fetchQueue, fetchHistory, fetchPastRecords]);
 
     // Periodic health check - refresh data every 60 seconds when tab is visible
@@ -1306,7 +1299,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
             {/* Prescription Modal - Active */}
             {showRxModal && selectedPatient && (
-                <PrescriptionModal
+                <PrescriptionModalSelector
                     doctor={currentDoctor}
                     patient={selectedPatient}
                     onClose={() => {
@@ -1329,7 +1322,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
             {/* History Modal - Read Only */}
             {selectedHistoryItem && (
-                <PrescriptionModal
+                <PrescriptionModalSelector
                     doctor={currentDoctor}
                     patient={{
                         ...selectedHistoryItem.patient,

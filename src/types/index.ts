@@ -28,6 +28,7 @@ export interface User {
   trialEndsAt?: string;
   trial_ends_at?: string; // Database field name
   notes?: string;
+  hospital_id?: string; // Enterprise: which hospital this user belongs to
   created_at?: string;
   updated_at?: string;
   referralCode?: string;

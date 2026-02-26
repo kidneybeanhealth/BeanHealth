@@ -46,15 +46,29 @@ export default async (req, context) => {
             if (value) headers.set(key, value);
         }
 
+        // Forward range header for paginated queries
+        const rangeHeader = req.headers.get('range');
+        if (rangeHeader) headers.set('range', rangeHeader);
+
+        // Forward x-upsert for Supabase storage upserts
+        const upsertHeader = req.headers.get('x-upsert');
+        if (upsertHeader) headers.set('x-upsert', upsertHeader);
+
+        // Forward cache-control
+        const cacheHeader = req.headers.get('cache-control');
+        if (cacheHeader) headers.set('cache-control', cacheHeader);
+
         // Build fetch options
         const fetchOptions = {
             method: req.method,
             headers,
         };
 
-        // Only include body for methods that have one
-        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
-            fetchOptions.body = await req.text();
+        // Include body for all methods that can carry one
+        // NOTE: DELETE is included because Supabase/PostgREST uses it for batch deletes
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+            const body = await req.text();
+            if (body) fetchOptions.body = body;
         }
 
         // Forward the request to Supabase
@@ -63,10 +77,17 @@ export default async (req, context) => {
         // Read the response body
         const responseBody = await response.text();
 
-        // Build response with CORS headers
+        // Build response headers — forward Supabase range/content-range for pagination
         const responseHeaders = new Headers();
         responseHeaders.set('Content-Type', response.headers.get('content-type') || 'application/json');
         responseHeaders.set('Access-Control-Allow-Origin', '*');
+        responseHeaders.set('Access-Control-Expose-Headers', 'Content-Range, X-Total-Count');
+
+        const contentRange = response.headers.get('content-range');
+        if (contentRange) responseHeaders.set('Content-Range', contentRange);
+
+        const totalCount = response.headers.get('x-total-count');
+        if (totalCount) responseHeaders.set('X-Total-Count', totalCount);
 
         return new Response(responseBody, {
             status: response.status,

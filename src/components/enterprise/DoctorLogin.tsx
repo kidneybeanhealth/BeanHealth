@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
+import { sortDoctors } from '../../utils/doctorSortStrategy';
 import { useHospitalName } from '../../hooks/useHospitalName';
 import {
     getLegacyDoctorSessionKey,
@@ -62,6 +64,7 @@ const DoctorLogin: React.FC = () => {
     const navigate = useNavigate();
     const { doctorId } = useParams<{ doctorId: string }>();
     const { profile } = useAuth();
+    const { tenant } = useTenant();
     const { displayName } = useHospitalName('Hospital Registry');
 
     const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
@@ -202,24 +205,12 @@ const DoctorLogin: React.FC = () => {
             const featureEnabled = Boolean(featureResult?.data?.enable_pa_actor_auth);
             setPaAuthEnabled(featureEnabled);
 
-            // Custom sort: Prabhakar first, Divakar second, others after
+            // Sort using the tenant's configured doctor_sort_order from hospital_profiles.config.
+            // KKC config: ["prabhakar", "divakar"] → identical result to previous hardcoded sort.
+            // New hospitals: order comes from their DB config, no code changes needed.
             const doctorsList = (data as DoctorProfile[]) || [];
-            const sortedDoctors = doctorsList.sort((a, b) => {
-                const nameA = a.name.toLowerCase();
-                const nameB = b.name.toLowerCase();
-
-                const isPrabhakarA = nameA.includes('prabhakar');
-                const isPrabhakarB = nameB.includes('prabhakar');
-                if (isPrabhakarA && !isPrabhakarB) return -1;
-                if (!isPrabhakarA && isPrabhakarB) return 1;
-
-                const isDivakarA = nameA.includes('divakar');
-                const isDivakarB = nameB.includes('divakar');
-                if (isDivakarA && !isDivakarB) return -1;
-                if (!isDivakarA && isDivakarB) return 1;
-
-                return nameA.localeCompare(nameB);
-            });
+            const sortOrder = tenant?.config?.doctor_sort_order ?? [];
+            const sortedDoctors = sortDoctors(doctorsList, sortOrder);
 
             console.log('[DoctorLogin] Found doctors:', sortedDoctors.length);
             setDoctors(sortedDoctors);

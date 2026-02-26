@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { HospitalProfile, getTenantDisplayName, getTenantPhone } from '../contexts/TenantContext';
 
 export interface PrinterPreviewData {
     hospitalName?: string;
@@ -17,6 +18,7 @@ export interface PrinterPreviewData {
 
 interface PrinterPreviewProps {
     data: PrinterPreviewData;
+    tenant?: HospitalProfile | null;
     isSandbox?: boolean;
     onSettingsChange?: (settings: { spacing: number; alignment: 'left' | 'center' | 'right' }) => void;
     isSaving?: boolean;
@@ -24,6 +26,7 @@ interface PrinterPreviewProps {
 
 const PrinterPreview: React.FC<PrinterPreviewProps> = ({
     data,
+    tenant,
     isSandbox = false,
     onSettingsChange,
     isSaving = false
@@ -140,11 +143,19 @@ const PrinterPreview: React.FC<PrinterPreviewProps> = ({
                     <div className="relative z-10 space-y-0 leading-none" style={{ fontSize: '12px' }}>
 
                         {/* Header */}
-                        <div className="text-center w-full uppercase py-1">
-                            ~~~ Om Muruga ~~~
-                        </div>
+                        {tenant ? (
+                            tenant.config?.show_religious_header && tenant.config?.religious_header_text ? (
+                                <div className="text-center w-full uppercase py-1">
+                                    {tenant.config.religious_header_text}
+                                </div>
+                            ) : null
+                        ) : (
+                            <div className="text-center w-full uppercase py-1">
+                                ~~~ Om Muruga ~~~
+                            </div>
+                        )}
                         <div className="text-center w-full font-extrabold py-1">
-                            {data.hospitalName || 'KONGUNAD KIDNEY CENTRE'}
+                            {tenant ? getTenantDisplayName(tenant).toUpperCase() : (data.hospitalName || 'KONGUNAD KIDNEY CENTRE')}
                         </div>
 
                         <div className="text-center w-full py-1 text-xs">
@@ -181,9 +192,11 @@ const PrinterPreview: React.FC<PrinterPreviewProps> = ({
                         <div className="text-center w-full py-1 text-xs">{dividerDouble}</div>
 
                         <div className="text-center w-full space-y-1 py-1">
-                            <div>For feedback & queries</div>
-                            <div className="font-bold">Ph: 8056391682</div>
-                            <div>IG: @kongunad_kidney_centre</div>
+                            <div>For feedback &amp; queries</div>
+                            <div className="font-bold">Ph: {tenant ? getTenantPhone(tenant) : '8056391682'}</div>
+                            {(tenant ? tenant.footer_instagram : '@kongunad_kidney_centre') && (
+                                <div>IG: {tenant ? tenant.footer_instagram : '@kongunad_kidney_centre'}</div>
+                            )}
                         </div>
 
                         <div className="text-center w-full py-1 text-xs">{dividerDouble}</div>

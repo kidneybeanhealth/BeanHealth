@@ -1,6 +1,18 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { TenantProvider } from '../contexts/TenantContext';
+
+// Thin wrapper that reads hospitalId from AuthContext and provides TenantContext.
+// Wraps enterprise routes so any child can call useTenant().
+const EnterpriseTenantWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { profile } = useAuth();
+    return (
+        <TenantProvider hospitalId={profile?.hospital_id ?? ''}>
+            {children}
+        </TenantProvider>
+    );
+};
 
 // Auth Components - kept eager as they're needed immediately
 import Auth from '../components/auth/Auth';
@@ -268,102 +280,67 @@ const AppRoutes: React.FC = () => {
                     }
                 />
 
-                {/* Enterprise Dashboard & Sub-routes */}
+                {/* ── Enterprise Routes ─────────────────────────────────────── */}
+                {/* Single ProtectedRoute + TenantProvider wraps ALL enterprise paths.
+                    TenantProvider fetches hospital_profiles ONCE on enterprise login
+                    and stays alive for the entire enterprise session — no re-fetch
+                    on navigation between enterprise sub-routes. */}
                 <Route
-                    path="/enterprise-dashboard"
                     element={
                         <ProtectedRoute allowedRoles={['enterprise']}>
-                            <EnterpriseDashboardHome />
+                            <EnterpriseTenantWrapper>
+                                <Outlet />
+                            </EnterpriseTenantWrapper>
                         </ProtectedRoute>
                     }
-                />
+                >
+                    {/* Enterprise Dashboard home */}
+                    <Route path="/enterprise-dashboard" element={<EnterpriseDashboardHome />} />
 
-                {/* Reception Routes */}
-                <Route
-                    path="/enterprise-dashboard/reception"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <ReceptionLogin />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/enterprise-dashboard/reception/dashboard"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
+                    {/* Reception */}
+                    <Route path="/enterprise-dashboard/reception" element={<ReceptionLogin />} />
+                    <Route
+                        path="/enterprise-dashboard/reception/dashboard"
+                        element={
                             <DepartmentProtectedRoute department="reception">
                                 <ReceptionDashboard />
                             </DepartmentProtectedRoute>
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/enterprise-dashboard/reception/tracker"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
+                        }
+                    />
+                    <Route
+                        path="/enterprise-dashboard/reception/tracker"
+                        element={
                             <DepartmentProtectedRoute department="reception">
                                 <TrackPatientsPage />
                             </DepartmentProtectedRoute>
-                        </ProtectedRoute>
-                    }
-                />
+                        }
+                    />
 
-                {/* Pharmacy Routes */}
-                <Route
-                    path="/enterprise-dashboard/pharmacy"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <PharmacyLogin />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/enterprise-dashboard/pharmacy/dashboard"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
+                    {/* Pharmacy */}
+                    <Route path="/enterprise-dashboard/pharmacy" element={<PharmacyLogin />} />
+                    <Route
+                        path="/enterprise-dashboard/pharmacy/dashboard"
+                        element={
                             <DepartmentProtectedRoute department="pharmacy">
                                 <PharmacyDashboard />
                             </DepartmentProtectedRoute>
-                        </ProtectedRoute>
-                    }
-                />
-                {/* Pharmacy Queue Display - for patient waiting area */}
-                <Route
-                    path="/enterprise-dashboard/pharmacy/display"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <PharmacyQueueDisplay />
-                        </ProtectedRoute>
-                    }
-                />
+                        }
+                    />
+                    {/* Pharmacy Queue Display — for patient waiting area */}
+                    <Route path="/enterprise-dashboard/pharmacy/display" element={<PharmacyQueueDisplay />} />
 
-                {/* Doctor Routes */}
-                <Route
-                    path="/enterprise-dashboard/doctors"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <DoctorLogin />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/enterprise-dashboard/doctors/:doctorId"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
-                            <DoctorLogin />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="/enterprise-dashboard/doctors/:doctorId/dashboard"
-                    element={
-                        <ProtectedRoute allowedRoles={['enterprise']}>
+                    {/* Doctors */}
+                    <Route path="/enterprise-dashboard/doctors" element={<DoctorLogin />} />
+                    <Route path="/enterprise-dashboard/doctors/:doctorId" element={<DoctorLogin />} />
+                    <Route
+                        path="/enterprise-dashboard/doctors/:doctorId/dashboard"
+                        element={
                             <DoctorProtectedRoute>
                                 <DoctorDashboardWrapper />
                             </DoctorProtectedRoute>
-                        </ProtectedRoute>
-                    }
-                />
+                        }
+                    />
+                </Route>
 
                 {/* ============ FALLBACK ============ */}
                 <Route path="*" element={<Navigate to="/" replace />} />

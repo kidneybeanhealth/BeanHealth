@@ -64,6 +64,7 @@ interface PrescriptionModalProps {
   readOnly?: boolean;
   existingData?: any;
   clinicLogo?: string;
+  clinicName?: string;  // Override the default KKC name for other hospitals
   actorAttribution?: {
     actorType: 'chief' | 'assistant';
     actorDisplayName: string;
@@ -136,6 +137,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   readOnly = false,
   existingData = null,
   clinicLogo,
+  clinicName,
   actorAttribution,
   onPrintOpen,
 }) => {
@@ -915,8 +917,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <img src={clinicLogo || "/logo.png"} alt="Clinic Logo" className="w-[70px] h-[70px] object-contain absolute -top-1 left-0" />
                         </div>
                         <div className="text-center flex-1">
-                          <h1 className="text-lg font-bold text-blue-900 leading-tight">KONGUNAD KIDNEY CENTRE, COIMBATORE - 641 012</h1>
-                          <h2 className="text-base font-bold text-blue-900 leading-tight">கொங்குநாடு கிட்னி சென்டர், கோயம்புத்தூர் - 641 012</h2>
+                          <h1 className="text-lg font-bold text-blue-900 leading-tight">{clinicName || 'KONGUNAD KIDNEY CENTRE, COIMBATORE - 641 012'}</h1>
+                          {!clinicName && <h2 className="text-base font-bold text-blue-900 leading-tight">கொங்குநாடு கிட்னி சென்டர், கோயம்புத்தூர் - 641 012</h2>}
                         </div>
                         {/* Page Number Indicator */}
                         {chunks.length > 1 && (

@@ -8,5 +8,16 @@
             "source": "/(.*)",
             "destination": "/index.html"
         }
+    ],
+    "headers": [
+        {
+            "source": "/supabase-proxy/(.*)",
+            "headers": [
+                { "key": "Access-Control-Allow-Origin", "value": "*" },
+                { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,PATCH,DELETE,OPTIONS" },
+                { "key": "Access-Control-Allow-Headers", "value": "authorization,apikey,content-type,x-client-info,prefer,range,x-upsert,cache-control,x-supabase-api-version" },
+                { "key": "Access-Control-Expose-Headers", "value": "Content-Range,X-Total-Count" }
+            ]
+        }
     ]
 }

@@ -3,6 +3,7 @@ import { printerService } from '../services/BluetoothPrinterService';
 import { toast } from 'react-hot-toast';
 import { LogoIcon } from './icons/LogoIcon';
 import PrinterPreview, { PrinterPreviewData } from './PrinterPreview';
+import { HospitalProfile } from '../contexts/TenantContext';
 
 interface PrinterSetupModalProps {
     isOpen: boolean;
@@ -11,6 +12,7 @@ interface PrinterSetupModalProps {
     settings: { spacing: number; alignment: 'left' | 'center' | 'right' };
     onSettingsChange: (settings: { spacing: number; alignment: 'left' | 'center' | 'right' }) => void;
     isSavingSettings?: boolean;
+    tenant?: HospitalProfile | null;
 }
 
 const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({
@@ -19,7 +21,8 @@ const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({
     onConnected,
     settings,
     onSettingsChange,
-    isSavingSettings = false
+    isSavingSettings = false,
+    tenant,
 }) => {
     const [isConnecting, setIsConnecting] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
@@ -173,6 +176,7 @@ const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({
                                 <div className="border border-blue-100 rounded-lg overflow-hidden bg-white">
                                     <PrinterPreview
                                         data={previewData}
+                                        tenant={tenant}
                                         isSandbox={true}
                                         onSettingsChange={onSettingsChange}
                                         isSaving={isSavingSettings}

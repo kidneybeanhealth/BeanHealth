@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
 import { useHospitalName } from '../../hooks/useHospitalName';
 import { supabase, getProxiedUrl } from '../../lib/supabase';
+import { subscribeWithFallback } from '../../lib/realtimeHelper';
 import { toast } from 'react-hot-toast';
 import { LogoIcon } from '../icons/LogoIcon';
 import PrinterSetupModal from '../PrinterSetupModal';
 import { printerService } from '../../services/BluetoothPrinterService';
-import { generateTokenReceipt, createTokenData } from '../../utils/tokenReceiptGenerator';
+import { createTokenData } from '../../utils/tokenReceiptGenerator';
+import { getReceiptBytes } from '../../utils/receipts/receiptGeneratorSelector';
 import PrinterPreview from '../PrinterPreview';
 import { BeanhealthIdService } from '../../services/beanhealthIdService';
 
@@ -60,6 +63,7 @@ const toLocalISODate = (date: Date): string => {
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
     const { profile, refreshProfile } = useAuth();
+    const { tenant } = useTenant();
     const { displayName } = useHospitalName('Hospital');
 
     const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
@@ -369,65 +373,54 @@ const ReceptionDashboard: React.FC = () => {
         }
     };
 
-    // Realtime subscription for queue updates - Optimized
+    // Realtime subscription for queue updates — with automatic polling fallback for Jio/ISP-blocked networks
     useEffect(() => {
         if (!profile?.id) return;
 
-        console.log('Setting up optimized realtime subscription...');
-        const channel = supabase
-            .channel(`reception-queue-${profile.id}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'hospital_queues',
-                    filter: `hospital_id=eq.${profile.id}`
-                },
-                (payload: any) => {
-                    if (payload.eventType === 'INSERT') {
-                        // New item added - fetch details with joins
-                        fetchSingleQueueItem(payload.new.id);
-                        toast.success('New patient registered', { duration: 3000, position: 'bottom-right' });
-                    } else if (payload.eventType === 'UPDATE') {
-                        // Update existing item - merge changes
-                        setQueue((prev: any[]) => prev.map((item: any) => {
-                            if (item.id === payload.new.id) {
-                                return { ...item, ...payload.new };
+        console.log('Setting up realtime subscription with polling fallback...');
+        const unsub = subscribeWithFallback({
+            name: `reception-queue-${profile.id}`,
+            channelFactory: () =>
+                supabase
+                    .channel(`reception-queue-${profile.id}`)
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: '*',
+                            schema: 'public',
+                            table: 'hospital_queues',
+                            filter: `hospital_id=eq.${profile.id}`
+                        },
+                        (payload: any) => {
+                            if (payload.eventType === 'INSERT') {
+                                fetchSingleQueueItem(payload.new.id);
+                                toast.success('New patient registered', { duration: 3000, position: 'bottom-right' });
+                            } else if (payload.eventType === 'UPDATE') {
+                                setQueue((prev: any[]) => prev.map((item: any) =>
+                                    item.id === payload.new.id ? { ...item, ...payload.new } : item
+                                ));
+                            } else if (payload.eventType === 'DELETE') {
+                                setQueue((prev: any[]) => prev.filter((item: any) => item.id !== payload.old.id));
                             }
-                            return item;
-                        }));
-                    } else if (payload.eventType === 'DELETE') {
-                        // Remove item
-                        setQueue((prev: any[]) => prev.filter((item: any) => item.id !== payload.old.id));
-                    }
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'hospital_doctors',
-                    filter: `hospital_id=eq.${profile.id}`
-                },
-                () => {
-                    fetchDoctors();
-                }
-            )
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    // console.log('Realtime connected');
-                } else if (status === 'CHANNEL_ERROR') {
-                    console.error('Realtime connection error, falling back to fetch');
-                    fetchQueue(true);
-                }
-            });
+                        }
+                    )
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: '*',
+                            schema: 'public',
+                            table: 'hospital_doctors',
+                            filter: `hospital_id=eq.${profile.id}`
+                        },
+                        () => { fetchDoctors(); }
+                    ),
+            // Polling fallback: full queue refresh every 6s — used when WebSocket is blocked by Jio
+            pollFn: () => fetchQueue(true),
+            pollIntervalMs: 6000,
+        });
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [profile?.id, fetchDoctors]); // Removed fetchQueue dependency to avoid recreation
+        return unsub;
+    }, [profile?.id, fetchDoctors]); // fetchQueue intentionally omitted to avoid recreation
 
     // Refetch when tab becomes visible (Keep this for consistency/recovery)
     useEffect(() => {
@@ -860,7 +853,7 @@ const ReceptionDashboard: React.FC = () => {
             // Apply custom layout settings
             tokenData.settings = printerSettings;
 
-            const receiptData = generateTokenReceipt(tokenData);
+            const receiptData = getReceiptBytes(tokenData, tenant);
             await printerService.print(receiptData);
 
             toast.success('Token printed successfully!');
@@ -905,7 +898,7 @@ const ReceptionDashboard: React.FC = () => {
             // Apply custom layout settings
             tokenData.settings = printerSettings;
 
-            const receiptData = generateTokenReceipt(tokenData);
+            const receiptData = getReceiptBytes(tokenData, tenant);
             await printerService.print(receiptData);
 
             toast.success('Token reprinted!', { id: toastId });
@@ -1809,6 +1802,7 @@ const ReceptionDashboard: React.FC = () => {
                         <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
                             <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-inner">
                                 <PrinterPreview
+                                    tenant={tenant}
                                     data={{
                                         tokenNumber: lastRegisteredPatient.tokenNumber,
                                         patientName: lastRegisteredPatient.name,
@@ -1896,6 +1890,7 @@ const ReceptionDashboard: React.FC = () => {
                 settings={printerSettings}
                 onSettingsChange={handleSavePrinterSettings}
                 isSavingSettings={isSavingPrinterSettings}
+                tenant={tenant}
             />
 
             {/* Delete Confirmation Modal */}

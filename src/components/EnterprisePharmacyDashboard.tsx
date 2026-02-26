@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { subscribeWithFallback } from '../lib/realtimeHelper';
 import { toast } from 'react-hot-toast';
 import PrescriptionModal from './modals/PrescriptionModal';
 
@@ -240,54 +241,49 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
         // Initial Fetch
         fetchPrescriptions();
 
-        console.log('Setting up optimized pharmacy realtime subscription...');
-        const channel = supabase
-            .channel(`pharmacy-dashboard-${hospitalId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'hospital_prescriptions',
-                    filter: `hospital_id=eq.${hospitalId}`
-                },
-                (payload: any) => {
-                    if (payload.eventType === 'INSERT') {
-                        fetchSinglePrescription(payload.new.id);
-                    } else if (payload.eventType === 'UPDATE') {
-                        setPrescriptions(prev => prev.map(p => {
-                            if (p.id === payload.new.id) {
-                                // If status changed to dispensed, we might want to move it to history tab or keep it updated
-                                const updated = { ...p, ...payload.new };
-                                // Update selected prescription if open
-                                if (selectedPrescription?.id === p.id) {
-                                    setSelectedPrescription(prevSelected => ({ ...prevSelected!, ...payload.new }));
+        console.log('Setting up pharmacy realtime subscription with polling fallback...');
+        const unsub = subscribeWithFallback({
+            name: `pharmacy-dashboard-${hospitalId}`,
+            channelFactory: () =>
+                supabase
+                    .channel(`pharmacy-dashboard-${hospitalId}`)
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: '*',
+                            schema: 'public',
+                            table: 'hospital_prescriptions',
+                            filter: `hospital_id=eq.${hospitalId}`
+                        },
+                        (payload: any) => {
+                            if (payload.eventType === 'INSERT') {
+                                fetchSinglePrescription(payload.new.id);
+                            } else if (payload.eventType === 'UPDATE') {
+                                setPrescriptions(prev => prev.map(p => {
+                                    if (p.id === payload.new.id) {
+                                        const updated = { ...p, ...payload.new };
+                                        if (selectedPrescription?.id === p.id) {
+                                            setSelectedPrescription(prevSelected => ({ ...prevSelected!, ...payload.new }));
+                                        }
+                                        return updated;
+                                    }
+                                    return p;
+                                }));
+                            } else if (payload.eventType === 'DELETE') {
+                                setPrescriptions(prev => prev.filter(p => p.id !== payload.old.id));
+                                if (selectedPrescription?.id === payload.old.id) {
+                                    setSelectedPrescription(null);
+                                    toast.error('Prescription was deleted');
                                 }
-                                return updated;
                             }
-                            return p;
-                        }));
-                    } else if (payload.eventType === 'DELETE') {
-                        setPrescriptions(prev => prev.filter(p => p.id !== payload.old.id));
-                        if (selectedPrescription?.id === payload.old.id) {
-                            setSelectedPrescription(null); // Close modal if deleted
-                            toast.error('Prescription was deleted');
                         }
-                    }
-                }
-            )
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    // console.log('Pharmacy realtime connected');
-                } else if (status === 'CHANNEL_ERROR') {
-                    console.error('Realtime error, falling back to fetch');
-                    fetchPrescriptions(true);
-                }
-            });
+                    ),
+            // Polling fallback: full prescription refresh every 8s when WebSocket is blocked by Jio
+            pollFn: () => fetchPrescriptions(true),
+            pollIntervalMs: 8000,
+        });
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return unsub;
     }, [hospitalId, fetchPrescriptions]); // frequent 'selectedPrescription' changes shouldn't trigger re-sub, so removed it from deps. Check if 'selectedPrescription' in closure is stale.
     // Actually, 'selectedPrescription' inside the callback will be stale if not in deps. 
     // Ideally, pass setter function to avoid stale state issues. I used setter function for setPrescriptions, but used selectedPrescription state directly for logic check.
