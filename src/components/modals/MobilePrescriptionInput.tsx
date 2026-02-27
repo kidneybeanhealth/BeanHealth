@@ -144,7 +144,7 @@ const MedCard: React.FC<{
             style={{
                 flex: 1, padding: '3px 0', fontSize: '8px', fontWeight: 900, borderRadius: '5px',
                 border: med.dose === opt ? '1.5px solid #4a7c2f' : '1px solid #e5e7eb',
-                cursor: 'pointer', background: 'transparent',
+                cursor: 'pointer', background: med.dose === opt ? '#ecfdf5' : 'transparent',
                 color: med.dose === opt ? '#4a7c2f' : '#6b7280',
                 transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
                 transform: med.dose === opt ? 'scale(1.05)' : 'scale(1)',
@@ -160,7 +160,7 @@ const MedCard: React.FC<{
             style={{
                 width: '100%', flex: 1, minHeight: '24px', fontSize: '8px', fontWeight: 900, borderRadius: '5px',
                 border: med.foodTiming === opt ? '1.5px solid #3d7a6a' : '1px solid #e5e7eb',
-                cursor: 'pointer', background: 'transparent',
+                cursor: 'pointer', background: med.foodTiming === opt ? '#ecfdf5' : 'transparent',
                 color: med.foodTiming === opt ? '#3d7a6a' : '#6b7280',
                 transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
                 transform: med.foodTiming === opt ? 'scale(1.05)' : 'scale(1)',
