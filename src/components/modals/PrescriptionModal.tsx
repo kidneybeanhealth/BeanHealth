@@ -64,7 +64,13 @@ interface PrescriptionModalProps {
   readOnly?: boolean;
   existingData?: any;
   clinicLogo?: string;
-  clinicName?: string;  // Override the default KKC name for other hospitals
+  clinicName?: string;           // Override the default KKC name for other hospitals
+  clinicAddress?: string;        // e.g. "123 Main Street, City - 641 012"
+  clinicPhone?: string;          // Appointment / main phone
+  emergencyPhone?: string;       // 24-hr emergency number
+  workingHours?: string;         // e.g. "8 AM – 6 PM"
+  footerDoctorText?: string;     // e.g. "DR. JOHN MD., DM (NEPHROLOGY)"
+  specialistOptions?: string[] | null;  // null = loading, [] = loaded/empty, [...] = hospital doctors
   actorAttribution?: {
     actorType: 'chief' | 'assistant';
     actorDisplayName: string;
@@ -94,11 +100,6 @@ const MORNING_TIMES = ['4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', 
 const NOON_TIMES = ['12 PM', '1 PM', '2 PM', '3 PM', '4 PM'];
 const EVENING_TIMES = ['5 PM', '6 PM', '7 PM', '8 PM'];
 const NIGHT_TIMES = ['7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM', '1 AM'];
-
-const SPECIALIST_OPTIONS = [
-  'Dr. A. Prabhakar',
-  'Dr. A. Divakar'
-];
 
 const parseSpecialists = (value: string) =>
   (value || '')
@@ -138,9 +139,20 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   existingData = null,
   clinicLogo,
   clinicName,
+  clinicAddress,
+  clinicPhone,
+  emergencyPhone,
+  workingHours,
+  footerDoctorText,
+  specialistOptions,
   actorAttribution,
   onPrintOpen,
 }) => {
+  // Resolve specialist dropdown:
+  //   null  = still loading → show empty, no names leak from other hospitals
+  //   []    = loaded, no doctors configured yet → show empty
+  //   [...] = loaded with results → use them
+  const SPECIALIST_OPTIONS = specialistOptions ?? [];
   // Form States matching the PDF structure
   const [formData, setFormData] = useState({
     fatherName: '',
@@ -747,7 +759,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     return (
       <>
         <MobilePrescriptionInput
-          doctor={doctor}
           patient={patient}
           medications={medications}
           updateMed={updateMed}
@@ -764,9 +775,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           setDiagnosisSearchQuery={setDiagnosisSearchQuery}
           showDiagnosisDropdown={showDiagnosisDropdown}
           setShowDiagnosisDropdown={setShowDiagnosisDropdown}
-          DOSE_OPTIONS={DOSE_OPTIONS}
-          DOSE_MAPPINGS={DOSE_MAPPINGS}
-          FOOD_TIMING_OPTIONS={FOOD_TIMING_OPTIONS}
           drugSearchQuery={drugSearchQuery}
           setDrugSearchQuery={setDrugSearchQuery}
           filteredDrugs={filteredDrugs}
@@ -1753,11 +1761,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           {/* Footer Box - Full Width with Larger Font */}
                           <div className="w-full border-2 border-black p-2 text-[12px] leading-[1.5] flex flex-col justify-center font-bold mt-2 bg-gray-50 print:bg-white uppercase">
                             <p className="text-center mb-1.5">முன்பதிவு காலதாமதத்தை குறைக்கும் / PRIOR REGISTRATION AVOIDS DELAY</p>
-                            <p className="text-center mb-1">APPT: 0422-2494333, 73588 41555, 41666 | TIME: 8AM - 6PM</p>
-                            <p className="text-center border-t border-gray-400 mt-1.5 pt-1.5">
-                              DR. A. பிரபாகர் MD., DNB (NEPHROLOGY) | DR. A. திவாகர் MS., M.CH (UROLOGY)
+                            {clinicAddress && (
+                              <p className="text-center mb-1">{clinicAddress}</p>
+                            )}
+                            <p className="text-center mb-1">
+                              APPT: {clinicPhone || '0422-2494333, 73588 41555, 41666'} | TIME: {workingHours || '8AM - 6PM'}
                             </p>
-                            <p className="text-center mt-1">அவசர உதவிக்கு / EMERGENCY: 0422 - 2494333 (24 மணி நேரமும் / 24 HRS SERVICE)</p>
+                            <p className="text-center border-t border-gray-400 mt-1.5 pt-1.5">
+                              {footerDoctorText || 'DR. A. பிரபாகர் MD., DNB (NEPHROLOGY) | DR. A. திவாகர் MS., M.CH (UROLOGY)'}
+                            </p>
+                            <p className="text-center mt-1">அவசர உதவிக்கு / EMERGENCY: {emergencyPhone || '0422 - 2494333'} (24 மணி நேரமும் / 24 HRS SERVICE)</p>
                           </div>
                         </div>
                       );

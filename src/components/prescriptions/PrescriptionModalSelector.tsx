@@ -4,19 +4,19 @@
  * Checks tenant.config.prescription and renders the correct prescription modal.
  *
  * To add a new hospital template:
- *   1. Copy the existing KKCPrescriptionModal.tsx and customize it
+ *   1. Copy KKCPrescriptionModal.tsx and customise the design
  *   2. Add one `case 'your_key':` below
  *   3. Set config->>'prescription' = 'your_key' in DB for that hospital
  *
- * KKC always gets 'kkc' → renders KKCPrescriptionModal (unchanged).
- * New hospitals get 'standard' → renders StandardPrescriptionModal.
+ * DEFAULT behaviour (any hospital without a custom design):
+ *   Uses KKCPrescriptionModal — which is the KKC layout but fetches
+ *   hospital name, logo, phone, address etc. from the hospital_profiles row
+ *   for whichever hospital is currently assigned to the prescription.
  */
 
 import React from 'react';
 import { useTenant } from '../../contexts/TenantContext';
 
-// Import both modal implementations
-// Note: KKCPrescriptionModal is just the original PrescriptionModal, unchanged
 import KKCPrescriptionModal from './templates/KKCPrescriptionModal';
 import StandardPrescriptionModal from './templates/StandardPrescriptionModal';
 
@@ -50,17 +50,23 @@ const PrescriptionModalSelector: React.FC<PrescriptionModalSelectorProps> = (pro
     const template = tenant?.config?.prescription ?? 'kkc'; // default to 'kkc' for safety
 
     switch (template) {
+        // ── ADD NEW HOSPITAL-SPECIFIC TEMPLATES HERE ──────────────────────────
+        // case 'apollo':
+        //     return <ApolloPrescriptionModal {...props} />;
+        // ─────────────────────────────────────────────────────────────────────
+
+        case 'legacy_standard':
+            // Kept for backward-compatibility only.
+            // New hospitals should use the default KKC template below.
+            return <StandardPrescriptionModal {...props} tenant={tenant} />;
+
         case 'kkc':
-            return <KKCPrescriptionModal {...props} />;
-
-        // ── ADD NEW HOSPITALS HERE ─────────────────────────────────────────────
-        // case 'hospital_xyz':
-        //     return <HospitalXYZPrescriptionModal {...props} tenant={tenant} />;
-        // ──────────────────────────────────────────────────────────────────────
-
         case 'standard':
         default:
-            return <StandardPrescriptionModal {...props} tenant={tenant} />;
+            // Both KKC and all other hospitals without a custom template
+            // use KKCPrescriptionModal, which dynamically fetches clinic
+            // details (name, logo, phone, address) from the hospital profile.
+            return <KKCPrescriptionModal {...props} />;
     }
 };
 
