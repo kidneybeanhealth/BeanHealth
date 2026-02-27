@@ -114,6 +114,7 @@ const MedCard: React.FC<{
 }> = ({ med, index, updateMed, removeRow, readOnly, filteredDrugs, setDrugSearchQuery, showDrugDropdown, setShowDrugDropdown, handleSelectDrug, showRemove }) => {
 
     const [lastFocused, setLastFocused] = React.useState('morningTime');
+    const [showConfirmRemove, setShowConfirmRemove] = React.useState(false);
     const drugInputRef = React.useRef<HTMLInputElement>(null);
 
     // Strip drug-type prefix (e.g., "TAB. ", "SYP. ", "INJ. ") from a name to get the raw drug name for search
@@ -174,11 +175,28 @@ const MedCard: React.FC<{
         <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden', marginBottom: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
 
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
                 <span style={{ width: '20px', height: '20px', background: '#f3f4f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900, color: '#4a7c2f', flexShrink: 0, border: '1.5px solid #d1d5db' }}>{index + 1}</span>
                 <span style={{ flex: 1, fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Medication</span>
                 {showRemove && !readOnly && (
-                    <button onClick={() => removeRow(index)} style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>✕</button>
+                    <button onClick={() => setShowConfirmRemove(true)} style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>✕</button>
+                )}
+                {/* Confirm remove popup */}
+                {showConfirmRemove && (
+                    <div style={{ position: 'absolute', top: '0', right: '0', zIndex: 100, background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '12px 14px', minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#111827' }}>Remove this drug?</span>
+                        <span style={{ fontSize: '11px', color: '#6b7280' }}>{med.name || 'This medication'} will be removed.</span>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button type="button" onClick={() => setShowConfirmRemove(false)}
+                                style={{ flex: 1, padding: '6px 0', fontSize: '11px', fontWeight: 700, borderRadius: '7px', border: '1px solid #e5e7eb', background: '#f9fafb', color: '#374151', cursor: 'pointer' }}>
+                                Cancel
+                            </button>
+                            <button type="button" onClick={() => { setShowConfirmRemove(false); removeRow(index); }}
+                                style={{ flex: 1, padding: '6px 0', fontSize: '11px', fontWeight: 700, borderRadius: '7px', border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer' }}>
+                                Remove
+                            </button>
+                        </div>
+                    </div>
                 )}
             </div>
 
