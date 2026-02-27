@@ -252,10 +252,10 @@ const MedCard: React.FC<{
             </div>
 
             {/* 4-column grid */}
-            <div style={{ display: 'flex', alignItems: 'stretch', margin: '0 8px 8px 8px', borderRadius: '12px', overflow: 'hidden', border: '2px solid #111827', background: '#fff' }}>
+            <div style={{ display: 'flex', alignItems: 'stretch', margin: '0 8px 8px 8px', borderRadius: '12px', overflow: 'visible', border: '2px solid #111827', background: '#fff' }}>
 
                 {/* Col 1: Frequency */}
-                <div style={{ flex: '1.2', borderRight: '2px solid #111827', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: '1.2', minWidth: 0, borderRight: '2px solid #111827', display: 'flex', flexDirection: 'column' }}>
                     {sectionHeader('Frequency', '#4a7c2f')}
                     <input type="text" value={med.dose} onChange={e => updateMed(index, 'dose', e.target.value.toUpperCase())} readOnly={readOnly}
                         placeholder="e.g. OD"
@@ -270,7 +270,7 @@ const MedCard: React.FC<{
                 </div>
 
                 {/* Col 2: Timing */}
-                <div style={{ flex: '0.6', borderRight: '2px solid #111827', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: '0.6', minWidth: 0, borderRight: '2px solid #111827', display: 'flex', flexDirection: 'column' }}>
                     {sectionHeader('Timing', '#3d7a6a')}
                     <input type="text" value={med.foodTiming} onChange={e => updateMed(index, 'foodTiming', e.target.value.toUpperCase())} readOnly={readOnly}
                         placeholder="A/F"
@@ -281,7 +281,7 @@ const MedCard: React.FC<{
                 </div>
 
                 {/* Col 3: M/N/E/NT */}
-                <div style={{ flex: '2', borderRight: '2px solid #111827', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: '2', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                     <div style={{ background: '#f0f9ff', display: 'flex', padding: '5px 0', borderBottom: '2px solid #111827' }}>
                         <span style={{ width: '28px', fontSize: '6px', color: 'transparent', flexShrink: 0, borderRight: '1px solid #e5e7eb' }}>.</span>
                         <span style={{ flex: 1.5, fontSize: '6px', fontWeight: 900, color: '#4a7c2f', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em', borderRight: '1px solid #e5e7eb' }}>Dose</span>
