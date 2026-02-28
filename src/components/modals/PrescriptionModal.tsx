@@ -540,19 +540,42 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         });
         if (parsedMeds.length > 0) setMedications(parsedMeds);
 
-        // Notes parsing
+        // Robust Notes parsing using key delimiters
         const notes = existingData.notes || '';
-        const diagnosis = notes.match(/Diagnosis: (.*?)(\n|$)/)?.[1] || '';
-        const review = existingData.next_review_date || notes.match(/Review: (.*?)(\n|$)/)?.[1] || '';
-        const tests = existingData.tests_to_review || notes.match(/Tests: (.*?)(\n|$)/)?.[1] || '';
-        const specialists = existingData.specialists_to_review || notes.match(/SpecialistToReview: (.*?)(\n|$)/)?.[1]
-          || notes.match(/SpecialistsToReview: (.*?)(\n|$)/)?.[1]
-          || '';
-        const place = notes.match(/Place: (.*?)(\n|$)/)?.[1] || '';
-        const phone = notes.match(/Phone: (.*?)(\n|$)/)?.[1] || '';
-        const docNotes = notes.match(/DoctorNotes: (.*?)(\n|$)/)?.[1] || '';
-        const salt = notes.match(/SaltIntake: (.*?)(\n|$)/)?.[1] || '';
-        const fluid = notes.match(/FluidIntake: (.*?)(\n|$)/)?.[1] || '';
+        const keys = [
+          'Place:', 'Phone:', 'Diagnosis:', 'Review:', 'Tests:',
+          'SpecialistToReview:', 'SpecialistsToReview:', 'SaltIntake:',
+          'FluidIntake:', 'DoctorNotes:'
+        ];
+
+        const extractField = (str: string, label: string) => {
+          const index = str.indexOf(label);
+          if (index === -1) return '';
+          const start = index + label.length;
+          let end = str.length;
+
+          // Find the nearest next key starting from 'start'
+          for (const k of keys) {
+            const nextIdx = str.indexOf('\n' + k, start);
+            if (nextIdx !== -1 && nextIdx < end) {
+              end = nextIdx;
+            }
+            // Also check for keys at start of string if it's the very first part (shouldn't happen here but safe)
+          }
+          return str.substring(start, end).trim();
+        };
+
+        const diagnosis = extractField(notes, 'Diagnosis:');
+        const review = existingData.next_review_date || extractField(notes, 'Review:');
+        const tests = existingData.tests_to_review || extractField(notes, 'Tests:');
+        const specialists = existingData.specialists_to_review
+          || extractField(notes, 'SpecialistToReview:')
+          || extractField(notes, 'SpecialistsToReview:');
+        const place = extractField(notes, 'Place:');
+        const phone = extractField(notes, 'Phone:');
+        const docNotes = extractField(notes, 'DoctorNotes:');
+        const salt = extractField(notes, 'SaltIntake:');
+        const fluid = extractField(notes, 'FluidIntake:');
 
         setFormData(prev => ({
           ...prev,
@@ -871,6 +894,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               .px-1\.5 { padding-left: 6px !important; padding-right: 6px !important; }
               .mb-1 { margin-bottom: 4px !important; }
               .mb-4 { margin-bottom: 16px !important; }
+
+              /* Auto-height for textareas in print */
+              textarea {
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+              }
             }
           `}</style>
             {(() => {
@@ -1009,84 +1039,90 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <div className="flex-1 flex relative">
                             <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / DIAGNOSIS</div>
                             <div className="flex-1 relative flex">
-                              <textarea
-                                className="flex-1 py-1 px-1.5 outline-none font-bold w-full bg-transparent resize-none leading-tight uppercase"
-                                value={formData.diagnosis}
-                                onChange={e => {
-                                  const val = e.target.value.toUpperCase();
-                                  setFormData({ ...formData, diagnosis: val });
+                              {readOnly ? (
+                                <div className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase whitespace-pre-wrap break-words min-h-[1.5em]">
+                                  {formData.diagnosis}
+                                </div>
+                              ) : (
+                                <textarea
+                                  className="flex-1 py-1 px-1.5 outline-none font-bold w-full bg-transparent resize-none leading-tight uppercase overflow-hidden"
+                                  value={formData.diagnosis}
+                                  onChange={e => {
+                                    const val = e.target.value.toUpperCase();
+                                    setFormData({ ...formData, diagnosis: val });
 
-                                  // Extract the current typing part (after last "/")
-                                  const parts = val.split('/');
-                                  const currentQuery = parts[parts.length - 1].trim();
-                                  setDiagnosisSearchQuery(currentQuery);
-                                  setShowDiagnosisDropdown(true);
-                                  setHighlightedDropdownIndex(-1);
-                                }}
-                                onFocus={() => {
-                                  const parts = (formData.diagnosis || '').split('/');
-                                  const currentQuery = parts[parts.length - 1].trim();
-                                  setDiagnosisSearchQuery(currentQuery);
-                                  setShowDiagnosisDropdown(true);
-                                  setHighlightedDropdownIndex(-1);
-                                }}
-                                onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
-                                onKeyDown={e => {
-                                  // Compute filtered list inline so arrow/enter work on the correct items
-                                  const selectedDiags = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
-                                  const filteredDiags = savedDiagnoses.filter(d => {
-                                    const matchesQuery = d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase());
-                                    const notSelected = !selectedDiags.includes(d.name);
-                                    return matchesQuery && notSelected;
-                                  });
-                                  const isOpen = showDiagnosisDropdown && diagnosisSearchQuery.length > 0 && filteredDiags.length > 0;
-                                  if (!isOpen) return;
+                                    // Extract the current typing part (after last "/")
+                                    const parts = val.split('/');
+                                    const currentQuery = parts[parts.length - 1].trim();
+                                    setDiagnosisSearchQuery(currentQuery);
+                                    setShowDiagnosisDropdown(true);
+                                    setHighlightedDropdownIndex(-1);
+                                  }}
+                                  onFocus={() => {
+                                    const parts = (formData.diagnosis || '').split('/');
+                                    const currentQuery = parts[parts.length - 1].trim();
+                                    setDiagnosisSearchQuery(currentQuery);
+                                    setShowDiagnosisDropdown(true);
+                                    setHighlightedDropdownIndex(-1);
+                                  }}
+                                  onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
+                                  onKeyDown={e => {
+                                    // Compute filtered list inline so arrow/enter work on the correct items
+                                    const selectedDiags = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+                                    const filteredDiags = savedDiagnoses.filter(d => {
+                                      const matchesQuery = d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase());
+                                      const notSelected = !selectedDiags.includes(d.name);
+                                      return matchesQuery && notSelected;
+                                    });
+                                    const isOpen = showDiagnosisDropdown && diagnosisSearchQuery.length > 0 && filteredDiags.length > 0;
+                                    if (!isOpen) return;
 
-                                  if (e.key === 'ArrowDown') {
-                                    e.preventDefault();
-                                    setHighlightedDropdownIndex(prev => {
-                                      const next = prev < filteredDiags.length - 1 ? prev + 1 : 0;
-                                      setTimeout(() => scrollHighlightedIntoView(next), 0);
-                                      return next;
-                                    });
-                                  } else if (e.key === 'ArrowUp') {
-                                    e.preventDefault();
-                                    setHighlightedDropdownIndex(prev => {
-                                      const next = prev > 0 ? prev - 1 : filteredDiags.length - 1;
-                                      setTimeout(() => scrollHighlightedIntoView(next), 0);
-                                      return next;
-                                    });
-                                  } else if (e.key === 'Enter') {
-                                    if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                    if (e.key === 'ArrowDown') {
                                       e.preventDefault();
-                                      const diag = filteredDiags[highlightedDropdownIndex];
-                                      const parts = (formData.diagnosis || '').split('/');
-                                      parts[parts.length - 1] = '';
-                                      const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
-                                      setFormData({ ...formData, diagnosis: newValue });
-                                      setDiagnosisSearchQuery('');
+                                      setHighlightedDropdownIndex(prev => {
+                                        const next = prev < filteredDiags.length - 1 ? prev + 1 : 0;
+                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                        return next;
+                                      });
+                                    } else if (e.key === 'ArrowUp') {
+                                      e.preventDefault();
+                                      setHighlightedDropdownIndex(prev => {
+                                        const next = prev > 0 ? prev - 1 : filteredDiags.length - 1;
+                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                        return next;
+                                      });
+                                    } else if (e.key === 'Enter') {
+                                      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                        e.preventDefault();
+                                        const diag = filteredDiags[highlightedDropdownIndex];
+                                        const parts = (formData.diagnosis || '').split('/');
+                                        parts[parts.length - 1] = '';
+                                        const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
+                                        setFormData({ ...formData, diagnosis: newValue });
+                                        setDiagnosisSearchQuery('');
+                                        setShowDiagnosisDropdown(false);
+                                        setHighlightedDropdownIndex(-1);
+                                      }
+                                    } else if (e.key === 'Escape') {
+                                      e.preventDefault();
+                                      setShowDiagnosisDropdown(false);
+                                      setHighlightedDropdownIndex(-1);
+                                    } else if (e.key === 'Tab') {
+                                      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                        const diag = filteredDiags[highlightedDropdownIndex];
+                                        const parts = (formData.diagnosis || '').split('/');
+                                        parts[parts.length - 1] = '';
+                                        const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
+                                        setFormData({ ...formData, diagnosis: newValue });
+                                        setDiagnosisSearchQuery('');
+                                      }
                                       setShowDiagnosisDropdown(false);
                                       setHighlightedDropdownIndex(-1);
                                     }
-                                  } else if (e.key === 'Escape') {
-                                    e.preventDefault();
-                                    setShowDiagnosisDropdown(false);
-                                    setHighlightedDropdownIndex(-1);
-                                  } else if (e.key === 'Tab') {
-                                    if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
-                                      const diag = filteredDiags[highlightedDropdownIndex];
-                                      const parts = (formData.diagnosis || '').split('/');
-                                      parts[parts.length - 1] = '';
-                                      const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
-                                      setFormData({ ...formData, diagnosis: newValue });
-                                      setDiagnosisSearchQuery('');
-                                    }
-                                    setShowDiagnosisDropdown(false);
-                                    setHighlightedDropdownIndex(-1);
-                                  }
-                                }}
-                                rows={2}
-                              />
+                                  }}
+                                  rows={1}
+                                />
+                              )}
                               {(() => {
                                 // Get already selected diagnoses
                                 const selectedDiags = (formData.diagnosis || '')
@@ -1622,53 +1658,72 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             </div>
                             <div className="flex gap-4 items-end">
                               <div className="shrink-0 whitespace-nowrap uppercase">செய்ய வேண்டிய பரிசோதனைகள் / TESTS :</div>
-                              <input className="flex-1 min-w-0 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase" value={formData.testsToReview} onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })} readOnly={readOnly} />
+                              {readOnly ? (
+                                <div className="flex-1 min-w-0 border-b border-gray-300 border-dashed px-1 bg-transparent uppercase leading-tight py-1 whitespace-pre-wrap break-words min-h-[1.5em]">
+                                  {formData.testsToReview}
+                                </div>
+                              ) : (
+                                <textarea
+                                  className="flex-1 min-w-0 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase resize-none leading-tight py-1"
+                                  value={formData.testsToReview}
+                                  onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })}
+                                  readOnly={readOnly}
+                                  rows={1}
+                                />
+                              )}
                             </div>
                             <div className="flex gap-4 items-end">
                               <div className="shrink-0 whitespace-nowrap uppercase">பார்க்க வேண்டிய டாக்டர்கள் / SPECIALISTS :</div>
                               <div className="relative flex-1 min-w-0">
-                                <input
-                                  className="w-full border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase"
-                                  value={formData.specialistToReview}
-                                  onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value.toUpperCase() })}
-                                  onFocus={() => { if (!readOnly) { setShowSpecialistDropdown(true); setHighlightedDropdownIndex(-1); } }}
-                                  onKeyDown={e => {
-                                    if (!showSpecialistDropdown || SPECIALIST_OPTIONS.length === 0) return;
-                                    if (e.key === 'ArrowDown') {
-                                      e.preventDefault();
-                                      setHighlightedDropdownIndex(prev => {
-                                        const next = prev < SPECIALIST_OPTIONS.length - 1 ? prev + 1 : 0;
-                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
-                                        return next;
-                                      });
-                                    } else if (e.key === 'ArrowUp') {
-                                      e.preventDefault();
-                                      setHighlightedDropdownIndex(prev => {
-                                        const next = prev > 0 ? prev - 1 : SPECIALIST_OPTIONS.length - 1;
-                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
-                                        return next;
-                                      });
-                                    } else if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < SPECIALIST_OPTIONS.length) {
-                                        const opt = SPECIALIST_OPTIONS[highlightedDropdownIndex];
-                                        const currentSpecs = parseSpecialists(formData.specialistToReview || '');
-                                        const isSelected = currentSpecs.includes(opt);
-                                        const newSpecs = isSelected ? currentSpecs.filter(s => s !== opt) : [...currentSpecs, opt];
-                                        setFormData({ ...formData, specialistToReview: newSpecs.join(', ') });
+                                {readOnly ? (
+                                  <div className="w-full border-b border-gray-300 border-dashed px-1 bg-transparent uppercase leading-tight py-1 whitespace-pre-wrap break-words min-h-[1.5em]">
+                                    {formData.specialistToReview}
+                                  </div>
+                                ) : (
+                                  <textarea
+                                    className="w-full border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase resize-none leading-tight py-1"
+                                    value={formData.specialistToReview}
+                                    onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value.toUpperCase() })}
+                                    onFocus={() => { if (!readOnly) { setShowSpecialistDropdown(true); setHighlightedDropdownIndex(-1); } }}
+                                    onKeyDown={e => {
+                                      if (!showSpecialistDropdown || SPECIALIST_OPTIONS.length === 0) return;
+                                      if (e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        setHighlightedDropdownIndex(prev => {
+                                          const next = prev < SPECIALIST_OPTIONS.length - 1 ? prev + 1 : 0;
+                                          setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                          return next;
+                                        });
+                                      } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        setHighlightedDropdownIndex(prev => {
+                                          const next = prev > 0 ? prev - 1 : SPECIALIST_OPTIONS.length - 1;
+                                          setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                          return next;
+                                        });
+                                      } else if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < SPECIALIST_OPTIONS.length) {
+                                          const opt = SPECIALIST_OPTIONS[highlightedDropdownIndex];
+                                          const currentSpecs = parseSpecialists(formData.specialistToReview || '');
+                                          const isSelected = currentSpecs.includes(opt);
+                                          const newSpecs = isSelected ? currentSpecs.filter(s => s !== opt) : [...currentSpecs, opt];
+                                          setFormData({ ...formData, specialistToReview: newSpecs.join(', ') });
+                                        }
+                                      } else if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        setShowSpecialistDropdown(false);
+                                        setHighlightedDropdownIndex(-1);
+                                      } else if (e.key === 'Tab') {
+                                        setShowSpecialistDropdown(false);
+                                        setHighlightedDropdownIndex(-1);
                                       }
-                                    } else if (e.key === 'Escape') {
-                                      e.preventDefault();
-                                      setShowSpecialistDropdown(false);
-                                      setHighlightedDropdownIndex(-1);
-                                    } else if (e.key === 'Tab') {
-                                      setShowSpecialistDropdown(false);
-                                      setHighlightedDropdownIndex(-1);
-                                    }
-                                  }}
-                                  placeholder="TYPE OR SELECT SPECIALIST..."
-                                  readOnly={readOnly}
-                                />
+                                    }}
+                                    placeholder="TYPE OR SELECT SPECIALIST..."
+                                    readOnly={readOnly}
+                                    rows={1}
+                                  />
+                                )}
                                 {!readOnly && showSpecialistDropdown && (
                                   <>
                                     <div
@@ -1716,22 +1771,41 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           {/* Bottom Row: Notes on Left, Signature on Right */}
                           <div className="flex gap-4 items-end mt-4 mb-2">
                             {/* Doctor Notes (Relocated) */}
-                            <div className="flex-1">
-                              <div className="flex gap-2 items-start text-sm font-bold uppercase">
-                                <div className="flex flex-col shrink-0 pt-0.5 leading-tight mr-2 uppercase">
-                                  <span>குறிப்புகள்</span>
-                                  <span>/ NOTES:</span>
+                            {(() => {
+                              const getNoteFontSize = (text: string) => {
+                                const len = (text || '').length;
+                                if (len > 500) return 'text-[9px] leading-[1.1]';
+                                if (len > 300) return 'text-[10px] leading-[1.2]';
+                                if (len > 150) return 'text-xs leading-tight';
+                                return 'text-sm leading-normal';
+                              };
+                              const fontSizeClass = getNoteFontSize(formData.doctorNotes || '');
+
+                              return (
+                                <div className="flex-1">
+                                  <div className="flex gap-2 items-start text-sm font-bold uppercase">
+                                    <div className="flex flex-col shrink-0 pt-0.5 leading-tight mr-2 uppercase">
+                                      <span>குறிப்புகள்</span>
+                                      <span>/ NOTES:</span>
+                                    </div>
+                                    {readOnly ? (
+                                      <div className={`flex-1 border border-gray-300 border-dashed bg-transparent px-1 py-0.5 ${fontSizeClass} uppercase whitespace-pre-wrap break-all min-h-[3em]`}>
+                                        {formData.doctorNotes}
+                                      </div>
+                                    ) : (
+                                      <textarea
+                                        className={`flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 ${fontSizeClass} resize-none uppercase overflow-hidden break-all`}
+                                        value={formData.doctorNotes}
+                                        onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value.toUpperCase() })}
+                                        readOnly={readOnly}
+                                        rows={1}
+                                        placeholder="ADDITIONAL NOTES..."
+                                      />
+                                    )}
+                                  </div>
                                 </div>
-                                <textarea
-                                  className="flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 text-sm resize-none leading-normal min-h-[80px] uppercase"
-                                  value={formData.doctorNotes}
-                                  onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value.toUpperCase() })}
-                                  readOnly={readOnly}
-                                  rows={3}
-                                  placeholder="ADDITIONAL NOTES..."
-                                />
-                              </div>
-                            </div>
+                              );
+                            })()}
 
                             {/* Signature */}
                             <div className="text-center min-w-[150px] flex flex-col items-center justify-end shrink-0">
