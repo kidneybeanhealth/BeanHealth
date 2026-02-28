@@ -506,22 +506,35 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           else if (instruction.includes('sc')) foodTiming = 'SC';
           else if (instruction === '' || instruction.includes('nil')) foodTiming = 'nil';
 
+          // Helper to extract clean time and detect AM/PM for legacy/transitionary data
+          const getInitialTimeAndAmPm = (rawTime: string, existingAmPm: string, defaultAmPm: string) => {
+            const time = (rawTime || '').replace(/\s*(AM|PM)$/i, '').trim();
+            const amPmMatch = (rawTime || '').match(/AM|PM/i);
+            const amPm = existingAmPm || (amPmMatch ? amPmMatch[0].toUpperCase() : (time ? defaultAmPm : ''));
+            return { time, amPm };
+          };
+
+          const morning = getInitialTimeAndAmPm(m.morningTime || m.morning_time, m.morningAmPm, 'AM');
+          const noon = getInitialTimeAndAmPm(m.noonTime || m.noon_time, m.noonAmPm, 'PM');
+          const evening = getInitialTimeAndAmPm(m.eveningTime || m.evening_time, m.eveningAmPm, 'PM');
+          const night = getInitialTimeAndAmPm(m.nightTime || m.night_time, m.nightAmPm, 'PM');
+
           return {
             name: String(m.name || '').toUpperCase(),
             number: (m.dosage || '').replace(' tab', ''),
             dose: m.dose || '',
             morning: freqs[0] !== '0' ? freqs[0] : '',
-            morningTime: m.morningTime || m.morning_time || '',
-            morningAmPm: m.morningAmPm || '',
+            morningTime: morning.time,
+            morningAmPm: morning.amPm,
             noon: freqs[1] !== '0' ? freqs[1] : '',
-            noonTime: m.noonTime || m.noon_time || '',
-            noonAmPm: m.noonAmPm || '',
+            noonTime: noon.time,
+            noonAmPm: noon.amPm,
             evening: freqs[2] !== '0' ? freqs[2] : '',
-            eveningTime: m.eveningTime || m.evening_time || '',
-            eveningAmPm: m.eveningAmPm || '',
+            eveningTime: evening.time,
+            eveningAmPm: evening.amPm,
             night: freqs[3] !== '0' ? freqs[3] : '',
-            nightTime: m.nightTime || m.night_time || '',
-            nightAmPm: m.nightAmPm || '',
+            nightTime: night.time,
+            nightAmPm: night.amPm,
             foodTiming
           };
         });
@@ -622,10 +635,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         dosage: m.number + ' tab',
         dose: m.dose,
         frequency: freq,
-        morningTime: m.morningTime ? [m.morningTime, (m as any).morningAmPm].filter(Boolean).join(' ') : '',
-        noonTime: m.noonTime ? [m.noonTime, (m as any).noonAmPm].filter(Boolean).join(' ') : '',
-        eveningTime: m.eveningTime ? [m.eveningTime, (m as any).eveningAmPm].filter(Boolean).join(' ') : '',
-        nightTime: m.nightTime ? [m.nightTime, (m as any).nightAmPm].filter(Boolean).join(' ') : '',
+        morningTime: m.morningTime ? [m.morningTime, (m as any).morningAmPm || 'AM'].filter(Boolean).join(' ') : '',
+        noonTime: m.noonTime ? [m.noonTime, (m as any).noonAmPm || 'PM'].filter(Boolean).join(' ') : '',
+        eveningTime: m.eveningTime ? [m.eveningTime, (m as any).eveningAmPm || 'PM'].filter(Boolean).join(' ') : '',
+        nightTime: m.nightTime ? [m.nightTime, (m as any).nightAmPm || 'PM'].filter(Boolean).join(' ') : '',
         drugType: m.drugType || '',
         duration: 'See Review Date',
         instruction: m.foodTiming === 'B/F' ? 'Before Food' : m.foodTiming === 'nil' ? '' : m.foodTiming || 'After Food'
