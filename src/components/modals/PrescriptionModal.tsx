@@ -745,7 +745,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     return (
       <>
         <MobilePrescriptionInput
-          doctor={doctor}
           patient={patient}
           medications={medications}
           updateMed={updateMed}
@@ -762,9 +761,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           setDiagnosisSearchQuery={setDiagnosisSearchQuery}
           showDiagnosisDropdown={showDiagnosisDropdown}
           setShowDiagnosisDropdown={setShowDiagnosisDropdown}
-          DOSE_OPTIONS={DOSE_OPTIONS}
-          DOSE_MAPPINGS={DOSE_MAPPINGS}
-          FOOD_TIMING_OPTIONS={FOOD_TIMING_OPTIONS}
           drugSearchQuery={drugSearchQuery}
           setDrugSearchQuery={setDrugSearchQuery}
           filteredDrugs={filteredDrugs}
