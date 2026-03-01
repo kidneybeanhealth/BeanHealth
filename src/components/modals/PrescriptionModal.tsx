@@ -545,7 +545,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         const keys = [
           'Place:', 'Phone:', 'Diagnosis:', 'Review:', 'Tests:',
           'SpecialistToReview:', 'SpecialistsToReview:', 'SaltIntake:',
-          'FluidIntake:', 'DoctorNotes:'
+          'FluidIntake:', 'Allergy:', 'DoctorNotes:'
         ];
 
         const extractField = (str: string, label: string) => {
@@ -576,6 +576,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         const docNotes = extractField(notes, 'DoctorNotes:');
         const salt = extractField(notes, 'SaltIntake:');
         const fluid = extractField(notes, 'FluidIntake:');
+        const allergy = extractField(notes, 'Allergy:');
 
         setFormData(prev => ({
           ...prev,
@@ -587,7 +588,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           phone: phone || prev.phone,
           doctorNotes: docNotes,
           saltIntake: salt,
-          fluidIntake: fluid
+          fluidIntake: fluid,
+          allergy: allergy || prev.allergy,
         }));
 
       } catch (e) {
@@ -669,7 +671,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     });
 
     // We pack the extra metadata (Place, Phone, etc) into the notes field so it persists without schema changes
-    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
+    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.allergy ? '\nAllergy: ' + formData.allergy : ''}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
     if (onSendToPharmacy) {
       onSendToPharmacy(pharmacyMeds, notes, {
         nextReviewDate: formData.reviewDate || null,
