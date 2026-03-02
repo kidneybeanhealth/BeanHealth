@@ -50,7 +50,7 @@ const FREQ_OPTIONS_ROWS = [
     ['Q6H', 'HS', '1/2HS'],
 ];
 
-const TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'S/C B/F', 'S/C'];
+const TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'S/C B/F', 'E/S'];
 
 const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: string; night: string }> = {
     'OD': { morning: '1', noon: '0', evening: '0', night: '0' },

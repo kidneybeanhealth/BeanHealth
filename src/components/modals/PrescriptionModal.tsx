@@ -106,7 +106,7 @@ const DOSE_OPTIONS = [
   '1/2 OD', '1/2 BD', '1/2 TDS', '1/2 HS',
 ];
 
-const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'S/C', 'S/C B/F'];
+const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'E/S', 'S/C B/F'];
 
 // Slot-specific time ranges
 const MORNING_TIMES = ['4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM'];
