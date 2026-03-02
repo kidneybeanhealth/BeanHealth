@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import PrescriptionModal from '../modals/PrescriptionModal';
 
 type ReviewStatus = 'pending' | 'rescheduled' | 'completed' | 'cancelled';
-type ReviewBucket = 'all' | 'overdue' | 'due_today' | 'next_7_days' | 'upcoming_later' | 'no_review_date' | 'completed' | 'cancelled';
+type ReviewBucket = 'all' | 'overdue' | 'due_today' | 'due_tomorrow' | 'upcoming' | 'completed' | 'cancelled';
 
 interface ReviewRow {
     id: string;
@@ -53,11 +53,10 @@ const formatDDMMYYYY = (value?: string | null): string => {
 const bucketLabel = (bucket: ReviewBucket): string => {
     if (bucket === 'overdue') return 'Overdue';
     if (bucket === 'due_today') return 'Due Today';
-    if (bucket === 'next_7_days') return 'Next 7 Days';
-    if (bucket === 'upcoming_later') return 'Upcoming';
+    if (bucket === 'due_tomorrow') return 'Due Tomorrow';
+    if (bucket === 'upcoming') return 'Upcoming';
     if (bucket === 'completed') return 'Completed';
     if (bucket === 'cancelled') return 'Cancelled';
-    if (bucket === 'no_review_date') return 'No Date';
     return 'All';
 };
 
@@ -71,8 +70,8 @@ const statusChipClass = (status: ReviewStatus): string => {
 const bucketChipClass = (bucket: ReviewBucket): string => {
     if (bucket === 'overdue') return 'bg-red-100 text-red-700 border-red-200';
     if (bucket === 'due_today') return 'bg-orange-100 text-orange-700 border-orange-200';
-    if (bucket === 'next_7_days') return 'bg-blue-100 text-blue-700 border-blue-200';
-    if (bucket === 'upcoming_later') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (bucket === 'due_tomorrow') return 'bg-amber-100 text-amber-700 border-amber-200';
+    if (bucket === 'upcoming') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     if (bucket === 'completed') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     if (bucket === 'cancelled') return 'bg-gray-100 text-gray-600 border-gray-200';
     return 'bg-gray-100 text-gray-600 border-gray-200';
@@ -81,24 +80,24 @@ const bucketChipClass = (bucket: ReviewBucket): string => {
 const getBucket = (review: ReviewRow): ReviewBucket => {
     if (review.status === 'completed') return 'completed';
     if (review.status === 'cancelled') return 'cancelled';
-    if (!review.next_review_date) return 'no_review_date';
+    if (!review.next_review_date) return 'upcoming';
 
     const today = toISODateLocal(new Date());
-    const next7 = toISODateLocal(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = toISODateLocal(tomorrowDate);
 
-    // Rescheduled reviews should not continue showing as overdue.
-    if (review.status === 'rescheduled') {
-        if (review.next_review_date <= next7) return 'next_7_days';
-        return 'upcoming_later';
-    }
-
-    if (review.next_review_date < today) return 'overdue';
+    if (review.next_review_date < today) return review.status === 'rescheduled' ? 'upcoming' : 'overdue';
     if (review.next_review_date === today) return 'due_today';
-    if (review.next_review_date <= next7) return 'next_7_days';
-    return 'upcoming_later';
+    if (review.next_review_date === tomorrow) return 'due_tomorrow';
+    return 'upcoming';
 };
 
-const TrackPatientsPage: React.FC = () => {
+interface TrackPatientsPageProps {
+    onBack?: () => void;
+}
+
+const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack }) => {
     const navigate = useNavigate();
     const { profile } = useAuth();
 
@@ -172,9 +171,8 @@ const TrackPatientsPage: React.FC = () => {
             all: reviews.length,
             overdue: 0,
             due_today: 0,
-            next_7_days: 0,
-            upcoming_later: 0,
-            no_review_date: 0,
+            due_tomorrow: 0,
+            upcoming: 0,
             completed: 0,
             cancelled: 0
         };
@@ -208,8 +206,8 @@ const TrackPatientsPage: React.FC = () => {
             .select(`
                 *,
                 prescriptions:hospital_prescriptions(
-                    id, token_number, created_at, notes, medications, status, next_review_date, tests_to_review, specialists_to_review,
-                    doctor:hospital_doctors(id, name, specialty)
+                    id, token_number, created_at, notes, medications, status, next_review_date, tests_to_review, specialists_to_review, metadata,
+                    doctor:hospital_doctors(id, name, specialty, signature_url)
                 )
             `)
             .eq('hospital_id', profile.id)
@@ -299,16 +297,81 @@ const TrackPatientsPage: React.FC = () => {
         }
     };
 
+    const handlePrintList = () => {
+        const title = bucketLabel(bucketFilter);
+        const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        const rows = filteredReviews.map((row, idx) => `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><strong>${row.patient?.name || '--'}</strong></td>
+                <td>${row.patient?.mr_number || '--'}</td>
+                <td>${row.patient?.phone || '--'}</td>
+                <td>${row.patient?.age || '--'}</td>
+                <td>${formatDDMMYYYY(row.next_review_date)}</td>
+                <td>${row.doctor?.name || '--'}</td>
+                <td>${row.tests_to_review || '--'}</td>
+            </tr>
+        `).join('');
+
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>${title} — ${dateStr}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 12px; padding: 24px; color: #111; }
+        h2 { font-size: 18px; margin-bottom: 4px; }
+        .meta { color: #555; font-size: 11px; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f3f4f6; padding: 7px 8px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid #ddd; }
+        td { padding: 7px 8px; border: 1px solid #e5e7eb; vertical-align: top; }
+        tr:nth-child(even) td { background: #f9fafb; }
+        @media print { body { padding: 12px; } }
+    </style>
+</head>
+<body>
+    <h2>Patient Review List — ${title}</h2>
+    <p class="meta">Generated: ${dateStr} &nbsp;·&nbsp; ${filteredReviews.length} patient(s)</p>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Patient Name</th>
+                <th>MR Number</th>
+                <th>Phone</th>
+                <th>Age</th>
+                <th>Review Date</th>
+                <th>Doctor</th>
+                <th>Tests to Review</th>
+            </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+    </table>
+</body>
+</html>`;
+
+        const win = window.open('', '_blank');
+        if (win) {
+            win.document.write(html);
+            win.document.close();
+            win.focus();
+            win.print();
+        }
+    };
+
+    const canPrintList = (bucketFilter === 'due_today' || bucketFilter === 'due_tomorrow') && filteredReviews.length > 0;
+
     return (
         <div className="min-h-screen bg-gray-100">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
                 <div className="flex flex-col gap-4 mb-6 sm:mb-8">
                     <div>
                         <button
-                            onClick={() => navigate('/enterprise-dashboard/reception/dashboard')}
+                            onClick={() => onBack ? onBack() : navigate('/enterprise-dashboard/reception/dashboard')}
                             className="text-sm font-semibold text-gray-500 hover:text-gray-800 mb-2 inline-flex items-center gap-1"
                         >
-                            ← Back to Reception
+                            {onBack ? '← Back to Dashboard' : '← Back to Reception'}
                         </button>
                         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Track Patients</h2>
                         <p className="text-sm sm:text-base text-gray-600 mt-1">Review tracking by patient with visit history and prescription print view.</p>
@@ -337,8 +400,8 @@ const TrackPatientsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="px-6 py-3 border-b border-gray-100 bg-white flex flex-wrap gap-2">
-                        {(['all', 'overdue', 'due_today', 'next_7_days', 'upcoming_later', 'no_review_date', 'completed', 'cancelled'] as ReviewBucket[]).map((bucket) => (
+                    <div className="px-6 py-3 border-b border-gray-100 bg-white flex flex-wrap items-center gap-2">
+                        {(['all', 'overdue', 'due_today', 'due_tomorrow', 'upcoming', 'completed', 'cancelled'] as ReviewBucket[]).map((bucket) => (
                             <button
                                 key={bucket}
                                 onClick={() => setBucketFilter(bucket)}
@@ -347,6 +410,17 @@ const TrackPatientsPage: React.FC = () => {
                                 {bucketLabel(bucket)} ({counts[bucket] || 0})
                             </button>
                         ))}
+                        {canPrintList && (
+                            <button
+                                onClick={handlePrintList}
+                                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                                Print List
+                            </button>
+                        )}
                     </div>
 
                     <div className="overflow-auto">
