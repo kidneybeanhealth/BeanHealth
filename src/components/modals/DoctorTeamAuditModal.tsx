@@ -52,6 +52,25 @@ const EVENT_TYPES = [
 
 const EVENT_CATEGORIES = ['auth', 'view', 'write', 'print'];
 
+const EVENT_TYPE_LABELS: Record<string, string> = {
+    'auth.login.success':           'Logged In',
+    'auth.login.failed':            'Login Failed',
+    'auth.logout':                  'Logged Out',
+    'view.queue.open':              'Viewed Queue',
+    'view.patient.open':            'Viewed Patient',
+    'view.prescription.open':       'Viewed Prescription',
+    'print.preview.open':           'Opened Print Preview',
+    'write.prescription.save_send': 'Saved & Sent Prescription',
+    'write.queue.mark_done':        'Marked Queue Done',
+};
+
+const EVENT_CATEGORY_LABELS: Record<string, string> = {
+    'auth':  'Login / Auth',
+    'view':  'Viewed Records',
+    'write': 'Saved / Written',
+    'print': 'Printed',
+};
+
 const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
     isOpen,
     onClose,
@@ -82,6 +101,7 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
     const [auditAssistantId, setAuditAssistantId] = useState('');
     const [auditEventType, setAuditEventType] = useState('');
     const [auditEventCategory, setAuditEventCategory] = useState('');
+    const [auditSearch, setAuditSearch] = useState('');
 
     const totalAuditRows = useMemo(() => {
         if (auditRows.length === 0) return 0;
@@ -90,6 +110,16 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
 
     const hasPrevPage = auditPage > 0;
     const hasNextPage = (auditPage + 1) * auditLimit < totalAuditRows;
+
+    const filteredAuditRows = useMemo(() => {
+        if (!auditSearch.trim()) return auditRows;
+        const q = auditSearch.trim().toLowerCase();
+        return auditRows.filter((r) =>
+            (r.patient_name || '').toLowerCase().includes(q) ||
+            (r.patient_mr_number || '').toLowerCase().includes(q) ||
+            (r.actor_display_name || '').toLowerCase().includes(q)
+        );
+    }, [auditRows, auditSearch]);
 
     const fetchAssistants = async () => {
         setLoadingAssistants(true);
@@ -310,6 +340,46 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
             console.error('[DoctorTeamAuditModal] export csv failed:', error);
             toast.error(error?.message || 'Failed to export CSV');
         }
+    };
+
+    const toISODateLocal = (d: Date) => {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const applyDateChip = (chip: 'today' | 'yesterday' | 'this_week' | 'this_month') => {
+        const today = toISODateLocal(new Date());
+        if (chip === 'today') {
+            setAuditStartDate(today);
+            setAuditEndDate(today);
+        } else if (chip === 'yesterday') {
+            const y = toISODateLocal(new Date(Date.now() - 86400000));
+            setAuditStartDate(y);
+            setAuditEndDate(y);
+        } else if (chip === 'this_week') {
+            const d = new Date();
+            d.setDate(d.getDate() - d.getDay() + 1);
+            setAuditStartDate(toISODateLocal(d));
+            setAuditEndDate(today);
+        } else if (chip === 'this_month') {
+            const d = new Date();
+            d.setDate(1);
+            setAuditStartDate(toISODateLocal(d));
+            setAuditEndDate(today);
+        }
+    };
+
+    const handleClearFilters = () => {
+        setAuditStartDate('');
+        setAuditEndDate('');
+        setAuditAssistantId('');
+        setAuditEventType('');
+        setAuditEventCategory('');
+        setAuditSearch('');
+        setAuditPage(0);
+        fetchAuditLogs(0);
     };
 
     if (!isOpen) return null;
@@ -614,66 +684,104 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-200">
-                                <input
-                                    type="date"
-                                    value={auditStartDate}
-                                    onChange={(e) => setAuditStartDate(e.target.value)}
-                                    className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm"
-                                />
-                                <input
-                                    type="date"
-                                    value={auditEndDate}
-                                    onChange={(e) => setAuditEndDate(e.target.value)}
-                                    className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm"
-                                />
-                                <select
-                                    value={auditAssistantId}
-                                    onChange={(e) => setAuditAssistantId(e.target.value)}
-                                    className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm"
-                                >
-                                    <option value="">All Assistants</option>
-                                    {assistants.map((assistant) => (
-                                        <option key={assistant.assistant_id} value={assistant.assistant_id}>
-                                            {assistant.assistant_name}
-                                        </option>
+                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
+                                {/* Row 1 — Quick date chips + date pickers */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {(['today', 'yesterday', 'this_week', 'this_month'] as const).map((chip) => (
+                                        <button
+                                            key={chip}
+                                            type="button"
+                                            onClick={() => applyDateChip(chip)}
+                                            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
+                                        >
+                                            {chip === 'today' ? 'Today' : chip === 'yesterday' ? 'Yesterday' : chip === 'this_week' ? 'This Week' : 'This Month'}
+                                        </button>
                                     ))}
-                                </select>
-                                <select
-                                    value={auditEventType}
-                                    onChange={(e) => setAuditEventType(e.target.value)}
-                                    className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm"
-                                >
-                                    <option value="">All Event Types</option>
-                                    {EVENT_TYPES.map((eventType) => (
-                                        <option key={eventType} value={eventType}>{eventType}</option>
-                                    ))}
-                                </select>
-                                <select
-                                    value={auditEventCategory}
-                                    onChange={(e) => setAuditEventCategory(e.target.value)}
-                                    className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm"
-                                >
-                                    <option value="">All Categories</option>
-                                    {EVENT_CATEGORIES.map((category) => (
-                                        <option key={category} value={category}>{category}</option>
-                                    ))}
-                                </select>
-                                <div className="flex gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            setAuditPage(0);
-                                            fetchAuditLogs(0);
-                                        }}
-                                        className="flex-1 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold"
+                                        onClick={handleClearFilters}
+                                        className="ml-auto px-3 py-1.5 text-xs font-bold rounded-lg bg-red-50 border border-red-200 text-red-700 hover:bg-red-100"
+                                    >
+                                        Clear Filters
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-xs font-semibold text-gray-500 whitespace-nowrap">From:</label>
+                                        <input
+                                            type="date"
+                                            value={auditStartDate}
+                                            onChange={(e) => setAuditStartDate(e.target.value)}
+                                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-xs font-semibold text-gray-500 whitespace-nowrap">To:</label>
+                                        <input
+                                            type="date"
+                                            value={auditEndDate}
+                                            onChange={(e) => setAuditEndDate(e.target.value)}
+                                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Row 2 — Dropdowns + patient search + action buttons */}
+                                <div className="flex flex-wrap gap-2">
+                                    <select
+                                        value={auditAssistantId}
+                                        onChange={(e) => setAuditAssistantId(e.target.value)}
+                                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                    >
+                                        <option value="">All Assistants</option>
+                                        {assistants.map((assistant) => (
+                                            <option key={assistant.assistant_id} value={assistant.assistant_id}>
+                                                {assistant.assistant_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        value={auditEventType}
+                                        onChange={(e) => setAuditEventType(e.target.value)}
+                                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                    >
+                                        <option value="">All Activities</option>
+                                        {EVENT_TYPES.map((eventType) => (
+                                            <option key={eventType} value={eventType}>
+                                                {EVENT_TYPE_LABELS[eventType] ?? eventType}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        value={auditEventCategory}
+                                        onChange={(e) => setAuditEventCategory(e.target.value)}
+                                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                    >
+                                        <option value="">All Categories</option>
+                                        {EVENT_CATEGORIES.map((category) => (
+                                            <option key={category} value={category}>
+                                                {EVENT_CATEGORY_LABELS[category] ?? category}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        type="text"
+                                        value={auditSearch}
+                                        onChange={(e) => setAuditSearch(e.target.value)}
+                                        className="flex-1 min-w-[200px] px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                        placeholder="Search by patient name, MR number, or PA name…"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => { setAuditPage(0); fetchAuditLogs(0); }}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700"
                                     >
                                         Apply
                                     </button>
                                     <button
                                         type="button"
                                         onClick={handleExportCsv}
-                                        className="flex-1 px-3 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold"
+                                        className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-gray-700"
                                     >
                                         Export CSV
                                     </button>
@@ -690,33 +798,43 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
                                 </div>
                                 {loadingAudit ? (
                                     <div className="p-8 text-sm text-gray-500">Loading audit logs...</div>
-                                ) : auditRows.length === 0 ? (
+                                ) : filteredAuditRows.length === 0 ? (
                                     <div className="p-8 text-sm text-gray-500">No logs for current filters.</div>
                                 ) : (
-                                    auditRows.map((row) => (
-                                        <div key={row.audit_id} className="grid grid-cols-[1.5fr_1.2fr_2fr_2fr_2fr] gap-3 px-4 py-3 border-b border-gray-100 last:border-0 text-sm">
-                                            <div className="text-gray-700">{new Date(row.created_at).toLocaleString('en-IN')}</div>
-                                            <div>
-                                                <div className="font-semibold text-gray-900">{row.actor_display_name}</div>
-                                                <div className="text-xs text-gray-500 uppercase">{row.actor_type}</div>
-                                            </div>
-                                            <div>
-                                                <div className="font-semibold text-gray-900">{row.event_type}</div>
-                                                <div className="text-xs text-gray-500">{row.event_category}</div>
-                                            </div>
-                                            <div className="text-gray-700">
-                                                <div>{row.patient_name || '-'}</div>
-                                                <div className="text-xs text-gray-500">
-                                                    {row.patient_mr_number ? `MR: ${row.patient_mr_number}` : row.audit_patient_id || ''}
+                                    filteredAuditRows.map((row) => {
+                                        let contextLabel = '—';
+                                        if (row.audit_prescription_id) {
+                                            contextLabel = 'Prescription';
+                                        } else if (row.audit_queue_id) {
+                                            contextLabel = 'Queue visit';
+                                        } else if (row.route) {
+                                            contextLabel = row.route.replace(/^\/enterprise-dashboard\/?/, '') || row.route;
+                                        }
+                                        return (
+                                            <div key={row.audit_id} className="grid grid-cols-[1.5fr_1.2fr_2fr_2fr_2fr] gap-3 px-4 py-3 border-b border-gray-100 last:border-0 text-sm">
+                                                <div className="text-gray-700">{new Date(row.created_at).toLocaleString('en-IN')}</div>
+                                                <div>
+                                                    <div className="font-semibold text-gray-900">{row.actor_display_name}</div>
+                                                    <div className="text-xs text-gray-500 uppercase">{row.actor_type}</div>
                                                 </div>
+                                                <div>
+                                                    <div className="font-semibold text-gray-900">
+                                                        {EVENT_TYPE_LABELS[row.event_type] ?? row.event_type}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {EVENT_CATEGORY_LABELS[row.event_category] ?? row.event_category}
+                                                    </div>
+                                                </div>
+                                                <div className="text-gray-700">
+                                                    <div>{row.patient_name || '-'}</div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {row.patient_mr_number ? `MR: ${row.patient_mr_number}` : ''}
+                                                    </div>
+                                                </div>
+                                                <div className="text-sm text-gray-600">{contextLabel}</div>
                                             </div>
-                                            <div className="text-xs text-gray-600">
-                                                <div className="truncate">{row.route || '-'}</div>
-                                                {row.audit_queue_id && <div>Q: {row.audit_queue_id.slice(0, 8)}...</div>}
-                                                {row.audit_prescription_id && <div>Rx: {row.audit_prescription_id.slice(0, 8)}...</div>}
-                                            </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
 
