@@ -47,10 +47,10 @@ const FREQ_OPTIONS_ROWS = [
     ['OD', 'BD', 'TDS'],
     ['2OD', '2BD', '2TDS'],
     ['1/2OD', '1/2BD', '1/2TDS'],
-    ['Q6H', 'HS'],
+    ['Q6H', 'HS', '1/2HS'],
 ];
 
-const TIMING_OPTIONS = ['A/F', 'B/F', 'S/C B/F', 'S/C'];
+const TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'S/C B/F', 'S/C'];
 
 const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: string; night: string }> = {
     'OD': { morning: '1', noon: '0', evening: '0', night: '0' },
@@ -65,6 +65,12 @@ const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: st
     '1/2OD': { morning: '1/2', noon: '0', evening: '0', night: '0' },
     '1/2BD': { morning: '1/2', noon: '0', evening: '0', night: '1/2' },
     '1/2TDS': { morning: '1/2', noon: '1/2', evening: '0', night: '1/2' },
+    '1/2HS': { morning: '0', noon: '0', evening: '0', night: '1/2' },
+    // Cross-device aliases: desktop saves with spaces; these allow auto-populate when editing desktop-saved Rx on mobile
+    '1/2 OD': { morning: '1/2', noon: '0', evening: '0', night: '0' },
+    '1/2 BD': { morning: '1/2', noon: '0', evening: '0', night: '1/2' },
+    '1/2 TDS': { morning: '1/2', noon: '1/2', evening: '0', night: '1/2' },
+    '1/2 HS': { morning: '0', noon: '0', evening: '0', night: '1/2' },
 };
 
 const getReviewDaysLabel = (value: string): string => {

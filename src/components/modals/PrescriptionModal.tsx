@@ -85,13 +85,26 @@ const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: st
   'TDS': { morning: '1', noon: '1', evening: '0', night: '1' },
   'HS': { morning: '0', noon: '0', evening: '0', night: '1' },
   'QID': { morning: '1', noon: '1', evening: '1', night: '1' },
+  'Q6H': { morning: '1', noon: '1', evening: '1', night: '1' },
+  '2OD': { morning: '2', noon: '0', evening: '0', night: '0' },
+  '2BD': { morning: '2', noon: '0', evening: '0', night: '2' },
+  '2TDS': { morning: '2', noon: '2', evening: '0', night: '2' },
   '1/2 OD': { morning: '1/2', noon: '0', evening: '0', night: '0' },
   '1/2 BD': { morning: '1/2', noon: '0', evening: '0', night: '1/2' },
   '1/2 TDS': { morning: '1/2', noon: '1/2', evening: '0', night: '1/2' },
   '1/2 HS': { morning: '0', noon: '0', evening: '0', night: '1/2' },
+  // No-space aliases: mobile saves without spaces; these allow auto-populate when editing mobile-saved Rx on desktop
+  '1/2OD': { morning: '1/2', noon: '0', evening: '0', night: '0' },
+  '1/2BD': { morning: '1/2', noon: '0', evening: '0', night: '1/2' },
+  '1/2TDS': { morning: '1/2', noon: '1/2', evening: '0', night: '1/2' },
+  '1/2HS': { morning: '0', noon: '0', evening: '0', night: '1/2' },
 };
 
-const DOSE_OPTIONS = Object.keys(DOSE_MAPPINGS);
+const DOSE_OPTIONS = [
+  'OD', 'BD', 'TDS', 'HS', 'Q6H',
+  '2OD', '2BD', '2TDS',
+  '1/2 OD', '1/2 BD', '1/2 TDS', '1/2 HS',
+];
 
 const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'S/C', 'S/C B/F'];
 
@@ -196,6 +209,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     }
     if (actorAttribution?.actorType === 'chief') {
       return 'Prepared by Chief Doctor';
+    }
+    if (doctor?.name) {
+      return `Prepared by ${doctor.name}`;
     }
     return '';
   })();
