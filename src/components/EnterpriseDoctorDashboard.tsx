@@ -8,6 +8,7 @@ import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
 import DoctorTeamAuditModal from './modals/DoctorTeamAuditModal';
 import TwoStepConfirmModal from './common/TwoStepConfirmModal';
 import EnterpriseCKDSnapshotView from './EnterpriseCKDSnapshotView';
+import TrackPatientsPage from './enterprise/TrackPatientsPage';
 import { LogoIcon } from './icons/LogoIcon';
 import DoctorSettingsModal from './modals/DoctorSettingsModal';
 import { type DoctorActorSession } from '../utils/doctorActorSession';
@@ -81,7 +82,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [notes, setNotes] = useState('');
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
 
-    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records'>('queue');
+    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records' | 'track_patients'>('queue');
     const [historyList, setHistoryList] = useState<any[]>([]);
 
     const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -411,6 +412,11 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     useEffect(() => {
         if (viewMode === 'queue') {
             logViewEvent('view.queue.open', {
+                route: `/enterprise-dashboard/doctors/${doctor.id}/dashboard`,
+            });
+        } else if (viewMode === 'track_patients') {
+            logViewEvent('view.track_patients.open', {
+                eventCategory: 'view',
                 route: `/enterprise-dashboard/doctors/${doctor.id}/dashboard`,
             });
         }
@@ -754,7 +760,17 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             await handleUpdateStatus(selectedQueueId, 'completed');
         } catch (error: any) {
             console.error('Full Error Object:', error);
-            toast.error(`Failed to send: ${error.message || 'Unknown error'}`, { id: toastId });
+            // FK violation (23503) or our explicit patient_not_found guard in the RPC:
+            // the queue has stale data — patient was deleted after the queue was loaded.
+            const isPatientMissing =
+                error?.code === '23503' && (error?.details || '').includes('hospital_patients') ||
+                (error?.message || '').startsWith('patient_not_found');
+            if (isPatientMissing) {
+                toast.error('Patient record not found — the queue has been refreshed. Please try again.', { id: toastId });
+                fetchQueue(true);
+            } else {
+                toast.error(`Failed to send: ${error.message || 'Unknown error'}`, { id: toastId });
+            }
         } finally {
             isSendingToPharmacyRef.current = false;
         }
@@ -879,7 +895,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         {/* Action Group 2: Tabs + Settings + Refresh */}
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full lg:w-auto">
                             {/* Tabs Switcher - Force Horizontal Grid */}
-                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm grid grid-cols-3 gap-1 flex-1 md:flex-none min-w-[320px]">
+                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm grid grid-cols-4 gap-1 flex-1 md:flex-none min-w-[320px]">
                                 <button
                                     onClick={() => setViewMode('queue')}
                                     className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
@@ -897,6 +913,12 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                     className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Past Records
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('track_patients')}
+                                    className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'track_patients' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                >
+                                    Track Patients
                                 </button>
                             </div>
 
@@ -952,6 +974,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     doctor={doctor}
                     onBack={() => setViewMode('queue')}
                 />
+            ) : viewMode === 'track_patients' ? (
+                <TrackPatientsPage onBack={() => setViewMode('queue')} />
             ) : (
                 <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
                     {viewMode === 'queue' ? (
