@@ -258,10 +258,7 @@ const MedCard: React.FC<{
 
             {/* Drug Name + QTY */}
             <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6' }}>
-                <div style={{ flex: 1, position: 'relative' }}>
-                    <div style={{ padding: '3px 10px', background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
-                        <span style={{ fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#4a7c2f' }}>Drug Name</span>
-                    </div>
+                <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input type="text" value={med.name}
                         ref={drugInputRef}
                         onChange={e => {
@@ -282,8 +279,8 @@ const MedCard: React.FC<{
                         onFocus={() => { setDrugSearchQuery(stripDrugPrefix(med.name)); setShowDrugDropdown(index); }}
                         onBlur={() => setTimeout(() => setShowDrugDropdown(null), 200)}
                         readOnly={readOnly}
-                        placeholder="Type or select..."
-                        style={{ width: '100%', padding: '6px 10px', fontSize: '12px', fontWeight: 700, outline: 'none', border: 'none', background: 'transparent', color: '#111827', textTransform: 'uppercase', boxSizing: 'border-box' }} />
+                        placeholder="Type or select drug..."
+                        style={{ width: '100%', padding: '12px 10px', fontSize: '12px', fontWeight: 700, outline: 'none', border: 'none', background: 'transparent', color: '#111827', textTransform: 'uppercase', boxSizing: 'border-box' }} />
                     {showDrugDropdown === index && filteredDrugs.length > 0 && (
                         <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(12px)', border: '1px solid rgba(74,124,47,0.15)', borderRadius: '0 0 12px 12px', boxShadow: '0 12px 32px rgba(0,0,0,0.12)', maxHeight: '160px', overflowY: 'auto' }}>
                             {filteredDrugs.slice(0, 8).map(drug => (
