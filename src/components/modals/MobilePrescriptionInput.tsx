@@ -432,7 +432,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                     value={formData.diagnosis}
                                     onChange={e => {
                                         const val = e.target.value.toUpperCase();
-                                        setFormData({ ...formData, diagnosis: val });
+                                        setFormData((prev: any) => ({ ...prev, diagnosis: val }));
                                         const parts = val.split('/');
                                         setDiagnosisSearchQuery(parts[parts.length - 1].trim());
                                         setShowDiagnosisDropdown(true);
@@ -453,7 +453,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                                         const parts = (formData.diagnosis || '').split('/');
                                                         parts[parts.length - 1] = '';
                                                         const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
-                                                        setFormData({ ...formData, diagnosis: newValue });
+                                                        setFormData((prev: any) => ({ ...prev, diagnosis: newValue }));
                                                         setDiagnosisSearchQuery('');
                                                         setShowDiagnosisDropdown(false);
                                                     }}>
@@ -467,7 +467,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                         </div>
                         <div>
                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Drug Allergy</label>
-                            <input type="text" value={formData.allergy} onChange={e => setFormData({ ...formData, allergy: e.target.value.toUpperCase() })}
+                            <input type="text" value={formData.allergy} onChange={e => setFormData((prev: any) => ({ ...prev, allergy: e.target.value.replace(/\n/g, ' ').toUpperCase() }))}
                                 className="w-full mt-1 px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-400 outline-none uppercase font-bold text-gray-900"
                                 placeholder="Nil" readOnly={readOnly} />
                         </div>
@@ -500,7 +500,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                 {/* Doctor Notes */}
                 <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
                     <h3 className="font-black text-gray-900 text-sm mb-2">Notes</h3>
-                    <textarea value={formData.doctorNotes} onChange={e => setFormData({ ...formData, doctorNotes: e.target.value.toUpperCase() })}
+                    <textarea value={formData.doctorNotes} onChange={e => setFormData((prev: any) => ({ ...prev, doctorNotes: e.target.value.toUpperCase() }))}
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-400 outline-none resize-none uppercase"
                         placeholder="ADDITIONAL NOTES FOR THE PATIENT..." readOnly={readOnly} rows={4} />
                 </div>
@@ -511,12 +511,12 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Salt (gm/day)</label>
-                            <input type="text" value={formData.saltIntake} onChange={e => setFormData({ ...formData, saltIntake: e.target.value })}
+                            <input type="text" value={formData.saltIntake} onChange={e => setFormData((prev: any) => ({ ...prev, saltIntake: e.target.value }))}
                                 className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none" placeholder="e.g., 5" readOnly={readOnly} />
                         </div>
                         <div>
                             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Fluid (lit/day)</label>
-                            <input type="text" value={formData.fluidIntake} onChange={e => setFormData({ ...formData, fluidIntake: e.target.value })}
+                            <input type="text" value={formData.fluidIntake} onChange={e => setFormData((prev: any) => ({ ...prev, fluidIntake: e.target.value }))}
                                 className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none" placeholder="e.g., 1.5" readOnly={readOnly} />
                         </div>
                     </div>
@@ -528,7 +528,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                     <div className="space-y-3">
                         <div>
                             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Review Date</label>
-                            <input type="date" value={formData.reviewDate} onChange={e => setFormData({ ...formData, reviewDate: e.target.value })}
+                            <input type="date" value={formData.reviewDate} onChange={e => setFormData((prev: any) => ({ ...prev, reviewDate: e.target.value }))}
                                 className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none min-h-[45px]"
                                 readOnly={readOnly} min={new Date().toISOString().split('T')[0]} />
                             {formData.reviewDate && getReviewDaysLabel(formData.reviewDate) && (
@@ -539,14 +539,14 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                         </div>
                         <div>
                             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Tests to Review</label>
-                            <input type="text" value={formData.testsToReview} onChange={e => setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })}
+                            <input type="text" value={formData.testsToReview} onChange={e => setFormData((prev: any) => ({ ...prev, testsToReview: e.target.value.toUpperCase() }))}
                                 className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none uppercase"
                                 placeholder="BLOOD TESTS, X-RAY, ETC." readOnly={readOnly} />
                         </div>
                         <div>
                             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Specialists to be seen</label>
                             <div className="relative">
-                                <input type="text" value={formData.specialistToReview} onChange={e => setFormData({ ...formData, specialistToReview: e.target.value.toUpperCase() })}
+                                <input type="text" value={formData.specialistToReview} onChange={e => setFormData((prev: any) => ({ ...prev, specialistToReview: e.target.value.toUpperCase() }))}
                                     onFocus={() => !readOnly && setShowSpecialistDropdown(true)}
                                     className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none uppercase"
                                     placeholder="TYPE OR SELECT SPECIALISTS..." readOnly={readOnly} />
@@ -562,7 +562,7 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                                         onMouseDown={e => {
                                                             e.preventDefault();
                                                             const next = selected ? current.filter(s => s !== opt) : [...current, opt];
-                                                            setFormData({ ...formData, specialistToReview: next.join(', ') });
+                                                            setFormData((prev: any) => ({ ...prev, specialistToReview: next.join(', ') }));
                                                         }}
                                                         className={`w-full px-4 py-3 text-left flex items-center justify-between border-b border-gray-50 last:border-0 ${selected ? 'bg-gray-100 font-bold' : 'text-gray-700'}`}>
                                                         {opt} {selected && <span className="text-gray-700 font-black">✓</span>}

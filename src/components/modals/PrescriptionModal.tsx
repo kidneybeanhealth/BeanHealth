@@ -207,6 +207,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Medication and Mobile States
   const [isMobile, setIsMobile] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
+  const [showSendPreview, setShowSendPreview] = useState(false);
   const [showConfirmSendModal, setShowConfirmSendModal] = useState(false);
   const [showConfirmCloseModal, setShowConfirmCloseModal] = useState(false);
 
@@ -662,7 +663,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Show confirmation popup instead of sending directly
   const handleSend = () => {
     if (readOnly) return;
-    setShowConfirmSendModal(true);
+    if (isMobile) {
+      // On mobile, show the print preview with confirm overlay
+      setShowSendPreview(true);
+    } else {
+      setShowConfirmSendModal(true);
+    }
   };
 
   // Actually send to pharmacy after confirmation
@@ -687,7 +693,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     });
 
     // We pack the extra metadata (Place, Phone, etc) into the notes field so it persists without schema changes
-    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}${formData.allergy ? '\nAllergy: ' + formData.allergy : ''}${formData.doctorNotes ? '\nDoctorNotes: ' + formData.doctorNotes : ''}`;
+    const notes = `Place: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}\nAllergy: ${formData.allergy}\nDoctorNotes: ${formData.doctorNotes}`;
     if (onSendToPharmacy) {
       onSendToPharmacy(pharmacyMeds, notes, {
         nextReviewDate: formData.reviewDate || null,
@@ -795,7 +801,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     </div>
   );
 
-  if (isMobile && !showPrintView) {
+  if (isMobile && !showPrintView && !showSendPreview) {
     return (
       <>
         <MobilePrescriptionInput
@@ -834,15 +840,36 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden animate-scale-in">
 
         {/* Mobile View Toggle (Floating back button when in print preview on mobile) */}
-        {isMobile && showPrintView && (
+        {isMobile && (showPrintView || showSendPreview) && (
           <div className="sticky top-0 z-[70] bg-white/80 backdrop-blur-md p-4 border-b border-gray-100 flex items-center justify-between">
             <button
-              onClick={() => setShowPrintView(false)}
+              onClick={() => { setShowPrintView(false); setShowSendPreview(false); }}
               className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl flex items-center gap-2"
             >
               ← Back to Edit
             </button>
-            <span className="font-bold text-gray-900">Print Preview</span>
+            <span className="font-bold text-gray-900">{showSendPreview ? 'Review & Send' : 'Print Preview'}</span>
+          </div>
+        )}
+
+        {/* Mobile Send Preview: sticky confirm button at bottom */}
+        {isMobile && showSendPreview && !readOnly && (
+          <div className="sticky bottom-0 z-[70] bg-white/90 backdrop-blur-md p-4 border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.10)] flex gap-3">
+            <button
+              onClick={() => setShowSendPreview(false)}
+              className="flex-1 px-4 py-3.5 bg-gray-100 text-gray-700 font-bold rounded-xl text-sm transition-all active:scale-95"
+            >
+              ← Edit
+            </button>
+            <button
+              onClick={() => { setShowSendPreview(false); confirmSendToPharmacy(); }}
+              className="flex-[2] px-4 py-3.5 bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-600/25 transition-all active:scale-95"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Confirm & Send to Pharmacy
+            </button>
           </div>
         )}
 

@@ -449,10 +449,11 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         fetchHospitalLogo();
     }, [doctor.hospital_id]);
 
-    const handleViewPrescription = async (historyItem: any) => {
-        const toastId = toast.loading('Opening prescription...');
+    // Fetch all prescriptions for a history item (queue visit + patient fallback)
+    const fetchPrescriptionsForItem = async (historyItem: any, mode: 'view' | 'edit') => {
+        const toastId = toast.loading(mode === 'view' ? 'Opening prescription...' : 'Loading prescription...');
         try {
-            // Primary path: resolve by queue_id (same visit). Fallback keeps legacy DBs working.
+            // Fetch all prescriptions by queue_id
             const byQueue = await supabase
                 .from('hospital_prescriptions' as any)
                 .select(`
@@ -461,14 +462,36 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 `)
                 .eq('doctor_id', doctor.id)
                 .eq('queue_id', historyItem.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+                .order('created_at', { ascending: false });
 
-            let data = byQueue.data;
-            let error = byQueue.error;
+            let results: any[] = (byQueue.data as any[]) || [];
 
-            if (!data) {
+            // Also fetch any resent prescriptions (queue_id IS NULL) for same patient on same day
+            if (historyItem.patient_id) {
+                const todayStart = getTodayISO();
+                const resent = await supabase
+                    .from('hospital_prescriptions' as any)
+                    .select(`
+                        *,
+                        patient:hospital_patients(*)
+                    `)
+                    .eq('doctor_id', doctor.id)
+                    .eq('patient_id', historyItem.patient_id)
+                    .is('queue_id', null)
+                    .gte('created_at', todayStart)
+                    .order('created_at', { ascending: false });
+
+                if (resent.data && (resent.data as any[]).length > 0) {
+                    // Deduplicate by id
+                    const existingIds = new Set(results.map((r: any) => r.id));
+                    for (const rx of (resent.data as any[])) {
+                        if (!existingIds.has(rx.id)) results.push(rx);
+                    }
+                }
+            }
+
+            // Fallback: if no results by queue_id, try patient_id
+            if (results.length === 0 && historyItem.patient_id) {
                 const fallback = await supabase
                     .from('hospital_prescriptions' as any)
                     .select(`
@@ -478,30 +501,46 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     .eq('doctor_id', doctor.id)
                     .eq('patient_id', historyItem.patient_id)
                     .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-                data = fallback.data;
-                error = fallback.error;
+                    .limit(5);
+                results = (fallback.data as any[]) || [];
             }
 
-            if (error || !data) {
+            if (results.length === 0) {
                 toast.dismiss(toastId);
                 toast.error('No prescription found for this visit');
                 return;
             }
 
             toast.dismiss(toastId);
-            setSelectedHistoryItem(data);
-            logViewEvent('view.prescription.open', {
-                patientId: data.patient_id || historyItem.patient_id || null,
-                queueId: historyItem.id || null,
-                prescriptionId: data.id || null,
-            });
+
+            // Sort by created_at descending
+            results.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+            if (results.length === 1) {
+                // Only 1 prescription — open directly
+                if (mode === 'view') {
+                    setSelectedHistoryItem(results[0]);
+                } else {
+                    setEditResendItem(results[0]);
+                }
+            } else {
+                // Multiple prescriptions — show picker
+                setPrescriptionPickerItems(results);
+                setPrescriptionPickerMode(mode);
+            }
         } catch (err) {
             console.error(err);
             toast.dismiss(toastId);
             toast.error('Could not load prescription');
         }
+    };
+
+    const handleViewPrescription = async (historyItem: any) => {
+        await fetchPrescriptionsForItem(historyItem, 'view');
+    };
+
+    const handleEditResend = async (historyItem: any) => {
+        await fetchPrescriptionsForItem(historyItem, 'edit');
     };
 
     const handleUpdateStatus = async (queueId: string, status: string) => {
@@ -783,9 +822,98 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         }
     };
 
+    // Edit & Resend: always INSERT a new prescription row
+    const handleResendToPharmacy = async (
+        prescriptionMeds: any[],
+        prescriptionNotes: string,
+        reviewContext?: { nextReviewDate: string | null; testsToReview: string; specialistsToReview: string }
+    ) => {
+        if (!editResendItem?.patient) return;
+        if (isSendingToPharmacyRef.current) return;
+        isSendingToPharmacyRef.current = true;
+        const toastId = toast.loading('Resending prescription...');
+        const patient = editResendItem.patient;
+
+        try {
+            // Always insert a new prescription (resend = new row, queue_id = null)
+            const insertResult = await supabase
+                .from('hospital_prescriptions' as any)
+                .insert({
+                    hospital_id: doctor.hospital_id,
+                    doctor_id: doctor.id,
+                    patient_id: patient.id,
+                    queue_id: null,
+                    token_number: editResendItem.token_number || patient.token_number,
+                    medications: prescriptionMeds,
+                    notes: prescriptionNotes,
+                    next_review_date: reviewContext?.nextReviewDate || null,
+                    tests_to_review: reviewContext?.testsToReview || null,
+                    specialists_to_review: reviewContext?.specialistsToReview || null,
+                    status: 'pending',
+                    metadata: {
+                        actorType,
+                        actorDisplayName,
+                        resent_from: editResendItem.id
+                    }
+                } as any)
+                .select('id')
+                .single();
+
+            if (insertResult.error) {
+                // Fallback for DBs missing newer columns
+                const fallbackInsert = await supabase
+                    .from('hospital_prescriptions' as any)
+                    .insert({
+                        hospital_id: doctor.hospital_id,
+                        doctor_id: doctor.id,
+                        patient_id: patient.id,
+                        token_number: editResendItem.token_number || patient.token_number,
+                        medications: prescriptionMeds,
+                        notes: prescriptionNotes,
+                        status: 'pending'
+                    } as any)
+                    .select('id')
+                    .single();
+                if (fallbackInsert.error) throw fallbackInsert.error;
+                var prescriptionId = (fallbackInsert.data as any)?.id;
+            } else {
+                var prescriptionId = (insertResult.data as any)?.id;
+            }
+
+            if (!prescriptionId) throw new Error('Prescription ID missing after save');
+
+            // Add to pharmacy queue
+            await (supabase as any)
+                .from('hospital_pharmacy_queue')
+                .insert({
+                    hospital_id: doctor.hospital_id,
+                    prescription_id: prescriptionId,
+                    patient_name: patient.name,
+                    token_number: editResendItem.token_number || patient.token_number,
+                    status: 'waiting'
+                });
+
+            toast.success('Prescription resent to Pharmacy!', { id: toastId });
+            setEditResendItem(null);
+            // Refresh data
+            if (viewMode === 'history') fetchHistory(true);
+            else if (viewMode === 'past_records') fetchPastRecords(true);
+        } catch (error: any) {
+            console.error('Resend error:', error);
+            toast.error(`Failed to resend: ${error.message || 'Unknown error'}`, { id: toastId });
+        } finally {
+            isSendingToPharmacyRef.current = false;
+        }
+    };
+
     // View Item for History
     const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
     const [markDoneCandidate, setMarkDoneCandidate] = useState<{ queueId: string; patientName: string } | null>(null);
+
+    // Edit & Resend state
+    const [editResendItem, setEditResendItem] = useState<any>(null);
+    const [prescriptionPickerItems, setPrescriptionPickerItems] = useState<any[]>([]);
+    const [prescriptionPickerMode, setPrescriptionPickerMode] = useState<'view' | 'edit'>('view');
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-black font-sans selection:bg-secondary-100 selection:text-secondary-900">
@@ -1131,17 +1259,26 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+                                                <div className="flex items-center justify-between w-full sm:w-auto gap-3">
                                                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize bg-green-100 text-green-800">
                                                         Completed
                                                     </span>
-                                                    <button
-                                                        onClick={() => handleViewPrescription(item)}
-                                                        className="px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 flex items-center gap-1 transition-colors whitespace-nowrap"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                        View PDF
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => handleViewPrescription(item)}
+                                                            className="px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 flex items-center gap-1 transition-colors whitespace-nowrap"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                            View PDF
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleEditResend(item)}
+                                                            className="px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 flex items-center gap-1 transition-colors whitespace-nowrap"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                            Edit & Resend
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1369,6 +1506,111 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             patientId: selectedHistoryItem.patient_id || null,
                             queueId: selectedHistoryItem.queue_id || null,
                             prescriptionId: selectedHistoryItem.id || null,
+                        });
+                    }}
+                />
+            )}
+
+            {/* Prescription Picker Modal */}
+            {prescriptionPickerItems.length > 0 && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setPrescriptionPickerItems([])}>
+                    <div
+                        className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-scale-in"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-5 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">Multiple Prescriptions Found</h3>
+                                <p className="text-blue-100 text-sm">{prescriptionPickerItems.length} prescriptions — select one to {prescriptionPickerMode === 'view' ? 'view' : 'edit & resend'}</p>
+                            </div>
+                        </div>
+
+                        <div className="max-h-[50vh] overflow-y-auto divide-y divide-gray-100">
+                            {prescriptionPickerItems.map((rx: any, idx: number) => {
+                                const meds = Array.isArray(rx.medications) ? rx.medications : [];
+                                const medSummary = meds.slice(0, 3).map((m: any) => m.name || '').filter(Boolean).join(', ');
+                                const isResent = !rx.queue_id;
+                                return (
+                                    <div key={rx.id} className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between gap-4"
+                                        onClick={() => {
+                                            setPrescriptionPickerItems([]);
+                                            if (prescriptionPickerMode === 'view') {
+                                                setSelectedHistoryItem(rx);
+                                            } else {
+                                                setEditResendItem(rx);
+                                            }
+                                        }}
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-bold text-sm text-gray-900">
+                                                    {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                </span>
+                                                {isResent && (
+                                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Resent</span>
+                                                )}
+                                                {idx === 0 && (
+                                                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">Latest</span>
+                                                )}
+                                                {rx.status === 'dispensed' && (
+                                                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
+                                                )}
+                                            </div>
+                                            {medSummary && (
+                                                <p className="text-xs text-gray-500 mt-1 truncate">
+                                                    💊 {medSummary}{meds.length > 3 ? ` +${meds.length - 3} more` : ''}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="shrink-0">
+                                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${prescriptionPickerMode === 'view' ? 'bg-purple-50 text-purple-600' : 'bg-amber-50 text-amber-700'}`}>
+                                                {prescriptionPickerMode === 'view' ? 'View' : 'Edit'} →
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                            <button
+                                onClick={() => setPrescriptionPickerItems([])}
+                                className="w-full px-4 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-300 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit & Resend Modal — Editable */}
+            {editResendItem && (
+                <PrescriptionModal
+                    doctor={currentDoctor}
+                    patient={{
+                        ...editResendItem.patient,
+                        token_number: editResendItem.token_number || editResendItem.patient?.token_number
+                    }}
+                    onClose={() => setEditResendItem(null)}
+                    readOnly={false}
+                    existingData={editResendItem}
+                    onSendToPharmacy={handleResendToPharmacy}
+                    clinicLogo={hospitalLogo || undefined}
+                    actorAttribution={{ actorType, actorDisplayName }}
+                    onPrintOpen={() => {
+                        logViewEvent('print.preview.open', {
+                            eventCategory: 'print',
+                            patientId: editResendItem.patient_id || null,
+                            prescriptionId: editResendItem.id || null,
                         });
                     }}
                 />
