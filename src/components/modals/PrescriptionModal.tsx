@@ -1023,7 +1023,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           </div>
                           <div className="w-1/2 flex">
                             <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">தேதி / DATE</div>
-                            <div className="flex-1 py-1 px-1.5 flex items-center">{new Date().toLocaleDateString('en-GB')}</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center">{existingData?.created_at ? new Date(existingData.created_at).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')}</div>
                           </div>
                         </div>
                         {/* Row 4 */}
