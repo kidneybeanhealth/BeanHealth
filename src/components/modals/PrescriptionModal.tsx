@@ -1801,16 +1801,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       <span>/ NOTES:</span>
                                     </div>
                                     {readOnly ? (
-                                      <div className={`flex-1 border border-gray-300 border-dashed bg-transparent px-1 py-0.5 ${fontSizeClass} uppercase whitespace-pre-wrap break-all min-h-[3em]`}>
+                                      <div className={`flex-1 border border-gray-300 border-dashed bg-transparent px-1 py-0.5 ${fontSizeClass} uppercase whitespace-pre-wrap break-words min-h-[56px]`}>
                                         {formData.doctorNotes}
                                       </div>
                                     ) : (
                                       <textarea
-                                        className={`flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 ${fontSizeClass} resize-none uppercase overflow-hidden break-all`}
+                                        className={`flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 ${fontSizeClass} resize-none uppercase overflow-y-auto break-all min-h-[56px]`}
                                         value={formData.doctorNotes}
                                         onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value.toUpperCase() })}
                                         readOnly={readOnly}
-                                        rows={1}
+                                        rows={4}
                                         placeholder="ADDITIONAL NOTES..."
                                       />
                                     )}
