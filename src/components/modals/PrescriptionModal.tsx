@@ -247,6 +247,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   const componentRef = useRef<HTMLDivElement>(null);
   const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasInitializedFromExisting = useRef(false);
 
   // Helper: scroll highlighted dropdown item into view
   const scrollHighlightedIntoView = useCallback((index: number) => {
@@ -509,7 +510,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       }));
     }
 
-    if (existingData) {
+    if (existingData && !hasInitializedFromExisting.current) {
+      hasInitializedFromExisting.current = true;
       // Parse Existing Data for Read-Only View
       try {
         // medications
