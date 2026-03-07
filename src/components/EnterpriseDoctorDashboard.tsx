@@ -7,6 +7,8 @@ import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
 import DoctorTeamAuditModal from './modals/DoctorTeamAuditModal';
 import TwoStepConfirmModal from './common/TwoStepConfirmModal';
 import EnterpriseCKDSnapshotView from './EnterpriseCKDSnapshotView';
+import TrackPatientsPage from './enterprise/TrackPatientsPage';
+import FollowUpCallsView from './enterprise/FollowUpCallsView';
 import { LogoIcon } from './icons/LogoIcon';
 import DoctorSettingsModal from './modals/DoctorSettingsModal';
 import { type DoctorActorSession } from '../utils/doctorActorSession';
@@ -80,7 +82,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [notes, setNotes] = useState('');
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
 
-    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records'>('queue');
+    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records' | 'track_patients' | 'follow_up_calls'>('queue');
     const [historyList, setHistoryList] = useState<any[]>([]);
 
     const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -886,7 +888,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         {/* Action Group 2: Tabs + Settings + Refresh */}
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full lg:w-auto">
                             {/* Tabs Switcher - Force Horizontal Grid */}
-                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm grid grid-cols-3 gap-1 flex-1 md:flex-none min-w-[320px]">
+                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm grid grid-cols-5 gap-1 flex-1 md:flex-none min-w-[380px]">
                                 <button
                                     onClick={() => setViewMode('queue')}
                                     className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
@@ -904,6 +906,18 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                     className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Past Records
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('track_patients')}
+                                    className={`px-2 sm:px-4 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'track_patients' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                >
+                                    Track
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('follow_up_calls')}
+                                    className={`px-2 sm:px-4 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'follow_up_calls' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                >
+                                    Follow-ups
                                 </button>
                             </div>
 
@@ -959,6 +973,12 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     doctor={doctor}
                     onBack={() => setViewMode('queue')}
                 />
+            ) : viewMode === 'track_patients' ? (
+                <TrackPatientsPage onBack={() => setViewMode('queue')} />
+            ) : viewMode === 'follow_up_calls' ? (
+                <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 min-h-[500px] p-6">
+                    <FollowUpCallsView doctor={{ id: currentDoctor.id, hospital_id: currentDoctor.hospital_id, name: currentDoctor.name }} />
+                </div>
             ) : (
                 <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
                     {viewMode === 'queue' ? (

@@ -1097,6 +1097,13 @@ const ReceptionDashboard: React.FC = () => {
                             )}
                         </button>
                         <button
+                            onClick={() => navigate('/enterprise-dashboard/reception/follow-up')}
+                            className="relative px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 hover:text-amber-900 hover:border-amber-300 hover:bg-amber-100 font-semibold shadow-sm transition-all text-sm whitespace-nowrap"
+                            title="Daily follow-up call worklist"
+                        >
+                            Follow-up Calls
+                        </button>
+                        <button
                             onClick={() => fetchQueue()}
                             className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
                             title="Reload"

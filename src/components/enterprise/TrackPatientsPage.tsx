@@ -4,6 +4,8 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import PrescriptionModal from '../modals/PrescriptionModal';
+import LogCallModal from '../modals/LogCallModal';
+import { FollowUpCallService, OUTCOME_META, type FollowUpCall } from '../../services/followUpCallService';
 
 type ReviewStatus = 'pending' | 'rescheduled' | 'completed' | 'cancelled';
 type ReviewBucket = 'all' | 'overdue' | 'due_today' | 'next_7_days' | 'upcoming_later' | 'no_review_date' | 'completed' | 'cancelled';
@@ -103,6 +105,8 @@ const TrackPatientsPage: React.FC = () => {
     const { profile } = useAuth();
 
     const [reviews, setReviews] = useState<ReviewRow[]>([]);
+    const [lastCallMap, setLastCallMap] = useState<Record<string, FollowUpCall>>({});
+    const [logCallTarget, setLogCallTarget] = useState<ReviewRow | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [query, setQuery] = useState('');
     const [bucketFilter, setBucketFilter] = useState<ReviewBucket>('all');
@@ -149,6 +153,14 @@ const TrackPatientsPage: React.FC = () => {
     useEffect(() => {
         fetchReviews();
     }, [fetchReviews]);
+
+    useEffect(() => {
+        if (reviews.length === 0) { setLastCallMap({}); return; }
+        const ids = reviews.map(r => r.id);
+        FollowUpCallService.getLastCallForEachReview(ids)
+            .then(map => setLastCallMap(map))
+            .catch(err => console.error('Failed to load call map:', err));
+    }, [reviews]);
 
     useEffect(() => {
         const fetchHospitalLogo = async () => {
@@ -217,8 +229,9 @@ const TrackPatientsPage: React.FC = () => {
             .single();
 
         if (error) throw error;
-        const sorted = (data?.prescriptions || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        return { ...data, prescriptions: sorted };
+        if (!data) return null;
+        const sorted = ((data as any).prescriptions || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return { ...(data as any), prescriptions: sorted };
     }, [profile?.id]);
 
     const handleOpenRxPopup = async (row: ReviewRow) => {
@@ -358,7 +371,7 @@ const TrackPatientsPage: React.FC = () => {
                             <>
                                 {/* Desktop Table View - Hidden on mobile/tablet */}
                                 <div className="hidden lg:block">
-                                    <div className="grid grid-cols-[2.8rem_1.2fr_0.9fr_0.9fr_0.85fr_0.8fr_0.9fr_1.3fr] gap-2 px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
+                                    <div className="grid grid-cols-[2.8rem_1.2fr_0.9fr_0.9fr_0.85fr_0.8fr_0.9fr_1fr_1.3fr] gap-2 px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                                         <span>#</span>
                                         <span>Patient</span>
                                         <span>MR Number</span>
@@ -366,13 +379,14 @@ const TrackPatientsPage: React.FC = () => {
                                         <span>Next Review</span>
                                         <span>Bucket</span>
                                         <span>Status</span>
+                                        <span>Last Call</span>
                                         <span>Actions</span>
                                     </div>
                                     <div className="divide-y divide-gray-100">
                                         {filteredReviews.map((row, idx) => {
                                             const bucket = getBucket(row);
                                             return (
-                                                <div key={row.id} className="grid grid-cols-[2.8rem_1.2fr_0.9fr_0.9fr_0.85fr_0.8fr_0.9fr_1.3fr] gap-2 px-6 py-3 text-sm items-center hover:bg-gray-50">
+                                                <div key={row.id} className="grid grid-cols-[2.8rem_1.2fr_0.9fr_0.9fr_0.85fr_0.8fr_0.9fr_1fr_1.3fr] gap-2 px-6 py-3 text-sm items-center hover:bg-gray-50">
                                                     <span className="text-gray-500 font-semibold">{idx + 1}</span>
                                                     <span className="font-semibold text-gray-900 truncate">{row.patient?.name || 'Unknown'}</span>
                                                     <span className="text-gray-800 truncate">{row.patient?.mr_number || '--'}</span>
@@ -380,7 +394,22 @@ const TrackPatientsPage: React.FC = () => {
                                                     <span className={`${row.next_review_date ? 'text-orange-700 font-semibold' : 'text-gray-400'}`}>{formatDDMMYYYY(row.next_review_date)}</span>
                                                     <span><span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${bucketChipClass(bucket)}`}>{bucketLabel(bucket)}</span></span>
                                                     <span><span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${statusChipClass(row.status)}`}>{row.status}</span></span>
+                                                    <span className="truncate">
+                                                        {lastCallMap[row.id] ? (
+                                                            <span className={`text-[10px] font-bold ${OUTCOME_META[lastCallMap[row.id].outcome].color}`}>
+                                                                {OUTCOME_META[lastCallMap[row.id].outcome].icon} {OUTCOME_META[lastCallMap[row.id].outcome].label}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] text-gray-400">Never</span>
+                                                        )}
+                                                    </span>
                                                     <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <button
+                                                            onClick={() => setLogCallTarget(row)}
+                                                            className="px-2 py-1 text-[10px] font-semibold rounded-md border border-gray-800 text-gray-800 hover:bg-gray-900 hover:text-white"
+                                                        >
+                                                            📞 Log
+                                                        </button>
                                                         <button
                                                             onClick={() => handleOpenRxPopup(row)}
                                                             className="px-2 py-1 text-[10px] font-semibold rounded-md border border-gray-200 text-gray-700 hover:bg-gray-100"
@@ -450,7 +479,23 @@ const TrackPatientsPage: React.FC = () => {
                                                     </p>
                                                 </div>
 
+                                                {lastCallMap[row.id] && (
+                                                    <div className="mb-3 bg-gray-50 rounded-lg px-2.5 py-2 flex items-center gap-2">
+                                                        <span className={`text-xs font-bold ${OUTCOME_META[lastCallMap[row.id].outcome].color}`}>
+                                                            {OUTCOME_META[lastCallMap[row.id].outcome].icon} {OUTCOME_META[lastCallMap[row.id].outcome].label}
+                                                        </span>
+                                                        {lastCallMap[row.id].notes && (
+                                                            <span className="text-[11px] text-gray-500 truncate">"{lastCallMap[row.id].notes}"</span>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 <div className="grid grid-cols-2 gap-2">
+                                                    <button
+                                                        onClick={() => setLogCallTarget(row)}
+                                                        className="col-span-2 px-3 py-2 text-xs font-bold rounded-lg border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white bg-white transition-colors"
+                                                    >
+                                                        📞 Log Call
+                                                    </button>
                                                     <button
                                                         onClick={() => handleOpenRxPopup(row)}
                                                         className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 bg-white"
@@ -574,6 +619,21 @@ const TrackPatientsPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {logCallTarget && profile?.id && (
+                <LogCallModal
+                    reviewId={logCallTarget.id}
+                    patientName={logCallTarget.patient?.name || 'Patient'}
+                    patientPhone={logCallTarget.patient?.phone}
+                    hospitalId={profile.id}
+                    patientId={logCallTarget.patient_id}
+                    onClose={() => setLogCallTarget(null)}
+                    onLogged={() => {
+                        setLogCallTarget(null);
+                        fetchReviews();
+                    }}
+                />
             )}
 
             {selectedPrintPrescription && selectedPatientDetails && (
