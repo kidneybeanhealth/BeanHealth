@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { LogoIcon } from '../icons/LogoIcon';
@@ -29,6 +29,10 @@ const PharmacyQueueDisplay: React.FC = () => {
     const [showAudioSettings, setShowAudioSettings] = useState(false);
     const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
     const [isConnecting, setIsConnecting] = useState(false);
+
+    // Ref so the realtime subscription closure always sees the latest audioEnabled value
+    const audioEnabledRef = useRef(false);
+    useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
     // Update time every second
     useEffect(() => {
@@ -107,15 +111,18 @@ const PharmacyQueueDisplay: React.FC = () => {
                 },
                 (payload) => {
                     if (payload.eventType === 'UPDATE' && payload.new.status === 'calling') {
-                        playNotificationSound();
-                        // Delay voice announcement slightly after the beep
-                        setTimeout(() => {
-                            const tokenNum = payload.new.token_number;
-                            setSpeakingToken(tokenNum);
-                            voiceService.announcePatientCall(tokenNum);
-                            // Hide subtitles after 5 seconds
-                            setTimeout(() => setSpeakingToken(null), 5000);
-                        }, 800);
+                        // Only play audio if the channel has been activated by the user
+                        if (audioEnabledRef.current) {
+                            playNotificationSound();
+                            // Slight delay so the beep plays first, then the voice
+                            setTimeout(() => {
+                                const tokenNum = payload.new.token_number;
+                                setSpeakingToken(tokenNum);
+                                // Use local MP3 files (most reliable) — falls back to TTS/speech
+                                voiceService.announceTokenFormatted(tokenNum);
+                                setTimeout(() => setSpeakingToken(null), 5000);
+                            }, 800);
+                        }
                     }
                     fetchQueue();
                 }

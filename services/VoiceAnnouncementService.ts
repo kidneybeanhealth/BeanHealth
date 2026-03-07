@@ -1,14 +1,33 @@
 /**
  * Hybrid Voice Announcement Service
- * Engine 1: Native Speech (SpeechSynthesis) - Reliable on Mac/Chrome
- * Engine 2: Audio Stream (MP3) - Reliable for Smart TVs/Speakers
- * 
- * Automatically selects the best engine based on browser capabilities.
+ * Engine 1: Local MP3 files  — Most reliable (token-{n}.mp3 in /public/audio/tokens/)
+ * Engine 2: Native Speech (SpeechSynthesis) — Fallback on desktop Chrome/Edge
+ * Engine 3: Google TTS Stream — Last resort for devices with no local audio
+ *
+ * Key reliability guarantees:
+ *  - Each announcement cancels any in-flight audio/speech before starting
+ *  - Chrome SpeechSynthesis stuck-bug workaround via watchdog timer
+ *  - Every audio path has an onerror fallback to a local beep
+ *  - initializeChannel() never interrupts an active announcement (heartbeat-safe)
+ *  - Dedicated Audio element per playback — no shared-state race conditions
  */
 
 class VoiceAnnouncementService {
     private synth: SpeechSynthesis | null = null;
+
+    // masterPlayer is kept only for the initial channel-unlock (setSinkId handshake).
+    // All real playback uses freshly-created Audio elements via createRoutedAudio().
     private masterPlayer: HTMLAudioElement | null = null;
+
+    // The currently-active playback element (null when silent)
+    private currentPlayback: HTMLAudioElement | null = null;
+
+    // Watchdog timer that recovers from Chrome's stuck SpeechSynthesis bug
+    private speechWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+    // True while an announcement is in progress — prevents heartbeat interruption
+    public isSpeaking: boolean = false;
+
     private voices: SpeechSynthesisVoice[] = [];
     private selectedDeviceId: string | null = null;
 
@@ -60,20 +79,84 @@ class VoiceAnnouncementService {
     }
 
     /**
-     * Get list of available audio output devices
+     * Get list of available audio output devices.
+     * Does NOT request microphone permission — only queries output devices.
      */
     async getAudioDevices(): Promise<MediaDeviceInfo[]> {
         try {
-            // First we need to request permission to see labels
-            await navigator.mediaDevices.getUserMedia({ audio: true });
             const devices = await navigator.mediaDevices.enumerateDevices();
-            return devices.filter(d => d.kind === 'audiooutput');
+            const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+
+            if (audioOutputs.length === 0 || !audioOutputs[0].label) {
+                return [{
+                    deviceId: 'default',
+                    groupId: '',
+                    kind: 'audiooutput',
+                    label: 'System Default Speaker',
+                    toJSON: () => ({})
+                } as MediaDeviceInfo];
+            }
+            return audioOutputs;
         } catch (e) {
             console.error('[Voice] Could not enumerate devices', e);
-            // Some browsers don't need getUserMedia for labels if already granted
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            return devices.filter(d => d.kind === 'audiooutput');
+            return [{
+                deviceId: 'default',
+                groupId: '',
+                kind: 'audiooutput',
+                label: 'System Default Speaker (Detected)',
+                toJSON: () => ({})
+            } as MediaDeviceInfo];
         }
+    }
+
+    // ─── Private helpers ──────────────────────────────────────────────────────
+
+    /**
+     * Stop any in-progress announcement cleanly.
+     * Safe to call at any time — no-op when already silent.
+     */
+    private stopCurrentAnnouncement(): void {
+        // Stop SpeechSynthesis and its watchdog
+        if (this.speechWatchdog) {
+            clearTimeout(this.speechWatchdog);
+            this.speechWatchdog = null;
+        }
+        if (this.synth) this.synth.cancel();
+
+        // Detach and stop the active audio element
+        if (this.currentPlayback) {
+            this.currentPlayback.onended = null;
+            this.currentPlayback.onerror = null;
+            this.currentPlayback.pause();
+            this.currentPlayback.src = '';
+            this.currentPlayback = null;
+        }
+
+        this.isSpeaking = false;
+    }
+
+    /**
+     * Create a fresh Audio element already routed to the selected output device.
+     * Each announcement gets its own element — no shared-state races.
+     */
+    private async createRoutedAudio(src: string): Promise<HTMLAudioElement> {
+        const audio = new Audio();
+        audio.volume = 1.0;
+
+        if (
+            this.selectedDeviceId &&
+            this.selectedDeviceId !== 'default' &&
+            typeof (audio as any).setSinkId === 'function'
+        ) {
+            try {
+                await (audio as any).setSinkId(this.selectedDeviceId);
+            } catch (e) {
+                console.warn('[Voice] setSinkId failed for playback element', e);
+            }
+        }
+
+        audio.src = src;
+        return audio;
     }
 
     /**
@@ -102,51 +185,61 @@ class VoiceAnnouncementService {
     }
 
     /**
-     * Initialize the master audio channel (user-triggered)
+     * Initialize the master audio channel (must be user-gesture triggered).
+     * Safe to call from a heartbeat — early-exits if an announcement is active.
      */
     async initializeChannel(): Promise<boolean> {
+        // Heartbeat safety: never interrupt an active announcement
+        if (this.isSpeaking) return true;
+
         console.log('[Voice] Initializing channel...');
         this.status.error = 'Connecting...';
 
-        // Base64 1-second silent WAV to unlock audio without hitting Google TTS
+        // Silent WAV used to unlock the AudioContext without hitting external APIs
         const SILENT_SOUND = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhAAQACABAAAABkYXRhAgAAAAEA';
 
         try {
-            // Unlocking Speech
+            // Unlock Speech API
             if (this.synth) {
                 this.synth.cancel();
                 const utter = new SpeechSynthesisUtterance('');
                 this.synth.speak(utter);
             }
 
-            // Creating Master Player (HTMLAudioElement)
+            // Create master player (unlock element — not used for real playback)
             if (!this.masterPlayer) {
                 this.masterPlayer = new Audio();
                 this.masterPlayer.autoplay = false;
                 this.masterPlayer.volume = 1.0;
             }
 
-            // Route to selected device if supported
-            if (this.selectedDeviceId && (this.masterPlayer as any).setSinkId) {
+            // Route master player to selected device if supported
+            if (
+                this.selectedDeviceId &&
+                this.selectedDeviceId !== 'default' &&
+                typeof (this.masterPlayer as any).setSinkId === 'function'
+            ) {
                 try {
                     await (this.masterPlayer as any).setSinkId(this.selectedDeviceId);
-                    console.log(`[Voice] Route confirmed: ${this.selectedDeviceId}`);
+                    console.log(`[Voice] Route confirmed: ${this.status.selectedDeviceLabel}`);
                 } catch (sinkError) {
-                    console.error('[Voice] setSinkId failed, using default', sinkError);
+                    console.warn('[Voice] setSinkId not supported, using default speaker', sinkError);
+                    this.selectedDeviceId = 'default';
+                    this.status.selectedDeviceLabel = 'Default Speaker';
                 }
             }
 
-            // Play/Pause once to "unlock" with a 3-second timeout
+            // Play/pause silent sound to unlock the audio context
             const unlockPromise = (async () => {
                 this.masterPlayer!.src = SILENT_SOUND;
                 await this.masterPlayer!.play();
                 this.masterPlayer!.pause();
+                this.masterPlayer!.currentTime = 0;
                 return true;
             })();
 
-            // 3 second timeout for hardware handshake
             const timeoutPromise = new Promise<boolean>((_, reject) =>
-                setTimeout(() => reject(new Error('Hardware timeout')), 3000)
+                setTimeout(() => reject(new Error('Hardware timeout')), 5000)
             );
 
             await Promise.race([unlockPromise, timeoutPromise]);
@@ -156,9 +249,10 @@ class VoiceAnnouncementService {
             return true;
         } catch (e: any) {
             console.error('[Voice] Initialization failed', e);
-            // If native speech is working, we can still call it a success on Mac
+            // Native speech still works even if audio unlock failed
             if (this.status.engine === 'SPEECH' && this.voices.length > 0) {
                 this.status.error = null;
+                console.log('[Voice] Fallback to native speech engine');
                 return true;
             }
             this.status.error = `Setup Error: ${e.message || 'Check speaker connection'}`;
@@ -166,67 +260,209 @@ class VoiceAnnouncementService {
         }
     }
 
+    // ─── Public announcement API ──────────────────────────────────────────────
+
+    /**
+     * PRIMARY method: play the pre-recorded local MP3 for a token number.
+     * Falls back to announcePatientCall() for tokens outside the 1-90 range.
+     */
+    announceTokenFormatted(tokenNumber: string, repeat: number = 2): void {
+        this.stopCurrentAnnouncement();
+
+        const match = tokenNumber.match(/\d+/);
+        if (!match) {
+            this.announcePatientCall(tokenNumber, repeat);
+            return;
+        }
+
+        const number = parseInt(match[0], 10);
+        this.status.lastSpoken = `Token ${number}`;
+        this.isSpeaking = true;
+
+        if (number >= 1 && number <= 90) {
+            const audioPath = `/audio/tokens/token-${number}.mp3`;
+            console.log(`[Voice] Playing local file: ${audioPath}`);
+            this.playLocalFile(audioPath, tokenNumber, repeat);
+        } else {
+            // Out-of-range: fall back to TTS/speech path
+            this.announcePatientCall(tokenNumber, repeat);
+        }
+    }
+
+    /**
+     * FALLBACK method: synthesise the announcement via Speech API or Google TTS.
+     * Use announceTokenFormatted() in most cases — it's far more reliable.
+     */
     announcePatientCall(tokenNumber: string, repeat: number = 2): void {
+        this.stopCurrentAnnouncement();
+
         const numStr = tokenNumber.replace(/^[A-Za-z-]+/, '').trim();
         const digits = numStr.split('').join(' ');
         const message = `Token number ${digits}`;
 
         this.status.lastSpoken = message;
+        this.isSpeaking = true;
 
-        // Use native if voices are available, otherwise use MP3
-        if (this.status.engine === 'SPEECH' && this.synth) {
+        if (this.status.engine === 'SPEECH' && this.synth && this.voices.length > 0) {
             this.speakNative(message, repeat);
         } else {
             this.playAudio(message, repeat);
         }
     }
 
-    private speakNative(text: string, repeatCount: number): void {
-        if (!this.synth) return;
-        this.synth.cancel();
+    // ─── Private playback implementations ────────────────────────────────────
 
-        const speak = (count: number) => {
-            if (count >= repeatCount) return;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-IN';
-            utterance.rate = 0.9;
-            utterance.onend = () => setTimeout(() => speak(count + 1), 1200);
-            this.synth!.speak(utterance);
-        };
-        speak(0);
-    }
-
-    private playAudio(text: string, repeatCount: number): void {
-        if (!this.masterPlayer) return;
-
+    /**
+     * Play a local MP3 file, repeating `repeatCount` times.
+     * Creates a fresh Audio element per call — no shared state.
+     */
+    private playLocalFile(path: string, fallbackText: string, repeatCount: number): void {
         let currentRepeat = 0;
-        const url = this.getTtsUrl(text);
 
         const playNext = async () => {
-            if (currentRepeat >= repeatCount) return;
+            if (currentRepeat >= repeatCount) {
+                this.isSpeaking = false;
+                return;
+            }
 
             try {
-                this.masterPlayer!.src = url;
-                this.masterPlayer!.onended = () => {
-                    currentRepeat++;
-                    setTimeout(playNext, 1500);
+                const audio = await this.createRoutedAudio(path);
+                this.currentPlayback = audio;
+
+                audio.onerror = () => {
+                    console.warn(`[Voice] Local file failed: ${path} — falling back to beep`);
+                    this.currentPlayback = null;
+                    this.isSpeaking = false;
+                    this.playStandardBeep();
                 };
-                await this.masterPlayer!.play();
-            } catch (err) {
-                console.error('[Voice] Master player playback failed', err);
-                this.status.error = 'Speaker blocked. Re-activate in settings.';
+
+                audio.onended = () => {
+                    this.currentPlayback = null;
+                    currentRepeat++;
+                    setTimeout(playNext, 800);
+                };
+
+                await audio.play();
+            } catch (e) {
+                console.error('[Voice] playLocalFile play() threw', e);
+                this.currentPlayback = null;
+                this.isSpeaking = false;
+                this.playStandardBeep();
             }
         };
 
         playNext();
     }
 
-    stop(): void {
-        if (this.synth) this.synth.cancel();
-        if (this.masterPlayer) {
-            this.masterPlayer.pause();
-            this.masterPlayer.src = '';
+    /**
+     * Play the announcement beep as a last-resort fallback.
+     */
+    private async playStandardBeep(): Promise<void> {
+        try {
+            const beep = await this.createRoutedAudio('/Announcement sound effect.mp3');
+            this.currentPlayback = beep;
+            beep.onended = () => { this.currentPlayback = null; this.isSpeaking = false; };
+            beep.onerror = () => { this.currentPlayback = null; this.isSpeaking = false; };
+            await beep.play();
+        } catch (e) {
+            console.error('[Voice] Standard beep failed', e);
+            this.isSpeaking = false;
         }
+    }
+
+    /**
+     * Chrome / Edge native SpeechSynthesis playback.
+     * Includes a watchdog timer that fires after 8 s to recover from Chrome's
+     * known "stuck utterance" bug where onend never fires.
+     */
+    private speakNative(text: string, repeatCount: number): void {
+        if (!this.synth) { this.isSpeaking = false; return; }
+
+        const speak = (count: number) => {
+            if (count >= repeatCount) { this.isSpeaking = false; return; }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-IN';
+            utterance.rate = 0.9;
+
+            // Watchdog: if onend hasn't fired after 8 s, Chrome is stuck — advance
+            if (this.speechWatchdog) clearTimeout(this.speechWatchdog);
+            this.speechWatchdog = setTimeout(() => {
+                console.warn('[Voice] SpeechSynthesis watchdog: Chrome stuck-bug recovery');
+                this.speechWatchdog = null;
+                this.synth?.cancel();
+                speak(count + 1);
+            }, 8000);
+
+            utterance.onend = () => {
+                if (this.speechWatchdog) { clearTimeout(this.speechWatchdog); this.speechWatchdog = null; }
+                setTimeout(() => speak(count + 1), 1200);
+            };
+
+            utterance.onerror = (evt) => {
+                if (this.speechWatchdog) { clearTimeout(this.speechWatchdog); this.speechWatchdog = null; }
+                // 'interrupted' is normal (e.g., cancel() called) — don't log as error
+                if (evt.error !== 'interrupted') {
+                    console.warn('[Voice] SpeechSynthesis error:', evt.error, '— beep fallback');
+                    this.isSpeaking = false;
+                    this.playStandardBeep();
+                }
+            };
+
+            this.synth!.speak(utterance);
+        };
+
+        speak(0);
+    }
+
+    /**
+     * Google Translate TTS stream playback.
+     * Uses a dedicated Audio element with onerror → beep fallback.
+     */
+    private playAudio(text: string, repeatCount: number): void {
+        let currentRepeat = 0;
+        const url = this.getTtsUrl(text);
+
+        const playNext = async () => {
+            if (currentRepeat >= repeatCount) {
+                this.isSpeaking = false;
+                return;
+            }
+
+            try {
+                const audio = await this.createRoutedAudio(url);
+                this.currentPlayback = audio;
+
+                audio.onerror = () => {
+                    console.warn('[Voice] TTS fetch failed — beep fallback');
+                    this.currentPlayback = null;
+                    this.status.error = 'TTS unavailable — using beep';
+                    this.isSpeaking = false;
+                    this.playStandardBeep();
+                };
+
+                audio.onended = () => {
+                    this.currentPlayback = null;
+                    currentRepeat++;
+                    setTimeout(playNext, 1500);
+                };
+
+                await audio.play();
+            } catch (err: any) {
+                console.error('[Voice] TTS play() threw', err);
+                this.currentPlayback = null;
+                this.status.error = 'Speaker blocked. Re-activate in settings.';
+                this.isSpeaking = false;
+            }
+        };
+
+        playNext();
+    }
+
+    // ─── Public utilities ─────────────────────────────────────────────────────
+
+    stop(): void {
+        this.stopCurrentAnnouncement();
     }
 
     getEngineStatus() {
