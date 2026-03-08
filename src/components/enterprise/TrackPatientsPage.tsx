@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import PrescriptionModal from '../modals/PrescriptionModal';
 
 type ReviewStatus = 'pending' | 'rescheduled' | 'completed' | 'cancelled';
-type ReviewBucket = 'all' | 'overdue' | 'due_today' | 'due_tomorrow' | 'upcoming' | 'completed' | 'cancelled';
+type ReviewBucket = 'all' | 'overdue' | 'due_today' | 'due_tomorrow' | 'upcoming' | 'completed' | 'cancelled' | 'followup';
 type CallStatus = 'picked' | 'not_picked' | 'busy' | 'not_reachable';
 
 interface ReviewRow {
@@ -76,6 +76,7 @@ const bucketLabel = (bucket: ReviewBucket): string => {
     if (bucket === 'overdue') return 'Overdue';
     if (bucket === 'due_today') return 'Due Today';
     if (bucket === 'due_tomorrow') return 'Due Tomorrow';
+    if (bucket === 'followup') return 'Follow-up Needed';
     if (bucket === 'upcoming') return 'Upcoming';
     if (bucket === 'completed') return 'Completed';
     if (bucket === 'cancelled') return 'Cancelled';
@@ -93,6 +94,7 @@ const bucketChipClass = (bucket: ReviewBucket): string => {
     if (bucket === 'overdue') return 'bg-red-100 text-red-700 border-red-200';
     if (bucket === 'due_today') return 'bg-orange-100 text-orange-700 border-orange-200';
     if (bucket === 'due_tomorrow') return 'bg-amber-100 text-amber-700 border-amber-200';
+    if (bucket === 'followup') return 'bg-red-100 text-red-700 border-red-300';
     if (bucket === 'upcoming') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     if (bucket === 'completed') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     if (bucket === 'cancelled') return 'bg-gray-100 text-gray-600 border-gray-200';
@@ -124,34 +126,34 @@ const CALL_STATUS_META: Record<CallStatus, { label: string; color: string; bg: s
 // CallLogModal
 // ─────────────────────────────────────────────────────────────────────────────
 
+const SELECTABLE_CALL_STATUSES: CallStatus[] = ['picked', 'not_picked'];
+
 interface CallLogModalProps {
     review: ReviewRow;
     history: FollowupLog[];
     submitting: boolean;
+    showReschedule?: boolean;
     onClose: () => void;
-    onSubmit: (status: CallStatus, notes: string, nextDate: string, attended: boolean | null) => Promise<void>;
+    onSubmit: (status: CallStatus, notes: string, nextDate: string, rescheduleDate: string) => Promise<void>;
 }
 
-const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting, onClose, onSubmit }) => {
+const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting, showReschedule = false, onClose, onSubmit }) => {
     const [status, setStatus] = useState<CallStatus>('picked');
     const [notes, setNotes] = useState('');
     const [nextDate, setNextDate] = useState('');
-    const [attended, setAttended] = useState<boolean | null>(null);
+    const [rescheduleDate, setRescheduleDate] = useState('');
     const notesRef = useRef<HTMLTextAreaElement>(null);
 
-    const needsFollowupDate = status === 'not_picked' || status === 'busy' || status === 'not_reachable';
+    const needsFollowupDate = status === 'not_picked';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (status === 'not_picked' && !nextDate) {
-            toast.error('A callback date is required when the call was not picked.');
-            return;
-        }
-        await onSubmit(status, notes, nextDate, attended);
-        setStatus('picked'); setNotes(''); setNextDate(''); setAttended(null);
+        await onSubmit(status, notes, nextDate, rescheduleDate);
+        setStatus('picked'); setNotes(''); setNextDate(''); setRescheduleDate('');
+        onClose();
     };
 
-    const callStatusIcons: Record<CallStatus, React.ReactElement> = {
+    const callStatusIcons: Partial<Record<CallStatus, React.ReactElement>> = {
         picked: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -160,16 +162,6 @@ const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting
         not_picked: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        ),
-        busy: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        ),
-        not_reachable: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
         ),
     };
@@ -225,7 +217,7 @@ const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting
                                 Call Status <span className="text-red-500">*</span>
                             </label>
                             <div className="grid grid-cols-2 gap-2">
-                                {(Object.keys(CALL_STATUS_META) as CallStatus[]).map((s) => {
+                                {SELECTABLE_CALL_STATUSES.map((s) => {
                                     const meta = CALL_STATUS_META[s];
                                     const isSelected = status === s;
                                     return (
@@ -239,7 +231,7 @@ const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting
                                                     : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                             }`}
                                         >
-                                            <span className={isSelected ? meta.color : 'text-gray-400'}>{callStatusIcons[s]}</span>
+                                            <span className={isSelected ? meta.color : 'text-gray-400'}>{callStatusIcons[s] ?? null}</span>
                                             {meta.label}
                                         </button>
                                     );
@@ -247,37 +239,31 @@ const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting
                             </div>
                         </div>
 
-                        {/* Attended — only for picked */}
-                        {status === 'picked' && (
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2.5">
-                                    Did the patient attend / confirm attendance?
+                        {/* Callback date — for not picked */}
+                        {/* Reschedule review date — only shown in Follow-up Needed context when picked */}
+                        {showReschedule && status === 'picked' && (
+                            <div className="p-3.5 rounded-xl border border-orange-200 bg-orange-50">
+                                <label className="block text-sm font-semibold text-orange-800 mb-1.5 flex items-center gap-1.5">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Reschedule Review Date
                                 </label>
-                                <div className="flex gap-3">
-                                    {([{ val: true, label: 'Yes, Attended', icon: '✓', cls: 'text-emerald-700 border-emerald-300 bg-emerald-50' },
-                                       { val: false, label: 'No / Not Yet', icon: '✗', cls: 'text-red-600 border-red-300 bg-red-50' }
-                                    ] as const).map(({ val, label, icon, cls }) => (
-                                        <button
-                                            key={String(val)}
-                                            type="button"
-                                            onClick={() => setAttended(attended === val ? null : val)}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all duration-150 ${
-                                                attended === val ? cls + ' shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            <span className="text-base leading-none">{icon}</span> {label}
-                                        </button>
-                                    ))}
-                                </div>
+                                <input
+                                    type="date"
+                                    value={rescheduleDate}
+                                    onChange={(e) => setRescheduleDate(e.target.value)}
+                                    min={toISODateLocal(new Date())}
+                                    className="w-full px-3.5 py-2.5 border border-orange-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white transition-colors"
+                                />
+                                <p className="text-xs text-orange-600 mt-1">Optional — update the patient’s next review date while logging this call.</p>
                             </div>
                         )}
 
-                        {/* Callback date — for non-picked */}
                         {needsFollowupDate && (
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                                     Schedule Call Back Date
-                                    {status === 'not_picked' && <span className="text-red-500 ml-1">*</span>}
                                 </label>
                                 <input
                                     type="date"
@@ -286,9 +272,7 @@ const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting
                                     min={toISODateLocal(new Date())}
                                     className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors"
                                 />
-                                {status === 'not_picked'
-                                    ? <p className="text-xs text-red-500 mt-1">Required — schedule a callback date for unanswered calls.</p>
-                                    : <p className="text-xs text-gray-500 mt-1">Leave blank if no specific callback planned.</p>}
+                                <p className="text-xs text-gray-500 mt-1">Optional — pick a date to call back this patient.</p>
                             </div>
                         )}
 
@@ -305,11 +289,7 @@ const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting
                                 placeholder={
                                     status === 'picked'
                                         ? 'e.g. Patient confirmed appointment, mentioned they feel better...'
-                                        : status === 'not_picked'
-                                        ? 'e.g. Called twice, no answer. Will retry tomorrow.'
-                                        : status === 'busy'
-                                        ? 'e.g. Patient said busy, asked to call after 5 PM.'
-                                        : 'e.g. Number seems switched off. Will try alternate contact.'
+                                        : 'e.g. Called twice, no answer. Will retry tomorrow.'
                                 }
                                 className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 resize-none transition-colors"
                             />
@@ -482,6 +462,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
             overdue: 0,
             due_today: 0,
             due_tomorrow: 0,
+            followup: 0,
             upcoming: 0,
             completed: 0,
             cancelled: 0
@@ -489,8 +470,16 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
         reviews.forEach((review) => {
             acc[getBucket(review)] += 1;
         });
+        // followup = active reviews where last call was not_picked
+        reviews.forEach((review) => {
+            if (review.status === 'completed' || review.status === 'cancelled') return;
+            const logs = followupLogs
+                .filter(l => l.review_id === review.id)
+                .sort((a, b) => new Date(b.called_at).getTime() - new Date(a.called_at).getTime());
+            if (logs[0]?.call_status === 'not_picked') acc.followup += 1;
+        });
         return acc;
-    }, [reviews]);
+    }, [reviews, followupLogs]);
 
     const filteredReviews = useMemo(() => {
         const q = query.toLowerCase().trim();
@@ -504,10 +493,24 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
         };
         return reviews.filter((row) => {
             const bucket = getBucket(row);
-            const bucketPass = bucketFilter === 'all' ? true : bucket === bucketFilter;
+            let bucketPass: boolean;
+            if (bucketFilter === 'all') {
+                bucketPass = true;
+            } else if (bucketFilter === 'followup') {
+                if (row.status === 'completed' || row.status === 'cancelled') {
+                    bucketPass = false;
+                } else {
+                    const logs = [...followupLogs]
+                        .filter(l => l.review_id === row.id)
+                        .sort((a, b) => new Date(b.called_at).getTime() - new Date(a.called_at).getTime());
+                    bucketPass = logs[0]?.call_status === 'not_picked';
+                }
+            } else {
+                bucketPass = bucket === bucketFilter;
+            }
             return bucketPass && rowPassesQuery(row);
         });
-    }, [reviews, query, bucketFilter]);
+    }, [reviews, followupLogs, query, bucketFilter]);
 
     const fetchPatientDetails = useCallback(async (patientId: string) => {
         if (!profile?.id) return null;
@@ -628,7 +631,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
         status: CallStatus,
         notes: string,
         nextDate: string,
-        attended: boolean | null
+        rescheduleDate: string
     ) => {
         if (!callLogReview || !profile?.id) return;
         setCallLogSubmitting(true);
@@ -642,18 +645,21 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                     called_at: new Date().toISOString(),
                     call_status: status,
                     patient_response: notes.trim() || null,
-                    next_followup_date: (status !== 'picked' && nextDate) ? nextDate : null,
-                    attended: status === 'picked' ? attended : null,
+                    next_followup_date: (status === 'not_picked' && nextDate) ? nextDate : null,
+                    attended: null,
                     created_by_name: (profile as any).name || null,
                 });
             if (error) throw error;
-            toast.success('Call logged successfully');
-            await fetchFollowupLogs();
-            // refresh modal history
-            const refreshed = [...followupLogs]
-                .filter((l) => l.review_id === callLogReview.id)
-                .sort((a, b) => new Date(b.called_at).getTime() - new Date(a.called_at).getTime());
-            setCallLogHistory(refreshed);
+            if (rescheduleDate && status === 'picked') {
+                await updateReview(
+                    callLogReview.id,
+                    { next_review_date: rescheduleDate, status: 'rescheduled', cancelled_at: null, completed_at: null },
+                    ''
+                );
+            }
+            toast.success(rescheduleDate && status === 'picked' ? 'Call logged & review rescheduled' : 'Call logged successfully');
+            await Promise.all([fetchReviews(), fetchFollowupLogs()]);
+            setCallLogReview(null);
         } catch (err: any) {
             toast.error(err.message || 'Failed to log call');
         } finally {
@@ -729,7 +735,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
         }
     };
 
-    const canPrintList = (bucketFilter === 'due_today' || bucketFilter === 'due_tomorrow') && filteredReviews.length > 0;
+    const canPrintList = (['due_today', 'due_tomorrow', 'followup'] as ReviewBucket[]).includes(bucketFilter) && filteredReviews.length > 0;
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -770,13 +776,21 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                     </div>
 
                     <div className="px-6 py-3 border-b border-gray-100 bg-white flex flex-wrap items-center gap-2">
-                        {(['all', 'overdue', 'due_today', 'due_tomorrow', 'upcoming', 'completed', 'cancelled'] as ReviewBucket[]).map((bucket) => (
+                        {(['all', 'overdue', 'due_today', 'due_tomorrow', 'followup', 'upcoming', 'completed', 'cancelled'] as ReviewBucket[]).map((bucket) => (
                             <button
                                 key={bucket}
                                 onClick={() => setBucketFilter(bucket)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${bucketFilter === bucket ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                                    bucketFilter === bucket
+                                        ? bucket === 'followup'
+                                            ? 'bg-red-600 text-white border-red-600'
+                                            : 'bg-gray-900 text-white border-gray-900'
+                                        : bucket === 'followup' && (counts.followup || 0) > 0
+                                        ? 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100'
+                                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                                }`}
                             >
-                                {bucketLabel(bucket)} ({counts[bucket] || 0})
+                                {bucketLabel(bucket)}{bucket === 'followup' && (counts.followup || 0) > 0 ? ` ·  ${counts.followup}` : ` (${counts[bucket] || 0})`}
                             </button>
                         ))}
                         {canPrintList && (
@@ -801,7 +815,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                             <>
                                 {/* Desktop Table View - Hidden on mobile/tablet */}
                                 <div className="hidden lg:block">
-                                    <div className="grid grid-cols-[2.4rem_1.1fr_0.8fr_0.85fr_0.75fr_0.7fr_0.8fr_0.95fr_1.55fr] gap-2 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
+                                    <div className={`grid ${bucketFilter === 'followup' ? 'grid-cols-[2.4rem_1.1fr_0.8fr_0.85fr_0.75fr_0.7fr_0.8fr_0.95fr_0.85fr_1.55fr]' : 'grid-cols-[2.4rem_1.1fr_0.8fr_0.85fr_0.75fr_0.7fr_0.8fr_0.95fr_1.55fr]'} gap-2 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 border-b border-gray-100 sticky top-0 z-10`}>
                                         <span>#</span>
                                         <span>Patient</span>
                                         <span>MR No.</span>
@@ -810,6 +824,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                                         <span>Bucket</span>
                                         <span>Status</span>
                                         <span>Last Call</span>
+                                        {bucketFilter === 'followup' && <span>Callback Date</span>}
                                         <span>{readOnly ? 'Call Details' : 'Actions'}</span>
                                     </div>
                                     <div className="divide-y divide-gray-100">
@@ -819,7 +834,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                                             const callCount = getLogsForReview(row.id).length;
                                             const lastMeta = lastCall ? CALL_STATUS_META[lastCall.call_status] : null;
                                             return (
-                                                <div key={row.id} className="grid grid-cols-[2.4rem_1.1fr_0.8fr_0.85fr_0.75fr_0.7fr_0.8fr_0.95fr_1.55fr] gap-2 px-5 py-3.5 text-sm items-center hover:bg-gray-50 transition-colors">
+                                                <div key={row.id} className={`grid ${bucketFilter === 'followup' ? 'grid-cols-[2.4rem_1.1fr_0.8fr_0.85fr_0.75fr_0.7fr_0.8fr_0.95fr_0.85fr_1.55fr]' : 'grid-cols-[2.4rem_1.1fr_0.8fr_0.85fr_0.75fr_0.7fr_0.8fr_0.95fr_1.55fr]'} gap-2 px-5 py-3.5 text-sm items-center hover:bg-gray-50 transition-colors`}>
                                                     <span className="text-gray-400 font-bold">{idx + 1}</span>
                                                     <div className="min-w-0">
                                                         <p className="font-semibold text-gray-900 truncate">{row.patient?.name || 'Unknown'}</p>
@@ -839,27 +854,27 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                                                             <span className="text-[11px] text-gray-400">No calls yet</span>
                                                         )}
                                                         {callCount > 0 && <span className="text-[10px] text-gray-400">{callCount} call{callCount > 1 ? 's' : ''}</span>}
-                                                        {lastCall?.next_followup_date && lastCall.call_status !== 'picked' && (
-                                                            <span className="text-[10px] text-amber-600 font-semibold">📅 {formatDDMMYYYY(lastCall.next_followup_date)}</span>
+                                                        {lastCall && (
+                                                            <span className="text-[10px] text-gray-400">{formatDDMMYYYY(lastCall.called_at.slice(0, 10))}</span>
                                                         )}
                                                     </div>
+                                                    {bucketFilter === 'followup' && (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            {lastCall?.next_followup_date ? (
+                                                                <span className="text-[11px] text-amber-700 font-bold">📅 {formatDDMMYYYY(lastCall.next_followup_date)}</span>
+                                                            ) : (
+                                                                <span className="text-[11px] text-gray-400">—</span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     {readOnly ? (
                                                         <div className="flex flex-col gap-1">
                                                             {lastCall ? (
                                                                 <>
-                                                                    {lastCall.attended !== null && (
-                                                                        <span className={`text-[10px] font-bold ${lastCall.attended ? 'text-emerald-700' : 'text-red-600'}`}>
-                                                                            {lastCall.attended ? '✓ Attended' : '✗ Did not attend'}
-                                                                        </span>
-                                                                    )}
-                                                                    {lastCall.patient_response && (
-                                                                        <p className="text-[10px] text-gray-600 leading-relaxed line-clamp-2">{lastCall.patient_response}</p>
-                                                                    )}
-                                                                    {lastCall.next_followup_date && (
-                                                                        <span className="text-[10px] text-amber-600 font-semibold">📅 Callback: {formatDDMMYYYY(lastCall.next_followup_date)}</span>
-                                                                    )}
-                                                                    {lastCall.attended === null && !lastCall.patient_response && !lastCall.next_followup_date && (
-                                                                        <span className="text-[10px] text-gray-400">No additional details</span>
+                                                                    {lastCall.patient_response ? (
+                                                                        <p className="text-[10px] text-gray-600 leading-relaxed line-clamp-3">{lastCall.patient_response}</p>
+                                                                    ) : (
+                                                                        <span className="text-[10px] text-gray-400">No notes</span>
                                                                     )}
                                                                 </>
                                                             ) : (
@@ -1084,6 +1099,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                     review={callLogReview}
                     history={callLogHistory}
                     submitting={callLogSubmitting}
+                    showReschedule={bucketFilter === 'followup'}
                     onClose={() => setCallLogReview(null)}
                     onSubmit={handleSubmitCallLog}
                 />

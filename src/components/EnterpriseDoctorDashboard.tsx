@@ -984,32 +984,27 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 </header>
             </div>
 
-            <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-8">
                 {/* Title & Controls Section */}
-                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 md:mb-10">
-                    <div>
-                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
-                            {formatDoctorName(currentDoctor.name)}
-                        </h2>
-                        <p className="text-base md:text-lg text-gray-700 mt-2">Manage your patient queue and consultations</p>
-                        {paActorAuthEnabled && (
-                            <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold">
-                                {actorType === 'chief' ? 'Logged in as Chief' : `Logged in as PA: ${actorDisplayName}`}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full lg:w-auto">
-                        {/* Action Group 1: CKD Snapshot (Prominent) */}
+                <div className="flex flex-col gap-4 mb-6 sm:mb-8 md:mb-10">
+                    {/* Row 1: Title + CKD button */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div>
+                            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                                {formatDoctorName(currentDoctor.name)}
+                            </h2>
+                            <p className="text-sm sm:text-base md:text-lg text-gray-700 mt-1">Manage your patient queue and consultations</p>
+                            {paActorAuthEnabled && (
+                                <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold">
+                                    {actorType === 'chief' ? 'Logged in as Chief' : `Logged in as PA: ${actorDisplayName}`}
+                                </div>
+                            )}
+                        </div>
                         <button
                             onClick={() => setViewMode('ckd_snapshot')}
-                            className="relative group overflow-hidden rounded-xl w-full sm:w-auto"
-                            style={{
-                                background: 'linear-gradient(135deg, #9333ea, #ec4899)',
-                                padding: '2px'
-                            }}
+                            className="relative group overflow-hidden rounded-xl w-full sm:w-auto flex-shrink-0"
+                            style={{ background: 'linear-gradient(135deg, #9333ea, #ec4899)', padding: '2px' }}
                         >
-                            {/* Animated rainbow border */}
                             <div
                                 className="absolute inset-[-2px] rounded-xl opacity-75 group-hover:opacity-100 transition-opacity"
                                 style={{
@@ -1019,78 +1014,79 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                     zIndex: 0
                                 }}
                             />
-                            <div className="relative flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[10px] text-white font-bold text-sm z-10 whitespace-nowrap">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="relative flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-pink-500 rounded-[10px] text-white font-bold text-xs sm:text-sm z-10 whitespace-nowrap">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
                                 <span className="uppercase tracking-wide">View CKD Snapshot</span>
                             </div>
                         </button>
+                    </div>
 
-                        {/* Action Group 2: Tabs + Settings + Refresh */}
-                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full lg:w-auto">
-                            {/* Tabs Switcher - Force Horizontal Grid */}
-                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm grid grid-cols-4 gap-1 flex-1 md:flex-none min-w-[320px]">
+                    {/* Row 2: Tabs + Settings + Reload */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                        {/* Tab switcher — scrollable container prevents overflow on small tablets */}
+                        <div className="flex-1 overflow-x-auto">
+                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm inline-grid grid-cols-4 gap-1 min-w-max w-full">
                                 <button
                                     onClick={() => setViewMode('queue')}
-                                    className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-3 md:px-5 py-2 rounded-xl text-center text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Active Queue
                                 </button>
                                 <button
                                     onClick={() => setViewMode('history')}
-                                    className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'history' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-3 md:px-5 py-2 rounded-xl text-center text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'history' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     History Log
                                 </button>
                                 <button
                                     onClick={() => setViewMode('past_records')}
-                                    className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-3 md:px-5 py-2 rounded-xl text-center text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Past Records
                                 </button>
                                 <button
                                     onClick={() => setViewMode('track_patients')}
-                                    className={`px-2 sm:px-6 py-2.5 rounded-xl text-center text-xs sm:text-sm font-bold transition-all duration-200 truncate ${viewMode === 'track_patients' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-3 md:px-5 py-2 rounded-xl text-center text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'track_patients' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Track Patients
                                 </button>
                             </div>
+                        </div>
 
-                            {/* Settings & Reload Buttons */}
-                            <div className="flex items-center gap-2 justify-end md:justify-start">
-                                {canManageTeamAudit && (
-                                    <button
-                                        onClick={() => setShowTeamAuditModal(true)}
-                                        className="px-3 sm:px-4 py-2.5 sm:py-3 bg-white text-gray-700 hover:text-blue-700 rounded-2xl border border-gray-200 hover:border-blue-200 transition-all shadow-sm shrink-0 text-xs sm:text-sm font-bold"
-                                        title="Team & Audit"
-                                    >
-                                        Team & Audit
-                                    </button>
-                                )}
+                        {/* Settings & Reload — always a tight horizontal row */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            {canManageTeamAudit && (
                                 <button
-                                    onClick={() => setShowSettingsModal(true)}
-                                    className={`p-2.5 sm:p-3 bg-white text-gray-500 hover:text-blue-600 rounded-2xl border border-gray-200 hover:border-blue-200 transition-all shadow-sm shrink-0 ${currentDoctor.signature_url ? '' : 'animate-pulse ring-2 ring-blue-500/20'}`}
-                                    title="Doctor Settings & Signature"
+                                    onClick={() => setShowTeamAuditModal(true)}
+                                    className="px-3 py-2 bg-white text-gray-700 hover:text-blue-700 rounded-2xl border border-gray-200 hover:border-blue-200 transition-all shadow-sm text-xs sm:text-sm font-bold whitespace-nowrap"
+                                    title="Team & Audit"
                                 >
-                                    <div className="relative">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                        {!currentDoctor.signature_url && (
-                                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white"></span>
-                                        )}
-                                    </div>
+                                    Team & Audit
                                 </button>
-
-                                <button
-                                    onClick={() => viewMode === 'queue' ? fetchQueue() : fetchHistory()}
-                                    className="p-2.5 sm:p-3 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm shrink-0"
-                                    title="Reload"
-                                >
-                                    <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                </button>
-                            </div>
+                            )}
+                            <button
+                                onClick={() => setShowSettingsModal(true)}
+                                className={`p-2 sm:p-2.5 bg-white text-gray-500 hover:text-blue-600 rounded-2xl border border-gray-200 hover:border-blue-200 transition-all shadow-sm flex-shrink-0 ${currentDoctor.signature_url ? '' : 'animate-pulse ring-2 ring-blue-500/20'}`}
+                                title="Doctor Settings & Signature"
+                            >
+                                <div className="relative">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                    {!currentDoctor.signature_url && (
+                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white"></span>
+                                    )}
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => viewMode === 'queue' ? fetchQueue() : fetchHistory()}
+                                className="p-2 sm:p-2.5 bg-white text-gray-400 hover:text-gray-900 rounded-2xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm flex-shrink-0"
+                                title="Reload"
+                            >
+                                <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
