@@ -1,0 +1,39 @@
+# BeanHealth Android Build Instructions
+
+The Android project is fully configured and "production ready" with the latest code, icons, and splash screens.
+
+## Prerequisite
+You need **Android Studio** installed on your Mac.
+(Note: Java was not detecting in this terminal environment, so the final build step requires Android Studio).
+
+## How to Build the APK
+
+1. **Open Android Studio**.
+2. **Open Project**:
+   - Select **"Open"** (or "Open an existing Android Studio project").
+   - Navigate to this folder: `/Users/jnanismart/Downloads/BeanHealth-main/android`
+   - Click **Open**.
+
+3. **Wait for Sync**:
+   - Android Studio will take a moment to sync with Gradle. Wait until the bottom status bar is idle.
+
+4. **Build APK**:
+   - In the top menu, go to **Build** > **Build Bundle(s) / APK(s)** > **Build APK(s)**.
+   - Once finished, a popup will appear. Click **"locate"** to find your `app-debug.apk`.
+
+5. **Run on Device/Emulator**:
+   - Connect your Android phone or start an emulator.
+   - Click the green **Run (Play)** button in the top toolbar.
+
+## Release Build (Signed APK for Play Store)
+To generate a signed APK for the Google Play Store:
+1. Go to **Build** > **Generate Signed Bundle / APK**.
+2. Select **Android App Bundle** (standard for Play Store) or **APK**.
+3. Create a new Key store (or choose an existing one).
+4. Select `release` build type.
+5. Finish.
+
+## Recent Updates
+- **Icons & Splash**: High-quality icons and splash screens have been generated from your logo.
+- **Config**: Application ID is set to `com.beanhealth.app`.
+- **Assets**: Latest web build (`dist`) has been synced to the Android project.
