@@ -518,12 +518,24 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         const parsedMeds = (existingData.medications || []).map((m: any) => {
           const freqs = (m.frequency || '0-0-0').split('-');
           // Parse instruction to foodTiming
+          // New saves store foodTiming directly; fall back to parsing instruction for older records
           const instruction = (m.instruction || '').toLowerCase();
           let foodTiming = 'A/F';
-          if (instruction.includes('before')) foodTiming = 'B/F';
-          else if (instruction.includes('sc a/f') || instruction.includes('sc af')) foodTiming = 'SC A/F';
-          else if (instruction.includes('sc')) foodTiming = 'SC';
-          else if (instruction === '' || instruction.includes('nil')) foodTiming = 'nil';
+          if (m.foodTiming) {
+            foodTiming = m.foodTiming;
+          } else if (instruction.includes('s/c b/f') || instruction === 's/c b/f') {
+            foodTiming = 'S/C B/F';
+          } else if (instruction === 'e/s') {
+            foodTiming = 'E/S';
+          } else if (instruction.includes('before')) {
+            foodTiming = 'B/F';
+          } else if (instruction.includes('sc a/f') || instruction.includes('sc af') || instruction.includes('s/c a/f')) {
+            foodTiming = 'S/C B/F'; // normalise legacy SC variants to closest option
+          } else if (instruction.includes('sc') || instruction.includes('s/c')) {
+            foodTiming = 'S/C B/F'; // normalise
+          } else if (instruction === '' || instruction.includes('nil')) {
+            foodTiming = 'nil';
+          }
 
           // Helper to extract clean time and detect AM/PM for legacy/transitionary data
           const getInitialTimeAndAmPm = (rawTime: string, existingAmPm: string, defaultAmPm: string) => {
@@ -690,6 +702,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         nightTime: m.nightTime ? [m.nightTime, (m as any).nightAmPm || 'PM'].filter(Boolean).join(' ') : '',
         drugType: m.drugType || '',
         duration: 'See Review Date',
+        foodTiming: m.foodTiming || '',
         instruction: m.foodTiming === 'B/F' ? 'Before Food' : m.foodTiming === 'nil' ? '' : m.foodTiming || 'After Food'
       };
     });
