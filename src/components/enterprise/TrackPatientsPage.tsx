@@ -132,12 +132,11 @@ interface CallLogModalProps {
     review: ReviewRow;
     history: FollowupLog[];
     submitting: boolean;
-    showReschedule?: boolean;
     onClose: () => void;
     onSubmit: (status: CallStatus, notes: string, nextDate: string, rescheduleDate: string) => Promise<void>;
 }
 
-const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting, showReschedule = false, onClose, onSubmit }) => {
+const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting, onClose, onSubmit }) => {
     const [status, setStatus] = useState<CallStatus>('picked');
     const [notes, setNotes] = useState('');
     const [nextDate, setNextDate] = useState('');
@@ -239,9 +238,8 @@ const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting
                             </div>
                         </div>
 
-                        {/* Callback date — for not picked */}
-                        {/* Reschedule review date — only shown in Follow-up Needed context when picked */}
-                        {showReschedule && status === 'picked' && (
+                        {/* Reschedule review date — shown whenever status is picked */}
+                        {status === 'picked' && (
                             <div className="p-3.5 rounded-xl border border-orange-200 bg-orange-50">
                                 <label className="block text-sm font-semibold text-orange-800 mb-1.5 flex items-center gap-1.5">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -989,7 +987,6 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                                                                 Call Log
                                                             </button>
                                                             <button onClick={() => handleOpenRxPopup(row)} className="px-2.5 py-1.5 text-[10px] font-semibold rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors">Open Rx</button>
-                                                            <button onClick={() => handleOpenReschedule(row)} className="px-2.5 py-1.5 text-[10px] font-semibold rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors">Reschedule</button>
                                                             <button onClick={() => handleCancelReview(row)} className="px-2.5 py-1.5 text-[10px] font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">Cancel</button>
                                                             <button onClick={() => handleMarkCompleted(row)} className="px-2.5 py-1.5 text-[10px] font-semibold rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition-colors">✓ Done</button>
                                                         </div>
@@ -1071,7 +1068,6 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                                                         Log Follow-up Call
                                                     </button>
                                                     <button onClick={() => handleOpenRxPopup(row)} className="px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-100 bg-white">📋 Open Rx</button>
-                                                    <button onClick={() => handleOpenReschedule(row)} className="px-3 py-2 text-xs font-semibold rounded-xl border border-blue-200 text-blue-700 hover:bg-blue-50 bg-white">📅 Reschedule</button>
                                                     <button onClick={() => handleCancelReview(row)} className="px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 bg-white">✕ Cancel</button>
                                                     <button onClick={() => handleMarkCompleted(row)} className="px-3 py-2 text-xs font-semibold rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50 bg-white">✓ Complete</button>
                                                 </div>
@@ -1353,7 +1349,6 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                     review={callLogReview}
                     history={callLogHistory}
                     submitting={callLogSubmitting}
-                    showReschedule={bucketFilter === 'followup'}
                     onClose={() => setCallLogReview(null)}
                     onSubmit={handleSubmitCallLog}
                 />
