@@ -703,7 +703,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         drugType: m.drugType || '',
         duration: 'See Review Date',
         foodTiming: m.foodTiming || '',
-        instruction: m.foodTiming === 'B/F' ? 'Before Food' : m.foodTiming === 'nil' ? '' : m.foodTiming || 'After Food'
+        instruction: m.foodTiming === 'B/F' ? 'Before Food' : m.foodTiming === 'A/F' ? 'After Food' : m.foodTiming === 'nil' || !m.foodTiming ? '' : m.foodTiming
       };
     });
 

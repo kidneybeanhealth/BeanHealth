@@ -478,8 +478,16 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
     }, [profile?.id, profile?.avatar_url]);
 
     const counts = useMemo(() => {
+        // Deduplicate by patient_id — keep only the most urgent review per patient
+        // (reviews are fetched ordered by next_review_date ASC, so first-seen = most urgent)
+        const seenForCount = new Set<string>();
+        const uniqueReviews = reviews.filter(r => {
+            if (!r.patient_id || seenForCount.has(r.patient_id)) return false;
+            seenForCount.add(r.patient_id);
+            return true;
+        });
         const acc: Record<ReviewBucket, number> = {
-            all: reviews.length,
+            all: uniqueReviews.length,
             overdue: 0,
             due_today: 0,
             due_tomorrow: 0,
@@ -488,11 +496,11 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
             completed: 0,
             cancelled: 0
         };
-        reviews.forEach((review) => {
+        uniqueReviews.forEach((review) => {
             acc[getBucket(review)] += 1;
         });
         // followup = active reviews where last call was not_picked
-        reviews.forEach((review) => {
+        uniqueReviews.forEach((review) => {
             if (review.status === 'completed' || review.status === 'cancelled') return;
             const logs = followupLogs
                 .filter(l => l.review_id === review.id)
@@ -512,7 +520,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                 (row.patient?.phone || '').toLowerCase().includes(q)
             );
         };
-        return reviews.filter((row) => {
+        const filtered = reviews.filter((row) => {
             const bucket = getBucket(row);
             let bucketPass: boolean;
             if (bucketFilter === 'all') {
@@ -530,6 +538,13 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                 bucketPass = bucket === bucketFilter;
             }
             return bucketPass && rowPassesQuery(row);
+        });
+        // Deduplicate by patient_id — one row per patient (most urgent review wins)
+        const seen = new Set<string>();
+        return filtered.filter((row) => {
+            if (!row.patient_id || seen.has(row.patient_id)) return false;
+            seen.add(row.patient_id);
+            return true;
         });
     }, [reviews, followupLogs, query, bucketFilter]);
 
@@ -963,10 +978,19 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                                                     )}
                                                     {readOnly ? (
                                                         <div className="flex flex-col gap-1">
+                                                            <button
+                                                                onClick={() => handleOpenRxPopup(row)}
+                                                                className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors w-fit"
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                </svg>
+                                                                View Rx
+                                                            </button>
                                                             {lastCall ? (
                                                                 <>
                                                                     {lastCall.patient_response ? (
-                                                                        <p className="text-[10px] text-gray-600 leading-relaxed line-clamp-3">{lastCall.patient_response}</p>
+                                                                        <p className="text-[10px] text-gray-600 leading-relaxed line-clamp-3 mt-1">{lastCall.patient_response}</p>
                                                                     ) : (
                                                                         <span className="text-[10px] text-gray-400">No notes</span>
                                                                     )}
@@ -1056,6 +1080,17 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                                                     </div>
                                                 )}
 
+                                                {readOnly && (
+                                                    <button
+                                                        onClick={() => handleOpenRxPopup(row)}
+                                                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors mt-1"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                        View Prescription
+                                                    </button>
+                                                )}
                                                 {!readOnly && (
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <button

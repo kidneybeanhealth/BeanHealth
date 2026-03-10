@@ -882,6 +882,20 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
             if (!prescriptionId) throw new Error('Prescription ID missing after save');
 
+            // Cancel the old prescription so it disappears from the pharmacy view,
+            // and remove it from the pharmacy queue display as well.
+            const oldPrescriptionId = editResendItem?.id;
+            if (oldPrescriptionId && oldPrescriptionId !== prescriptionId) {
+                await supabase
+                    .from('hospital_prescriptions' as any)
+                    .update({ status: 'cancelled' })
+                    .eq('id', oldPrescriptionId);
+                await (supabase as any)
+                    .from('hospital_pharmacy_queue')
+                    .delete()
+                    .eq('prescription_id', oldPrescriptionId);
+            }
+
             // Add to pharmacy queue
             await (supabase as any)
                 .from('hospital_pharmacy_queue')
