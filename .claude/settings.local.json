@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --version && npm --version)",
+      "Bash(git init:*)",
+      "Bash(git fetch:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
