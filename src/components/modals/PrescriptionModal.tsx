@@ -1238,7 +1238,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 <span>NT</span>
                                 <span>இ</span>
                               </div>
-                              <div className="flex-1 py-1 text-[10px] px-0.5 flex flex-col items-center justify-center leading-tight">
+                              <div className="flex-1 py-1 text-xs px-0.5 flex flex-col items-center justify-center leading-tight">
                                 <span>B/F</span>
                                 <span>A/F</span>
                               </div>
@@ -1573,7 +1573,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   {/* Food Timing - Searchable Combobox */}
                                   <div className="flex-1 flex items-center justify-center relative">
                                     <input
-                                      className="w-full h-full text-center font-bold text-[10px] outline-none bg-transparent uppercase"
+                                      className="w-full h-full text-center font-bold text-xs outline-none bg-transparent uppercase"
                                       value={(med.foodTiming === 'nil' || !med.foodTiming) ? (readOnly ? '-' : '') : med.foodTiming}
                                       onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
                                       onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''), setHighlightedDropdownIndex(-1))}

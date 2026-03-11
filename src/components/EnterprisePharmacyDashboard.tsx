@@ -332,37 +332,36 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
     // Initialize dispensing days when prescription is selected
     useEffect(() => {
         if (selectedPrescription && selectedPrescription.status !== 'dispensed') {
-            // Calculate prescribed days from next_review_date
+            // Calculate prescribed days from next_review_date (same formula as doctor's modal)
             if (selectedPrescription.next_review_date) {
                 try {
-                    const reviewDate = new Date(selectedPrescription.next_review_date);
+                    const dateOnly = selectedPrescription.next_review_date.split('T')[0];
+                    const [y, m, d] = dateOnly.split('-').map(Number);
+                    const reviewDate = new Date(y, m - 1, d);
 
-                    // Check for invalid date
                     if (isNaN(reviewDate.getTime())) {
-                        console.warn('Invalid review date:', selectedPrescription.next_review_date);
-                        setDispensingDays(30); // Default to 30 days
+                        setDispensingDays(0);
                         return;
                     }
 
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    const diffTime = reviewDate.getTime() - today.getTime();
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    reviewDate.setHours(0, 0, 0, 0);
+                    const diffDays = Math.round((reviewDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-                    // Only use calculated days if reasonable (1-365 days in future)
                     if (diffDays > 0 && diffDays <= 365) {
                         setDispensingDays(diffDays);
                     } else if (diffDays > 365) {
-                        setDispensingDays(365); // Cap at max
+                        setDispensingDays(365);
                     } else {
-                        setDispensingDays(30); // Default for past dates
+                        setDispensingDays(0);
                     }
                 } catch (error) {
                     console.error('Error calculating dispensing days:', error);
-                    setDispensingDays(30); // Fallback default
+                    setDispensingDays(0);
                 }
             } else {
-                setDispensingDays(30); // Default when no review date
+                setDispensingDays(0); // No review date set by doctor
             }
         }
     }, [selectedPrescription]);
@@ -1095,11 +1094,13 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                         <span className="text-4xl font-bold text-blue-900">
                                             {(() => {
                                                 if (!selectedPrescription.next_review_date) return 'N/A';
-                                                const reviewDate = new Date(selectedPrescription.next_review_date);
+                                                const dateOnly = selectedPrescription.next_review_date.split('T')[0];
+                                                const [y, mo, d] = dateOnly.split('-').map(Number);
+                                                const reviewDate = new Date(y, mo - 1, d);
                                                 const today = new Date();
                                                 today.setHours(0, 0, 0, 0);
-                                                const diffTime = reviewDate.getTime() - today.getTime();
-                                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                reviewDate.setHours(0, 0, 0, 0);
+                                                const diffDays = Math.round((reviewDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                                                 return diffDays > 0 ? diffDays : 'N/A';
                                             })()}
                                         </span>
@@ -1135,17 +1136,24 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-3">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max="365"
-                                                value={dispensingDays || ''}
-                                                onChange={(e) => setDispensingDays(parseInt(e.target.value) || 0)}
-                                                className="w-24 text-3xl font-bold text-emerald-900 bg-white border-2 border-emerald-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                                placeholder="0"
-                                            />
-                                            <span className="text-sm text-emerald-700 font-medium">days</span>
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="365"
+                                                    value={dispensingDays || ''}
+                                                    onChange={(e) => setDispensingDays(parseInt(e.target.value) || 0)}
+                                                    className="w-24 text-3xl font-bold text-emerald-900 bg-white border-2 border-emerald-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                                    placeholder="0"
+                                                />
+                                                <span className="text-sm text-emerald-700 font-medium">days</span>
+                                            </div>
+                                            {selectedPrescription.next_review_date ? (
+                                                <p className="text-[11px] text-emerald-600">From doctor's review date</p>
+                                            ) : (
+                                                <p className="text-[11px] text-orange-500">No review date set — enter manually</p>
+                                            )}
                                         </div>
                                     )}
                                 </div>
