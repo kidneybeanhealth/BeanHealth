@@ -65,7 +65,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     *,
                     metadata,
                     doctor:hospital_doctors(name, specialty, signature_url),
-                    patient:hospital_patients(name, age, gender, mr_number, token_number)
+                    patient:hospital_patients(name, age, gender, mr_number, token_number, father_husband_name)
                 `)
                 .eq('hospital_id', hospitalId)
                 .in('status', ['pending', 'dispensed'])
@@ -213,7 +213,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     *,
                     metadata,
                     doctor:hospital_doctors(name, specialty, signature_url),
-                    patient:hospital_patients(name, age, gender, mr_number, token_number)
+                    patient:hospital_patients(name, age, gender, mr_number, token_number, father_husband_name)
                 `)
                 .eq('id', id)
                 .single() as any;
