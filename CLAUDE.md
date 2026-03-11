@@ -75,11 +75,11 @@ Four roles with separate dashboards:
 BeanHealth-V7/
 ├── src/
 │   ├── App.tsx                     # Root component, router setup, deep link handler
-│   ├── index.tsx                   # React entry point
+│   ├── index.tsx                   # React entry point (loaded by index.html)
 │   ├── types.ts                    # Root-level shared types
 │   │
-│   ├── components/                 # 166 component files
-│   │   ├── (root)                  # 65 core components
+│   ├── components/                 # All component files (single source of truth)
+│   │   ├── (root)                  # Core components
 │   │   ├── auth/                   # 9 auth components
 │   │   ├── enterprise/             # 13 enterprise modules
 │   │   ├── icons/                  # 56 custom SVG icon components
@@ -105,6 +105,8 @@ BeanHealth-V7/
 ├── *.sql                           # 65+ schema/migration/fix SQL files (root level)
 └── docs/                           # Developer documentation
 ```
+
+**Important:** `index.html` loads `src/index.tsx` → `src/App.tsx`. All components live exclusively under `src/components/`. There is no root-level `components/` or `App.tsx` — those were stale duplicates and have been deleted.
 
 ---
 
@@ -416,3 +418,5 @@ Use Tailwind `dark:` classes. Theme state comes from `ThemeContext`.
 | Date | Change | Files Affected |
 |------|--------|---------------|
 | 2026-03-11 | Initial full architecture documentation | CLAUDE.md |
+| 2026-03-12 | Deleted stale root-level duplicates (components/, App.tsx) — src/ is the only source | components/, App.tsx |
+| 2026-03-12 | MR number dropdown search + autofill in reception new registration | src/components/enterprise/ReceptionDashboard.tsx |

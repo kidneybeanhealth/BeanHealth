@@ -8,6 +8,7 @@ interface SavedDrug {
   id: string;
   name: string;
   drug_type?: string;
+  default_timing?: string;
 }
 
 interface ReferenceDrug {
@@ -472,10 +473,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     const newMeds = [...medications];
     const drugType = (drug as any).drugType || (drug as any).drug_type;
     const prefix = drugType ? `${drugType}. ` : '';
+    const defaultTiming = (drug as any).default_timing || '';
     newMeds[index] = {
       ...newMeds[index],
       name: `${prefix}${drug.name}`.toUpperCase(),
-      drugType: drugType || ''
+      drugType: drugType || '',
+      ...(defaultTiming && defaultTiming !== 'nil' ? { foodTiming: defaultTiming } : {})
     };
     setMedications(newMeds);
     setShowDrugDropdown(null);
@@ -489,6 +492,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       id: d.id,
       name: d.name,
       drugType: d.drug_type || '',
+      default_timing: d.default_timing || '',
       isReference: false
     }))
   ];

@@ -543,6 +543,44 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         await fetchPrescriptionsForItem(historyItem, 'edit');
     };
 
+    const handlePastRxForQueueItem = async (item: any) => {
+        setSelectedPatient({
+            ...item.patient,
+            token_number: item.patient.token_number || item.token_number
+        });
+        setSelectedQueueId(item.id);
+
+        const toastId = toast.loading('Loading past prescriptions...');
+        try {
+            const { data, error } = await supabase
+                .from('hospital_prescriptions' as any)
+                .select('*, patient:hospital_patients(*)')
+                .eq('doctor_id', doctor.id)
+                .eq('patient_id', item.patient_id)
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            toast.dismiss(toastId);
+
+            if (error) throw error;
+            const results = (data as any[]) || [];
+
+            if (results.length === 0) {
+                toast.error('No past prescriptions found for this patient');
+                return;
+            }
+            if (results.length === 1) {
+                setPastRxQueueItem(results[0]);
+            } else {
+                setPrescriptionPickerItems(results);
+                setPrescriptionPickerMode('queue-prescribe');
+            }
+        } catch (err) {
+            toast.dismiss(toastId);
+            toast.error('Could not load past prescriptions');
+        }
+    };
+
     const handleUpdateStatus = async (queueId: string, status: string) => {
         try {
             let error: any = null;
@@ -927,7 +965,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     // Edit & Resend state
     const [editResendItem, setEditResendItem] = useState<any>(null);
     const [prescriptionPickerItems, setPrescriptionPickerItems] = useState<any[]>([]);
-    const [prescriptionPickerMode, setPrescriptionPickerMode] = useState<'view' | 'edit'>('view');
+    const [prescriptionPickerMode, setPrescriptionPickerMode] = useState<'view' | 'edit' | 'queue-prescribe'>('view');
+
+    // Past Rx for queue item state
+    const [pastRxQueueItem, setPastRxQueueItem] = useState<any>(null);
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-black font-sans selection:bg-secondary-100 selection:text-secondary-900">
@@ -1214,6 +1255,16 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                     <span className="hidden xs:inline">Prescribe</span>
                                                     <span className="xs:hidden">Prescribe</span>
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handlePastRxForQueueItem(item)}
+                                                    className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 rounded-xl hover:bg-indigo-100 border border-indigo-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <span>Past Rx</span>
                                                 </button>
 
                                                 <button
@@ -1536,7 +1587,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             </div>
                             <div>
                                 <h3 className="text-lg font-bold text-white">Multiple Prescriptions Found</h3>
-                                <p className="text-blue-100 text-sm">{prescriptionPickerItems.length} prescriptions — select one to {prescriptionPickerMode === 'view' ? 'view' : 'edit & resend'}</p>
+                                <p className="text-blue-100 text-sm">{prescriptionPickerItems.length} prescriptions — {prescriptionPickerMode === 'queue-prescribe' ? 'select one to load into new prescription' : prescriptionPickerMode === 'view' ? 'select one to view' : 'select one to edit & resend'}</p>
                             </div>
                         </div>
 
@@ -1548,11 +1599,16 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                 return (
                                     <div key={rx.id} className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between gap-4"
                                         onClick={() => {
-                                            setPrescriptionPickerItems([]);
                                             if (prescriptionPickerMode === 'view') {
+                                                setPrescriptionPickerItems([]);
                                                 setSelectedHistoryItem(rx);
-                                            } else {
+                                            } else if (prescriptionPickerMode === 'edit') {
+                                                setPrescriptionPickerItems([]);
                                                 setEditResendItem(rx);
+                                            } else {
+                                                // 'queue-prescribe' mode
+                                                setPrescriptionPickerItems([]);
+                                                setPastRxQueueItem(rx);
                                             }
                                         }}
                                     >
@@ -1581,8 +1637,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                             )}
                                         </div>
                                         <div className="shrink-0">
-                                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${prescriptionPickerMode === 'view' ? 'bg-purple-50 text-purple-600' : 'bg-amber-50 text-amber-700'}`}>
-                                                {prescriptionPickerMode === 'view' ? 'View' : 'Edit'} →
+                                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${prescriptionPickerMode === 'view' ? 'bg-purple-50 text-purple-600' : prescriptionPickerMode === 'queue-prescribe' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                {prescriptionPickerMode === 'view' ? 'View' : prescriptionPickerMode === 'queue-prescribe' ? 'Load' : 'Edit'} →
                                             </span>
                                         </div>
                                     </div>
@@ -1621,6 +1677,30 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             eventCategory: 'print',
                             patientId: editResendItem.patient_id || null,
                             prescriptionId: editResendItem.id || null,
+                        });
+                    }}
+                />
+            )}
+
+            {/* Past Rx Queue Modal — pre-filled from history, sends as new queue prescription */}
+            {pastRxQueueItem && selectedPatient && (
+                <PrescriptionModal
+                    doctor={currentDoctor}
+                    patient={{
+                        ...selectedPatient,
+                        token_number: selectedPatient.token_number
+                    }}
+                    onClose={() => setPastRxQueueItem(null)}
+                    readOnly={false}
+                    existingData={pastRxQueueItem}
+                    onSendToPharmacy={handleSendToPharmacy}
+                    clinicLogo={hospitalLogo || undefined}
+                    actorAttribution={{ actorType, actorDisplayName }}
+                    onPrintOpen={() => {
+                        logViewEvent('print.preview.open', {
+                            eventCategory: 'print',
+                            patientId: selectedPatient?.id || null,
+                            prescriptionId: pastRxQueueItem?.id || null,
                         });
                     }}
                 />

@@ -40,6 +40,17 @@ interface QueueItem {
     created_at: string;
 }
 
+interface MrPatient {
+    id: string;
+    name: string;
+    age: number;
+    mr_number: string | null;
+    phone: string | null;
+    place: string | null;
+    father_husband_name: string | null;
+    gender: string | null;
+}
+
 // Helper to format doctor name professionally
 const formatDoctorName = (name: string) => {
     if (!name) return "";
@@ -81,6 +92,14 @@ const ReceptionDashboard: React.FC = () => {
         tokenNumber: '',
         mrNumber: ''
     });
+
+    // MR number search
+    const [mrSuggestions, setMrSuggestions] = useState<MrPatient[]>([]);
+    const [mrSearchLoading, setMrSearchLoading] = useState(false);
+    const [showMrDropdown, setShowMrDropdown] = useState(false);
+    const mrSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const mrInputRef = useRef<HTMLInputElement>(null);
+    const [mrDropdownStyle, setMrDropdownStyle] = useState<React.CSSProperties>({});
 
     // Settings Modal
     const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -475,11 +494,75 @@ const ReceptionDashboard: React.FC = () => {
         setShowWalkInModal(true);
     };
 
+    const searchPatientsByMr = useCallback(async (query: string) => {
+        if (!query || query.length < 2) {
+            setMrSuggestions([]);
+            setShowMrDropdown(false);
+            return;
+        }
+        setMrSearchLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('hospital_patients' as any)
+                .select('id, name, age, mr_number, phone, place, father_husband_name, gender')
+                .eq('hospital_id', profile?.id)
+                .ilike('mr_number', `%${query}%`)
+                .order('created_at', { ascending: false })
+                .limit(8) as { data: MrPatient[] | null; error: any };
+            if (!error && data && data.length > 0) {
+                setMrSuggestions(data);
+                setShowMrDropdown(true);
+            } else {
+                setMrSuggestions([]);
+                setShowMrDropdown(false);
+            }
+        } catch {
+            setMrSuggestions([]);
+            setShowMrDropdown(false);
+        } finally {
+            setMrSearchLoading(false);
+        }
+    }, [profile?.id]);
+
+    const handleMrNumberChange = (value: string) => {
+        setWalkInForm(prev => ({ ...prev, mrNumber: value }));
+        if (mrInputRef.current) {
+            const rect = mrInputRef.current.getBoundingClientRect();
+            setMrDropdownStyle({
+                position: 'fixed',
+                top: rect.bottom + 4,
+                left: rect.left,
+                width: rect.width,
+                zIndex: 9999,
+            });
+        }
+        if (mrSearchTimeout.current) clearTimeout(mrSearchTimeout.current);
+        mrSearchTimeout.current = setTimeout(() => searchPatientsByMr(value), 300);
+    };
+
+    const handleSelectMrPatient = (patient: MrPatient) => {
+        setWalkInForm(prev => ({
+            ...prev,
+            mrNumber: patient.mr_number || '',
+            name: patient.name || '',
+            age: patient.age ? String(patient.age) : '',
+            phone: patient.phone || '',
+            place: patient.place || '',
+            fatherHusbandName: patient.father_husband_name || '',
+            gender: patient.gender || '',
+        }));
+        setShowMrDropdown(false);
+        setMrSuggestions([]);
+        toast.success('Returning patient — details filled');
+    };
+
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
         setWalkInForm({ name: '', age: '', gender: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '' });
         setBhidMatch(null);
         setIsSearchingBhid(false);
+        setMrSuggestions([]);
+        setShowMrDropdown(false);
         if (phoneDebounceRef.current) clearTimeout(phoneDebounceRef.current);
     };
 
@@ -1440,13 +1523,41 @@ const ReceptionDashboard: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">MR. NO</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                        value={walkInForm.mrNumber}
-                                        onChange={e => setWalkInForm({ ...walkInForm, mrNumber: e.target.value })}
-                                        placeholder="MR-12345"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            ref={mrInputRef}
+                                            type="text"
+                                            autoComplete="off"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                            value={walkInForm.mrNumber}
+                                            onChange={e => handleMrNumberChange(e.target.value)}
+                                            onBlur={() => setTimeout(() => setShowMrDropdown(false), 200)}
+                                            placeholder="MR-12345"
+                                        />
+                                        {mrSearchLoading && (
+                                            <div className="absolute right-3 top-3.5">
+                                                <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    {showMrDropdown && mrSuggestions.length > 0 && (
+                                        <div style={mrDropdownStyle} className="bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                            {mrSuggestions.map(patient => (
+                                                <button
+                                                    key={patient.id}
+                                                    type="button"
+                                                    className="w-full px-4 py-2.5 text-left hover:bg-orange-50 flex items-center justify-between border-b border-gray-100 last:border-0"
+                                                    onMouseDown={() => handleSelectMrPatient(patient)}
+                                                >
+                                                    <div>
+                                                        <span className="font-semibold text-gray-900 text-sm">{patient.mr_number}</span>
+                                                        <span className="text-gray-500 text-sm ml-2">— {patient.name}</span>
+                                                    </div>
+                                                    <span className="text-xs text-gray-400">{patient.phone || 'No phone'}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1558,16 +1669,40 @@ const ReceptionDashboard: React.FC = () => {
                                     </span>
                                 </div>
                             )}
-                            <div>
+                            <div className="relative">
                                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Department</label>
                                 <input
                                     type="text"
                                     required
+                                    autoComplete="off"
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
                                     value={walkInForm.department}
                                     onChange={e => setWalkInForm({ ...walkInForm, department: e.target.value })}
                                     placeholder="e.g. Cardiology"
                                 />
+                                {(() => {
+                                    const DEPARTMENTS = [
+                                        'Cardiology', 'Nephrology', 'Urology', 'Neurology', 'Orthopedics',
+                                        'Gastroenterology', 'Pulmonology', 'Endocrinology', 'Dermatology',
+                                        'Ophthalmology', 'ENT', 'Oncology', 'Psychiatry', 'General Medicine',
+                                        'Pediatrics', 'Obstetrics & Gynecology', 'Rheumatology', 'Hematology',
+                                    ];
+                                    const q = walkInForm.department.trim().toLowerCase();
+                                    if (!q) return null;
+                                    const match = DEPARTMENTS.find(d => d.toLowerCase().startsWith(q) && d.toLowerCase() !== q);
+                                    if (!match) return null;
+                                    return (
+                                        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                                            <button
+                                                type="button"
+                                                className="w-full px-4 py-3 text-left text-sm text-gray-900 hover:bg-orange-50 transition-colors"
+                                                onMouseDown={e => { e.preventDefault(); setWalkInForm({ ...walkInForm, department: match }); }}
+                                            >
+                                                {match}
+                                            </button>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Consulting Doctor</label>

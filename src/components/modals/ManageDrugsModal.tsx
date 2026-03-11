@@ -10,10 +10,20 @@ const DRUG_TYPES = [
     { value: 'SYP', label: 'SYP', prefix: 'SYP.', icon: '🧴', color: 'bg-purple-100 text-purple-700 border-purple-200' },
 ];
 
+const TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'E/S', 'S/C B/F'];
+const TIMING_COLORS: Record<string, string> = {
+    'nil': 'bg-gray-100 text-gray-600 border-gray-200',
+    'A/F': 'bg-green-100 text-green-700 border-green-200',
+    'B/F': 'bg-blue-100 text-blue-700 border-blue-200',
+    'E/S': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    'S/C B/F': 'bg-red-100 text-red-700 border-red-200',
+};
+
 interface SavedDrug {
     id: string;
     name: string;
     drug_type?: string;
+    default_timing?: string;
     doctor_id?: string;
     hospital_id?: string;
 }
@@ -44,6 +54,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
     const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
     const [newDrugName, setNewDrugName] = useState('');
     const [newDrugType, setNewDrugType] = useState('');
+    const [newDrugTiming, setNewDrugTiming] = useState('');
     const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -124,6 +135,10 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
         }
     };
 
+    const handleTimingChange = (timing: string) => {
+        setNewDrugTiming(prev => prev === timing ? '' : timing);
+    };
+
     const handleSelectSuggestion = (drug: DrugOption) => {
         // Strip any existing prefixes from the suggestion name
         let cleanName = drug.name;
@@ -141,6 +156,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
         if (existingSaved) {
             setEditingDrug(existingSaved);
             setNewDrugType(existingSaved.drug_type || '');
+            setNewDrugTiming(existingSaved.default_timing || '');
         }
 
         inputRef.current?.focus();
@@ -179,12 +195,12 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                 // Update existing drug
                 const { error } = await supabase
                     .from('hospital_doctor_drugs' as any)
-                    .update({ name: normalizedName, drug_type: newDrugType } as any)
+                    .update({ name: normalizedName, drug_type: newDrugType, default_timing: newDrugTiming || null } as any)
                     .eq('id', editingDrug.id);
                 if (error) throw error;
                 toast.success('Drug updated!', { icon: '✅' });
                 setSavedDrugs(savedDrugs.map(d =>
-                    d.id === editingDrug.id ? { ...d, name: normalizedName, drug_type: newDrugType } : d
+                    d.id === editingDrug.id ? { ...d, name: normalizedName, drug_type: newDrugType, default_timing: newDrugTiming || undefined } : d
                 ));
             } else {
                 // Add new drug
@@ -193,6 +209,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                     .insert({
                         name: normalizedName,
                         drug_type: newDrugType,
+                        default_timing: newDrugTiming || null,
                         doctor_id: doctorId,
                         hospital_id: hospitalId
                     } as any)
@@ -211,6 +228,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
             }
             setNewDrugName('');
             setNewDrugType('');
+            setNewDrugTiming('');
             setEditingDrug(null);
         } catch (err: any) {
             console.error('Error saving drug:', err);
@@ -362,9 +380,30 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                         </button>
                     </div>
 
+                    {/* Default Timing Selector */}
+                    <div className="mt-3">
+                        <div className="text-xs text-gray-500 mb-1.5 font-medium">Default Timing <span className="text-gray-400">(optional)</span></div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {TIMING_OPTIONS.map(timing => (
+                                <button
+                                    key={timing}
+                                    type="button"
+                                    onClick={() => handleTimingChange(timing)}
+                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                                        newDrugTiming === timing
+                                            ? TIMING_COLORS[timing] + ' border-b-2'
+                                            : 'bg-white text-gray-400 border-gray-200 hover:text-gray-600'
+                                    }`}
+                                >
+                                    {timing}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     {editingDrug && (
                         <button
-                            onClick={() => { setEditingDrug(null); setNewDrugName(''); setNewDrugType(''); }}
+                            onClick={() => { setEditingDrug(null); setNewDrugName(''); setNewDrugType(''); setNewDrugTiming(''); }}
                             className="text-xs text-purple-600 hover:underline mt-2"
                         >
                             ✕ Cancel Edit
@@ -405,6 +444,11 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                                 </span>
                                             )}
                                             <span className="font-medium text-gray-900 text-sm">{drug.name}</span>
+                                            {drug.default_timing && (
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${TIMING_COLORS[drug.default_timing] || 'bg-gray-100 text-gray-500'}`}>
+                                                    {drug.default_timing}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
@@ -418,6 +462,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                                     });
                                                     setNewDrugName(cleanName);
                                                     setNewDrugType(drug.drug_type || '');
+                                                    setNewDrugTiming(drug.default_timing || '');
                                                     setEditingDrug(drug);
                                                     inputRef.current?.focus();
                                                 }}
