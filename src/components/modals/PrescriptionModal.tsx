@@ -1574,7 +1574,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   <div className="flex-1 flex items-center justify-center relative">
                                     <input
                                       className="w-full h-full text-center font-bold text-[10px] outline-none bg-transparent uppercase"
-                                      value={med.foodTiming}
+                                      value={(med.foodTiming === 'nil' || !med.foodTiming) ? (readOnly ? '-' : '') : med.foodTiming}
                                       onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
                                       onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                       onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
