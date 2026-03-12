@@ -427,6 +427,30 @@ Use Tailwind `dark:` classes. Theme state comes from `ThemeContext`.
 
 ---
 
+## Known Issues (To Be Fixed)
+
+### [OPEN] Wrong patient on prescription — mismatched patient identity in PA prescription flow
+**Reported:** 2026-03-12 | **File:** `src/components/EnterpriseDoctorDashboard.tsx`
+
+A prescription typed for patient **Vishnu Patel (KNH/17/017575)** was sent and recorded under **Prabati (KNH/25/024744)**. Root cause is likely one of:
+
+1. **Queue reorder misclick (most probable):** Live queue reorders during use; PA clicked Prescribe on Prabati's row thinking it was Vishnu's after the list shifted.
+2. **Race condition in `handlePastRxForQueueItem`:** `selectedPatient` and `selectedQueueId` are set synchronously at the start, but the async Supabase fetch completes later. If the PA clicks "Past Rx" on two different patients in quick succession, the state can end up with Patient A's identity but Patient B's prescription content (or vice versa).
+3. **Prescription picker misclick:** The picker modal is non-blocking — the queue behind it stays clickable. Clicking a second patient's "Past Rx" while the picker is open overwrites `selectedPatient` before the PA selects from the picker.
+
+**Fixes applied (2026-03-12):**
+- `pastRxQueueItem` cleared at the start of `handlePastRxForQueueItem` — prevents stale modal flash
+- `pastRxQueueItem` cleared in both success paths of `handleSendToPharmacy` — prevents stale state persisting after send
+
+**Still to consider:**
+- Prominent patient name/MR banner inside PrescriptionModal so mismatch is obvious before sending
+- Make the prescription picker overlay block queue interaction while open
+- Add a send-confirmation step showing patient name + MR number
+
+**Delete this entry once resolved.**
+
+---
+
 ## Git / Branch Notes
 
 ### This repo has two unrelated git histories

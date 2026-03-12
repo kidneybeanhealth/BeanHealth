@@ -544,6 +544,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     };
 
     const handlePastRxForQueueItem = async (item: any) => {
+        setPastRxQueueItem(null);
         setSelectedPatient({
             ...item.patient,
             token_number: item.patient.token_number || item.token_number
@@ -672,6 +673,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
                 toast.success('Prescription sent to Pharmacy!', { id: toastId });
                 setShowRxModal(false);
+                setPastRxQueueItem(null);
                 setSelectedQueueId(null);
                 setSelectedPatient(null);
                 fetchQueue(true);
@@ -839,6 +841,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
             toast.success('Prescription sent to Pharmacy!', { id: toastId });
             setShowRxModal(false);
+            setPastRxQueueItem(null);
             setSelectedQueueId(null);
             setSelectedPatient(null);
             await handleUpdateStatus(selectedQueueId, 'completed');
