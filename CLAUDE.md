@@ -420,3 +420,22 @@ Use Tailwind `dark:` classes. Theme state comes from `ThemeContext`.
 | 2026-03-11 | Initial full architecture documentation | CLAUDE.md |
 | 2026-03-12 | Deleted stale root-level duplicates (components/, App.tsx) — src/ is the only source | components/, App.tsx |
 | 2026-03-12 | MR number dropdown search + autofill in reception new registration | src/components/enterprise/ReceptionDashboard.tsx |
+| 2026-03-12 | Drug default food timing (nil/A/F/B/F/E/S/S/C B/F) per drug in ManageDrugsModal; auto-applied in PrescriptionModal on drug select | src/components/modals/ManageDrugsModal.tsx, PrescriptionModal.tsx |
+| 2026-03-12 | Past Rx button in live queue — load previous prescription pre-filled into modal, send as new queue prescription | src/components/EnterpriseDoctorDashboard.tsx |
+| 2026-03-12 | Department field autocomplete in reception new registration (18 departments, 1 suggestion at a time) | src/components/enterprise/ReceptionDashboard.tsx |
+| 2026-03-12 | Pushed all local changes to new branch v8 on GitHub (unrelated history to remote main) | — |
+
+---
+
+## Git / Branch Notes
+
+### This repo has two unrelated git histories
+The local V7 codebase and the remote `main` branch on GitHub have **no common ancestor** (`git merge-base` returns nothing). They are separate lineages. The local snapshot was taken as a full copy — not cloned from the remote.
+
+- **Remote `main`** — older divergent line with its own commit history
+- **Local / v8** — V7 snapshot (already contains all the same fixes as remote main) + new features built here
+
+**Do NOT assume remote `main` has features missing from local just because `git log` shows different commits. Always verify by checking the actual file contents before concluding anything is missing.**
+
+### Lesson learned (2026-03-12)
+When `git pull` showed "no common ancestor" and listed ~10 remote commits not in local history, the assumption was made that those 10 fixes were absent from the local codebase. This was **wrong** — the fixes were already present in the V7 snapshot (the code was taken after those fixes). The git history divergence does not mean the code is behind. **Always grep/read the actual files to confirm whether a fix is present before warning the user.**

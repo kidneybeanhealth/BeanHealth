@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import PrescriptionModal from './PrescriptionModal';
 
 interface AssistantRow {
     assistant_id: string;
@@ -96,12 +97,20 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
     const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
     const [auditPage, setAuditPage] = useState(0);
     const [auditLimit] = useState(25);
-    const [auditStartDate, setAuditStartDate] = useState('');
-    const [auditEndDate, setAuditEndDate] = useState('');
+    const [auditStartDate, setAuditStartDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
+    const [auditEndDate, setAuditEndDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
     const [auditAssistantId, setAuditAssistantId] = useState('');
-    const [auditEventType, setAuditEventType] = useState('');
+    const [auditEventType, setAuditEventType] = useState('view.patient.open');
     const [auditEventCategory, setAuditEventCategory] = useState('');
     const [auditSearch, setAuditSearch] = useState('');
+    const [auditRxViewItem, setAuditRxViewItem] = useState<any>(null);
+    const [chiefDoctorProfile, setChiefDoctorProfile] = useState<any>(null);
 
     const totalAuditRows = useMemo(() => {
         if (auditRows.length === 0) return 0;
@@ -170,6 +179,8 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
         fetchAssistants();
         fetchAuditLogs(0);
         setAuditPage(0);
+        (supabase as any).from('hospital_doctors').select('*').eq('id', chiefDoctorId).single()
+            .then(({ data }: { data: any }) => { if (data) setChiefDoctorProfile(data); });
     }, [isOpen]);
 
     useEffect(() => {
@@ -342,6 +353,24 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
         }
     };
 
+    const handleViewRxFromAudit = async (row: AuditRow) => {
+        if (!row.audit_prescription_id) return;
+        const toastId = toast.loading('Loading prescription...');
+        try {
+            const { data, error } = await (supabase as any)
+                .from('hospital_prescriptions')
+                .select('*, patient:hospital_patients(*)')
+                .eq('id', row.audit_prescription_id)
+                .single();
+            toast.dismiss(toastId);
+            if (error) throw error;
+            setAuditRxViewItem(data);
+        } catch {
+            toast.dismiss(toastId);
+            toast.error('Could not load prescription');
+        }
+    };
+
     const toISODateLocal = (d: Date) => {
         const yyyy = d.getFullYear();
         const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -379,12 +408,30 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
         setAuditEventCategory('');
         setAuditSearch('');
         setAuditPage(0);
-        fetchAuditLogs(0);
+        // Fetch with cleared values (pass overrides directly to avoid stale state)
+        setLoadingAudit(true);
+        (supabase as any).rpc('doctor_get_audit_logs', {
+            p_hospital_id: hospitalId,
+            p_chief_doctor_id: chiefDoctorId,
+            p_session_token: sessionToken,
+            p_page: 0,
+            p_limit: auditLimit,
+            p_start_at: null,
+            p_end_at: null,
+            p_assistant_id: null,
+            p_patient_id: null,
+            p_event_type: null,
+            p_event_category: null,
+        }).then(({ data, error }: { data: any; error: any }) => {
+            if (!error) setAuditRows(Array.isArray(data) ? data : []);
+            else toast.error(error?.message || 'Failed to load audit logs');
+        }).finally(() => setLoadingAudit(false));
     };
 
     if (!isOpen) return null;
 
     return (
+        <>
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -788,34 +835,41 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
                                 </div>
                             </div>
 
+                            {auditEventType === 'view.patient.open' && (
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-700 mb-3">
+                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
+                                    </svg>
+                                    <span>
+                                        Showing viewed patient events only · Today —{' '}
+                                        <button type="button" onClick={handleClearFilters} className="font-bold underline hover:text-purple-900">
+                                            Clear filter
+                                        </button>{' '}
+                                        to see all activity
+                                    </span>
+                                </div>
+                            )}
                             <div className="border border-gray-200 rounded-2xl overflow-hidden">
-                                <div className="grid grid-cols-[1.5fr_1.2fr_2fr_2fr_2fr] gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-bold uppercase tracking-wide text-gray-500">
+                                <div className="hidden md:grid grid-cols-[1.5fr_1.2fr_2fr_2fr_1fr] gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-bold uppercase tracking-wide text-gray-500">
                                     <span>Time</span>
                                     <span>Actor</span>
                                     <span>Event</span>
                                     <span>Patient</span>
-                                    <span>Context</span>
+                                    <span>Action</span>
                                 </div>
                                 {loadingAudit ? (
                                     <div className="p-8 text-sm text-gray-500">Loading audit logs...</div>
                                 ) : filteredAuditRows.length === 0 ? (
                                     <div className="p-8 text-sm text-gray-500">No logs for current filters.</div>
                                 ) : (
-                                    filteredAuditRows.map((row) => {
-                                        let contextLabel = '—';
-                                        if (row.audit_prescription_id) {
-                                            contextLabel = 'Prescription';
-                                        } else if (row.audit_queue_id) {
-                                            contextLabel = 'Queue visit';
-                                        } else if (row.route) {
-                                            contextLabel = row.route.replace(/^\/enterprise-dashboard\/?/, '') || row.route;
-                                        }
-                                        return (
-                                            <div key={row.audit_id} className="grid grid-cols-[1.5fr_1.2fr_2fr_2fr_2fr] gap-3 px-4 py-3 border-b border-gray-100 last:border-0 text-sm">
+                                    filteredAuditRows.map((row) => (
+                                        <div key={row.audit_id}>
+                                            {/* Desktop row */}
+                                            <div className="hidden md:grid grid-cols-[1.5fr_1.2fr_2fr_2fr_1fr] gap-3 px-4 py-3 border-b border-gray-100 last:border-0 text-sm items-center">
                                                 <div className="text-gray-700">{new Date(row.created_at).toLocaleString('en-IN')}</div>
-                                                <div>
-                                                    <div className="font-semibold text-gray-900">{row.actor_display_name}</div>
-                                                    <div className="text-xs text-gray-500 uppercase">{row.actor_type}</div>
+                                                <div className={row.actor_type === 'assistant' ? 'border-l-2 border-amber-400 pl-2' : ''}>
+                                                    <div className="font-bold text-gray-900">{row.actor_display_name}</div>
+                                                    <div className="text-[10px] uppercase text-gray-500">{row.actor_type === 'assistant' ? 'PA' : 'Chief'}</div>
                                                 </div>
                                                 <div>
                                                     <div className="font-semibold text-gray-900">
@@ -831,10 +885,47 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
                                                         {row.patient_mr_number ? `MR: ${row.patient_mr_number}` : ''}
                                                     </div>
                                                 </div>
-                                                <div className="text-sm text-gray-600">{contextLabel}</div>
+                                                <div>
+                                                    {row.audit_prescription_id ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleViewRxFromAudit(row)}
+                                                            className="px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 border border-purple-100 transition-colors whitespace-nowrap"
+                                                        >
+                                                            View Rx →
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-gray-400">—</span>
+                                                    )}
+                                                </div>
                                             </div>
-                                        );
-                                    })
+                                            {/* Mobile card */}
+                                            <div className="md:hidden p-4 border-b border-gray-100 last:border-0 space-y-2">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className={`flex-1 ${row.actor_type === 'assistant' ? 'border-l-2 border-amber-400 pl-2' : ''}`}>
+                                                        <div className="font-bold text-gray-900 text-sm">{row.actor_display_name}</div>
+                                                        <div className="text-[10px] uppercase text-gray-500">{row.actor_type === 'assistant' ? 'PA' : 'Chief'}</div>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 whitespace-nowrap">{new Date(row.created_at).toLocaleString('en-IN')}</div>
+                                                </div>
+                                                <div className="text-sm font-semibold text-gray-900">{EVENT_TYPE_LABELS[row.event_type] ?? row.event_type}</div>
+                                                {(row.patient_name || row.patient_mr_number) && (
+                                                    <div className="text-sm text-gray-700">
+                                                        {row.patient_name || ''}{row.patient_mr_number ? ` · MR: ${row.patient_mr_number}` : ''}
+                                                    </div>
+                                                )}
+                                                {row.audit_prescription_id && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleViewRxFromAudit(row)}
+                                                        className="px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 border border-purple-100 transition-colors"
+                                                    >
+                                                        View Rx →
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
                                 )}
                             </div>
 
@@ -867,6 +958,21 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
                 </div>
             </div>
         </div>
+
+        {auditRxViewItem && (
+            <PrescriptionModal
+                doctor={chiefDoctorProfile || { id: chiefDoctorId }}
+                patient={{
+                    ...auditRxViewItem.patient,
+                    token_number: auditRxViewItem.token_number ?? auditRxViewItem.patient?.token_number,
+                }}
+                onClose={() => setAuditRxViewItem(null)}
+                readOnly={true}
+                existingData={auditRxViewItem}
+                clinicLogo={undefined}
+            />
+        )}
+        </>
     );
 };
 
