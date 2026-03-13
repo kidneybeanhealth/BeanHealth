@@ -215,7 +215,8 @@ export class KKCPDFGenerator {
         yPos += lineHeight;
         this.renderLabel(BILINGUAL_LABELS.DIAGNOSIS, leftCol + 2, yPos + 5);
         this.doc.setFont('helvetica', 'normal');
-        this.doc.text(patient.diagnosis || '', leftCol + labelWidth + 5, yPos + 5);
+        const diagText = (patient.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean).map((d, i) => `${i + 1}.${d}`).join('  ');
+        this.doc.text(diagText, leftCol + labelWidth + 5, yPos + 5);
 
         let rightY = boxStartY;
         this.renderLabel(BILINGUAL_LABELS.AGE, midCol + 2, rightY + 5);

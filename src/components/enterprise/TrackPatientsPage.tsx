@@ -109,7 +109,7 @@ const getBucket = (review: ReviewRow): ReviewBucket => {
     const tomorrowDate = new Date();
     tomorrowDate.setDate(tomorrowDate.getDate() + 1);
     const tomorrow = toISODateLocal(tomorrowDate);
-    if (review.next_review_date < today) return review.status === 'rescheduled' ? 'upcoming' : 'overdue';
+    if (review.next_review_date < today) return 'overdue';
     if (review.next_review_date === today) return 'due_today';
     if (review.next_review_date === tomorrow) return 'due_tomorrow';
     return 'upcoming';
@@ -460,6 +460,25 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
         fetchDoctors();
     }, [fetchReviews, fetchFollowupLogs, fetchDoctors]);
 
+    // Realtime subscription — auto-update reviews when pharmacy dispenses (or any review changes)
+    useEffect(() => {
+        if (!profile?.id) return;
+        const channel = supabase
+            .channel(`track-patients-reviews-${profile.id}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'hospital_patient_reviews',
+                filter: `hospital_id=eq.${profile.id}`,
+            }, (payload) => {
+                setReviews((prev) =>
+                    prev.map((r) => r.id === payload.new.id ? { ...r, ...(payload.new as any) } : r)
+                );
+            })
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [profile?.id]);
+
     useEffect(() => {
         const fetchHospitalLogo = async () => {
             if (!profile?.id) return;
@@ -482,8 +501,9 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
         // (reviews are fetched ordered by next_review_date ASC, so first-seen = most urgent)
         const seenForCount = new Set<string>();
         const uniqueReviews = reviews.filter(r => {
-            if (!r.patient_id || seenForCount.has(r.patient_id)) return false;
-            seenForCount.add(r.patient_id);
+            const key = r.patient?.mr_number || r.patient_id;
+            if (!key || seenForCount.has(key)) return false;
+            seenForCount.add(key);
             return true;
         });
         const acc: Record<ReviewBucket, number> = {
@@ -539,11 +559,12 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
             }
             return bucketPass && rowPassesQuery(row);
         });
-        // Deduplicate by patient_id — one row per patient (most urgent review wins)
+        // Deduplicate by MR number — one row per patient (most urgent review wins)
         const seen = new Set<string>();
         return filtered.filter((row) => {
-            if (!row.patient_id || seen.has(row.patient_id)) return false;
-            seen.add(row.patient_id);
+            const key = row.patient?.mr_number || row.patient_id;
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
             return true;
         });
     }, [reviews, followupLogs, query, bucketFilter]);
@@ -613,19 +634,22 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
 
     const handleOpenReschedule = (row: ReviewRow) => {
         const today = toISODateLocal(new Date());
+        const tomorrowDate = new Date();
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const tomorrow = toISODateLocal(tomorrowDate);
         setRescheduleReview(row);
-        if (row.next_review_date && row.next_review_date >= today) {
+        if (row.next_review_date && row.next_review_date > today) {
             setRescheduleDate(row.next_review_date);
         } else {
-            setRescheduleDate(today);
+            setRescheduleDate(tomorrow);
         }
     };
 
     const handleRescheduleSubmit = async () => {
         if (!rescheduleReview || !rescheduleDate) return;
         const today = toISODateLocal(new Date());
-        if (rescheduleDate < today) {
-            toast.error('Reschedule date cannot be in the past');
+        if (rescheduleDate <= today) {
+            toast.error('Reschedule date must be in the future');
             return;
         }
         try {

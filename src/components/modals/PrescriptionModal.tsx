@@ -243,6 +243,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Keyboard navigation state for all dropdowns
   const [highlightedDropdownIndex, setHighlightedDropdownIndex] = useState(-1);
   const dropdownListRef = useRef<HTMLDivElement>(null);
+  const diagnosisInputRef = useRef<HTMLInputElement>(null);
 
   // Refs for printing
   const componentRef = useRef<HTMLDivElement>(null);
@@ -259,6 +260,25 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       }
     }
   }, []);
+
+  // Diagnosis tag-chip helpers
+  const addDiagnosis = (name: string) => {
+    setFormData(prev => {
+      const parts = (prev.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+      if (!parts.includes(name)) parts.push(name);
+      return { ...prev, diagnosis: parts.join(' / ') };
+    });
+    setDiagnosisSearchQuery('');
+    setShowDiagnosisDropdown(false);
+    setHighlightedDropdownIndex(-1);
+  };
+  const removeDiagnosis = (index: number) => {
+    setFormData(prev => {
+      const parts = (prev.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+      parts.splice(index, 1);
+      return { ...prev, diagnosis: parts.join(' / ') };
+    });
+  };
 
   // Generic keyboard handler for searchable dropdowns
   const handleDropdownKeyDown = useCallback((
@@ -1071,88 +1091,103 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">வியாதிகள் / DIAGNOSIS</div>
                             <div className="flex-1 relative flex">
                               {readOnly ? (
-                                <div className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase whitespace-pre-wrap break-words min-h-[1.5em]">
-                                  {formData.diagnosis}
+                                <div className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-start content-start">
+                                  {formData.diagnosis
+                                    ? formData.diagnosis.split('/').map(d => d.trim()).filter(Boolean).map((d, i) => (
+                                        <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
+                                          <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
+                                          <span>{d}</span>
+                                        </span>
+                                      ))
+                                    : null}
                                 </div>
                               ) : (
-                                <textarea
-                                  className="flex-1 py-1 px-1.5 outline-none font-bold w-full bg-transparent resize-none leading-tight uppercase overflow-hidden"
-                                  value={formData.diagnosis}
-                                  onChange={e => {
-                                    const val = e.target.value.toUpperCase();
-                                    setFormData({ ...formData, diagnosis: val });
-
-                                    // Extract the current typing part (after last "/")
-                                    const parts = val.split('/');
-                                    const currentQuery = parts[parts.length - 1].trim();
-                                    setDiagnosisSearchQuery(currentQuery);
-                                    setShowDiagnosisDropdown(true);
-                                    setHighlightedDropdownIndex(-1);
-                                  }}
-                                  onFocus={() => {
-                                    const parts = (formData.diagnosis || '').split('/');
-                                    const currentQuery = parts[parts.length - 1].trim();
-                                    setDiagnosisSearchQuery(currentQuery);
-                                    setShowDiagnosisDropdown(true);
-                                    setHighlightedDropdownIndex(-1);
-                                  }}
-                                  onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
-                                  onKeyDown={e => {
-                                    // Compute filtered list inline so arrow/enter work on the correct items
-                                    const selectedDiags = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
-                                    const filteredDiags = savedDiagnoses.filter(d => {
-                                      const matchesQuery = d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase());
-                                      const notSelected = !selectedDiags.includes(d.name);
-                                      return matchesQuery && notSelected;
-                                    });
-                                    const isOpen = showDiagnosisDropdown && diagnosisSearchQuery.length > 0 && filteredDiags.length > 0;
-                                    if (!isOpen) return;
-
-                                    if (e.key === 'ArrowDown') {
-                                      e.preventDefault();
-                                      setHighlightedDropdownIndex(prev => {
-                                        const next = prev < filteredDiags.length - 1 ? prev + 1 : 0;
-                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
-                                        return next;
+                                <div
+                                  className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-center content-start cursor-text"
+                                  onClick={() => diagnosisInputRef.current?.focus()}
+                                >
+                                  {(formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean).map((d, i) => (
+                                    <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
+                                      <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
+                                      <span>{d}</span>
+                                      <button
+                                        type="button"
+                                        tabIndex={-1}
+                                        onMouseDown={e => { e.preventDefault(); removeDiagnosis(i); }}
+                                        className="ml-0.5 text-gray-300 hover:text-red-400 font-black leading-none"
+                                        style={{ fontSize: '0.85em' }}
+                                      >×</button>
+                                    </span>
+                                  ))}
+                                  <input
+                                    ref={diagnosisInputRef}
+                                    className="outline-none bg-transparent font-bold uppercase leading-tight min-w-[60px] flex-1"
+                                    style={{ fontSize: 'inherit' }}
+                                    value={diagnosisSearchQuery}
+                                    onChange={e => {
+                                      const val = e.target.value.toUpperCase();
+                                      setDiagnosisSearchQuery(val);
+                                      setShowDiagnosisDropdown(true);
+                                      setHighlightedDropdownIndex(-1);
+                                    }}
+                                    onFocus={() => {
+                                      setShowDiagnosisDropdown(true);
+                                      setHighlightedDropdownIndex(-1);
+                                    }}
+                                    onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
+                                    onKeyDown={e => {
+                                      const selectedDiags = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+                                      const filteredDiags = savedDiagnoses.filter(d => {
+                                        const matchesQuery = d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase());
+                                        const notSelected = !selectedDiags.includes(d.name);
+                                        return matchesQuery && notSelected;
                                       });
-                                    } else if (e.key === 'ArrowUp') {
-                                      e.preventDefault();
-                                      setHighlightedDropdownIndex(prev => {
-                                        const next = prev > 0 ? prev - 1 : filteredDiags.length - 1;
-                                        setTimeout(() => scrollHighlightedIntoView(next), 0);
-                                        return next;
-                                      });
-                                    } else if (e.key === 'Enter') {
-                                      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                      const isDropdownOpen = showDiagnosisDropdown && filteredDiags.length > 0;
+
+                                      if (e.key === 'Backspace' && !diagnosisSearchQuery) {
+                                        const parts = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+                                        if (parts.length > 0) removeDiagnosis(parts.length - 1);
+                                        return;
+                                      }
+                                      if (e.key === 'ArrowDown' && isDropdownOpen) {
                                         e.preventDefault();
-                                        const diag = filteredDiags[highlightedDropdownIndex];
-                                        const parts = (formData.diagnosis || '').split('/');
-                                        parts[parts.length - 1] = '';
-                                        const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
-                                        setFormData({ ...formData, diagnosis: newValue });
-                                        setDiagnosisSearchQuery('');
+                                        setHighlightedDropdownIndex(prev => {
+                                          const next = prev < filteredDiags.length - 1 ? prev + 1 : 0;
+                                          setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                          return next;
+                                        });
+                                      } else if (e.key === 'ArrowUp' && isDropdownOpen) {
+                                        e.preventDefault();
+                                        setHighlightedDropdownIndex(prev => {
+                                          const next = prev > 0 ? prev - 1 : filteredDiags.length - 1;
+                                          setTimeout(() => scrollHighlightedIntoView(next), 0);
+                                          return next;
+                                        });
+                                      } else if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        if (isDropdownOpen && highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                          addDiagnosis(filteredDiags[highlightedDropdownIndex].name);
+                                        } else if (diagnosisSearchQuery.trim()) {
+                                          addDiagnosis(diagnosisSearchQuery.trim());
+                                        }
+                                      } else if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        setShowDiagnosisDropdown(false);
+                                        setHighlightedDropdownIndex(-1);
+                                      } else if (e.key === 'Tab') {
+                                        if (isDropdownOpen && highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
+                                          e.preventDefault();
+                                          addDiagnosis(filteredDiags[highlightedDropdownIndex].name);
+                                        } else if (diagnosisSearchQuery.trim()) {
+                                          addDiagnosis(diagnosisSearchQuery.trim());
+                                        }
                                         setShowDiagnosisDropdown(false);
                                         setHighlightedDropdownIndex(-1);
                                       }
-                                    } else if (e.key === 'Escape') {
-                                      e.preventDefault();
-                                      setShowDiagnosisDropdown(false);
-                                      setHighlightedDropdownIndex(-1);
-                                    } else if (e.key === 'Tab') {
-                                      if (highlightedDropdownIndex >= 0 && highlightedDropdownIndex < filteredDiags.length) {
-                                        const diag = filteredDiags[highlightedDropdownIndex];
-                                        const parts = (formData.diagnosis || '').split('/');
-                                        parts[parts.length - 1] = '';
-                                        const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
-                                        setFormData({ ...formData, diagnosis: newValue });
-                                        setDiagnosisSearchQuery('');
-                                      }
-                                      setShowDiagnosisDropdown(false);
-                                      setHighlightedDropdownIndex(-1);
-                                    }
-                                  }}
-                                  rows={1}
-                                />
+                                    }}
+                                    placeholder={formData.diagnosis ? '' : 'Type diagnosis...'}
+                                  />
+                                </div>
                               )}
                               {(() => {
                                 // Get already selected diagnoses
@@ -1177,15 +1212,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         data-dropdown-item
                                         className={`w-full text-left px-3 py-2 text-xs font-bold border-b border-gray-100 last:border-0 ${highlightedDropdownIndex === dIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}
                                         onMouseDown={() => {
-                                          // Get all parts except the last (which is being typed)
-                                          const parts = (formData.diagnosis || '').split('/');
-                                          parts[parts.length - 1] = ''; // Clear the typing part
-
-                                          // Add the selected diagnosis and prepare for next
-                                          const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
-                                          setFormData({ ...formData, diagnosis: newValue });
-                                          setDiagnosisSearchQuery('');
-                                          setShowDiagnosisDropdown(false);
+                                          addDiagnosis(diag.name);
                                         }}
                                         onMouseEnter={() => setHighlightedDropdownIndex(dIdx)}
                                       >

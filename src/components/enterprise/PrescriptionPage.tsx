@@ -502,7 +502,20 @@ const PrescriptionPage: React.FC = () => {
                                             <div className="flex min-h-[24px]">
                                                 <div className="flex-1 flex">
                                                     <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 flex items-center">வியாதிகள் / Diagnosis</div>
-                                                    <input className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent" value={formData.diagnosis} onChange={e => setFormData({ ...formData, diagnosis: e.target.value })} readOnly={readOnly} />
+                                                    {readOnly ? (
+                                                        <div className="flex-1 py-1 px-1.5 font-normal w-full bg-transparent leading-tight uppercase break-words flex flex-wrap gap-x-2 gap-y-0.5 items-start content-start">
+                                                            {formData.diagnosis
+                                                                ? formData.diagnosis.split('/').map(d => d.trim()).filter(Boolean).map((d, i) => (
+                                                                    <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
+                                                                        <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
+                                                                        <span>{d}</span>
+                                                                    </span>
+                                                                ))
+                                                                : null}
+                                                        </div>
+                                                    ) : (
+                                                        <input className="flex-1 py-1 px-1.5 outline-none font-normal w-full bg-transparent" value={formData.diagnosis} onChange={e => setFormData({ ...formData, diagnosis: e.target.value })} />
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
