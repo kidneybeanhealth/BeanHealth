@@ -980,7 +980,7 @@ const ReceptionDashboard: React.FC = () => {
             const tokenData = createTokenData({
                 tokenNumber: queueItem.patient?.token_number || String(queueItem.queue_number),
                 patientName: queueItem.patient?.name || 'Unknown',
-                mrNumber: undefined, // MR number not available in queue item
+                mrNumber: queueItem.patient.mr_number || undefined,
                 doctorName: queueItem.doctor?.name || '',
                 department: queueItem.doctor?.specialty || ''
             });

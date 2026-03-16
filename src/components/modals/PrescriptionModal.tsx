@@ -701,6 +701,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Show confirmation popup instead of sending directly
   const handleSend = () => {
     if (readOnly) return;
+    // Flush any uncommitted diagnosis text before showing preview/confirm.
+    // Mobile: diagnosisSearchQuery holds the last '/'-segment of the textarea; dedup prevents
+    // re-adding it to formData.diagnosis, but this clears the query so the preview doesn't
+    // show it twice alongside the committed chip.
+    // Desktop: commits any text typed-but-not-Enter'd in the chip input.
+    if (diagnosisSearchQuery.trim()) {
+      addDiagnosis(diagnosisSearchQuery.trim());
+    }
     if (isMobile) {
       // On mobile, show the print preview with confirm overlay
       setShowSendPreview(true);
@@ -1404,7 +1412,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   {/* Frequency - Searchable ComboBox */}
                                   <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
                                     <input
-                                      className="w-full text-center outline-none text-[9px] font-bold uppercase bg-transparent"
+                                      className="w-full text-center outline-none text-[11px] font-bold uppercase bg-transparent"
                                       value={med.dose}
                                       onChange={e => {
                                         const val = e.target.value.toUpperCase();

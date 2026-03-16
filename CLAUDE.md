@@ -424,6 +424,12 @@ Use Tailwind `dark:` classes. Theme state comes from `ThemeContext`.
 | 2026-03-12 | Past Rx button in live queue — load previous prescription pre-filled into modal, send as new queue prescription | src/components/EnterpriseDoctorDashboard.tsx |
 | 2026-03-12 | Department field autocomplete in reception new registration (18 departments, 1 suggestion at a time) | src/components/enterprise/ReceptionDashboard.tsx |
 | 2026-03-12 | Pushed all local changes to new branch v8 on GitHub (unrelated history to remote main) | — |
+| 2026-03-16 | Fix diagnosis duplication in mobile send preview — flush `diagnosisSearchQuery` in `handleSend()` before showing preview | `src/components/modals/PrescriptionModal.tsx` |
+| 2026-03-16 | Increase prescription frequency font size `text-[9px]` → `text-[11px]` for better print legibility | `src/components/modals/PrescriptionModal.tsx` |
+| 2026-03-16 | Remove phone number and Instagram footer from token receipt (ESC/POS output and visual preview) | `src/utils/tokenReceiptGenerator.ts`, `src/components/PrinterPreview.tsx` |
+| 2026-03-16 | Fix duplicate `=====` divider in token print preview after footer removal | `src/components/PrinterPreview.tsx` |
+| 2026-03-16 | Fix MR number not printed on queue reprint — was hardcoded `undefined`, now reads `queueItem.patient.mr_number` | `src/components/enterprise/ReceptionDashboard.tsx` |
+| 2026-03-16 | Add dummy MR number to printer setup sandbox preview so MR row is always visible during layout testing | `src/components/PrinterSetupModal.tsx` |
 
 ---
 

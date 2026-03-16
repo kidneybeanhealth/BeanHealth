@@ -35,6 +35,7 @@ const PrinterSetupModal: React.FC<PrinterSetupModalProps> = ({
     const previewData: PrinterPreviewData = {
         tokenNumber: sandboxToken,
         patientName: sandboxPatient,
+        mrNumber: 'KNH/25/012345',
         doctorName: 'A. Prabhakar',
         date: new Date().toLocaleDateString('en-GB'),
         time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),

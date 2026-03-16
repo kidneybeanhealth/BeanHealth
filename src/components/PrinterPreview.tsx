@@ -179,14 +179,6 @@ const PrinterPreview: React.FC<PrinterPreviewProps> = ({
                         <div className="text-center w-full py-1 text-xs">{dividerSingle}</div>
                         <div className="text-center w-full py-1">{data.date}  {data.time}</div>
                         <div className="text-center w-full py-1 text-xs">{dividerDouble}</div>
-
-                        <div className="text-center w-full space-y-1 py-1">
-                            <div>For feedback & queries</div>
-                            <div className="font-bold">Ph: 8056391682</div>
-                            <div>IG: @kongunad_kidney_centre</div>
-                        </div>
-
-                        <div className="text-center w-full py-1 text-xs">{dividerDouble}</div>
                         <div className="text-center w-full pt-2 opacity-60">BeanHealth</div>
 
                         <div className="h-12 w-full flex items-center justify-center">

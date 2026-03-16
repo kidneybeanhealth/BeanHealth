@@ -138,12 +138,6 @@ export function generateTokenReceipt(data: TokenData): Uint8Array {
 
     // === FOOTER ===
     addText(generateDivider('=') + '\n');
-    addText('For feedback & queries\n');
-    addCommand(COMMANDS.BOLD_ON);
-    addText('Ph: 8056391682\n');
-    addCommand(COMMANDS.BOLD_OFF);
-    addText('IG: @kongunad_kidney_centre\n');
-    addText(generateDivider('=') + '\n');
 
     // BeanHealth branding
     addCommand(COMMANDS.CENTER);
