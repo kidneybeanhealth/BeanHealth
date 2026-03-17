@@ -505,10 +505,10 @@ const PrescriptionPage: React.FC = () => {
                                                     {readOnly ? (
                                                         <div className="flex-1 py-1 px-1.5 font-normal w-full bg-transparent leading-tight uppercase break-words flex flex-wrap gap-x-2 gap-y-0.5 items-start content-start">
                                                             {formData.diagnosis
-                                                                ? formData.diagnosis.split('/').map(d => d.trim()).filter(Boolean).map((d, i) => (
+                                                                ? formData.diagnosis.split(',').map(d => d.trim()).filter(Boolean).map((d, i, arr) => (
                                                                     <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
                                                                         <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
-                                                                        <span>{d}</span>
+                                                                        <span>{d}{i < arr.length - 1 ? ',' : ''}</span>
                                                                     </span>
                                                                 ))
                                                                 : null}

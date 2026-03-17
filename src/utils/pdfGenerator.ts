@@ -118,7 +118,7 @@ export class PDFGenerator {
     yPos += 2;
     const tableData = data.prescription.medications.map((med: PrescriptionMedication, index: number) => [
       (index + 1).toString(),
-      med.name,
+      `${med.name}${med.dosage_value ? ' (' + med.dosage_value + ')' : ''}`,
       med.dosage,
       med.frequency,
       med.duration,
@@ -145,8 +145,8 @@ export class PDFGenerator {
       },
       columnStyles: {
         0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 35, fontStyle: 'bold' },
-        2: { cellWidth: 25 },
+        1: { cellWidth: 47, fontStyle: 'bold' },
+        2: { cellWidth: 13 },
         3: { cellWidth: 25 },
         4: { cellWidth: 20 },
         5: { cellWidth: 25 },

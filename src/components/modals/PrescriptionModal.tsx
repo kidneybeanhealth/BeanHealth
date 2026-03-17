@@ -9,6 +9,7 @@ interface SavedDrug {
   name: string;
   drug_type?: string;
   default_timing?: string;
+  dosages?: string[];
 }
 
 interface ReferenceDrug {
@@ -24,11 +25,15 @@ interface DrugOption {
   genericName?: string;    // Generic name for reference drugs
   category?: string;
   drugType?: string;       // TAB, CAP, INJ, SYP
+  default_timing?: string;
+  dosages?: string[];
   isReference?: boolean;
 }
 
 interface Medication {
   name: string;
+  dosage_value?: string;
+  availableDosages?: string[];
   number: string;
   dose: string;
   morning: string;
@@ -169,11 +174,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   });
 
   const [medications, setMedications] = useState<Medication[]>([
-    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
-    { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' }
+    { name: '', dosage_value: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
+    { name: '', dosage_value: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
+    { name: '', dosage_value: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
+    { name: '', dosage_value: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' },
+    { name: '', dosage_value: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' }
   ]);
 
   // Time options for timing dropdowns (removed internal constant, uses outside one)
@@ -215,10 +220,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Saved Drugs State
   const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
   const [showDrugDropdown, setShowDrugDropdown] = useState<number | null>(null);
+  const [showDosageDropdown, setShowDosageDropdown] = useState<number | null>(null);
   const [drugSearchQuery, setDrugSearchQuery] = useState('');
   const [showManageDrugsModal, setShowManageDrugsModal] = useState(false);
   const [newDrugName, setNewDrugName] = useState('');
   const [newDrugType, setNewDrugType] = useState('');
+  const [newDrugDosages, setNewDrugDosages] = useState('');
+  const [newDrugDefaultTiming, setNewDrugDefaultTiming] = useState('');
   const DRUG_TYPES = [
     { value: 'TAB', label: 'TAB', icon: '💊', color: 'bg-blue-50 text-blue-700 border-blue-200' },
     { value: 'CAP', label: 'CAP', icon: '🔶', color: 'bg-orange-50 text-orange-700 border-orange-200' },
@@ -244,6 +252,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   const [highlightedDropdownIndex, setHighlightedDropdownIndex] = useState(-1);
   const dropdownListRef = useRef<HTMLDivElement>(null);
   const diagnosisInputRef = useRef<HTMLInputElement>(null);
+  const manageDrugFormRef = useRef<HTMLDivElement>(null);
+  const dosageInputRef = useRef<HTMLInputElement>(null);
 
   // Refs for printing
   const componentRef = useRef<HTMLDivElement>(null);
@@ -264,9 +274,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Diagnosis tag-chip helpers
   const addDiagnosis = (name: string) => {
     setFormData(prev => {
-      const parts = (prev.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+      const parts = (prev.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean);
       if (!parts.includes(name)) parts.push(name);
-      return { ...prev, diagnosis: parts.join(' / ') };
+      return { ...prev, diagnosis: parts.join(', ') };
     });
     setDiagnosisSearchQuery('');
     setShowDiagnosisDropdown(false);
@@ -274,9 +284,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   };
   const removeDiagnosis = (index: number) => {
     setFormData(prev => {
-      const parts = (prev.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+      const parts = (prev.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean);
       parts.splice(index, 1);
-      return { ...prev, diagnosis: parts.join(' / ') };
+      return { ...prev, diagnosis: parts.join(', ') };
     });
   };
 
@@ -423,6 +433,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       return;
     }
 
+    const parsedDosages = Array.from(
+      new Set(
+        newDrugDosages
+          .split(',')
+          .map(d => d.trim().toUpperCase())
+          .filter(Boolean)
+      )
+    );
+
     setIsSavingDrug(true);
     try {
       if (editingDrug) {
@@ -431,6 +450,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           .from('hospital_doctor_drugs') as any)
           .update({
             name: newDrugName.toUpperCase().trim(),
+            drug_type: newDrugType || null,
+            dosages: parsedDosages,
+            default_timing: newDrugDefaultTiming || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingDrug.id);
@@ -445,6 +467,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             doctor_id: doctor.id,
             name: newDrugName.toUpperCase().trim(),
             drug_type: newDrugType || null,
+            dosages: parsedDosages,
+            default_timing: newDrugDefaultTiming || null,
             created_at: new Date().toISOString()
           });
 
@@ -461,6 +485,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       // Reset form and refresh list
       setNewDrugName('');
       setNewDrugType('');
+      setNewDrugDosages('');
+      setNewDrugDefaultTiming('');
       setEditingDrug(null);
       fetchSavedDrugs();
     } catch (error: any) {
@@ -494,10 +520,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     const drugType = (drug as any).drugType || (drug as any).drug_type;
     const prefix = drugType ? `${drugType}. ` : '';
     const defaultTiming = (drug as any).default_timing || '';
+    const availableDosages = Array.isArray((drug as any).dosages) ? (drug as any).dosages : [];
     newMeds[index] = {
       ...newMeds[index],
       name: `${prefix}${drug.name}`.toUpperCase(),
       drugType: drugType || '',
+      availableDosages,
+      ...(availableDosages.length > 0 ? { dosage_value: availableDosages[0] } : {}),
       ...(defaultTiming && defaultTiming !== 'nil' ? { foodTiming: defaultTiming } : {})
     };
     setMedications(newMeds);
@@ -513,6 +542,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       name: d.name,
       drugType: d.drug_type || '',
       default_timing: d.default_timing || '',
+      dosages: d.dosages || [],
       isReference: false
     }))
   ];
@@ -521,6 +551,49 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     drug.name.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
     (drug.genericName && drug.genericName.toLowerCase().includes(drugSearchQuery.toLowerCase()))
   ).slice(0, 20); // Limit to 20 results for performance
+
+  // If user types a saved drug name manually (without selecting dropdown),
+  // hydrate row defaults so dosage dropdown still opens from saved dosage list.
+  useEffect(() => {
+    if (readOnly || showDrugDropdown !== null) return;
+
+    const normalized = (v: string) =>
+      String(v || '')
+        .toUpperCase()
+        .replace(/^\s*(TAB|CAP|INJ|SYP)\.\s*/, '')
+        .trim();
+
+    setMedications(prev => {
+      let changed = false;
+      const next = prev.map(med => {
+        const typed = normalized(med.name);
+        if (!typed) return med;
+
+        const matched = savedDrugs.find(d => normalized(d.name) === typed);
+        if (!matched) return med;
+
+        const available = Array.isArray(matched.dosages) ? matched.dosages : [];
+        const sameDosages =
+          Array.isArray(med.availableDosages) &&
+          med.availableDosages.length === available.length &&
+          med.availableDosages.every((v, i) => v === available[i]);
+
+        const sameTiming = (med.foodTiming || '') === ((matched.default_timing as string) || '');
+        const shouldSetDosage = !med.dosage_value && available.length > 0;
+
+        if (sameDosages && (sameTiming || !matched.default_timing) && !shouldSetDosage) return med;
+
+        changed = true;
+        return {
+          ...med,
+          availableDosages: available,
+          ...(shouldSetDosage ? { dosage_value: available[0] } : {}),
+          ...(!med.foodTiming && matched.default_timing ? { foodTiming: matched.default_timing } : {})
+        };
+      });
+      return changed ? next : prev;
+    });
+  }, [savedDrugs, medications, readOnly, showDrugDropdown]);
 
   // Initialize patient data fields
   useEffect(() => {
@@ -573,10 +646,16 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           const noon = getInitialTimeAndAmPm(m.noonTime || m.noon_time, m.noonAmPm, 'PM');
           const evening = getInitialTimeAndAmPm(m.eveningTime || m.evening_time, m.eveningAmPm, 'PM');
           const night = getInitialTimeAndAmPm(m.nightTime || m.night_time, m.nightAmPm, 'PM');
+          const dosageText = String(m.dosage || '');
+          const quantityText = String((m as any).quantity || '');
+          const hasTabInDosage = /tab/i.test(dosageText);
 
           return {
             name: String(m.name || '').toUpperCase(),
-            number: (m.dosage || '').replace(' tab', ''),
+            dosage_value: m.dosage_value || (!hasTabInDosage ? dosageText : ''),
+            number: quantityText
+              ? quantityText.replace(/\s*tabs?/i, '').trim()
+              : (hasTabInDosage ? dosageText.replace(/\s*tabs?/i, '').trim() : ''),
             dose: m.dose || '',
             morning: freqs[0] !== '0' ? freqs[0] : '',
             morningTime: morning.time,
@@ -671,7 +750,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Medicine Handlers
   const addRow = () => {
     if (readOnly) return;
-    setMedications([...medications, { name: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' }]);
+    setMedications([...medications, { name: '', dosage_value: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' }]);
   };
 
   const removeRow = (index: number) => {
@@ -725,7 +804,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       const freq = `${m.morning || '0'}-${m.noon || '0'}-${m.evening || '0'}-${m.night || '0'}`;
       return {
         name: String(m.name || '').toUpperCase(),
-        dosage: m.number + ' tab',
+        dosage: m.dosage_value || '',
+        dosage_value: m.dosage_value || '',
+        quantity: m.number ? `${m.number} tab` : '',
         dose: m.dose,
         frequency: freq,
         morningTime: m.morningTime ? [m.morningTime, (m as any).morningAmPm || 'AM'].filter(Boolean).join(' ') : '',
@@ -1101,12 +1182,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                               {readOnly ? (
                                 <div className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-start content-start">
                                   {formData.diagnosis
-                                    ? formData.diagnosis.split('/').map(d => d.trim()).filter(Boolean).map((d, i) => (
-                                        <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
-                                          <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
-                                          <span>{d}</span>
-                                        </span>
-                                      ))
+                                    ? formData.diagnosis.split(',').map(d => d.trim()).filter(Boolean).map((d, i, arr) => (
+                                      <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
+                                        <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
+                                        <span>{d}{i < arr.length - 1 ? ',' : ''}</span>
+                                      </span>
+                                    ))
                                     : null}
                                 </div>
                               ) : (
@@ -1114,7 +1195,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-center content-start cursor-text"
                                   onClick={() => diagnosisInputRef.current?.focus()}
                                 >
-                                  {(formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean).map((d, i) => (
+                                  {(formData.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean).map((d, i, arr) => (
                                     <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
                                       <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
                                       <span>{d}</span>
@@ -1125,6 +1206,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                         className="ml-0.5 text-gray-300 hover:text-red-400 font-black leading-none"
                                         style={{ fontSize: '0.85em' }}
                                       >×</button>
+                                      {i < arr.length - 1 && <span className="-ml-1 mr-1">,</span>}
                                     </span>
                                   ))}
                                   <input
@@ -1144,7 +1226,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     }}
                                     onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
                                     onKeyDown={e => {
-                                      const selectedDiags = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+                                      const selectedDiags = (formData.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean);
                                       const filteredDiags = savedDiagnoses.filter(d => {
                                         const matchesQuery = d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase());
                                         const notSelected = !selectedDiags.includes(d.name);
@@ -1153,7 +1235,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       const isDropdownOpen = showDiagnosisDropdown && filteredDiags.length > 0;
 
                                       if (e.key === 'Backspace' && !diagnosisSearchQuery) {
-                                        const parts = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+                                        const parts = (formData.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean);
                                         if (parts.length > 0) removeDiagnosis(parts.length - 1);
                                         return;
                                       }
@@ -1200,7 +1282,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                               {(() => {
                                 // Get already selected diagnoses
                                 const selectedDiags = (formData.diagnosis || '')
-                                  .split('/')
+                                  .split(',')
                                   .map(d => d.trim())
                                   .filter(Boolean);
 
@@ -1250,6 +1332,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           </div>
                           <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0 px-1.5">
                             மருந்துக்கள் / DRUGS
+                          </div>
+                          <div className="w-12 border-r border-black py-1.5 flex items-center justify-center shrink-0 text-[10px]">
+                            DOSAGE
                           </div>
                           <div className="w-[398px] shrink-0 flex flex-col uppercase">
                             <div className="border-b border-black py-1 text-base uppercase">எத்தனை முறை - FREQUENCY</div>
@@ -1333,13 +1418,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       (idx) => {
                                         const drug = filteredDrugs[idx];
                                         if (drug) {
-                                          const newMeds = [...medications];
-                                          const prefix = drug.drugType ? `${drug.drugType}. ` : '';
-                                          newMeds[globalIndex].name = `${prefix}${drug.name}`.toUpperCase();
-                                          newMeds[globalIndex].drugType = drug.drugType || '';
-                                          setMedications(newMeds);
-                                          setShowDrugDropdown(null);
-                                          setDrugSearchQuery('');
+                                          handleSelectDrug(globalIndex, drug as SavedDrug);
                                         }
                                       },
                                       () => setShowDrugDropdown(null)
@@ -1354,15 +1433,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                           type="button"
                                           data-dropdown-item
                                           className={`w-full px-3 py-2 text-left border-b border-gray-100 last:border-0 ${highlightedDropdownIndex === dIdx ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}
-                                          onMouseDown={() => {
-                                            const newMeds = [...medications];
-                                            const prefix = drug.drugType ? `${drug.drugType}. ` : '';
-                                            newMeds[globalIndex].name = `${prefix}${drug.name}`.toUpperCase();
-                                            newMeds[globalIndex].drugType = drug.drugType || '';
-                                            setMedications(newMeds);
-                                            setShowDrugDropdown(null);
-                                            setDrugSearchQuery('');
-                                          }}
+                                          onMouseDown={() => handleSelectDrug(globalIndex, drug as SavedDrug)}
                                           onMouseEnter={() => setHighlightedDropdownIndex(dIdx)}
                                         >
                                           <div className="flex items-center gap-2">
@@ -1397,6 +1468,40 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       <button onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1" title="Remove">×</button>
                                     )}
                                   </div>
+                                </div>
+                                {/* DOSAGE (e.g. 500mg, 10ml) - Searchable ComboBox */}
+                                <div className="w-12 border-r border-black flex items-center justify-center shrink-0 relative">
+                                  <input
+                                    className="w-full h-full outline-none text-center bg-transparent py-1 px-1 font-bold text-[9px] uppercase"
+                                    placeholder="MG"
+                                    value={med.dosage_value || ''}
+                                    onChange={(e) => {
+                                      updateMed(globalIndex, 'dosage_value', e.target.value);
+                                      !readOnly && med.availableDosages && med.availableDosages.length > 0 && setShowDosageDropdown(globalIndex);
+                                    }}
+                                    onFocus={() => !readOnly && med.availableDosages && med.availableDosages.length > 0 && setShowDosageDropdown(globalIndex)}
+                                    onBlur={() => setTimeout(() => setShowDosageDropdown(null), 150)}
+                                    readOnly={readOnly}
+                                  />
+                                  {!readOnly && showDosageDropdown === globalIndex && med.availableDosages && med.availableDosages.length > 0 && (
+                                    <div className="absolute left-0 top-full mt-1 z-50 w-20 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
+                                      {med.availableDosages.map((opt: string, dIdx: number) => (
+                                        <button
+
+                                          type="button"
+                                          key={`${opt}-${dIdx}`}
+                                          data-dropdown-item
+                                          onMouseDown={() => {
+                                            updateMed(globalIndex, 'dosage_value', opt);
+                                            setShowDosageDropdown(null);
+                                          }}
+                                          className="w-full px-2 py-1.5 text-left text-[9px] font-bold border-b border-gray-50 last:border-0 hover:bg-emerald-50"
+                                        >
+                                          {opt}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="w-[398px] flex shrink-0 items-stretch">
                                   {/* Quantity */}
@@ -2005,6 +2110,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                     setShowManageDrugsModal(false);
                     setEditingDrug(null);
                     setNewDrugName('');
+                    setNewDrugType('');
+                    setNewDrugDosages('');
+                    setNewDrugDefaultTiming('');
                   }}
                   className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
                 >
@@ -2015,41 +2123,68 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               </div>
 
               {/* Add/Edit Form */}
-              <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+              <div ref={manageDrugFormRef} className="px-6 py-4 border-b border-gray-100 bg-gray-50">
                 <div className="text-sm font-semibold text-gray-700 mb-3">
                   {editingDrug ? 'Edit Drug' : 'Add New Drug'}
                 </div>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {DRUG_TYPES.map(type => (
-                    <button
-                      key={type.value}
-                      onClick={() => setNewDrugType(newDrugType === type.value ? '' : type.value)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${newDrugType === type.value
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-105'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
-                        }`}
+                <div className="grid grid-cols-12 gap-3 items-end">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">Type</label>
+                    <select
+                      className="w-full px-2 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm font-semibold uppercase bg-white"
+                      value={newDrugType}
+                      onChange={e => setNewDrugType(e.target.value)}
                     >
-                      <span>{type.icon}</span>
-                      {type.label}
+                      <option value="">NONE</option>
+                      {DRUG_TYPES.map(type => (
+                        <option key={type.value} value={type.value}>{type.value}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-3">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">Drug Name</label>
+                    <input
+                      type="text"
+                      placeholder="PARACETAMOL"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm uppercase"
+                      value={newDrugName}
+                      onChange={e => setNewDrugName(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">Dosages (Comma Separated)</label>
+                    <input
+                      ref={dosageInputRef}
+                      type="text"
+                      placeholder="200MG, 300MG"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm uppercase"
+                      value={newDrugDosages}
+                      onChange={e => setNewDrugDosages(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSaveDrug()}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">Default Timing</label>
+                    <select
+                      className="w-full px-2 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm font-semibold uppercase bg-white"
+                      value={newDrugDefaultTiming}
+                      onChange={e => setNewDrugDefaultTiming(e.target.value)}
+                    >
+                      <option value="">NONE</option>
+                      {FOOD_TIMING_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <button
+                      onClick={handleSaveDrug}
+                      disabled={isSavingDrug || !newDrugName.trim()}
+                      className="w-full px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSavingDrug ? '...' : editingDrug ? 'Update' : 'Add'}
                     </button>
-                  ))}
-                </div>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    placeholder="Drug name (e.g., PARACETAMOL 500MG)"
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm uppercase"
-                    value={newDrugName}
-                    onChange={e => setNewDrugName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSaveDrug()}
-                  />
-                  <button
-                    onClick={handleSaveDrug}
-                    disabled={isSavingDrug || !newDrugName.trim()}
-                    className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSavingDrug ? '...' : editingDrug ? 'Update' : 'Add'}
-                  </button>
+                  </div>
                 </div>
               </div>
 
@@ -2061,21 +2196,39 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100">
+                    <div className="px-6 py-2 bg-gray-50 grid grid-cols-12 gap-3 text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                      <div className="col-span-2">Type</div>
+                      <div className="col-span-3">Drug</div>
+                      <div className="col-span-3">Dosages</div>
+                      <div className="col-span-2">Default Timing</div>
+                      <div className="col-span-2 text-right">Actions</div>
+                    </div>
                     {savedDrugs.map(drug => (
-                      <div key={drug.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 group">
-                        <div className="flex items-center gap-3">
-                          {drug.drug_type && (
-                            <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-bold uppercase">
-                              {drug.drug_type}
-                            </span>
-                          )}
-                          <div className="font-semibold text-gray-900">{drug.name}</div>
+                      <div key={drug.id} className="px-6 py-3 grid grid-cols-12 gap-3 items-center hover:bg-gray-50 group">
+                        <div className="col-span-2">
+                          <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-bold uppercase">
+                            {drug.drug_type || 'NONE'}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="col-span-3 font-semibold text-gray-900 truncate">{drug.name}</div>
+                        <div className="col-span-3 text-[12px] text-gray-600 truncate">
+                          {Array.isArray(drug.dosages) && drug.dosages.length > 0 ? drug.dosages.join(', ') : '-'}
+                        </div>
+                        <div className="col-span-2 text-[12px] text-gray-700 font-semibold uppercase">
+                          {drug.default_timing || '-'}
+                        </div>
+                        <div className="col-span-2 flex items-center justify-end gap-2">
                           <button
                             onClick={() => {
                               setEditingDrug(drug);
                               setNewDrugName(drug.name);
+                              setNewDrugType(drug.drug_type || '');
+                              setNewDrugDosages(Array.isArray(drug.dosages) ? drug.dosages.join(', ') : '');
+                              setNewDrugDefaultTiming(drug.default_timing || '');
+                              requestAnimationFrame(() => {
+                                manageDrugFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                dosageInputRef.current?.focus();
+                              });
                             }}
                             className="p-2 text-gray-400 hover:text-purple-600 rounded-lg"
                           >
@@ -2097,7 +2250,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               {/* Footer */}
               <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end">
                 <button
-                  onClick={() => setShowManageDrugsModal(false)}
+                  onClick={() => {
+                    setShowManageDrugsModal(false);
+                    setEditingDrug(null);
+                    setNewDrugName('');
+                    setNewDrugType('');
+                    setNewDrugDosages('');
+                    setNewDrugDefaultTiming('');
+                  }}
                   className="px-6 py-2 bg-gray-900 text-white rounded-lg font-semibold text-sm hover:bg-black"
                 >
                   Done

@@ -3,6 +3,7 @@
 export interface PrescriptionMedication {
   name: string;
   dosage: string;
+  dosage_value?: string;
   frequency: string;
   duration: string;
   timing?: string;

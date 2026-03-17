@@ -24,6 +24,7 @@ interface SavedDrug {
     name: string;
     drug_type?: string;
     default_timing?: string;
+    dosages?: string[];
     doctor_id?: string;
     hospital_id?: string;
 }
@@ -55,6 +56,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
     const [newDrugName, setNewDrugName] = useState('');
     const [newDrugType, setNewDrugType] = useState('');
     const [newDrugTiming, setNewDrugTiming] = useState('');
+    const [newDrugDosages, setNewDrugDosages] = useState('');
     const [editingDrug, setEditingDrug] = useState<SavedDrug | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -157,6 +159,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
             setEditingDrug(existingSaved);
             setNewDrugType(existingSaved.drug_type || '');
             setNewDrugTiming(existingSaved.default_timing || '');
+            setNewDrugDosages(Array.isArray(existingSaved.dosages) ? existingSaved.dosages.join(', ') : '');
         }
 
         inputRef.current?.focus();
@@ -175,6 +178,16 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
         const normalizedName = cleanName.toUpperCase();
 
+        // Parse dosages from comma-separated input
+        const parsedDosages = Array.from(
+            new Set(
+                newDrugDosages
+                    .split(',')
+                    .map(d => d.trim().toUpperCase())
+                    .filter(Boolean)
+            )
+        );
+
         // Check for duplicates (only if adding new, not editing)
         if (!editingDrug) {
             const isDuplicate = savedDrugs.some(
@@ -191,25 +204,25 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
         setIsSaving(true);
         try {
+            const drugsTable: any = supabase.from('hospital_doctor_drugs' as any);
             if (editingDrug) {
                 // Update existing drug
-                const { error } = await supabase
-                    .from('hospital_doctor_drugs' as any)
-                    .update({ name: normalizedName, drug_type: newDrugType, default_timing: newDrugTiming || null } as any)
+                const { error } = await drugsTable
+                    .update({ name: normalizedName, drug_type: newDrugType, default_timing: newDrugTiming || null, dosages: parsedDosages } as any)
                     .eq('id', editingDrug.id);
                 if (error) throw error;
                 toast.success('Drug updated!', { icon: '✅' });
                 setSavedDrugs(savedDrugs.map(d =>
-                    d.id === editingDrug.id ? { ...d, name: normalizedName, drug_type: newDrugType, default_timing: newDrugTiming || undefined } : d
+                    d.id === editingDrug.id ? { ...d, name: normalizedName, drug_type: newDrugType, default_timing: newDrugTiming || undefined, dosages: parsedDosages } : d
                 ));
             } else {
                 // Add new drug
-                const { data, error } = await supabase
-                    .from('hospital_doctor_drugs' as any)
+                const { data, error } = await drugsTable
                     .insert({
                         name: normalizedName,
                         drug_type: newDrugType,
                         default_timing: newDrugTiming || null,
+                        dosages: parsedDosages,
                         doctor_id: doctorId,
                         hospital_id: hospitalId
                     } as any)
@@ -229,6 +242,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
             setNewDrugName('');
             setNewDrugType('');
             setNewDrugTiming('');
+            setNewDrugDosages('');
             setEditingDrug(null);
         } catch (err: any) {
             console.error('Error saving drug:', err);
@@ -380,6 +394,19 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                         </button>
                     </div>
 
+                    {/* Dosages Input */}
+                    <div className="mt-3">
+                        <div className="text-xs text-gray-500 mb-1.5 font-medium">Dosages <span className="text-gray-400">(comma separated, e.g. 200MG, 500MG)</span></div>
+                        <input
+                            type="text"
+                            placeholder="200MG, 300MG, 500MG"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm uppercase"
+                            value={newDrugDosages}
+                            onChange={e => setNewDrugDosages(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleSaveDrug(); }}
+                        />
+                    </div>
+
                     {/* Default Timing Selector */}
                     <div className="mt-3">
                         <div className="text-xs text-gray-500 mb-1.5 font-medium">Default Timing <span className="text-gray-400">(optional)</span></div>
@@ -403,7 +430,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
                     {editingDrug && (
                         <button
-                            onClick={() => { setEditingDrug(null); setNewDrugName(''); setNewDrugType(''); setNewDrugTiming(''); }}
+                            onClick={() => { setEditingDrug(null); setNewDrugName(''); setNewDrugType(''); setNewDrugTiming(''); setNewDrugDosages(''); }}
                             className="text-xs text-purple-600 hover:underline mt-2"
                         >
                             ✕ Cancel Edit
@@ -437,13 +464,22 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                         key={drug.id}
                                         className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 hover:bg-gray-100 transition-colors group"
                                     >
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-3 flex-wrap">
                                             {typeInfo && (
                                                 <span className={`text-xs px-2 py-1 rounded-lg font-bold ${typeInfo.color}`}>
                                                     {typeInfo.icon} {drug.drug_type}
                                                 </span>
                                             )}
                                             <span className="font-medium text-gray-900 text-sm">{drug.name}</span>
+                                            {Array.isArray(drug.dosages) && drug.dosages.length > 0 && (
+                                                <div className="flex items-center gap-1 flex-wrap">
+                                                    {drug.dosages.map((d, i) => (
+                                                        <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
+                                                            {d}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                             {drug.default_timing && (
                                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${TIMING_COLORS[drug.default_timing] || 'bg-gray-100 text-gray-500'}`}>
                                                     {drug.default_timing}
@@ -463,6 +499,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
                                                     setNewDrugName(cleanName);
                                                     setNewDrugType(drug.drug_type || '');
                                                     setNewDrugTiming(drug.default_timing || '');
+                                                    setNewDrugDosages(Array.isArray(drug.dosages) ? drug.dosages.join(', ') : '');
                                                     setEditingDrug(drug);
                                                     inputRef.current?.focus();
                                                 }}

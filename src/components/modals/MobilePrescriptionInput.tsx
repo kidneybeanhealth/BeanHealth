@@ -93,6 +93,8 @@ const parseSpecialists = (value: string) =>
 
 interface Medication {
     name: string;
+    dosage_value?: string;
+    availableDosages?: string[];
     number: string;
     dose: string;
     morning: string;
@@ -167,6 +169,7 @@ const MedCard: React.FC<{
 }> = ({ med, index, updateMed, removeRow, readOnly, filteredDrugs, setDrugSearchQuery, showDrugDropdown, setShowDrugDropdown, handleSelectDrug, showRemove }) => {
 
     const [showConfirmRemove, setShowConfirmRemove] = React.useState(false);
+    const [showDosageDropdown, setShowDosageDropdown] = React.useState(false);
     const drugInputRef = React.useRef<HTMLInputElement>(null);
 
     // Strip drug-type prefix (e.g., "TAB. ", "SYP. ", "INJ. ") from a name to get the raw drug name for search
@@ -256,7 +259,7 @@ const MedCard: React.FC<{
                 )}
             </div>
 
-            {/* Drug Name + QTY */}
+            {/* Drug Name + QTY + DOSAGE */}
             <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6' }}>
                 <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input type="text" value={med.name}
@@ -288,6 +291,42 @@ const MedCard: React.FC<{
                                     style={{ width: '100%', padding: '7px 12px', textAlign: 'left', fontSize: '12px', color: '#374151', background: 'none', border: 'none', borderBottom: '1px solid #f9fafb', cursor: 'pointer', fontWeight: 500 }}>
                                     {drug.drugType && <span style={{ fontWeight: 700, color: '#4a7c2f', marginRight: '4px' }}>{drug.drugType}.</span>}
                                     {drug.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                {/* Dosage */}
+                <div style={{ width: '60px', borderLeft: '1px solid #f3f4f6', flexShrink: 0, position: 'relative' }}>
+                    <div style={{ padding: '3px 0', background: '#fff', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
+                        <span style={{ fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#374151' }}>DOSE</span>
+                    </div>
+                    <input type="text" value={med.dosage_value || ''}
+                        onChange={e => updateMed(index, 'dosage_value', e.target.value)}
+                        onFocus={() => {
+                            if (!readOnly && Array.isArray(med.availableDosages) && med.availableDosages.length > 0) {
+                                setShowDosageDropdown(true);
+                            }
+                        }}
+                        onBlur={() => setTimeout(() => setShowDosageDropdown(false), 200)}
+                        readOnly={readOnly} placeholder="mg"
+                        style={{ width: '100%', padding: '6px 2px', fontSize: '11px', fontWeight: 500, outline: 'none', border: 'none', background: '#fff', color: '#111827', textAlign: 'center', boxSizing: 'border-box' }} />
+                    {/* Dosage Dropdown */}
+                    {showDosageDropdown && Array.isArray(med.availableDosages) && med.availableDosages.length > 0 && (
+                        <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 55, background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(74,124,47,0.2)', borderRadius: '0 0 10px 10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: '120px', overflowY: 'auto' }}>
+                            {med.availableDosages.map((opt, dIdx) => (
+                                <button key={`${opt}-${dIdx}`} type="button"
+                                    onMouseDown={() => {
+                                        updateMed(index, 'dosage_value', opt);
+                                        setShowDosageDropdown(false);
+                                    }}
+                                    style={{
+                                        width: '100%', padding: '7px 6px', textAlign: 'center', fontSize: '11px', fontWeight: med.dosage_value === opt ? 800 : 600,
+                                        color: med.dosage_value === opt ? '#4a7c2f' : '#374151',
+                                        background: med.dosage_value === opt ? '#ecfdf5' : 'none',
+                                        border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer'
+                                    }}>
+                                    {opt}
                                 </button>
                             ))}
                         </div>
@@ -433,16 +472,16 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                     onChange={e => {
                                         const val = e.target.value.toUpperCase();
                                         setFormData((prev: any) => ({ ...prev, diagnosis: val }));
-                                        const parts = val.split('/');
+                                        const parts = val.split(',');
                                         setDiagnosisSearchQuery(parts[parts.length - 1].trim());
                                         setShowDiagnosisDropdown(true);
                                     }}
-                                    onFocus={() => { const parts = (formData.diagnosis || '').split('/'); setDiagnosisSearchQuery(parts[parts.length - 1].trim()); setShowDiagnosisDropdown(true); }}
+                                    onFocus={() => { const parts = (formData.diagnosis || '').split(','); setDiagnosisSearchQuery(parts[parts.length - 1].trim()); setShowDiagnosisDropdown(true); }}
                                     onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
                                     className="w-full mt-1 px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none resize-none leading-tight"
                                     placeholder="Enter diagnosis..." readOnly={readOnly} rows={2} />
                                 {(() => {
-                                    const selected = (formData.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean);
+                                    const selected = (formData.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean);
                                     const filtered = savedDiagnoses.filter(d => d.name.toLowerCase().includes(diagnosisSearchQuery.toLowerCase()) && !selected.includes(d.name));
                                     return showDiagnosisDropdown && diagnosisSearchQuery.length > 0 && filtered.length > 0 && (
                                         <div className="absolute left-0 right-0 top-full z-50 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto mt-1">
@@ -450,9 +489,9 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                                 <button key={diag.id} type="button"
                                                     className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm font-medium border-b border-gray-100 last:border-0"
                                                     onMouseDown={() => {
-                                                        const parts = (formData.diagnosis || '').split('/');
+                                                        const parts = (formData.diagnosis || '').split(',');
                                                         parts[parts.length - 1] = '';
-                                                        const newValue = [...parts.filter(p => p.trim()), diag.name].join('/') + '/';
+                                                        const newValue = [...parts.filter(p => p.trim()), diag.name].join(', ') + ', ';
                                                         setFormData((prev: any) => ({ ...prev, diagnosis: newValue }));
                                                         setDiagnosisSearchQuery('');
                                                         setShowDiagnosisDropdown(false);

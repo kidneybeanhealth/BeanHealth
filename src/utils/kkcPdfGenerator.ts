@@ -215,7 +215,7 @@ export class KKCPDFGenerator {
         yPos += lineHeight;
         this.renderLabel(BILINGUAL_LABELS.DIAGNOSIS, leftCol + 2, yPos + 5);
         this.doc.setFont('helvetica', 'normal');
-        const diagText = (patient.diagnosis || '').split('/').map(d => d.trim()).filter(Boolean).map((d, i) => `${i + 1}.${d}`).join('  ');
+        const diagText = (patient.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean).map((d, i) => `${i + 1}.${d}`).join('  ');
         this.doc.text(diagText, leftCol + labelWidth + 5, yPos + 5);
 
         let rightY = boxStartY;
@@ -269,8 +269,9 @@ export class KKCPDFGenerator {
         for (let i = 0; i < 12; i++) {
             if (i < medications.length && medications[i].name) {
                 const med = medications[i];
+                const drugNameWithDosage = `${med.name}${med.dosage_value ? ' (' + med.dosage_value + ')' : ''}`;
                 tableData.push([
-                    (i + 1).toString(), med.name, med.quantity?.toString() || '',
+                    (i + 1).toString(), drugNameWithDosage, med.quantity?.toString() || '',
                     med.morning || '', med.noon || '', med.night || '', med.timing || ''
                 ]);
             } else {
