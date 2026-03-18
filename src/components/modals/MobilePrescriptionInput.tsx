@@ -297,7 +297,7 @@ const MedCard: React.FC<{
                     )}
                 </div>
                 {/* Dosage */}
-                <div style={{ width: '60px', borderLeft: '1px solid #f3f4f6', flexShrink: 0, position: 'relative' }}>
+                <div style={{ width: '75px', borderLeft: '1px solid #f3f4f6', flexShrink: 0, position: 'relative' }}>
                     <div style={{ padding: '3px 0', background: '#fff', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
                         <span style={{ fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#374151' }}>DOSE</span>
                     </div>
@@ -310,7 +310,7 @@ const MedCard: React.FC<{
                         }}
                         onBlur={() => setTimeout(() => setShowDosageDropdown(false), 200)}
                         readOnly={readOnly} placeholder="mg"
-                        style={{ width: '100%', padding: '6px 2px', fontSize: '11px', fontWeight: 500, outline: 'none', border: 'none', background: '#fff', color: '#111827', textAlign: 'center', boxSizing: 'border-box' }} />
+                        style={{ width: '100%', padding: '6px 2px', fontSize: '13px', fontWeight: 700, outline: 'none', border: 'none', background: '#fff', color: '#111827', textAlign: 'center', boxSizing: 'border-box' }} />
                     {/* Dosage Dropdown */}
                     {showDosageDropdown && Array.isArray(med.availableDosages) && med.availableDosages.length > 0 && (
                         <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 55, background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(74,124,47,0.2)', borderRadius: '0 0 10px 10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: '120px', overflowY: 'auto' }}>

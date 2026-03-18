@@ -1333,7 +1333,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <div className="flex-1 border-r border-black py-1.5 flex items-center justify-center min-w-0 px-1.5">
                             மருந்துக்கள் / DRUGS
                           </div>
-                          <div className="w-12 border-r border-black py-1.5 flex items-center justify-center shrink-0 text-[10px]">
+                          <div className="w-16 border-r border-black py-1.5 flex items-center justify-center shrink-0 text-[10px]">
                             DOSAGE
                           </div>
                           <div className="w-[398px] shrink-0 flex flex-col uppercase">
@@ -1470,9 +1470,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   </div>
                                 </div>
                                 {/* DOSAGE (e.g. 500mg, 10ml) - Searchable ComboBox */}
-                                <div className="w-12 border-r border-black flex items-center justify-center shrink-0 relative">
+                                <div className="w-16 border-r border-black flex items-center justify-center shrink-0 relative">
                                   <input
-                                    className="w-full h-full outline-none text-center bg-transparent py-1 px-1 font-bold text-[9px] uppercase"
+                                    className="w-full h-full outline-none text-center bg-transparent py-1 px-1 font-bold text-[13px] uppercase"
                                     placeholder="MG"
                                     value={med.dosage_value || ''}
                                     onChange={(e) => {
