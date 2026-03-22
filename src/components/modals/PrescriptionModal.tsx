@@ -1113,8 +1113,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <img src={clinicLogo || "/logo.png"} alt="Clinic Logo" className="w-[70px] h-[70px] object-contain absolute -top-1 left-0" />
                         </div>
                         <div className="text-center flex-1">
-                          <h1 className="text-lg font-bold text-blue-900 leading-tight">{clinicName || 'HOSPITAL NAME/CLINIC'}</h1>
-                          <h2 className="text-base font-bold text-blue-900 leading-tight">{clinicAddress || ''}</h2>
+                          <h1 className="text-lg font-bold text-blue-900 leading-tight">KONGUNAD KIDNEY CENTRE, Coimbatore - 641 012</h1>
+                          <h2 className="text-base font-bold text-blue-900 leading-tight">கொங்குநாடு கிட்னி சென்டர், கோயம்புத்தூர் - 641 012</h2>
                         </div>
                         {/* Page Number Indicator */}
                         {chunks.length > 1 && (
@@ -2021,16 +2021,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Footer Box - Full Width with Larger Font */}
-                          <div className="w-full border-2 border-black p-2 text-[12px] leading-[1.5] flex flex-col justify-center font-bold mt-2 bg-gray-50 print:bg-white uppercase">
-                            <p className="text-center mb-1.5">முன்பதிவு காலதாமதத்தை குறைக்கும் / PRIOR REGISTRATION AVOIDS DELAY</p>
-                            <p className="text-center mb-1">APPT: {clinicPhone || ''} | TIME: {workingHours || '8AM - 6PM'}</p>
-                            {footerDoctorText && (
-                              <p className="text-center border-t border-gray-400 mt-1.5 pt-1.5">
-                                {footerDoctorText}
-                              </p>
-                            )}
-                            <p className="text-center mt-1">அவசர உதவிக்கு / EMERGENCY: {emergencyPhone || clinicPhone || ''} (24 மணி நேரமும் / 24 HRS SERVICE)</p>
+                          {/* Footer Box */}
+                          <div className="w-full border-2 border-black p-2 text-[11px] leading-[1.6] flex flex-col justify-center mt-2 bg-gray-50 print:bg-white text-center font-bold uppercase tracking-wide">
+                            <p>முன்பதிவு காலதாமதத்தை குறைக்கும் / PRIOR REGISTRATION AVOIDS DELAY</p>
+                            <p>APPT: 0422-2494333, 73588 41555, 41666 | TIME: 8AM - 6PM</p>
+                            
+                            <div className="border-t border-gray-400 my-1.5 mx-2"></div>
+                            
+                            <p>DR. A. பிரபாகர் MD., DNB (NEPHROLOGY) | DR. A. திவாகர் MS., M.CH (UROLOGY)</p>
+                            <p>அவசர உதவிக்கு / EMERGENCY: 0422 - 2494333 (24 மணி நேரமும் / 24 HRS SERVICE)</p>
                           </div>
                         </div>
                       );

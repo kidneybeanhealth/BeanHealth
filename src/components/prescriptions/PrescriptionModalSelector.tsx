@@ -9,18 +9,23 @@
  *   3. Set config->>'prescription' = 'your_key' in DB for that hospital
  *
  * DEFAULT behaviour (any hospital without a custom design):
- *   Uses KKCPrescriptionModal — which is the KKC layout but fetches
- *   hospital name, logo, phone, address etc. from the hospital_profiles row
- *   for whichever hospital is currently assigned to the prescription.
+ *   Uses StandardPrescriptionModal
  */
 
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { useTenant } from '../../contexts/TenantContext';
 
-import KKCPrescriptionModal from './templates/KKCPrescriptionModal';
-import StandardPrescriptionModal from './templates/StandardPrescriptionModal';
+// We wrap the independent Hospital Modals in React.lazy()
+// This forces Vite to split these into separate Javascript chunks,
+// meaning the browser only downloads the specific modal it needs.
+const PrescriptionModal = lazy(() => import('../modals/PrescriptionModal'));
+const StandardPrescriptionModal = lazy(() => import('./templates/StandardPrescriptionModal'));
 
-// Props are identical to the existing PrescriptionModalProps — this component is a drop-in replacement
+// ── ADD NEW HOSPITAL-SPECIFIC TEMPLATES HERE IN THE FUTURE ──
+// const ApolloPrescriptionModal = lazy(() => import('./templates/ApolloPrescriptionModal'));
+// ────────────────────────────────────────────────────────────
+
+// Props are identical to the existing PrescriptionModalProps — this component is a drop-in
 export interface PrescriptionModalSelectorProps {
     doctor: any;
     patient: any;
@@ -47,27 +52,42 @@ export interface PrescriptionModalSelectorProps {
 const PrescriptionModalSelector: React.FC<PrescriptionModalSelectorProps> = (props) => {
     const { tenant } = useTenant();
 
-    const template = tenant?.config?.prescription ?? 'kkc'; // default to 'kkc' for safety
+    const template = tenant?.config?.prescription ?? 'standard'; // Default properly to standard
+
+    let SelectedModal;
 
     switch (template) {
-        // ── ADD NEW HOSPITAL-SPECIFIC TEMPLATES HERE ──────────────────────────
+        case 'kkc':
+            // The KKC Custom Layout (Loaded directly from core modals)
+            SelectedModal = PrescriptionModal;
+            break;
+            
+        // ── MAP NEW HOSPITALS HERE IN THE FUTURE ──
         // case 'apollo':
-        //     return <ApolloPrescriptionModal {...props} />;
-        // ─────────────────────────────────────────────────────────────────────
+        //     SelectedModal = ApolloPrescriptionModal;
+        //     break;
+        // ──────────────────────────────────────────
 
         case 'legacy_standard':
-            // Kept for backward-compatibility only.
-            // New hospitals should use the default KKC template below.
-            return <StandardPrescriptionModal {...props} tenant={tenant} />;
-
-        case 'kkc':
         case 'standard':
         default:
-            // Both KKC and all other hospitals without a custom template
-            // use KKCPrescriptionModal, which dynamically fetches clinic
-            // details (name, logo, phone, address) from the hospital profile.
-            return <KKCPrescriptionModal {...props} />;
+            // Standard generic layout without specific hospital branding/Tamil text
+            SelectedModal = StandardPrescriptionModal;
+            break;
     }
+
+    return (
+        <Suspense fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm">
+                <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 rounded-full border-4 border-emerald-500/30 border-t-emerald-500 animate-spin"></div>
+                    <span className="text-gray-600 font-medium">Loading Prescription System...</span>
+                </div>
+            </div>
+        }>
+            <SelectedModal {...props} tenant={tenant} />
+        </Suspense>
+    );
 };
 
 export default PrescriptionModalSelector;
