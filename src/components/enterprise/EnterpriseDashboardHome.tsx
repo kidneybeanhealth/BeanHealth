@@ -223,8 +223,8 @@ const EnterpriseDashboardHome: React.FC = () => {
 
                 <header className="pointer-events-auto relative mt-2 sm:mt-6 w-full max-w-[95%] sm:max-w-[1500px] h-20 sm:h-22 bg-white/70 backdrop-blur-3xl saturate-150 rounded-[2rem] sm:rounded-[2.5rem] border border-white/40 flex items-center transition-all duration-500 shadow-xl shadow-gray-200/30">
                     <div className="w-full flex items-center justify-between px-3">
-                        {/* Left Section - Logo & Title */}
-                        <div className={`flex items-center gap-2.5 sm:gap-3 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isExpanded ? 'overflow-hidden max-w-0 opacity-0 px-0 sm:max-w-none sm:opacity-100 sm:px-0' : 'max-w-[500px] opacity-100'}`}>
+                        {/* Left Section - Logo & Title - Stable Layout */}
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 transition-opacity duration-300 opacity-100">
                             <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-gray-100/50 shadow-[0_4px_15px_rgba(0,0,0,0.08)] transition-all duration-500 hover:scale-105 hover:rotate-3">
                                 <LogoIcon className="w-10 h-10 sm:w-12 sm:h-12" />
                             </div>
@@ -237,35 +237,18 @@ const EnterpriseDashboardHome: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Right Section - Hospital Profile (3D Effect) */}
+                        {/* Right Section - Hospital Profile (Dropdown Style) */}
                         <div
                             ref={pillRef}
-                            className={`group relative flex items-center bg-white border border-gray-100 p-1 sm:p-1.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08),0_2px_6px_-2px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border-b-2 border-b-gray-200/50 ${isExpanded ? 'ml-0 shadow-lg ring-2 ring-gray-100 flex-1 w-full justify-between' : 'ml-2 flex-shrink-0'}`}
-                            onClick={() => {
-                                // Toggle on click for wrapper (redundant if button catches it, but safe)
+                            className={`group relative flex flex-col bg-white border border-gray-100 rounded-[2rem] transition-all duration-300 ease-out shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08),0_2px_6px_-2px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.05)] cursor-pointer ${isExpanded ? 'shadow-xl ring-2 ring-gray-100 bg-white z-50' : ''}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsExpanded(!isExpanded);
                             }}
                         >
-                            {/* Hospital Info Area */}
-                            <button
-                                onClick={(e) => {
-                                    const isMobile = window.innerWidth < 640;
-                                    if (isMobile) {
-                                        // On mobile: Toggle expansion
-                                        if (!isExpanded) {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setIsExpanded(true);
-                                            return;
-                                        }
-                                        // If already expanded, let it fall through to settings
-                                    }
-                                    // Desktop or Mobile (Expanded) -> Open Settings
-                                    fetchHospitalSettings();
-                                    setShowSettingsModal(true);
-                                }}
-                                className={`flex items-center gap-2 sm:gap-4 px-2 sm:pl-3 sm:pr-4 py-0.5 active:scale-95 transition-transform duration-200 ${isExpanded ? 'flex-1 min-w-0' : ''}`}
-                            >
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center overflow-hidden border border-gray-100 bg-white shadow-inner transition-transform duration-500 group-hover:scale-95 flex-shrink-0">
+                            {/* Main Pill Content */}
+                            <div className="flex items-center gap-2 sm:gap-4 p-1 sm:p-1.5 pr-3 sm:pr-5">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center overflow-hidden border border-gray-100 bg-white shadow-inner flex-shrink-0">
                                     {profile?.avatar_url ? (
                                         <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                                     ) : (
@@ -274,29 +257,57 @@ const EnterpriseDashboardHome: React.FC = () => {
                                         </span>
                                     )}
                                 </div>
-                                <span className={`${isExpanded ? 'inline-block' : 'hidden'} sm:inline-block text-base sm:text-[16px] font-black text-gray-800 tracking-tight whitespace-nowrap overflow-hidden text-ellipsis`}>
-                                    {displayName}
-                                </span>
-                            </button>
-
-                            {/* Smooth Sliding Drawer for Divider + Sign Out */}
-                            <div className={`flex items-center transition-[max-width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${isExpanded ? 'max-w-[200px]' : 'max-w-0 sm:group-hover:max-w-[200px]'}`}>
-                                <div className="flex items-center pl-1 sm:pl-2 pr-1">
-                                    {/* Divider */}
-                                    <div className="w-px h-8 bg-gray-100 mx-2 sm:mx-3" />
-
-                                    {/* Sign Out Button */}
-                                    <button
-                                        onClick={() => signOut()}
-                                        className="flex items-center gap-2.5 px-3 py-2 text-gray-500 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors duration-300 whitespace-nowrap"
-                                    >
-                                        <span className="text-sm font-bold">Sign Out</span>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
-                                        </svg>
-                                    </button>
+                                <div className="flex items-center gap-2 max-w-[100px] sm:max-w-xs transition-all duration-300">
+                                    <span className="inline-block text-base sm:text-[16px] font-black text-gray-800 tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                                        {displayName}
+                                    </span>
+                                    {/* Chevron Indicator */}
+                                    <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
                                 </div>
                             </div>
+
+                            {/* Dropdown Menu - Absolute Positioned */}
+                            {isExpanded && (
+                                <div className="absolute top-full right-0 mt-2 w-full min-w-[200px] bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                                    <div className="p-2 space-y-1">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                fetchHospitalSettings();
+                                                setShowSettingsModal(true);
+                                                setIsExpanded(false);
+                                            }}
+                                            className="group w-full flex items-center gap-3 px-3 py-2.5 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-colors text-xs font-semibold"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors flex-shrink-0">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                                </svg>
+                                            </div>
+                                            Settings
+                                        </button>
+
+                                        <div className="h-px bg-gray-100 my-1" />
+
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                signOut();
+                                            }}
+                                            className="group w-full flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors text-xs font-semibold"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-red-100 transition-colors flex-shrink-0">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                                                </svg>
+                                            </div>
+                                            Sign Out
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>
