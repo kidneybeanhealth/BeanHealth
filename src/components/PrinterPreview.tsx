@@ -187,13 +187,16 @@ const PrinterPreview: React.FC<PrinterPreviewProps> = ({
                         <div className="text-center w-full py-1">{data.date}  {data.time}</div>
                         <div className="text-center w-full py-1 text-xs">{dividerDouble}</div>
 
-                        <div className="text-center w-full space-y-1 py-1">
-                            <div>For feedback &amp; queries</div>
-                            {tenant?.footer_phone && <div className="font-bold">Ph: {tenant.footer_phone}</div>}
-                            {(tenant?.footer_instagram) && (
-                                <div>IG: {tenant.footer_instagram}</div>
-                            )}
-                        </div>
+                        {/* Hide footer info for KKC or if empty */}
+                        {tenant?.config?.receipt !== 'kkc' && (tenant?.footer_phone || tenant?.footer_instagram) && (
+                            <div className="text-center w-full space-y-1 py-1">
+                                <div>For feedback &amp; queries</div>
+                                {tenant?.footer_phone && <div className="font-bold">Ph: {tenant.footer_phone}</div>}
+                                {tenant?.footer_instagram && (
+                                    <div>IG: {tenant.footer_instagram}</div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="text-center w-full py-1 text-xs">{dividerDouble}</div>
                         <div className="text-center w-full pt-2 opacity-60">BeanHealth</div>
