@@ -89,19 +89,6 @@ export function generateKKCReceipt(data: TokenData, tenant?: HospitalProfile | n
     addText(data.date + '  ' + data.time + '\n');
 
     addText(generateDivider('=') + '\n');
-    addText('For feedback & queries\n');
-    addCommand(COMMANDS.BOLD_ON);
-    
-    if (tenant?.footer_phone || phone) {
-        addText('Ph: ' + (tenant?.footer_phone || phone) + '\n');
-    }
-    addCommand(COMMANDS.BOLD_OFF);
-    
-    if (ig) {
-        addText('IG: ' + ig + '\n');
-    }
-    addText(generateDivider('=') + '\n');
-
     addCommand(COMMANDS.CENTER);
     addText('BeanHealth\n');
 
