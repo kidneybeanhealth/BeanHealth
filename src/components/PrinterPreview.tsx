@@ -197,8 +197,10 @@ const PrinterPreview: React.FC<PrinterPreviewProps> = ({
                                 )}
                             </div>
                         )}
-
-                        <div className="text-center w-full py-1 text-xs">{dividerDouble}</div>
+                        {/* Only show the second divider if it's not KKC (because KKC already has one above the hidden footer section) */}
+                        {tenant?.config?.receipt !== 'kkc' && (
+                            <div className="text-center w-full py-1 text-xs">{dividerDouble}</div>
+                        )}
                         <div className="text-center w-full pt-2 opacity-60">BeanHealth</div>
 
                         <div className="h-12 w-full flex items-center justify-center">
