@@ -1,0 +1,722 @@
+/**
+ * Supabase Client Singleton
+ * 
+ * FIXES APPLIED:
+ * - Ensures single client instance across app (singleton pattern)
+ * - Adds proper timeout configuration for DB queries
+ * - Implements robust reconnection logic for realtime
+ * - Validates environment variables on initialization
+ * 
+ * WHY: Prevents multiple client instances causing auth/state conflicts
+ */
+
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { Capacitor } from '@capacitor/core'
+import { CapacitorStorage } from './CapacitorStorage'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables. Please check your .env file.')
+}
+
+// Validate URL format
+try {
+  new URL(supabaseUrl);
+} catch (e) {
+  throw new Error('Invalid VITE_SUPABASE_URL format. Must be a valid URL.');
+}
+
+// Detect if running locally or in production
+// In production, we proxy Supabase requests through our domain to bypass ISP blocking
+// (e.g., Jio in India blocks *.supabase.co)
+const _isLocalDev = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+// Proxy base URL: same-origin path that Netlify proxies to supabase.co
+const _proxyBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/supabase-proxy` : '';
+
+console.log('[Supabase] Mode:', _isLocalDev ? 'DIRECT' : 'PROXIED via /supabase-proxy');
+console.log('[Supabase] Supabase URL:', supabaseUrl.replace(/https:\/\/([^.]+)\./, 'https://*****.'));
+console.log('[Supabase] Anon key starts with:', supabaseAnonKey.substring(0, 20) + '...');
+
+/**
+ * Rewrites a direct Supabase URL to go through the Vercel proxy in production.
+ * Use this for any URL that will be loaded directly by the browser (e.g., <img src=...>)
+ * rather than via the fetch API (which already has proxy rewriting in the fetch wrapper).
+ * 
+ * Example:
+ *   Input:  https://ektevcxubbtuxnaapyam.supabase.co/storage/v1/object/public/signatures/doc.png
+ *   Output: https://beanhealth.in/supabase-proxy/storage/v1/object/public/signatures/doc.png
+ */
+export function getProxiedUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (_isLocalDev) return url;
+  if (typeof url === 'string' && url.includes(supabaseUrl.replace('https://', '').split('/')[0])) {
+    return url.replace(supabaseUrl, _proxyBaseUrl);
+  }
+  return url;
+}
+
+// Determine redirect URL based on platform
+const getRedirectUrl = () => {
+  if (Capacitor.isNativePlatform()) {
+    // For mobile app, use deep link
+    return 'com.beanhealth.app://oauth-callback'
+  }
+  // For web, use current origin
+  return window.location.origin
+}
+
+// Track initialization to ensure singleton
+let supabaseInstance: SupabaseClient<Database> | null = null;
+
+/**
+ * Get or create the Supabase client singleton
+ */
+export function getSupabaseClient(): SupabaseClient<Database> {
+  if (!supabaseInstance) {
+    console.log('[Supabase] Initializing client singleton');
+
+    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        storage: Capacitor.isNativePlatform() ? CapacitorStorage : window.localStorage,
+        storageKey: 'supabase.auth.token',
+        flowType: 'pkce',
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        },
+        heartbeatIntervalMs: 30000,
+        reconnectAfterMs: (tries) => {
+          const delay = Math.min(1000 * Math.pow(2, tries), 10000);
+          console.log(`[Supabase] Realtime reconnecting in ${delay}ms (attempt ${tries})`);
+          return delay;
+        }
+      },
+      global: {
+        headers: {
+          'x-client-info': 'beanhealth-app'
+        },
+        // Fetch wrapper with ISP proxy + retry logic
+        // 1. In production, rewrites supabase.co URLs to go through our proxy
+        // 2. Retries 3 times with 10s timeout each for resilience
+        fetch: async (url, options = {}) => {
+          const MAX_RETRIES = 3;
+          const TIMEOUT_MS = 10000; // 10s per attempt
+          const existingSignal = (options as any).signal as AbortSignal | undefined;
+          let lastError: any;
+
+          // In production, rewrite supabase.co URLs to go through our Netlify proxy
+          // This bypasses Jio ISP blocking of *.supabase.co
+          let fetchUrl = url;
+          if (!_isLocalDev && typeof url === 'string' && url.startsWith(supabaseUrl)) {
+            fetchUrl = url.replace(supabaseUrl, _proxyBaseUrl);
+            console.log('[Supabase] Proxying:', (url as string).replace(/https:\/\/[^/]+/, '***'), '→', (fetchUrl as string).replace(/https:\/\/[^/]+/, '***'));
+          }
+
+          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            // Check if the caller already aborted before we start
+            if (existingSignal?.aborted) {
+              throw new DOMException(
+                existingSignal.reason || 'Request aborted by caller',
+                'AbortError'
+              );
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+            // Forward caller's abort signal to our controller
+            const onCallerAbort = () => controller.abort(existingSignal?.reason);
+            if (existingSignal) {
+              existingSignal.addEventListener('abort', onCallerAbort, { once: true });
+            }
+
+            try {
+              const response = await fetch(fetchUrl, {
+                ...options,
+                signal: controller.signal,
+              });
+              clearTimeout(timeoutId);
+              if (existingSignal) existingSignal.removeEventListener('abort', onCallerAbort);
+              return response;
+            } catch (error: any) {
+              clearTimeout(timeoutId);
+              if (existingSignal) existingSignal.removeEventListener('abort', onCallerAbort);
+              lastError = error;
+
+              // If the caller explicitly aborted, don't retry
+              if (existingSignal?.aborted) {
+                throw error;
+              }
+
+              // Detect if this was OUR timeout (not a network error or caller abort)
+              // Use controller.signal.aborted as the reliable check — works across all browsers
+              const isOurTimeout = controller.signal.aborted;
+
+              if (isOurTimeout && attempt < MAX_RETRIES) {
+                const backoffMs = 1000 * attempt; // 1s, 2s
+                console.warn(
+                  `[Supabase] Request timeout (attempt ${attempt}/${MAX_RETRIES}), retrying in ${backoffMs}ms...`,
+                  typeof url === 'string' ? url.replace(/https:\/\/[^/]+/, '***') : ''
+                );
+                await new Promise(resolve => setTimeout(resolve, backoffMs));
+                continue;
+              }
+
+              // Final attempt or non-timeout error — throw with clear message
+              if (isOurTimeout) {
+                throw new DOMException(
+                  `Request failed after ${MAX_RETRIES} attempts (${TIMEOUT_MS / 1000}s timeout each). Please check your network connection.`,
+                  'AbortError'
+                );
+              }
+              throw error;
+            }
+          }
+
+          // Should not reach here, but safety net
+          throw lastError;
+        }
+      },
+      db: {
+        schema: 'public'
+      }
+    });
+
+    console.log('[Supabase] Client initialized successfully');
+  }
+
+  return supabaseInstance;
+}
+
+// Export singleton instance for backward compatibility
+export const supabase = getSupabaseClient();
+
+
+
+// Database types (auto-generated from Supabase)
+export interface Database {
+  public: {
+    Tables: {
+      users: {
+        Row: {
+          id: string
+          email: string
+          name: string
+          role: 'patient' | 'doctor' | 'admin' | 'enterprise'
+          avatar_url?: string
+          specialty?: string
+          date_of_birth?: string
+          condition?: string
+          subscription_tier?: 'FreeTrial' | 'Paid'
+          urgent_credits?: number
+          trial_ends_at?: string
+          notes?: string
+          referral_code?: string
+          referred_by?: string
+          patient_id?: string
+          // CKD-specific fields
+          age?: number
+          ckd_stage?: '1' | '2' | '3a' | '3b' | '4' | '5'
+          comorbidities?: string[]
+          baseline_weight?: number
+          daily_fluid_target?: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          name: string
+          role: 'patient' | 'doctor' | 'admin' | 'enterprise'
+          avatar_url?: string
+          specialty?: string
+          date_of_birth?: string
+          condition?: string
+          subscription_tier?: 'FreeTrial' | 'Paid'
+          urgent_credits?: number
+          trial_ends_at?: string
+          notes?: string
+          referral_code?: string
+          referred_by?: string
+          patient_id?: string
+          // CKD-specific fields
+          age?: number
+          ckd_stage?: '1' | '2' | '3a' | '3b' | '4' | '5'
+          comorbidities?: string[]
+          baseline_weight?: number
+          daily_fluid_target?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          name?: string
+          role?: 'patient' | 'doctor' | 'admin' | 'enterprise'
+          avatar_url?: string
+          specialty?: string
+          date_of_birth?: string
+          condition?: string
+          subscription_tier?: 'FreeTrial' | 'Paid'
+          urgent_credits?: number
+          trial_ends_at?: string
+          notes?: string
+          referral_code?: string
+          referred_by?: string
+          patient_id?: string
+          // CKD-specific fields
+          age?: number
+          ckd_stage?: '1' | '2' | '3a' | '3b' | '4' | '5'
+          comorbidities?: string[]
+          baseline_weight?: number
+          daily_fluid_target?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      hospital_doctors: {
+        Row: {
+          id: string
+          hospital_id: string
+          name: string
+          specialty: string
+          access_code: string
+          avatar_url: string | null
+          is_active: boolean
+          signature_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hospital_id: string
+          name: string
+          specialty: string
+          access_code: string
+          avatar_url?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_id?: string
+          name?: string
+          specialty?: string
+          access_code?: string
+          avatar_url?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+      }
+      hospital_patients: {
+        Row: {
+          id: string
+          hospital_id: string
+          name: string
+          age: number
+          token_number: string | null
+          mr_number: string | null
+          father_husband_name: string | null
+          place: string | null
+          phone: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hospital_id: string
+          name: string
+          age: number
+          token_number: string | null
+          mr_number?: string | null
+          father_husband_name?: string | null
+          place?: string | null
+          phone?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_id?: string
+          name?: string
+          age?: number
+          token_number?: string | null
+          mr_number?: string | null
+          father_husband_name?: string | null
+          place?: string | null
+          phone?: string | null
+          created_at?: string
+        }
+      }
+      hospital_queues: {
+        Row: {
+          id: string
+          hospital_id: string
+          patient_id: string
+          doctor_id: string | null
+          queue_number: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          hospital_id: string
+          patient_id: string
+          doctor_id?: string | null
+          queue_number: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_id?: string
+          patient_id?: string
+          doctor_id?: string | null
+          queue_number?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      hospital_profiles: {
+        Row: {
+          id: string
+          hospital_name: string
+          address: string | null
+          contact_number: string | null
+          email: string | null
+          avatar_url: string | null
+          printer_settings: any | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          hospital_name: string
+          address?: string | null
+          contact_number?: string | null
+          email?: string | null
+          avatar_url?: string | null
+          printer_settings?: any | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          hospital_name?: string
+          address?: string | null
+          contact_number?: string | null
+          email?: string | null
+          avatar_url?: string | null
+          printer_settings?: any | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      vitals: {
+        Row: {
+          id: string
+          patient_id: string
+          blood_pressure_value?: string
+          blood_pressure_unit?: string
+          blood_pressure_trend?: 'up' | 'down' | 'stable'
+          heart_rate_value?: string
+          heart_rate_unit?: string
+          heart_rate_trend?: 'up' | 'down' | 'stable'
+          temperature_value?: string
+          temperature_unit?: string
+          temperature_trend?: 'up' | 'down' | 'stable'
+          glucose_value?: string
+          glucose_unit?: string
+          glucose_trend?: 'up' | 'down' | 'stable'
+          // CKD extension fields
+          spo2_value?: string
+          spo2_unit?: string
+          spo2_trend?: 'up' | 'down' | 'stable'
+          weight_value?: number
+          weight_unit?: string
+          recorded_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          blood_pressure_value?: string
+          blood_pressure_unit?: string
+          blood_pressure_trend?: 'up' | 'down' | 'stable'
+          heart_rate_value?: string
+          heart_rate_unit?: string
+          heart_rate_trend?: 'up' | 'down' | 'stable'
+          temperature_value?: string
+          temperature_unit?: string
+          temperature_trend?: 'up' | 'down' | 'stable'
+          glucose_value?: string
+          glucose_unit?: string
+          glucose_trend?: 'up' | 'down' | 'stable'
+          // CKD extension fields
+          spo2_value?: string
+          spo2_unit?: string
+          spo2_trend?: 'up' | 'down' | 'stable'
+          weight_value?: number
+          weight_unit?: string
+          recorded_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          blood_pressure_value?: string
+          blood_pressure_unit?: string
+          blood_pressure_trend?: 'up' | 'down' | 'stable'
+          heart_rate_value?: string
+          heart_rate_unit?: string
+          heart_rate_trend?: 'up' | 'down' | 'stable'
+          temperature_value?: string
+          temperature_unit?: string
+          temperature_trend?: 'up' | 'down' | 'stable'
+          glucose_value?: string
+          glucose_unit?: string
+          glucose_trend?: 'up' | 'down' | 'stable'
+          // CKD extension fields
+          spo2_value?: string
+          spo2_unit?: string
+          spo2_trend?: 'up' | 'down' | 'stable'
+          weight_value?: number
+          weight_unit?: string
+          recorded_at?: string
+        }
+      }
+      medications: {
+        Row: {
+          id: string
+          patient_id: string
+          name: string
+          dosage: string
+          frequency: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          name: string
+          dosage: string
+          frequency: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          name?: string
+          dosage?: string
+          frequency?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      medical_records: {
+        Row: {
+          id: string
+          patient_id: string
+          date: string
+          type: string
+          summary: string
+          doctor: string
+          category: string
+          file_url?: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          date: string
+          type: string
+          summary: string
+          doctor: string
+          category: string
+          file_url?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          date?: string
+          type?: string
+          summary?: string
+          doctor?: string
+          category?: string
+          file_url?: string
+          created_at?: string
+        }
+      }
+      patient_doctor_relationships: {
+        Row: {
+          id: string
+          patient_id: string
+          doctor_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          doctor_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          doctor_id?: string
+          created_at?: string
+        }
+      }
+      chat_messages: {
+        Row: {
+          id: string
+          sender_id: string
+          recipient_id: string
+          text?: string
+          audio_url?: string
+          is_read: boolean
+          is_urgent: boolean
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          sender_id: string
+          recipient_id: string
+          text?: string
+          audio_url?: string
+          is_read?: boolean
+          is_urgent?: boolean
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          sender_id?: string
+          recipient_id?: string
+          text?: string
+          audio_url?: string
+          is_read?: boolean
+          is_urgent?: boolean
+          timestamp?: string
+        }
+      }
+      lab_results: {
+        Row: {
+          id: string
+          patient_id: string
+          test_type: 'creatinine' | 'egfr' | 'bun' | 'potassium' | 'hemoglobin' | 'bicarbonate' | 'acr'
+          value: number
+          unit: string
+          reference_range_min?: number
+          reference_range_max?: number
+          status?: 'normal' | 'borderline' | 'abnormal' | 'critical'
+          test_date: string
+          lab_name?: string
+          notes?: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          test_type: 'creatinine' | 'egfr' | 'bun' | 'potassium' | 'hemoglobin' | 'bicarbonate' | 'acr'
+          value: number
+          unit: string
+          reference_range_min?: number
+          reference_range_max?: number
+          status?: 'normal' | 'borderline' | 'abnormal' | 'critical'
+          test_date: string
+          lab_name?: string
+          notes?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          test_type?: 'creatinine' | 'egfr' | 'bun' | 'potassium' | 'hemoglobin' | 'bicarbonate' | 'acr'
+          value?: number
+          unit?: string
+          reference_range_min?: number
+          reference_range_max?: number
+          status?: 'normal' | 'borderline' | 'abnormal' | 'critical'
+          test_date?: string
+          lab_name?: string
+          notes?: string
+          created_at?: string
+        }
+      }
+      fluid_intake: {
+        Row: {
+          id: string
+          patient_id: string
+          amount_ml: number
+          fluid_type?: string
+          recorded_at: string
+          notes?: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          amount_ml: number
+          fluid_type?: string
+          recorded_at?: string
+          notes?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          amount_ml?: number
+          fluid_type?: string
+          recorded_at?: string
+          notes?: string
+        }
+      }
+      upcoming_tests: {
+        Row: {
+          id: string
+          patient_id: string
+          test_name: string
+          scheduled_date: string
+          location?: string
+          doctor_name?: string
+          notes?: string
+          completed: boolean
+          completed_at?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          test_name: string
+          scheduled_date: string
+          location?: string
+          doctor_name?: string
+          notes?: string
+          completed?: boolean
+          completed_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          test_name?: string
+          scheduled_date?: string
+          location?: string
+          doctor_name?: string
+          notes?: string
+          completed?: boolean
+          completed_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+    }
+  }
+}
