@@ -749,6 +749,7 @@ const ReceptionDashboard: React.FC = () => {
 
             let patientId: string | null = null;
             let existingPatientName: string | null = null;
+            let isExistingPatient = false;
 
             // Reuse existing patient by MR number (strong key).
             if (normalizedMrNumber) {
@@ -765,6 +766,7 @@ const ReceptionDashboard: React.FC = () => {
                 if ((existingByMr as any).data) {
                     patientId = (existingByMr as any).data.id;
                     existingPatientName = (existingByMr as any).data.name;
+                    isExistingPatient = true;
                 }
             }
 
@@ -783,6 +785,7 @@ const ReceptionDashboard: React.FC = () => {
                 if ((existingByLinkedUser as any).data) {
                     patientId = (existingByLinkedUser as any).data.id;
                     existingPatientName = (existingByLinkedUser as any).data.name;
+                    isExistingPatient = true;
                 }
             }
 
@@ -887,9 +890,36 @@ const ReceptionDashboard: React.FC = () => {
                 throw new Error(queueError.message);
             }
 
-            // Update local token variable for the success message
-            // We reuse the calculated globalToken here
+            // Auto-complete pending review if returning patient walked in early
+            if (isExistingPatient && patientId) {
+                try {
+                    const { data: activeReview } = await (supabase as any)
+                        .from('hospital_patient_reviews')
+                        .select('id')
+                        .eq('hospital_id', profile.id)
+                        .eq('patient_id', patientId)
+                        .in('status', ['pending', 'rescheduled'])
+                        .order('next_review_date', { ascending: true })
+                        .limit(1)
+                        .maybeSingle();
 
+                    if (activeReview?.id) {
+                        await (supabase as any)
+                            .from('hospital_patient_reviews')
+                            .update({
+                                status: 'completed',
+                                completed_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                            })
+                            .eq('id', activeReview.id);
+
+                        toast.success('Review marked as completed — patient visited early', { duration: 4000 });
+                        fetchReviewAlertCount();
+                    }
+                } catch (reviewErr) {
+                    console.warn('Auto-complete review failed (non-critical):', reviewErr);
+                }
+            }
 
             // Find the selected doctor for the print dialog
             const selectedDoctor = doctors.find(d => d.id === walkInForm.doctorId);

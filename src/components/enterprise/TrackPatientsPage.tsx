@@ -798,7 +798,6 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                 <td>${idx + 1}</td>
                 <td><strong>${row.patient?.name || '--'}</strong></td>
                 <td>${row.patient?.mr_number || '--'}</td>
-                <td>${row.patient?.phone || '--'}</td>
                 <td>${row.patient?.age || '--'}</td>
                 <td>${formatDDMMYYYY(row.next_review_date)}</td>
                 <td>${row.doctor?.name || '--'}</td>
@@ -833,7 +832,6 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                 <th>#</th>
                 <th>Patient Name</th>
                 <th>MR Number</th>
-                <th>Phone</th>
                 <th>Age</th>
                 <th>Review Date</th>
                 <th>Doctor</th>
