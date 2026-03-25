@@ -418,7 +418,75 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                 .order('next_review_date', { ascending: true, nullsFirst: false });
 
             if (error) throw error;
-            setReviews((data || []) as ReviewRow[]);
+            const reviews = (data || []) as ReviewRow[];
+            setReviews(reviews);
+
+            // Background sync: update stale review dates from the latest prescription.
+            // The doctor's latest prescription is always the source of truth for next_review_date.
+            const pendingReviews = reviews.filter(r => r.status === 'pending' || r.status === 'rescheduled');
+            if (pendingReviews.length > 0) {
+                try {
+                    const patientIds = [...new Set(pendingReviews.map(r => r.patient_id))];
+                    const { data: rxData } = await (supabase as any)
+                        .from('hospital_prescriptions')
+                        .select('patient_id, next_review_date, tests_to_review, specialists_to_review, id, created_at')
+                        .eq('hospital_id', profile.id)
+                        .in('patient_id', patientIds)
+                        .not('next_review_date', 'is', null)
+                        .order('created_at', { ascending: false });
+
+                    if (rxData && rxData.length > 0) {
+                        // Latest prescription per patient (first-seen = most recent due to DESC order)
+                        const latestByPatient: Record<string, any> = {};
+                        for (const rx of rxData) {
+                            if (!latestByPatient[rx.patient_id]) {
+                                latestByPatient[rx.patient_id] = rx;
+                            }
+                        }
+
+                        const updates: Promise<any>[] = [];
+                        for (const review of pendingReviews) {
+                            const latestRx = latestByPatient[review.patient_id];
+                            if (latestRx && latestRx.next_review_date && latestRx.next_review_date !== review.next_review_date) {
+                                updates.push(
+                                    (supabase as any)
+                                        .from('hospital_patient_reviews')
+                                        .update({
+                                            next_review_date: latestRx.next_review_date,
+                                            tests_to_review: latestRx.tests_to_review || review.tests_to_review,
+                                            specialists_to_review: latestRx.specialists_to_review || review.specialists_to_review,
+                                            source_prescription_id: latestRx.id,
+                                            status: 'pending',
+                                            cancelled_at: null,
+                                            completed_at: null,
+                                            updated_at: new Date().toISOString(),
+                                        })
+                                        .eq('id', review.id)
+                                );
+                            }
+                        }
+
+                        if (updates.length > 0) {
+                            await Promise.all(updates);
+                            // Re-fetch to reflect synced dates in the UI
+                            const { data: refreshed } = await supabase
+                                .from('hospital_patient_reviews' as any)
+                                .select(`
+                                    id, patient_id, doctor_id, source_prescription_id,
+                                    next_review_date, tests_to_review, specialists_to_review,
+                                    status, completed_at, cancelled_at,
+                                    patient:hospital_patients(id, name, mr_number, phone, age, father_husband_name, place, token_number, beanhealth_id),
+                                    doctor:hospital_doctors(id, name, specialty)
+                                `)
+                                .eq('hospital_id', profile.id)
+                                .order('next_review_date', { ascending: true, nullsFirst: false });
+                            if (refreshed) setReviews(refreshed as ReviewRow[]);
+                        }
+                    }
+                } catch (syncErr) {
+                    console.warn('Review date sync from prescriptions failed (non-critical):', syncErr);
+                }
+            }
         } catch (error: any) {
             console.error('Error fetching hospital_patient_reviews:', error);
             toast.error(error.message || 'Failed to load tracked patients');

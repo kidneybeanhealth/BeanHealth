@@ -631,6 +631,63 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         setMedications(newMeds);
     };
 
+    // Shared helper: keep hospital_patient_reviews in sync with the latest prescription review date.
+    // Called from all prescription save paths. Non-critical — errors are warned, never thrown.
+    const upsertReviewFromPrescription = async (
+        patientId: string,
+        prescriptionId: string,
+        reviewDate: string | null,
+        testsToReview: string | null,
+        specialistsToReview: string | null
+    ) => {
+        if (!reviewDate || !doctor.hospital_id) return;
+        try {
+            // Find the most recent pending/rescheduled review for this patient
+            const { data: existing } = await (supabase as any)
+                .from('hospital_patient_reviews')
+                .select('id')
+                .eq('hospital_id', doctor.hospital_id)
+                .eq('patient_id', patientId)
+                .in('status', ['pending', 'rescheduled'])
+                .order('next_review_date', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (existing?.id) {
+                // Update existing review to latest prescription date
+                await (supabase as any)
+                    .from('hospital_patient_reviews')
+                    .update({
+                        next_review_date: reviewDate,
+                        tests_to_review: testsToReview || null,
+                        specialists_to_review: specialistsToReview || null,
+                        source_prescription_id: prescriptionId,
+                        status: 'pending',
+                        cancelled_at: null,
+                        completed_at: null,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('id', existing.id);
+            } else {
+                // No active review — create one from this prescription
+                await (supabase as any)
+                    .from('hospital_patient_reviews')
+                    .insert({
+                        hospital_id: doctor.hospital_id,
+                        patient_id: patientId,
+                        doctor_id: doctor.id,
+                        source_prescription_id: prescriptionId,
+                        next_review_date: reviewDate,
+                        tests_to_review: testsToReview || null,
+                        specialists_to_review: specialistsToReview || null,
+                        status: 'pending',
+                    });
+            }
+        } catch (err) {
+            console.warn('Review sync from prescription failed (non-critical):', err);
+        }
+    };
+
     const handleSendToPharmacy = async (
         prescriptionMeds: any[],
         prescriptionNotes: string,
@@ -670,6 +727,15 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 if (!row?.saved_prescription_id) {
                     throw new Error('Prescription was not saved');
                 }
+
+                // Sync review date from this prescription (RPC path)
+                await upsertReviewFromPrescription(
+                    selectedPatient.id,
+                    row.saved_prescription_id,
+                    reviewContext?.nextReviewDate || null,
+                    reviewContext?.testsToReview || null,
+                    reviewContext?.specialistsToReview || null
+                );
 
                 toast.success('Prescription sent to Pharmacy!', { id: toastId });
                 setShowRxModal(false);
@@ -839,6 +905,15 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 console.error('Pharmacy Queue sync failed:', queueError);
             }
 
+            // Sync review date from this prescription (normal path)
+            await upsertReviewFromPrescription(
+                selectedPatient.id,
+                prescriptionId!,
+                reviewContext?.nextReviewDate || null,
+                reviewContext?.testsToReview || null,
+                reviewContext?.specialistsToReview || null
+            );
+
             toast.success('Prescription sent to Pharmacy!', { id: toastId });
             setShowRxModal(false);
             setPastRxQueueItem(null);
@@ -947,6 +1022,15 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     token_number: editResendItem.token_number || patient.token_number,
                     status: 'waiting'
                 });
+
+            // Sync review date from this resent prescription
+            await upsertReviewFromPrescription(
+                patient.id,
+                prescriptionId,
+                reviewContext?.nextReviewDate || null,
+                reviewContext?.testsToReview || null,
+                reviewContext?.specialistsToReview || null
+            );
 
             toast.success('Prescription resent to Pharmacy!', { id: toastId });
             setEditResendItem(null);
