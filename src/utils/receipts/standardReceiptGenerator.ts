@@ -54,7 +54,8 @@ export function generateStandardReceipt(data: TokenData, tenant: HospitalProfile
     addCommand(COMMANDS.CENTER);
     addCommand(COMMANDS.QUADRUPLE_SIZE);
     addCommand(COMMANDS.BOLD_ON);
-    addText(tokenNumberOnly + '\n');
+    const spacedToken = tokenNumberOnly.split('').join(' ');
+    addText(spacedToken + '\n');
     addCommand(COMMANDS.NORMAL_SIZE);
     addCommand(COMMANDS.BOLD_OFF);
 
