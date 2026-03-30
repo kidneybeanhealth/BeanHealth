@@ -111,7 +111,8 @@ const ReceptionDashboard: React.FC = () => {
         address: '',
         contactNumber: '',
         email: profile?.email || '',
-        avatarUrl: profile?.avatar_url || ''
+        avatarUrl: profile?.avatar_url || '',
+        features: { capture_phone: true } as { capture_phone: boolean }
     });
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -584,7 +585,8 @@ const ReceptionDashboard: React.FC = () => {
                     address: data.address || '',
                     contactNumber: data.contact_number || '',
                     email: data.email || profile.email || '',
-                    avatarUrl: data.avatar_url || profile.avatar_url || ''
+                    avatarUrl: data.avatar_url || profile.avatar_url || '',
+                    features: data.features || { capture_phone: true }
                 });
                 if (data.avatar_url || profile.avatar_url) {
                     setAvatarPreview(data.avatar_url || profile.avatar_url);
@@ -595,7 +597,8 @@ const ReceptionDashboard: React.FC = () => {
                     address: '',
                     contactNumber: '',
                     email: profile.email || '',
-                    avatarUrl: profile.avatar_url || ''
+                    avatarUrl: profile.avatar_url || '',
+                    features: { capture_phone: true }
                 });
                 if (profile.avatar_url) {
                     setAvatarPreview(profile.avatar_url);
@@ -687,6 +690,7 @@ const ReceptionDashboard: React.FC = () => {
                     hospital_name: hospitalSettings.hospitalName,
                     address: hospitalSettings.address,
                     contact_number: hospitalSettings.contactNumber,
+                    features: hospitalSettings.features,
                     updated_at: new Date().toISOString()
                 } as any) as any);
 
@@ -1652,7 +1656,7 @@ const ReceptionDashboard: React.FC = () => {
                                     />
                                 </div>
                                 {/* Phone field — previously hidden for KKC via hardcoded email check */}
-                                {true && (
+                                {hospitalSettings.features?.capture_phone !== false && (
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
                                         <div className="relative">
@@ -1920,6 +1924,25 @@ const ReceptionDashboard: React.FC = () => {
                                     value={hospitalSettings.email}
                                     onChange={e => setHospitalSettings({ ...hospitalSettings, email: e.target.value })}
                                 />
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-gray-900">Capture Phone Number</h4>
+                                    <p className="text-xs text-gray-500 mt-1">Require and show phone number during patient registration</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer"
+                                        checked={hospitalSettings.features.capture_phone !== false}
+                                        onChange={e => setHospitalSettings(prev => ({
+                                            ...prev, 
+                                            features: { ...prev.features, capture_phone: e.target.checked }
+                                        }))}
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                                </label>
                             </div>
 
                             <div className="pt-6 border-t border-gray-100 flex flex-col gap-3">
