@@ -1069,15 +1069,15 @@ const ReceptionDashboard: React.FC = () => {
                 if (queueError) console.warn('Error clearing queue entries:', queueError); // Continue anyway
             }
 
-            // 2. Delete the patient record
-            // This will likely cascade delete prescriptions/history if your DB schema is set up that way.
-            // If not, this might fail if there are foreign keys. Assuming strictly "wrongly entered" implies minimal history.
-            const { error: patientError } = await supabase
-                .from('hospital_patients')
-                .delete()
-                .eq('id', itemToDelete.id);
+            // 2. Delete the patient record only when explicitly requested from Past Records
+            if (itemToDelete.type === 'patient') {
+                const { error: patientError } = await supabase
+                    .from('hospital_patients')
+                    .delete()
+                    .eq('id', itemToDelete.id);
 
-            if (patientError) throw patientError;
+                if (patientError) throw patientError;
+            }
 
             toast.success('Record deleted successfully', { id: toastId });
             setShowDeleteModal(false);

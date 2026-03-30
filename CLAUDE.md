@@ -505,8 +505,8 @@ Use Tailwind `dark:` classes. Theme state comes from `ThemeContext`.
 | 2026-03-16 | Add dummy MR number to printer setup sandbox preview so MR row is always visible during layout testing | `src/components/PrinterSetupModal.tsx` |
 | 2026-03-17 | Add multi-dosage support for saved drugs: dosage list input in Manage Saved Drugs, persisted `dosages` array, and per-row dosage suggestion dropdown on drug selection while still allowing manual typing | `src/components/modals/PrescriptionModal.tsx`, `src/components/modals/ManageDrugsModal.tsx`, `ADD_DOSAGES_TO_DRUGS.sql` |
 | 2026-03-17 | Redesign PrescriptionModal Manage Saved Drugs with explicit Type/Drug/Dosages/Default Timing fields, persist `default_timing`, and hydrate dosage suggestions even when saved drug is typed manually before clicking dosage | `src/components/modals/PrescriptionModal.tsx` |
+| 2026-03-30 | Reception delete flow only removes the patient record when explicitly deleting from Past Records, keeping single-visit queue deletes intact | `src/components/enterprise/ReceptionDashboard.tsx` |
 
----
 
 ## Known Issues (To Be Fixed)
 
