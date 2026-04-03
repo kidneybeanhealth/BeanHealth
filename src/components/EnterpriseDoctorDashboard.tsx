@@ -212,7 +212,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         id,
                         status,
                         dispensed_at,
-                        created_at
+                        created_at,
+                        metadata
                     )
                 `)
                 .eq('doctor_id', doctor.id)
@@ -1463,10 +1464,22 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                         <div key={item.id} className="p-5 sm:p-6 md:p-8 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="flex flex-col gap-1">
-                                                    <div className="font-bold text-base sm:text-lg text-gray-900">{item.patient?.name}</div>
-                                                    {item.patient?.mr_number && (
-                                                        <div className="text-xs font-bold text-gray-700">{item.patient.mr_number}</div>
-                                                    )}
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <div className="font-bold text-base sm:text-lg text-gray-900">{item.patient?.name}</div>
+                                                        {item.patient?.mr_number && (
+                                                            <div className="text-xs font-bold text-gray-700">{item.patient.mr_number}</div>
+                                                        )}
+                                                        {(() => {
+                                                            const prescription = Array.isArray(item.prescription) ? item.prescription[0] : item.prescription;
+                                                            const prescribedBy = prescription?.metadata?.actorDisplayName;
+                                                            if (!prescribedBy) return null;
+                                                            return (
+                                                                <div className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                                                                    Rx by {prescribedBy}
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                                         <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 text-xs">#{item.patient?.token_number}</span>
                                                         <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
