@@ -40,6 +40,7 @@ interface QueueItem {
         specialty: string;
     };
     created_at: string;
+    preparing_by?: string | null;
 }
 
 interface MrPatient {
@@ -1475,6 +1476,12 @@ const ReceptionDashboard: React.FC = () => {
                                             </div>
                                             <div className="min-w-0">
                                                 <h4 className="font-bold text-gray-900 truncate pr-2">{item.patient?.name}</h4>
+                                                {item.preparing_by && (
+                                                    <div className="mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                        {item.preparing_by} preparing
+                                                    </div>
+                                                )}
                                                 <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
                                                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
                                                     {item.patient?.beanhealth_id && (

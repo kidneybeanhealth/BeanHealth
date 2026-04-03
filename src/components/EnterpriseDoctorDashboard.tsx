@@ -36,6 +36,7 @@ interface QueueItem {
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
     created_at: string;
     updated_at?: string;
+    preparing_by?: string | null;
     patient: Patient;
 }
 
@@ -133,6 +134,16 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     useEffect(() => {
         setCurrentDoctor(doctor);
     }, [doctor]);
+
+    // Clear any stale "preparing" indicator this PA left from a prior session
+    useEffect(() => {
+        (supabase as any)
+            .from('hospital_queues')
+            .update({ preparing_by: null })
+            .eq('doctor_id', doctor.id)
+            .eq('preparing_by', actorDisplayName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const refreshDoctorProfile = async () => {
         try {
@@ -703,6 +714,39 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         }
     };
 
+    const setPreparingIndicator = async (queueId: string) => {
+        await (supabase as any)
+            .from('hospital_queues')
+            .update({ preparing_by: actorDisplayName })
+            .eq('id', queueId);
+    };
+
+    const clearPreparingIndicator = async (queueId: string | null) => {
+        if (!queueId) return;
+        await (supabase as any)
+            .from('hospital_queues')
+            .update({ preparing_by: null })
+            .eq('id', queueId);
+    };
+
+    const handleConfirmPrescribe = async () => {
+        if (!prescribeCandidate) return;
+        const { queueItem, mode } = prescribeCandidate;
+        setPrescribeCandidate(null);
+        await setPreparingIndicator(queueItem.id);
+        setSelectedPatient({
+            ...queueItem.patient,
+            token_number: queueItem.patient.token_number || queueItem.token_number
+        });
+        setSelectedQueueId(queueItem.id);
+        if (mode === 'new') {
+            setShowRxModal(true);
+            logViewEvent('view.patient.open', { patientId: queueItem.patient_id, queueId: queueItem.id });
+        } else {
+            await handlePastRxForQueueItem(queueItem);
+        }
+    };
+
     const handleSendToPharmacy = async (
         prescriptionMeds: any[],
         prescriptionNotes: string,
@@ -765,6 +809,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 );
 
                 toast.success('Prescription sent to Pharmacy!', { id: toastId });
+                await clearPreparingIndicator(selectedQueueId);
                 setShowRxModal(false);
                 setPastRxQueueItem(null);
                 setSelectedQueueId(null);
@@ -942,6 +987,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             );
 
             toast.success('Prescription sent to Pharmacy!', { id: toastId });
+            await clearPreparingIndicator(selectedQueueId);
             setShowRxModal(false);
             setPastRxQueueItem(null);
             setSelectedQueueId(null);
@@ -1075,6 +1121,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     // View Item for History
     const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
     const [markDoneCandidate, setMarkDoneCandidate] = useState<{ queueId: string; patientName: string } | null>(null);
+    const [prescribeCandidate, setPrescribeCandidate] = useState<{ queueItem: QueueItem; mode: 'new' | 'past' } | null>(null);
 
     // Edit & Resend state
     const [editResendItem, setEditResendItem] = useState<any>(null);
@@ -1086,7 +1133,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
     // Fix 3 & 5: Track whether any prescription modal is open.
     // Used to (a) block queue button clicks and (b) suppress background refetches.
-    const isAnyModalOpen = showRxModal || !!pastRxQueueItem || prescriptionPickerItems.length > 0 || !!editResendItem || !!selectedHistoryItem;
+    const isAnyModalOpen = showRxModal || !!pastRxQueueItem || prescriptionPickerItems.length > 0 || !!editResendItem || !!selectedHistoryItem || !!prescribeCandidate;
 
     // Fix 5: Keep the ref in sync so interval/realtime closures see the latest value
     useEffect(() => { isModalOpenRef.current = isAnyModalOpen; }, [isAnyModalOpen]);
@@ -1341,6 +1388,15 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                 </div>
                                                 <div>
                                                     <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
+                                                    {item.patient.mr_number && (
+                                                        <div className="text-xs font-bold text-gray-700">{item.patient.mr_number}</div>
+                                                    )}
+                                                    {item.preparing_by && (
+                                                        <div className="mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                            {item.preparing_by} preparing
+                                                        </div>
+                                                    )}
                                                     <div className="flex items-center gap-2 text-sm text-gray-700 font-medium whitespace-nowrap">
                                                         <span>{item.patient.age} yrs</span>
                                                     </div>
@@ -1358,19 +1414,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                 )}
 
                                                 <button
-                                                    onClick={() => {
-                                                        // Ensure token_number is included from queue record
-                                                        setSelectedPatient({
-                                                            ...item.patient,
-                                                            token_number: item.patient.token_number || item.token_number
-                                                        });
-                                                        setSelectedQueueId(item.id);
-                                                        setShowRxModal(true);
-                                                        logViewEvent('view.patient.open', {
-                                                            patientId: item.patient_id,
-                                                            queueId: item.id,
-                                                        });
-                                                    }}
+                                                    onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'new' })}
                                                     className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -1379,7 +1423,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                 </button>
 
                                                 <button
-                                                    onClick={() => handlePastRxForQueueItem(item)}
+                                                    onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'past' })}
                                                     className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 rounded-xl hover:bg-indigo-100 border border-indigo-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1420,6 +1464,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="flex flex-col gap-1">
                                                     <div className="font-bold text-base sm:text-lg text-gray-900">{item.patient?.name}</div>
+                                                    {item.patient?.mr_number && (
+                                                        <div className="text-xs font-bold text-gray-700">{item.patient.mr_number}</div>
+                                                    )}
                                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                                         <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 text-xs">#{item.patient?.token_number}</span>
                                                         <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
@@ -1653,6 +1700,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     doctor={currentDoctor}
                     patient={selectedPatient}
                     onClose={() => {
+                        clearPreparingIndicator(selectedQueueId);
                         setShowRxModal(false);
                         setSelectedQueueId(null);
                         setSelectedPatient(null);
@@ -1811,7 +1859,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         ...selectedPatient,
                         token_number: selectedPatient.token_number
                     }}
-                    onClose={() => setPastRxQueueItem(null)}
+                    onClose={() => { clearPreparingIndicator(selectedQueueId); setPastRxQueueItem(null); }}
                     readOnly={false}
                     existingData={pastRxQueueItem}
                     onSendToPharmacy={handleSendToPharmacy}
@@ -1861,6 +1909,36 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     chiefDoctorId={currentDoctor.id}
                     sessionToken={actorSession.sessionToken}
                 />
+            )}
+
+            {prescribeCandidate && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Prescribe for Patient?</h3>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Do you want to prescribe for{' '}
+                            <span className="font-bold text-gray-900">{prescribeCandidate.queueItem.patient.name}</span>
+                            {' '}with MR{' '}
+                            <span className="font-mono font-bold text-gray-900">
+                                {prescribeCandidate.queueItem.patient.mr_number || 'N/A'}
+                            </span>?
+                        </p>
+                        <div className="flex items-center justify-end gap-3">
+                            <button
+                                onClick={() => setPrescribeCandidate(null)}
+                                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-100"
+                            >
+                                No, Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmPrescribe}
+                                className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"
+                            >
+                                Yes, Proceed
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             <TwoStepConfirmModal
