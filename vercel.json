@@ -1,0 +1,12 @@
+{
+    "rewrites": [
+        {
+            "source": "/supabase-proxy/:path*",
+            "destination": "https://ektevcxubbtuxnaapyam.supabase.co/:path*"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}
