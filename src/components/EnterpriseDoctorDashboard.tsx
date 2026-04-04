@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import PrescriptionModalSelector from './prescriptions/PrescriptionModalSelector';
+import PrescriptionModal from './modals/PrescriptionModal';
 import ManageDrugsModal from './modals/ManageDrugsModal';
 import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
 import DoctorTeamAuditModal from './modals/DoctorTeamAuditModal';
@@ -239,6 +240,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
     const [pastRecordsTotal, setPastRecordsTotal] = useState(0);
     const [expandedPatientId, setExpandedPatientId] = useState<string | null>(null);
+    const [rxViewPatient, setRxViewPatient] = useState<any>(null);
+    const [rxViewPrescription, setRxViewPrescription] = useState<any>(null);
     const PAST_RECORDS_PER_PAGE = 50;
 
     // Helper: deduplicate prescriptions by patient
@@ -314,14 +317,29 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 return;
             }
 
+            // Step 1: find patients matching name OR mr_number
+            const { data: matchedPatients } = await (supabase as any)
+                .from('hospital_patients')
+                .select('id')
+                .eq('hospital_id', doctor.hospital_id)
+                .or(`name.ilike.%${searchQuery}%,mr_number.ilike.%${searchQuery}%`);
+
+            const matchedIds = (matchedPatients || []).map((p: any) => p.id);
+            if (matchedIds.length === 0) {
+                setPastRecords([]);
+                setHasMorePastRecords(false);
+                return;
+            }
+
+            // Step 2: fetch prescriptions for those patients from this doctor
             const { data, error } = await supabase
                 .from('hospital_prescriptions' as any)
                 .select(`
                     id, medications, notes, status, token_number, created_at, patient_id,
-                    patient:hospital_patients!hospital_prescriptions_patient_id_fkey!inner(*)
+                    patient:hospital_patients!hospital_prescriptions_patient_id_fkey(*)
                 `)
                 .eq('doctor_id', doctor.id)
-                .ilike('patient.name', `%${searchQuery}%`)
+                .in('patient_id', matchedIds)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -667,7 +685,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         testsToReview: string | null,
         specialistsToReview: string | null
     ) => {
-        if (!reviewDate || !doctor.hospital_id) return;
+        if (!doctor.hospital_id) return;
         try {
             // Find the most recent pending/rescheduled review for this patient
             const { data: existing } = await (supabase as any)
@@ -1648,35 +1666,35 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                             {patient.prescriptions?.length > 0 ? (
                                                                 <div className="px-6 py-4 space-y-2">
                                                                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Prescription History</p>
-                                                                    {patient.prescriptions.map((rx: any) => {
-                                                                        const meds = Array.isArray(rx.medications) ? rx.medications : [];
-                                                                        const medSummary = meds.slice(0, 3).map((m: any) => m.name || m.drug_name || '').filter(Boolean).join(', ');
-                                                                        return (
-                                                                            <div key={rx.id} className="bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors">
-                                                                                <div className="flex items-start justify-between gap-2">
-                                                                                    <div className="min-w-0">
-                                                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                                                            <span className="text-xs font-semibold text-gray-800">
-                                                                                                {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                    {patient.prescriptions.map((rx: any) => (
+                                                                        <div key={rx.id} className="bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors">
+                                                                            <div className="flex items-center justify-between gap-2">
+                                                                                <div className="min-w-0">
+                                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                                        <span className="text-xs font-semibold text-gray-800">
+                                                                                            {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                                            <span className="text-gray-400 font-normal ml-1">
+                                                                                                {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                                                                                             </span>
-                                                                                            {rx.status === 'dispensed' && (
-                                                                                                <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                        {medSummary && (
-                                                                                            <p className="text-xs text-gray-500 mt-1 truncate">
-                                                                                                💊 {medSummary}{meds.length > 3 ? ` +${meds.length - 3} more` : ''}
-                                                                                            </p>
+                                                                                        </span>
+                                                                                        {rx.status === 'dispensed' && (
+                                                                                            <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
                                                                                         )}
-                                                                                        {rx.notes && <p className="text-[11px] text-gray-400 mt-0.5 truncate italic">"{rx.notes}"</p>}
                                                                                     </div>
-                                                                                    <span className="text-[10px] text-gray-400 font-medium shrink-0">
-                                                                                        {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                                                                                    </span>
                                                                                 </div>
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setRxViewPatient(patient);
+                                                                                        setRxViewPrescription(rx);
+                                                                                    }}
+                                                                                    className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors"
+                                                                                >
+                                                                                    View Rx
+                                                                                </button>
                                                                             </div>
-                                                                        );
-                                                                    })}
+                                                                        </div>
+                                                                    ))}
                                                                 </div>
                                                             ) : (
                                                                 <div className="px-5 py-4 text-center">
@@ -1705,6 +1723,21 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         </>
                     )}
                 </div>
+            )}
+
+            {/* View Rx Modal — Past Records */}
+            {rxViewPrescription && rxViewPatient && (
+                <PrescriptionModal
+                    doctor={doctor}
+                    patient={{
+                        ...rxViewPatient,
+                        token_number: rxViewPrescription.token_number || rxViewPatient.token_number,
+                    }}
+                    onClose={() => { setRxViewPrescription(null); setRxViewPatient(null); }}
+                    readOnly={true}
+                    existingData={rxViewPrescription}
+                    clinicLogo={doctor.avatar_url || undefined}
+                />
             )}
 
             {/* Prescription Modal - Active */}

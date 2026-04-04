@@ -12,6 +12,7 @@ import { getReceiptBytes } from '../../utils/receipts/receiptGeneratorSelector';
 import PrinterPreview from '../PrinterPreview';
 import { useTenant } from '../../contexts/TenantContext';
 import { BeanhealthIdService } from '../../services/beanhealthIdService';
+import PrescriptionModal from '../modals/PrescriptionModal';
 
 interface DoctorProfile {
     id: string;
@@ -233,6 +234,8 @@ const ReceptionDashboard: React.FC = () => {
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
     const [pastRecordsTotal, setPastRecordsTotal] = useState(0);
     const [expandedPatientId, setExpandedPatientId] = useState<string | null>(null);
+    const [rxViewPatient, setRxViewPatient] = useState<any>(null);
+    const [rxViewPrescription, setRxViewPrescription] = useState<any>(null);
     const PAST_RECORDS_PER_PAGE = 50;
 
     const fetchPastRecords = useCallback(async (isBackground = false, page = 0, append = false) => {
@@ -253,7 +256,7 @@ const ReceptionDashboard: React.FC = () => {
                 .from('hospital_patients' as any)
                 .select(`
                     *,
-                    prescriptions:hospital_prescriptions(id, medications, notes, status, token_number, created_at, doctor:hospital_doctors(name, specialty))
+                    prescriptions:hospital_prescriptions(id, medications, notes, status, token_number, created_at, metadata, next_review_date, tests_to_review, specialists_to_review, doctor:hospital_doctors(id, name, specialty, signature_url))
                 `)
                 .eq('hospital_id', profile.id)
                 .order('created_at', { ascending: false })
@@ -297,10 +300,10 @@ const ReceptionDashboard: React.FC = () => {
                 .from('hospital_patients' as any)
                 .select(`
                     *,
-                    prescriptions:hospital_prescriptions(id, medications, notes, status, token_number, created_at, doctor:hospital_doctors(name, specialty))
+                    prescriptions:hospital_prescriptions(id, medications, notes, status, token_number, created_at, metadata, next_review_date, tests_to_review, specialists_to_review, doctor:hospital_doctors(id, name, specialty, signature_url))
                 `)
                 .eq('hospital_id', profile.id)
-                .ilike('name', `%${searchQuery}%`)
+                .or(`name.ilike.%${searchQuery}%,mr_number.ilike.%${searchQuery}%`)
                 .order('created_at', { ascending: false })
                 .limit(100);
 
@@ -1400,40 +1403,40 @@ const ReceptionDashboard: React.FC = () => {
                                                             {patient.prescriptions?.length > 0 ? (
                                                                 <div className="px-5 py-3 space-y-2">
                                                                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Prescription History</p>
-                                                                    {patient.prescriptions.map((rx: any) => {
-                                                                        const meds = Array.isArray(rx.medications) ? rx.medications : [];
-                                                                        const medSummary = meds.slice(0, 3).map((m: any) => m.name || m.drug_name || '').filter(Boolean).join(', ');
-                                                                        return (
-                                                                            <div key={rx.id} className="bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors">
-                                                                                <div className="flex items-start justify-between gap-2">
-                                                                                    <div className="min-w-0">
-                                                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                                                            <span className="text-xs font-semibold text-gray-800">
-                                                                                                {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                    {patient.prescriptions.map((rx: any) => (
+                                                                        <div key={rx.id} className="bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors">
+                                                                            <div className="flex items-center justify-between gap-2">
+                                                                                <div className="min-w-0">
+                                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                                        <span className="text-xs font-semibold text-gray-800">
+                                                                                            {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                                            <span className="text-gray-400 font-normal ml-1">
+                                                                                                {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                                                                                             </span>
-                                                                                            {rx.doctor?.name && (
-                                                                                                <span className="text-[10px] text-gray-500 font-medium">
-                                                                                                    · {formatDoctorName(rx.doctor.name)}
-                                                                                                </span>
-                                                                                            )}
-                                                                                            {rx.status === 'dispensed' && (
-                                                                                                <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                        {medSummary && (
-                                                                                            <p className="text-xs text-gray-500 mt-1 truncate">
-                                                                                                💊 {medSummary}{meds.length > 3 ? ` +${meds.length - 3} more` : ''}
-                                                                                            </p>
+                                                                                        </span>
+                                                                                        {rx.doctor?.name && (
+                                                                                            <span className="text-[10px] text-gray-500 font-medium">
+                                                                                                · {formatDoctorName(rx.doctor.name)}
+                                                                                            </span>
                                                                                         )}
-                                                                                        {rx.notes && <p className="text-[11px] text-gray-400 mt-0.5 truncate italic">"{rx.notes}"</p>}
+                                                                                        {rx.status === 'dispensed' && (
+                                                                                            <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
+                                                                                        )}
                                                                                     </div>
-                                                                                    <span className="text-[10px] text-gray-400 font-medium shrink-0">
-                                                                                        {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                                                                                    </span>
                                                                                 </div>
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setRxViewPatient(patient);
+                                                                                        setRxViewPrescription(rx);
+                                                                                    }}
+                                                                                    className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors"
+                                                                                >
+                                                                                    View Rx
+                                                                                </button>
                                                                             </div>
-                                                                        );
-                                                                    })}
+                                                                        </div>
+                                                                    ))}
                                                                 </div>
                                                             ) : (
                                                                 <div className="px-5 py-4 text-center">
@@ -2086,6 +2089,21 @@ const ReceptionDashboard: React.FC = () => {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* View Rx Modal — Past Records */}
+            {rxViewPrescription && rxViewPatient && (
+                <PrescriptionModal
+                    doctor={rxViewPrescription.doctor || {}}
+                    patient={{
+                        ...rxViewPatient,
+                        token_number: rxViewPrescription.token_number || rxViewPatient.token_number,
+                    }}
+                    onClose={() => { setRxViewPrescription(null); setRxViewPatient(null); }}
+                    readOnly={true}
+                    existingData={rxViewPrescription}
+                    clinicLogo={profile?.avatar_url || undefined}
+                />
             )}
 
             {/* Printer Setup Modal */}
