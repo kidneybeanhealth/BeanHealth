@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import PrescriptionModal from './modals/PrescriptionModal';
+import { syncReviewFromPrescription } from '../services/enterpriseReviewService';
 
 interface PharmacyDashboardProps {
     hospitalId: string;
@@ -19,6 +20,8 @@ interface Prescription {
     status: string;
     created_at: string;
     next_review_date?: string;
+    tests_to_review?: string;
+    specialists_to_review?: string;
     dispensed_days?: number;
     dispensed_at?: string;
     dispensed_by?: string;
@@ -401,6 +404,16 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
             });
 
             if (error) throw error;
+
+            await syncReviewFromPrescription({
+                hospitalId,
+                patientId: selectedPrescription.patient_id,
+                doctorId: selectedPrescription.doctor_id,
+                prescriptionId: selectedPrescription.id,
+                nextReviewDate: selectedPrescription.next_review_date || null,
+                testsToReview: selectedPrescription.tests_to_review || null,
+                specialistsToReview: selectedPrescription.specialists_to_review || null,
+            });
 
             // Success - state already updated optimistically
         } catch (error: any) {

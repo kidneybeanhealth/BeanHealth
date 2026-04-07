@@ -13,6 +13,11 @@ import PrinterPreview from '../PrinterPreview';
 import { useTenant } from '../../contexts/TenantContext';
 import { BeanhealthIdService } from '../../services/beanhealthIdService';
 import PrescriptionModal from '../modals/PrescriptionModal';
+import {
+    fetchReceptionPastRecords,
+    type ReceptionPastRecordPatient,
+    type ReceptionReviewFilter,
+} from '../../services/enterpriseReviewService';
 
 interface DoctorProfile {
     id: string;
@@ -55,6 +60,15 @@ interface MrPatient {
     gender: string | null;
 }
 
+type CallLogStatus = 'picked' | 'not_picked';
+
+interface CallLogTarget {
+    patientId: string;
+    mrNumber: string | null;
+    patientName: string;
+    reviewDate: string | null;
+}
+
 // Helper to format doctor name professionally
 const formatDoctorName = (name: string) => {
     if (!name) return "";
@@ -83,8 +97,9 @@ const ReceptionDashboard: React.FC = () => {
     const [isLoadingQueue, setIsLoadingQueue] = useState(false);
     const [activeTab, setActiveTab] = useState<'queue' | 'patients' | 'past_records'>('queue');
 
-    // Walk-in Modal
+    // Walk-in / Registration Modal
     const [showWalkInModal, setShowWalkInModal] = useState(false);
+    const [registrationMode, setRegistrationMode] = useState<'queue' | 'past_record'>('queue');
     const [walkInForm, setWalkInForm] = useState({
         name: '',
         age: '',
@@ -95,7 +110,8 @@ const ReceptionDashboard: React.FC = () => {
         department: '',
         doctorId: '',
         tokenNumber: '',
-        mrNumber: ''
+        mrNumber: '',
+        reviewDate: ''
     });
 
     // MR number search
@@ -227,8 +243,10 @@ const ReceptionDashboard: React.FC = () => {
     }, [profile?.id]);
 
     // Patient Database State (Past Records tab)
-    const [pastRecords, setPastRecords] = useState<any[]>([]);
+    const [pastRecords, setPastRecords] = useState<ReceptionPastRecordPatient[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [reviewFilter, setReviewFilter] = useState<ReceptionReviewFilter>('all');
+    const [reviewDateFilter, setReviewDateFilter] = useState('');
     const [pastRecordsPage, setPastRecordsPage] = useState(0);
     const [hasMorePastRecords, setHasMorePastRecords] = useState(true);
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
@@ -236,42 +254,35 @@ const ReceptionDashboard: React.FC = () => {
     const [expandedPatientId, setExpandedPatientId] = useState<string | null>(null);
     const [rxViewPatient, setRxViewPatient] = useState<any>(null);
     const [rxViewPrescription, setRxViewPrescription] = useState<any>(null);
+    const [callLogTarget, setCallLogTarget] = useState<CallLogTarget | null>(null);
+    const [callLogSubmitting, setCallLogSubmitting] = useState(false);
+    const [callLogStatus, setCallLogStatus] = useState<CallLogStatus>('picked');
+    const [callLogNotes, setCallLogNotes] = useState('');
+    const [callLogNextDate, setCallLogNextDate] = useState('');
+    const [callLogRescheduleDate, setCallLogRescheduleDate] = useState('');
     const PAST_RECORDS_PER_PAGE = 50;
+    const isPastRegistration = registrationMode === 'past_record';
 
     const fetchPastRecords = useCallback(async (isBackground = false, page = 0, append = false) => {
         if (!profile?.id) return;
         if (!isBackground && !append) setIsLoadingQueue(true);
         if (append) setIsLoadingMorePast(true);
         try {
-            // Get count first (only on first load)
-            if (!append) {
-                const { count } = await supabase
-                    .from('hospital_patients')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('hospital_id', profile.id);
-                setPastRecordsTotal(count || 0);
-            }
+            const result = await fetchReceptionPastRecords({
+                hospitalId: profile.id,
+                page,
+                pageSize: PAST_RECORDS_PER_PAGE,
+                searchQuery,
+                reviewFilter,
+                reviewDate: reviewDateFilter || undefined,
+            });
 
-            const { data, error } = await supabase
-                .from('hospital_patients' as any)
-                .select(`
-                    *,
-                    prescriptions:hospital_prescriptions(id, medications, notes, status, token_number, created_at, metadata, next_review_date, tests_to_review, specialists_to_review, doctor:hospital_doctors(id, name, specialty, signature_url))
-                `)
-                .eq('hospital_id', profile.id)
-                .order('created_at', { ascending: false })
-                .range(page * PAST_RECORDS_PER_PAGE, (page + 1) * PAST_RECORDS_PER_PAGE - 1);
-
-            if (error) throw error;
-            const results = (data || []).map((p: any) => ({
-                ...p,
-                prescriptions: (p.prescriptions || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            }));
-            setHasMorePastRecords(results.length === PAST_RECORDS_PER_PAGE);
+            setPastRecordsTotal(result.totalCount);
+            setHasMorePastRecords(result.hasMore);
             if (append) {
-                setPastRecords(prev => [...prev, ...results]);
+                setPastRecords(prev => [...prev, ...result.patients]);
             } else {
-                setPastRecords(results);
+                setPastRecords(result.patients);
             }
             setPastRecordsPage(page);
         } catch (error) {
@@ -281,7 +292,7 @@ const ReceptionDashboard: React.FC = () => {
             if (!isBackground && !append) setIsLoadingQueue(false);
             if (append) setIsLoadingMorePast(false);
         }
-    }, [profile?.id]);
+    }, [profile?.id, searchQuery, reviewFilter, reviewDateFilter]);
 
     const handleLoadMorePastRecords = () => {
         fetchPastRecords(true, pastRecordsPage + 1, true);
@@ -289,36 +300,116 @@ const ReceptionDashboard: React.FC = () => {
 
     const handleSearchPastRecords = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoadingQueue(true);
+        setPastRecords([]);
+        setPastRecordsPage(0);
+        setHasMorePastRecords(true);
+        await fetchPastRecords(false, 0, false);
+    };
+
+    const openCallLog = (patient: ReceptionPastRecordPatient) => {
+        setCallLogTarget({
+            patientId: patient.id,
+            mrNumber: patient.mr_number || null,
+            patientName: patient.name,
+            reviewDate: patient.latestReviewDate,
+        });
+        setCallLogStatus('picked');
+        setCallLogNotes('');
+        setCallLogNextDate('');
+        setCallLogRescheduleDate(patient.latestReviewDate || '');
+    };
+
+    const closeCallLog = () => {
+        setCallLogTarget(null);
+        setCallLogSubmitting(false);
+        setCallLogStatus('picked');
+        setCallLogNotes('');
+        setCallLogNextDate('');
+        setCallLogRescheduleDate('');
+    };
+
+    const handleSubmitCallLog = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!profile?.id || !callLogTarget) return;
+
+        setCallLogSubmitting(true);
         try {
-            if (!searchQuery.trim()) {
-                await fetchPastRecords();
-                return;
+            const effectiveReviewDate = callLogStatus === 'picked'
+                ? callLogRescheduleDate
+                : callLogNextDate;
+
+            const { data: existingReview, error: existingError } = await (supabase as any)
+                .from('hospital_patient_reviews')
+                .select('id, patient_id')
+                .eq('hospital_id', profile.id)
+                .eq('patient_id', callLogTarget.patientId)
+                .in('status', ['pending', 'rescheduled'])
+                .order('next_review_date', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (existingError) throw existingError;
+
+            const reviewPatch = {
+                status: callLogStatus === 'picked' ? 'rescheduled' : 'pending',
+                next_review_date: effectiveReviewDate || callLogTarget.reviewDate,
+                cancelled_at: null,
+                completed_at: null,
+                updated_at: new Date().toISOString(),
+            };
+
+            if (existingReview?.id) {
+                const { error: updateError } = await (supabase as any)
+                    .from('hospital_patient_reviews')
+                    .update(reviewPatch)
+                    .eq('id', existingReview.id);
+                if (updateError) throw updateError;
+            } else if (callLogTarget.mrNumber) {
+                const { data: mrPatient, error: mrLookupError } = await (supabase as any)
+                    .from('hospital_patients')
+                    .select('id')
+                    .eq('hospital_id', profile.id)
+                    .eq('mr_number', callLogTarget.mrNumber)
+                    .maybeSingle();
+
+                if (mrLookupError) throw mrLookupError;
+
+                if (mrPatient?.id) {
+                    const { error: insertError } = await (supabase as any)
+                        .from('hospital_patient_reviews')
+                        .insert({
+                            hospital_id: profile.id,
+                            patient_id: mrPatient.id,
+                            doctor_id: null,
+                            next_review_date: effectiveReviewDate || callLogTarget.reviewDate,
+                            status: callLogStatus === 'picked' ? 'rescheduled' : 'pending',
+                        });
+                    if (insertError) throw insertError;
+                }
             }
 
-            const { data, error } = await supabase
-                .from('hospital_patients' as any)
-                .select(`
-                    *,
-                    prescriptions:hospital_prescriptions(id, medications, notes, status, token_number, created_at, metadata, next_review_date, tests_to_review, specialists_to_review, doctor:hospital_doctors(id, name, specialty, signature_url))
-                `)
-                .eq('hospital_id', profile.id)
-                .or(`name.ilike.%${searchQuery}%,mr_number.ilike.%${searchQuery}%`)
-                .order('created_at', { ascending: false })
-                .limit(100);
+            await (supabase as any)
+                .from('hospital_patient_followups')
+                .insert({
+                    hospital_id: profile.id,
+                    review_id: existingReview?.id || null,
+                    patient_id: callLogTarget.patientId,
+                    called_at: new Date().toISOString(),
+                    call_status: callLogStatus,
+                    patient_response: callLogNotes.trim() || null,
+                    next_followup_date: callLogStatus === 'not_picked' ? (callLogNextDate || null) : null,
+                    attended: null,
+                    created_by_name: profile?.name || null,
+                });
 
-            if (error) throw error;
-            const results = (data || []).map((p: any) => ({
-                ...p,
-                prescriptions: (p.prescriptions || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            }));
-            setPastRecords(results);
-            setHasMorePastRecords(false);
-        } catch (err) {
-            console.error(err);
-            toast.error('Search failed');
+            toast.success('Call log saved');
+            closeCallLog();
+            await fetchPastRecords(false, 0, false);
+        } catch (error: any) {
+            console.error('Call log save error:', error);
+            toast.error(error.message || 'Failed to save call log');
         } finally {
-            setIsLoadingQueue(false);
+            setCallLogSubmitting(false);
         }
     };
 
@@ -368,6 +459,14 @@ const ReceptionDashboard: React.FC = () => {
             fetchReviewAlertCount();
         }
     }, [profile?.id, fetchDoctors, fetchQueue, fetchReviewAlertCount]);
+
+    useEffect(() => {
+        if (activeTab !== 'past_records') return;
+        setPastRecords([]);
+        setPastRecordsPage(0);
+        setHasMorePastRecords(true);
+        fetchPastRecords(false, 0, false);
+    }, [activeTab, reviewFilter, reviewDateFilter, fetchPastRecords]);
 
     // Fetch single item for realtime inserts
     const fetchSingleQueueItem = async (id: string) => {
@@ -486,6 +585,7 @@ const ReceptionDashboard: React.FC = () => {
     const handleOpenWalkInModal = () => {
         const nextToken = calculateNextToken();
 
+        setRegistrationMode('queue');
         setWalkInForm({
             name: '',
             age: '',
@@ -496,13 +596,37 @@ const ReceptionDashboard: React.FC = () => {
             department: '',
             doctorId: '',
             tokenNumber: nextToken, // Pre-fill with smart Auto-Calc
-            mrNumber: ''
+            mrNumber: '',
+            reviewDate: ''
         });
 
         setShowWalkInModal(true);
     };
 
+    const handleOpenPastRegistrationModal = () => {
+        setRegistrationMode('past_record');
+        setWalkInForm({
+            name: '',
+            age: '',
+            gender: '',
+            fatherHusbandName: '',
+            place: '',
+            phone: '',
+            department: '',
+            doctorId: '',
+            tokenNumber: '',
+            mrNumber: '',
+            reviewDate: ''
+        });
+        setShowWalkInModal(true);
+        setBhidMatch(null);
+        setIsSearchingBhid(false);
+        setMrSuggestions([]);
+        setShowMrDropdown(false);
+    };
+
     const searchPatientsByMr = useCallback(async (query: string) => {
+        if (!profile?.id) return;
         if (!query || query.length < 2) {
             setMrSuggestions([]);
             setShowMrDropdown(false);
@@ -513,7 +637,7 @@ const ReceptionDashboard: React.FC = () => {
             const { data, error } = await supabase
                 .from('hospital_patients' as any)
                 .select('id, name, age, mr_number, phone, place, father_husband_name, gender')
-                .eq('hospital_id', profile?.id)
+                .eq('hospital_id', profile.id)
                 .ilike('mr_number', `%${query}%`)
                 .order('created_at', { ascending: false })
                 .limit(8) as { data: MrPatient[] | null; error: any };
@@ -534,6 +658,11 @@ const ReceptionDashboard: React.FC = () => {
 
     const handleMrNumberChange = (value: string) => {
         setWalkInForm(prev => ({ ...prev, mrNumber: value }));
+        if (registrationMode === 'past_record') {
+            setMrSuggestions([]);
+            setShowMrDropdown(false);
+            return;
+        }
         if (mrInputRef.current) {
             const rect = mrInputRef.current.getBoundingClientRect();
             setMrDropdownStyle({
@@ -566,7 +695,8 @@ const ReceptionDashboard: React.FC = () => {
 
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
-        setWalkInForm({ name: '', age: '', gender: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '' });
+        setRegistrationMode('queue');
+        setWalkInForm({ name: '', age: '', gender: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '', reviewDate: '' });
         setBhidMatch(null);
         setIsSearchingBhid(false);
         setMrSuggestions([]);
@@ -623,8 +753,8 @@ const ReceptionDashboard: React.FC = () => {
 
         setIsSavingPrinterSettings(true);
         try {
-            const { error: updateError } = await (supabase
-                .from('hospital_profiles' as any)
+            const { error: updateError } = await ((supabase
+                .from('hospital_profiles' as any) as any)
                 .update({
                     printer_settings: newSettings
                 } as any)
@@ -705,12 +835,12 @@ const ReceptionDashboard: React.FC = () => {
                 return;
             }
 
-            await supabase.from('users')
+            await (supabase.from('users') as any)
                 .update({
                     name: hospitalSettings.hospitalName,
                     avatar_url: avatarUrl,
                     email: hospitalSettings.email
-                })
+                } as any)
                 .eq('id', profile.id);
 
             // Refresh profile to update dashboard header and global state
@@ -729,18 +859,80 @@ const ReceptionDashboard: React.FC = () => {
 
     const handleWalkInSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!profile?.id || !walkInForm.doctorId || !walkInForm.tokenNumber) {
-            toast.error('Please fill all required fields');
-            return;
-        }
 
         const toastId = toast.loading('Registering patient...');
 
         try {
+            if (!profile?.id) {
+                throw new Error('Hospital profile not found');
+            }
+
             const manualToken = walkInForm.tokenNumber.trim();
             const normalizedMrNumber = walkInForm.mrNumber.trim() || null;
             const normalizedPhone = walkInForm.phone.trim() || null;
             const linkedUserId = bhidMatch?.id || null;
+
+            if (isPastRegistration) {
+                if (!walkInForm.name.trim() || !walkInForm.age.trim() || !normalizedMrNumber) {
+                    throw new Error('Please fill name, age, and MR number');
+                }
+
+                const { data: duplicateMr, error: duplicateMrError } = await (supabase as any)
+                    .from('hospital_patients')
+                    .select('id')
+                    .eq('hospital_id', profile.id)
+                    .eq('mr_number', normalizedMrNumber)
+                    .maybeSingle();
+
+                if (duplicateMrError) throw duplicateMrError;
+                if (duplicateMr?.id) {
+                    throw new Error('MR number already exists');
+                }
+
+                const { data: patientData, error: patientError } = await (supabase as any)
+                    .from('hospital_patients')
+                    .insert({
+                        hospital_id: profile.id,
+                        name: walkInForm.name,
+                        age: parseInt(walkInForm.age, 10),
+                        gender: walkInForm.gender || null,
+                        token_number: null,
+                        mr_number: normalizedMrNumber,
+                        father_husband_name: walkInForm.fatherHusbandName || null,
+                        place: walkInForm.place || null,
+                        phone: normalizedPhone,
+                        linked_user_id: linkedUserId || null,
+                    })
+                    .select('id, name')
+                    .single();
+
+                if (patientError) throw patientError;
+
+                if (walkInForm.reviewDate) {
+                    const { error: reviewInsertError } = await (supabase as any)
+                        .from('hospital_patient_reviews')
+                        .insert({
+                            hospital_id: profile.id,
+                            patient_id: patientData.id,
+                            doctor_id: null,
+                            next_review_date: walkInForm.reviewDate,
+                            status: 'pending',
+                        });
+                    if (reviewInsertError) throw reviewInsertError;
+                }
+
+                toast.success(`New registration saved for ${patientData.name}`, { id: toastId });
+                handleCloseWalkInModal();
+                setActiveTab('past_records');
+                await fetchPastRecords(false, 0, false);
+                await fetchReviewAlertCount();
+                return;
+            }
+
+            if (!walkInForm.doctorId || !walkInForm.tokenNumber) {
+                toast.error('Please fill all required fields', { id: toastId });
+                return;
+            }
 
             // 1. UNIQUE TOKEN CHECK (For today)
             // Check against local queue state which contains all today's patients
@@ -1275,7 +1467,14 @@ const ReceptionDashboard: React.FC = () => {
                                 History Log
                             </button>
                             <button
-                                onClick={() => { setActiveTab('past_records'); setPastRecords([]); setPastRecordsPage(0); setHasMorePastRecords(true); fetchPastRecords(); }}
+                                onClick={() => {
+                                    setActiveTab('past_records');
+                                    setPastRecords([]);
+                                    setPastRecordsPage(0);
+                                    setHasMorePastRecords(true);
+                                    setReviewFilter('all');
+                                    setReviewDateFilter('');
+                                }}
                                 className={`px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'past_records' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'}`}
                             >
                                 Past Records
@@ -1300,10 +1499,56 @@ const ReceptionDashboard: React.FC = () => {
                                         </span>
                                     )}
                                 </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {(['all', 'due_today', 'upcoming', 'not_completed', 'review_completed'] as ReceptionReviewFilter[]).map((filterKey) => (
+                                        <button
+                                            key={filterKey}
+                                            type="button"
+                                            onClick={() => setReviewFilter(filterKey)}
+                                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                                                reviewFilter === filterKey
+                                                    ? 'bg-orange-100 text-orange-700 border-orange-300'
+                                                    : 'bg-white text-gray-600 border-gray-200 hover:border-orange-200'
+                                            }`}
+                                        >
+                                            {filterKey === 'all' ? 'All' : filterKey === 'due_today' ? 'Due Today' : filterKey === 'review_completed' ? 'Review Completed' : filterKey === 'not_completed' ? 'Not Completed' : 'Upcoming'}
+                                        </button>
+                                    ))}
+
+                                    <div className="flex flex-wrap items-center gap-2 ml-auto">
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenPastRegistrationModal}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            New Registration
+                                        </button>
+                                        <label className="text-xs font-semibold text-gray-500">Review Date</label>
+                                        <input
+                                            type="date"
+                                            value={reviewDateFilter}
+                                            onChange={(e) => setReviewDateFilter(e.target.value)}
+                                            className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                        />
+                                        {reviewDateFilter && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setReviewDateFilter('')}
+                                                className="px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                                            >
+                                                Clear
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <form onSubmit={handleSearchPastRecords} className="relative w-full max-w-md">
                                     <input
                                         type="text"
-                                        placeholder="Search patient by name..."
+                                        placeholder="Search by name or MR number..."
                                         className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -1359,6 +1604,22 @@ const ReceptionDashboard: React.FC = () => {
                                                                 {patient.father_husband_name && (
                                                                     <p className="text-[11px] text-gray-400 truncate">S/o {patient.father_husband_name}</p>
                                                                 )}
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                                                        patient.reviewCategory === 'due_today'
+                                                                            ? 'bg-orange-50 text-orange-700'
+                                                                            : patient.reviewCategory === 'upcoming'
+                                                                            ? 'bg-emerald-50 text-emerald-700'
+                                                                            : patient.reviewCategory === 'not_completed'
+                                                                                ? 'bg-red-50 text-red-700'
+                                                                                : 'bg-gray-100 text-gray-600'
+                                                                    }`}>
+                                                                        {patient.reviewCategory === 'due_today' ? 'Due Today' : patient.reviewCategory === 'upcoming' ? 'Upcoming' : patient.reviewCategory === 'not_completed' ? 'Not Completed' : 'Review Completed'}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-gray-500">
+                                                                        {patient.latestReviewDate ? `Review: ${new Date(patient.latestReviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Review: —'}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
 
@@ -1419,6 +1680,11 @@ const ReceptionDashboard: React.FC = () => {
                                                                                                 · {formatDoctorName(rx.doctor.name)}
                                                                                             </span>
                                                                                         )}
+                                                                                        {rx.next_review_date && (
+                                                                                            <span className="text-[10px] font-semibold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded">
+                                                                                                Review {new Date(rx.next_review_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                                                            </span>
+                                                                                        )}
                                                                                         {rx.status === 'dispensed' && (
                                                                                             <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
                                                                                         )}
@@ -1433,6 +1699,20 @@ const ReceptionDashboard: React.FC = () => {
                                                                                     className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors"
                                                                                 >
                                                                                     View Rx
+                                                                                <div className="mt-2 flex justify-end">
+                                                                                    <button
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            openCallLog(patient);
+                                                                                        }}
+                                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                                                                                    >
+                                                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                                                        </svg>
+                                                                                        Call Log
+                                                                                    </button>
+                                                                                </div>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -1547,7 +1827,7 @@ const ReceptionDashboard: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 overflow-y-auto max-h-[90vh]">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-gray-900">Patient Registration</h3>
+                            <h3 className="text-xl font-bold text-gray-900">{isPastRegistration ? 'New Registration' : 'Patient Registration'}</h3>
                             <button onClick={handleCloseWalkInModal} className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full transition-colors">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1557,37 +1837,45 @@ const ReceptionDashboard: React.FC = () => {
 
                         <form onSubmit={handleWalkInSubmit} className="space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Token #</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                        value={walkInForm.tokenNumber}
-                                        onChange={e => setWalkInForm({ ...walkInForm, tokenNumber: e.target.value })}
-                                        placeholder="T-101"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">MR. NO</label>
+                                {!isPastRegistration && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Token #</label>
+                                        <input
+                                            type="text"
+                                            required={!isPastRegistration}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                            value={walkInForm.tokenNumber}
+                                            onChange={e => setWalkInForm({ ...walkInForm, tokenNumber: e.target.value })}
+                                            placeholder="T-101"
+                                        />
+                                    </div>
+                                )}
+                                <div className={isPastRegistration ? 'sm:col-span-2' : ''}>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">
+                                        MR. NO {isPastRegistration && <span className="normal-case text-gray-400">(required)</span>}
+                                    </label>
                                     <div className="relative">
                                         <input
                                             ref={mrInputRef}
                                             type="text"
                                             autoComplete="off"
+                                            required={isPastRegistration}
                                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
                                             value={walkInForm.mrNumber}
                                             onChange={e => handleMrNumberChange(e.target.value)}
                                             onBlur={() => setTimeout(() => setShowMrDropdown(false), 200)}
                                             placeholder="MR-12345"
                                         />
-                                        {mrSearchLoading && (
+                                        {mrSearchLoading && !isPastRegistration && (
                                             <div className="absolute right-3 top-3.5">
                                                 <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
                                             </div>
                                         )}
                                     </div>
-                                    {showMrDropdown && mrSuggestions.length > 0 && (
+                                    {isPastRegistration && (
+                                        <p className="mt-1 text-[11px] text-gray-500">MR number must be unique for new registrations.</p>
+                                    )}
+                                    {showMrDropdown && mrSuggestions.length > 0 && !isPastRegistration && (
                                         <div style={mrDropdownStyle} className="bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                                             {mrSuggestions.map(patient => (
                                                 <button
@@ -1606,6 +1894,17 @@ const ReceptionDashboard: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
+                                {isPastRegistration && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Review Date <span className="normal-case text-gray-400">(optional)</span></label>
+                                        <input
+                                            type="date"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                            value={walkInForm.reviewDate}
+                                            onChange={e => setWalkInForm({ ...walkInForm, reviewDate: e.target.value })}
+                                        />
+                                    </div>
+                                )}
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
@@ -1644,128 +1943,132 @@ const ReceptionDashboard: React.FC = () => {
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Father/Husband Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                    value={walkInForm.fatherHusbandName}
-                                    onChange={e => setWalkInForm({ ...walkInForm, fatherHusbandName: e.target.value })}
-                                    placeholder="Father or Husband Name"
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Place</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                        value={walkInForm.place}
-                                        onChange={e => setWalkInForm({ ...walkInForm, place: e.target.value })}
-                                        placeholder="City/Town"
-                                    />
-                                </div>
-                                {/* Phone field — previously hidden for KKC via hardcoded email check */}
-                                {hospitalSettings.features?.capture_phone !== false && (
+                            {!isPastRegistration && (
+                                <>
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
-                                        <div className="relative">
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Father/Husband Name</label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                            value={walkInForm.fatherHusbandName}
+                                            onChange={e => setWalkInForm({ ...walkInForm, fatherHusbandName: e.target.value })}
+                                            placeholder="Father or Husband Name"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Place</label>
                                             <input
-                                                type="tel"
-                                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900 ${bhidMatch ? 'border-green-400 bg-green-50/30' : 'border-gray-200'
-                                                    }`}
-                                                value={walkInForm.phone}
-                                                onChange={e => {
-                                                    setWalkInForm({ ...walkInForm, phone: e.target.value });
-                                                    handlePhoneLookup(e.target.value);
-                                                }}
-                                                placeholder="Phone Number"
+                                                type="text"
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                                value={walkInForm.place}
+                                                onChange={e => setWalkInForm({ ...walkInForm, place: e.target.value })}
+                                                placeholder="City/Town"
                                             />
-                                            {isSearchingBhid && (
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                    <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                                                </div>
-                                            )}
-                                            {bhidMatch && (
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                    </svg>
-                                                </div>
-                                            )}
                                         </div>
+                                        {/* Phone field — previously hidden for KKC via hardcoded email check */}
+                                        {hospitalSettings.features?.capture_phone !== false && (
+                                            <div>
+                                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="tel"
+                                                        className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900 ${bhidMatch ? 'border-green-400 bg-green-50/30' : 'border-gray-200'
+                                                            }`}
+                                                        value={walkInForm.phone}
+                                                        onChange={e => {
+                                                            setWalkInForm({ ...walkInForm, phone: e.target.value });
+                                                            handlePhoneLookup(e.target.value);
+                                                        }}
+                                                        placeholder="Phone Number"
+                                                    />
+                                                    {isSearchingBhid && (
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                            <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                                                        </div>
+                                                    )}
+                                                    {bhidMatch && (
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                            <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
 
-                            {/* BeanHealth ID Match Banner */}
-                            {bhidMatch && (
-                                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
-                                    <div className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                        </svg>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-green-800">BeanHealth Patient Found!</p>
-                                        <p className="text-xs text-green-700 truncate">
-                                            {bhidMatch.name} · <span className="font-mono font-bold">{bhidMatch.beanhealthId}</span>
-                                        </p>
-                                    </div>
-                                    <span className="px-2 py-1 bg-green-200/60 text-green-800 text-[10px] font-bold rounded-full uppercase tracking-wide flex-shrink-0">
-                                        Auto-Link
-                                    </span>
-                                </div>
-                            )}
-                            <div className="relative">
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Department</label>
-                                <input
-                                    type="text"
-                                    required
-                                    autoComplete="off"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                    value={walkInForm.department}
-                                    onChange={e => setWalkInForm({ ...walkInForm, department: e.target.value })}
-                                    placeholder="e.g. Cardiology"
-                                />
-                                {(() => {
-                                    const DEPARTMENTS = [
-                                        'Cardiology', 'Nephrology', 'Urology', 'Neurology', 'Orthopedics',
-                                        'Gastroenterology', 'Pulmonology', 'Endocrinology', 'Dermatology',
-                                        'Ophthalmology', 'ENT', 'Oncology', 'Psychiatry', 'General Medicine',
-                                        'Pediatrics', 'Obstetrics & Gynecology', 'Rheumatology', 'Hematology',
-                                    ];
-                                    const q = walkInForm.department.trim().toLowerCase();
-                                    if (!q) return null;
-                                    const match = DEPARTMENTS.find(d => d.toLowerCase().startsWith(q) && d.toLowerCase() !== q);
-                                    if (!match) return null;
-                                    return (
-                                        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                                            <button
-                                                type="button"
-                                                className="w-full px-4 py-3 text-left text-sm text-gray-900 hover:bg-orange-50 transition-colors"
-                                                onMouseDown={e => { e.preventDefault(); setWalkInForm({ ...walkInForm, department: match }); }}
-                                            >
-                                                {match}
-                                            </button>
+                                    {/* BeanHealth ID Match Banner */}
+                                    {bhidMatch && (
+                                        <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
+                                            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                </svg>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-green-800">BeanHealth Patient Found!</p>
+                                                <p className="text-xs text-green-700 truncate">
+                                                    {bhidMatch.name} · <span className="font-mono font-bold">{bhidMatch.beanhealthId}</span>
+                                                </p>
+                                            </div>
+                                            <span className="px-2 py-1 bg-green-200/60 text-green-800 text-[10px] font-bold rounded-full uppercase tracking-wide flex-shrink-0">
+                                                Auto-Link
+                                            </span>
                                         </div>
-                                    );
-                                })()}
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Consulting Doctor</label>
-                                <select
-                                    required
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                    value={walkInForm.doctorId}
-                                    onChange={e => setWalkInForm({ ...walkInForm, doctorId: e.target.value })}
-                                >
-                                    <option value="">Select Physician</option>
-                                    {doctors.map(doc => (
-                                        <option key={doc.id} value={doc.id}>{doc.name} - {doc.specialty}</option>
-                                    ))}
-                                </select>
-                            </div>
+                                    )}
+                                    <div className="relative">
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Department</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            autoComplete="off"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                            value={walkInForm.department}
+                                            onChange={e => setWalkInForm({ ...walkInForm, department: e.target.value })}
+                                            placeholder="e.g. Cardiology"
+                                        />
+                                        {(() => {
+                                            const DEPARTMENTS = [
+                                                'Cardiology', 'Nephrology', 'Urology', 'Neurology', 'Orthopedics',
+                                                'Gastroenterology', 'Pulmonology', 'Endocrinology', 'Dermatology',
+                                                'Ophthalmology', 'ENT', 'Oncology', 'Psychiatry', 'General Medicine',
+                                                'Pediatrics', 'Obstetrics & Gynecology', 'Rheumatology', 'Hematology',
+                                            ];
+                                            const q = walkInForm.department.trim().toLowerCase();
+                                            if (!q) return null;
+                                            const match = DEPARTMENTS.find(d => d.toLowerCase().startsWith(q) && d.toLowerCase() !== q);
+                                            if (!match) return null;
+                                            return (
+                                                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                                                    <button
+                                                        type="button"
+                                                        className="w-full px-4 py-3 text-left text-sm text-gray-900 hover:bg-orange-50 transition-colors"
+                                                        onMouseDown={e => { e.preventDefault(); setWalkInForm({ ...walkInForm, department: match }); }}
+                                                    >
+                                                        {match}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Consulting Doctor</label>
+                                        <select
+                                            required
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                            value={walkInForm.doctorId}
+                                            onChange={e => setWalkInForm({ ...walkInForm, doctorId: e.target.value })}
+                                        >
+                                            <option value="">Select Physician</option>
+                                            {doctors.map(doc => (
+                                                <option key={doc.id} value={doc.id}>{doc.name} - {doc.specialty}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </>
+                            )}
 
                             <div className="pt-4 flex gap-3">
                                 <button
@@ -1779,7 +2082,7 @@ const ReceptionDashboard: React.FC = () => {
                                     type="submit"
                                     className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 shadow-lg transition-colors"
                                 >
-                                    Create Token
+                                    {isPastRegistration ? 'Save Registration' : 'Create Token'}
                                 </button>
                             </div>
                         </form>
@@ -2104,6 +2407,100 @@ const ReceptionDashboard: React.FC = () => {
                     existingData={rxViewPrescription}
                     clinicLogo={profile?.avatar_url || undefined}
                 />
+            )}
+
+            {callLogTarget && (
+                <div className="fixed inset-0 z-[98] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white flex items-start justify-between gap-3">
+                            <div>
+                                <h3 className="text-lg font-bold flex items-center gap-2">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                    Log Follow-up Call
+                                </h3>
+                                <p className="text-green-100 text-sm mt-0.5 font-medium">
+                                    {callLogTarget.patientName}{callLogTarget.mrNumber ? ` · ${callLogTarget.mrNumber}` : ''}
+                                </p>
+                            </div>
+                            <button onClick={closeCallLog} className="p-1.5 rounded-lg text-green-100 hover:text-white hover:bg-green-700/50 transition-colors">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmitCallLog} className="p-6 space-y-5">
+                            <div className="flex flex-wrap gap-2 text-xs">
+                                <span className="bg-orange-50 text-orange-700 border border-orange-200 rounded-full px-2.5 py-1 font-semibold">
+                                    Review: {callLogTarget.reviewDate ? new Date(callLogTarget.reviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}
+                                </span>
+                                {callLogTarget.mrNumber && (
+                                    <span className="bg-gray-100 text-gray-600 rounded-full px-2.5 py-1 font-medium">
+                                        MR: {callLogTarget.mrNumber}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2.5">Call Status <span className="text-red-500">*</span></label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {(['picked', 'not_picked'] as CallLogStatus[]).map((status) => (
+                                        <button
+                                            key={status}
+                                            type="button"
+                                            onClick={() => setCallLogStatus(status)}
+                                            className={`px-3 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${callLogStatus === status ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                                        >
+                                            {status === 'picked' ? 'Picked Up' : 'Not Picked'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {callLogStatus === 'picked' ? (
+                                <div>
+                                    <label className="block text-sm font-semibold text-orange-800 mb-1.5">Reschedule Review Date</label>
+                                    <input
+                                        type="date"
+                                        value={callLogRescheduleDate}
+                                        onChange={(e) => setCallLogRescheduleDate(e.target.value)}
+                                        min={toLocalISODate(new Date())}
+                                        className="w-full px-3.5 py-2.5 border border-orange-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                                    />
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Schedule Call Back Date</label>
+                                    <input
+                                        type="date"
+                                        value={callLogNextDate}
+                                        onChange={(e) => setCallLogNextDate(e.target.value)}
+                                        min={toLocalISODate(new Date())}
+                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                                    />
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Patient Response / Notes</label>
+                                <textarea
+                                    value={callLogNotes}
+                                    onChange={(e) => setCallLogNotes(e.target.value)}
+                                    rows={3}
+                                    placeholder={callLogStatus === 'picked' ? 'e.g. Patient confirmed the review date' : 'e.g. Called twice, no answer'}
+                                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 resize-none"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-1">
+                                <button type="button" onClick={closeCallLog} className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
+                                <button type="submit" disabled={callLogSubmitting} className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-md transition-all disabled:opacity-60">{callLogSubmitting ? 'Saving...' : 'Save Call Log'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
 
             {/* Printer Setup Modal */}
