@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { withTimeout } from '../utils/requestUtils';
 
-export type ReceptionReviewFilter = 'all' | 'due_today' | 'upcoming' | 'not_completed' | 'review_completed';
+export type ReceptionReviewFilter = 'all' | 'due_today' | 'due_tomorrow' | 'upcoming' | 'overdue' | 'followup_needed' | 'not_completed' | 'review_completed';
 
 export interface ReceptionVisitRecord {
     id: string;
@@ -24,10 +24,18 @@ export interface ReceptionVisitRecord {
     };
 }
 
+export interface ReceptionCallHistoryEntry {
+    id: string;
+    called_at: string;
+    call_status: string | null;
+    patient_response: string | null;
+}
+
 export interface ReceptionPastRecordPatient {
     id: string;
     name: string;
     age: number;
+    gender?: string | null;
     phone?: string | null;
     mr_number?: string | null;
     beanhealth_id?: string | null;
@@ -37,6 +45,7 @@ export interface ReceptionPastRecordPatient {
     reviewCategory: ReceptionReviewFilter;
     lastVisitAt: string | null;
     prescriptions: ReceptionVisitRecord[];
+    callHistory: ReceptionCallHistoryEntry[];
 }
 
 export interface ReceptionPastRecordsResult {
@@ -70,6 +79,14 @@ type ReviewRow = {
     updated_at?: string | null;
 };
 
+type FollowupRow = {
+    id: string;
+    patient_id: string;
+    call_status?: string | null;
+    called_at?: string | null;
+    patient_response?: string | null;
+};
+
 const normalizeDateOnly = (value?: string | null): string | null => {
     if (!value) return null;
     return value.split('T')[0] || null;
@@ -86,10 +103,17 @@ const deriveReviewCategory = (
     latestReviewStatus: string | null,
     latestReviewCompletedAt: string | null,
     latestReviewUpdatedAt: string | null,
-    latestReviewCreatedAt: string | null
+    latestReviewCreatedAt: string | null,
+    latestFollowupStatus: string | null
 ): ReceptionReviewFilter => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    if (latestFollowupStatus === 'not_picked') {
+        return 'followup_needed';
+    }
 
     if (latestReviewStatus === 'completed') {
         const completionReference = latestReviewCompletedAt || latestReviewCreatedAt || latestReviewUpdatedAt;
@@ -113,11 +137,15 @@ const deriveReviewCategory = (
         return 'due_today';
     }
 
+    if (parsed.getTime() === tomorrow.getTime()) {
+        return 'due_tomorrow';
+    }
+
     if (parsed.getTime() >= today.getTime()) {
         return 'upcoming';
     }
 
-    return 'not_completed';
+    return 'overdue';
 };
 
 const escapeForIlike = (value: string): string => value.replace(/[%_]/g, (m) => `\\${m}`).trim();
@@ -176,7 +204,7 @@ export async function fetchReceptionPastRecords(
     let patientsQuery: any = (supabase
         .from('hospital_patients') as any)
         .select(
-            'id, name, age, phone, mr_number, beanhealth_id, father_husband_name, created_at',
+            'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, created_at',
             { count: 'exact' }
         )
         .eq('hospital_id', hospitalId)
@@ -216,9 +244,10 @@ export async function fetchReceptionPastRecords(
     const idChunks = chunkArray(patientIds, 120);
     const prescriptions: ReceptionVisitRecord[] = [];
     const reviews: ReviewRow[] = [];
+    const followups: FollowupRow[] = [];
 
     for (const idChunk of idChunks) {
-        const [prescriptionsChunkResult, reviewsChunkResult] = await Promise.all([
+        const [prescriptionsChunkResult, reviewsChunkResult, followupsChunkResult] = await Promise.all([
             withTimeout(
                 (supabase
                     .from('hospital_prescriptions' as any)
@@ -243,7 +272,17 @@ export async function fetchReceptionPastRecords(
                 10000,
                 'Timed out while loading review status'
             ),
-        ]) as [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>];
+            withTimeout(
+                (supabase
+                    .from('hospital_patient_followups' as any)
+                    .select('id, patient_id, call_status, called_at, patient_response')
+                    .eq('hospital_id', hospitalId)
+                    .in('patient_id', idChunk)
+                    .order('called_at', { ascending: false })) as any,
+                10000,
+                'Timed out while loading follow-up status'
+            ),
+        ]) as [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>, SupabaseResult<FollowupRow[]>];
 
         if (prescriptionsChunkResult.error) {
             throw prescriptionsChunkResult.error;
@@ -256,8 +295,16 @@ export async function fetchReceptionPastRecords(
             }
         }
 
+        if (followupsChunkResult.error) {
+            const message = String(followupsChunkResult.error.message || '').toLowerCase();
+            if (!message.includes('hospital_patient_followups')) {
+                throw followupsChunkResult.error;
+            }
+        }
+
         prescriptions.push(...((prescriptionsChunkResult.data || []) as ReceptionVisitRecord[]));
         reviews.push(...((reviewsChunkResult.data || []) as ReviewRow[]));
+        followups.push(...((followupsChunkResult.data || []) as FollowupRow[]));
     }
 
     const prescriptionsByPatient = new Map<string, ReceptionVisitRecord[]>();
@@ -280,6 +327,28 @@ export async function fetchReceptionPastRecords(
         reviewsByPatient.get(review.patient_id)!.push(review);
     }
 
+    const latestFollowupStatusByPatient = new Map<string, string | null>();
+    const followupsByPatient = new Map<string, ReceptionCallHistoryEntry[]>();
+    for (const followup of followups) {
+        if (!latestFollowupStatusByPatient.has(followup.patient_id)) {
+            latestFollowupStatusByPatient.set(followup.patient_id, followup.call_status || null);
+        }
+
+        if (!followupsByPatient.has(followup.patient_id)) {
+            followupsByPatient.set(followup.patient_id, []);
+        }
+        followupsByPatient.get(followup.patient_id)!.push({
+            id: followup.id,
+            called_at: followup.called_at || '',
+            call_status: followup.call_status || null,
+            patient_response: followup.patient_response || null,
+        });
+    }
+
+    for (const [, followupEntries] of followupsByPatient) {
+        followupEntries.sort((a, b) => new Date(b.called_at).getTime() - new Date(a.called_at).getTime());
+    }
+
     const normalized: ReceptionPastRecordPatient[] = basePatients
         .map((p) => {
             const visitHistory = prescriptionsByPatient.get(p.id) || [];
@@ -297,7 +366,8 @@ export async function fetchReceptionPastRecords(
                 latestReview?.status || null,
                 latestReview?.completed_at || null,
                 latestReview?.updated_at || null,
-                latestReview?.created_at || null
+                latestReview?.created_at || null,
+                latestFollowupStatusByPatient.get(p.id) || null
             );
 
             return {
@@ -306,6 +376,7 @@ export async function fetchReceptionPastRecords(
                 reviewCategory,
                 lastVisitAt: latestPrescription?.created_at || p.created_at || null,
                 prescriptions: visitHistory,
+                callHistory: (followupsByPatient.get(p.id) || []).slice(0, 3),
             } as ReceptionPastRecordPatient;
         })
         .filter((patient) => {

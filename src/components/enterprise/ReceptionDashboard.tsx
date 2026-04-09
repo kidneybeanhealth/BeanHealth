@@ -69,6 +69,13 @@ interface CallLogTarget {
     reviewDate: string | null;
 }
 
+interface CallHistoryEntry {
+    id: string;
+    called_at: string;
+    call_status: string | null;
+    patient_response: string | null;
+}
+
 // Helper to format doctor name professionally
 const formatDoctorName = (name: string) => {
     if (!name) return "";
@@ -85,6 +92,40 @@ const toLocalISODate = (date: Date): string => {
     const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
 };
+
+const getReviewFilterLabel = (filterKey: ReceptionReviewFilter): string => {
+    if (filterKey === 'all') return 'All';
+    if (filterKey === 'due_today') return 'Due Today';
+    if (filterKey === 'due_tomorrow') return 'Due Tomorrow';
+    if (filterKey === 'upcoming') return 'Upcoming';
+    if (filterKey === 'overdue') return 'Over Due';
+    if (filterKey === 'followup_needed') return 'Followup Needed';
+    if (filterKey === 'review_completed') return 'Review Completed';
+    return 'Not Completed';
+};
+
+const getReviewBadgeClass = (category: ReceptionReviewFilter): string => {
+    if (category === 'due_today') return 'bg-orange-50 text-orange-700';
+    if (category === 'due_tomorrow') return 'bg-sky-50 text-sky-700';
+    if (category === 'upcoming') return 'bg-emerald-50 text-emerald-700';
+    if (category === 'overdue') return 'bg-rose-50 text-rose-700';
+    if (category === 'followup_needed') return 'bg-amber-50 text-amber-700';
+    if (category === 'not_completed') return 'bg-red-50 text-red-700';
+    return 'bg-gray-100 text-gray-600';
+};
+
+const formatPastDate = (value?: string | null): string => {
+    if (!value) return '--';
+    return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const escapeHtml = (value: string): string =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -251,10 +292,13 @@ const ReceptionDashboard: React.FC = () => {
     const [hasMorePastRecords, setHasMorePastRecords] = useState(true);
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
     const [pastRecordsTotal, setPastRecordsTotal] = useState(0);
-    const [expandedPatientId, setExpandedPatientId] = useState<string | null>(null);
+    const [rxHistoryPatient, setRxHistoryPatient] = useState<ReceptionPastRecordPatient | null>(null);
     const [rxViewPatient, setRxViewPatient] = useState<any>(null);
     const [rxViewPrescription, setRxViewPrescription] = useState<any>(null);
     const [callLogTarget, setCallLogTarget] = useState<CallLogTarget | null>(null);
+    const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
+    const [callHistoryLoading, setCallHistoryLoading] = useState(false);
+    const [expandedCallHistoryPatientIds, setExpandedCallHistoryPatientIds] = useState<Set<string>>(new Set());
     const [callLogSubmitting, setCallLogSubmitting] = useState(false);
     const [callLogStatus, setCallLogStatus] = useState<CallLogStatus>('picked');
     const [callLogNotes, setCallLogNotes] = useState('');
@@ -263,7 +307,16 @@ const ReceptionDashboard: React.FC = () => {
     const PAST_RECORDS_PER_PAGE = 50;
     const isPastRegistration = registrationMode === 'past_record';
 
-    const fetchPastRecords = useCallback(async (isBackground = false, page = 0, append = false) => {
+    const fetchPastRecords = useCallback(async (
+        isBackground = false,
+        page = 0,
+        append = false,
+        options?: {
+            searchValue?: string;
+            reviewFilterValue?: ReceptionReviewFilter;
+            reviewDateValue?: string;
+        }
+    ) => {
         if (!profile?.id) return;
         if (!isBackground && !append) setIsLoadingQueue(true);
         if (append) setIsLoadingMorePast(true);
@@ -272,9 +325,9 @@ const ReceptionDashboard: React.FC = () => {
                 hospitalId: profile.id,
                 page,
                 pageSize: PAST_RECORDS_PER_PAGE,
-                searchQuery,
-                reviewFilter,
-                reviewDate: reviewDateFilter || undefined,
+                searchQuery: options?.searchValue ?? '',
+                reviewFilter: options?.reviewFilterValue ?? 'all',
+                reviewDate: options?.reviewDateValue || undefined,
             });
 
             setPastRecordsTotal(result.totalCount);
@@ -292,10 +345,14 @@ const ReceptionDashboard: React.FC = () => {
             if (!isBackground && !append) setIsLoadingQueue(false);
             if (append) setIsLoadingMorePast(false);
         }
-    }, [profile?.id, searchQuery, reviewFilter, reviewDateFilter]);
+    }, [profile?.id]);
 
     const handleLoadMorePastRecords = () => {
-        fetchPastRecords(true, pastRecordsPage + 1, true);
+        fetchPastRecords(true, pastRecordsPage + 1, true, {
+            searchValue: searchQuery,
+            reviewFilterValue: reviewFilter,
+            reviewDateValue: reviewDateFilter,
+        });
     };
 
     const handleSearchPastRecords = async (e: React.FormEvent) => {
@@ -303,29 +360,184 @@ const ReceptionDashboard: React.FC = () => {
         setPastRecords([]);
         setPastRecordsPage(0);
         setHasMorePastRecords(true);
-        await fetchPastRecords(false, 0, false);
+        await fetchPastRecords(false, 0, false, {
+            searchValue: searchQuery,
+            reviewFilterValue: reviewFilter,
+            reviewDateValue: reviewDateFilter,
+        });
     };
 
-    const openCallLog = (patient: ReceptionPastRecordPatient) => {
+    const handlePrintPastRecordsList = () => {
+        if (reviewFilter !== 'due_today' && reviewFilter !== 'due_tomorrow') {
+            toast.error('Print List is available only for Due Today or Due Tomorrow');
+            return;
+        }
+
+        if (pastRecords.length === 0) {
+            toast.error('No patient records to print');
+            return;
+        }
+
+        const printWindow = window.open('', '_blank', 'width=1200,height=800');
+        if (!printWindow) {
+            toast.error('Pop-up blocked. Please allow pop-ups to print the list.');
+            return;
+        }
+
+        const generatedAt = new Date().toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+        });
+
+        const rowsHtml = pastRecords
+            .map((patient, index) => {
+                const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${escapeHtml(patient.name || '--')}</td>
+                        <td>${patient.age ?? '--'}</td>
+                        <td>${relationLabel} ${escapeHtml(patient.father_husband_name || '--')}</td>
+                        <td>${escapeHtml(patient.mr_number || '--')}</td>
+                        <td>${formatPastDate(patient.latestReviewDate)}</td>
+                        <td>${formatPastDate(patient.lastVisitAt)}</td>
+                    </tr>
+                `;
+            })
+            .join('');
+
+        const filterLabel = getReviewFilterLabel(reviewFilter);
+
+        const html = `
+            <!doctype html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>Past Records Print List</title>
+                <style>
+                    * { box-sizing: border-box; }
+                    body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 24px; color: #1f2937; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+                    .title { font-size: 20px; font-weight: 700; margin: 0; }
+                    .meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
+                    .pill { display: inline-block; background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; margin-right: 8px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+                    thead th { text-align: left; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px; }
+                    tbody td { border: 1px solid #e5e7eb; padding: 10px; font-size: 12px; vertical-align: top; }
+                    tbody tr:nth-child(even) { background: #fcfcfd; }
+                    .footer { margin-top: 14px; font-size: 11px; color: #6b7280; }
+                    @media print {
+                        body { margin: 10mm; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <h1 class="title">Past Records List</h1>
+                        <p class="meta">${escapeHtml(displayName || 'Hospital')}</p>
+                        <p class="meta">Generated: ${generatedAt}</p>
+                    </div>
+                    <div>
+                        <span class="pill">Filter: ${escapeHtml(filterLabel)}</span>
+                        <span class="pill">Total: ${pastRecords.length}</span>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>S/o / W/o</th>
+                            <th>MR ID</th>
+                            <th>Due Date</th>
+                            <th>Last Visit Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+
+                <p class="footer">Printed from Reception Past Records module.</p>
+
+                <script>
+                    window.onload = function () {
+                        window.print();
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
+    };
+
+    const openCallLog = async (patient: ReceptionPastRecordPatient) => {
+        if (!profile?.id) return;
         setCallLogTarget({
             patientId: patient.id,
             mrNumber: patient.mr_number || null,
             patientName: patient.name,
             reviewDate: patient.latestReviewDate,
         });
+        setCallHistory([]);
+        setCallHistoryLoading(true);
         setCallLogStatus('picked');
         setCallLogNotes('');
         setCallLogNextDate('');
-        setCallLogRescheduleDate(patient.latestReviewDate || '');
+        setCallLogRescheduleDate('');
+
+        try {
+            const { data, error } = await (supabase as any)
+                .from('hospital_patient_followups')
+                .select('id, called_at, call_status, patient_response')
+                .eq('hospital_id', profile.id)
+                .eq('patient_id', patient.id)
+                .order('called_at', { ascending: false })
+                .limit(15);
+
+            if (error) throw error;
+            setCallHistory((data || []) as CallHistoryEntry[]);
+        } catch (error) {
+            console.error('Call history fetch error:', error);
+            toast.error('Failed to load call history');
+            setCallHistory([]);
+        } finally {
+            setCallHistoryLoading(false);
+        }
     };
 
     const closeCallLog = () => {
         setCallLogTarget(null);
+        setCallHistory([]);
+        setCallHistoryLoading(false);
         setCallLogSubmitting(false);
         setCallLogStatus('picked');
         setCallLogNotes('');
         setCallLogNextDate('');
         setCallLogRescheduleDate('');
+    };
+
+    const togglePatientCallHistory = (patientId: string) => {
+        setExpandedCallHistoryPatientIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(patientId)) {
+                next.delete(patientId);
+            } else {
+                next.add(patientId);
+            }
+            return next;
+        });
     };
 
     const handleSubmitCallLog = async (e: React.FormEvent) => {
@@ -404,7 +616,11 @@ const ReceptionDashboard: React.FC = () => {
 
             toast.success('Call log saved');
             closeCallLog();
-            await fetchPastRecords(false, 0, false);
+            await fetchPastRecords(false, 0, false, {
+                searchValue: searchQuery,
+                reviewFilterValue: reviewFilter,
+                reviewDateValue: reviewDateFilter,
+            });
         } catch (error: any) {
             console.error('Call log save error:', error);
             toast.error(error.message || 'Failed to save call log');
@@ -465,8 +681,30 @@ const ReceptionDashboard: React.FC = () => {
         setPastRecords([]);
         setPastRecordsPage(0);
         setHasMorePastRecords(true);
-        fetchPastRecords(false, 0, false);
+        fetchPastRecords(false, 0, false, {
+            searchValue: searchQuery,
+            reviewFilterValue: reviewFilter,
+            reviewDateValue: reviewDateFilter,
+        });
     }, [activeTab, reviewFilter, reviewDateFilter, fetchPastRecords]);
+
+    useEffect(() => {
+        if (activeTab !== 'past_records') return;
+
+        const debounce = setTimeout(() => {
+            setPastRecords([]);
+            setPastRecordsPage(0);
+            setHasMorePastRecords(true);
+            // Background fetch keeps typing smooth and avoids input focus disruption.
+            fetchPastRecords(true, 0, false, {
+                searchValue: searchQuery,
+                reviewFilterValue: reviewFilter,
+                reviewDateValue: reviewDateFilter,
+            });
+        }, 350);
+
+        return () => clearTimeout(debounce);
+    }, [searchQuery, activeTab, reviewFilter, reviewDateFilter, fetchPastRecords]);
 
     // Fetch single item for realtime inserts
     const fetchSingleQueueItem = async (id: string) => {
@@ -924,7 +1162,11 @@ const ReceptionDashboard: React.FC = () => {
                 toast.success(`New registration saved for ${patientData.name}`, { id: toastId });
                 handleCloseWalkInModal();
                 setActiveTab('past_records');
-                await fetchPastRecords(false, 0, false);
+                await fetchPastRecords(false, 0, false, {
+                    searchValue: searchQuery,
+                    reviewFilterValue: reviewFilter,
+                    reviewDateValue: reviewDateFilter,
+                });
                 await fetchReviewAlertCount();
                 return;
             }
@@ -1499,8 +1741,8 @@ const ReceptionDashboard: React.FC = () => {
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {(['all', 'due_today', 'upcoming', 'not_completed', 'review_completed'] as ReceptionReviewFilter[]).map((filterKey) => (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                    {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'followup_needed', 'not_completed', 'review_completed'] as ReceptionReviewFilter[]).map((filterKey) => (
                                         <button
                                             key={filterKey}
                                             type="button"
@@ -1511,9 +1753,22 @@ const ReceptionDashboard: React.FC = () => {
                                                     : 'bg-white text-gray-600 border-gray-200 hover:border-orange-200'
                                             }`}
                                         >
-                                            {filterKey === 'all' ? 'All' : filterKey === 'due_today' ? 'Due Today' : filterKey === 'review_completed' ? 'Review Completed' : filterKey === 'not_completed' ? 'Not Completed' : 'Upcoming'}
+                                            {getReviewFilterLabel(filterKey)}
                                         </button>
                                     ))}
+
+                                        {(reviewFilter === 'due_today' || reviewFilter === 'due_tomorrow') && (
+                                            <button
+                                                type="button"
+                                                onClick={handlePrintPastRecordsList}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                </svg>
+                                                Print List
+                                            </button>
+                                        )}
 
                                     <div className="flex flex-wrap items-center gap-2 ml-auto">
                                         <button
@@ -1560,171 +1815,116 @@ const ReceptionDashboard: React.FC = () => {
                             </div>
                             {pastRecords.length === 0 ? (
                                 <div className="p-20 text-center">
-                                    <svg className="w-16 h-16 text-gray-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    <svg className="w-16 h-16 text-gray-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
                                     <p className="text-gray-700 font-medium">No patients found</p>
                                     <p className="text-gray-400 text-sm mt-1">Try a different search term</p>
                                 </div>
                             ) : (
                                 <div>
-                                    {/* Table Header */}
-                                    <div className="grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_10rem_3rem_3rem_2rem] gap-1 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
-                                        <span>#</span>
-                                        <span>Patient Name</span>
-                                        <span>Age</span>
-                                        <span>Phone</span>
-                                        <span>MR #</span>
-                                        <span>BH ID</span>
-                                        <span>Visits</span>
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                    {/* Patient Rows */}
                                     <div className="divide-y divide-gray-100">
                                         {pastRecords.map((patient, index) => {
-                                            // Smart initial: skip MR./MRS./MS./DR. prefix
-                                            const nameForInitial = (patient.name || '').replace(/^(MR\.|MRS\.|MS\.|DR\.)\s*/i, '').trim();
-                                            const initial = nameForInitial.charAt(0)?.toUpperCase() || '?';
+                                            const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
+                                            const isCallHistoryExpanded = expandedCallHistoryPatientIds.has(patient.id);
+                                            const visibleCallHistory = isCallHistoryExpanded ? patient.callHistory : patient.callHistory.slice(0, 2);
+                                            const hiddenCallCount = Math.max((patient.callHistory?.length || 0) - 2, 0);
+
                                             return (
-                                                <div key={patient.id}>
-                                                    {/* Patient Row */}
-                                                    <div
-                                                        className={`grid grid-cols-[2.5rem_1fr_3rem_6.5rem_8.5rem_10rem_3rem_3rem_2rem] gap-1 px-6 py-4 cursor-pointer transition-all duration-150 items-center ${expandedPatientId === patient.id ? 'bg-orange-50/60 border-l-4 border-l-orange-400' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'}`}
-                                                        onClick={() => setExpandedPatientId(expandedPatientId === patient.id ? null : patient.id)}
-                                                    >
-                                                        {/* S.No */}
-                                                        <span className="text-xs text-gray-400 font-medium">{index + 1}</span>
-
-                                                        {/* Patient Name with avatar */}
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
-                                                                {initial}
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <p className="font-semibold text-gray-900 text-sm truncate">{patient.name}</p>
-                                                                {patient.father_husband_name && (
-                                                                    <p className="text-[11px] text-gray-400 truncate">S/o {patient.father_husband_name}</p>
-                                                                )}
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                                                        patient.reviewCategory === 'due_today'
-                                                                            ? 'bg-orange-50 text-orange-700'
-                                                                            : patient.reviewCategory === 'upcoming'
-                                                                            ? 'bg-emerald-50 text-emerald-700'
-                                                                            : patient.reviewCategory === 'not_completed'
-                                                                                ? 'bg-red-50 text-red-700'
-                                                                                : 'bg-gray-100 text-gray-600'
-                                                                    }`}>
-                                                                        {patient.reviewCategory === 'due_today' ? 'Due Today' : patient.reviewCategory === 'upcoming' ? 'Upcoming' : patient.reviewCategory === 'not_completed' ? 'Not Completed' : 'Review Completed'}
+                                                <div key={patient.id} className="px-4 sm:px-5 py-4">
+                                                    <div className="rounded-2xl border border-gray-200/80 bg-gradient-to-b from-white to-gray-50/40 p-4 sm:p-5 shadow-sm hover:shadow-md transition-all">
+                                                        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_23rem] gap-5 items-start">
+                                                            <div className="min-w-0 space-y-2.5">
+                                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-[11px] text-gray-500 font-bold">{index + 1}</span>
+                                                                    <p className="text-base font-extrabold tracking-tight text-gray-900">{patient.name}</p>
+                                                                    <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1">
+                                                                        Review Date: {patient.latestReviewDate ? new Date(patient.latestReviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}
                                                                     </span>
-                                                                    <span className="text-[10px] text-gray-500">
-                                                                        {patient.latestReviewDate ? `Review: ${new Date(patient.latestReviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Review: —'}
+                                                                </div>
+
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
+                                                                    <p className="text-gray-700">Age: <span className="font-semibold text-gray-900">{patient.age || '--'}</span></p>
+                                                                    <p className="text-gray-700">{relationLabel}: <span className="font-semibold text-gray-900">{patient.father_husband_name || '--'}</span></p>
+                                                                </div>
+
+                                                                <p className="text-base text-gray-900 font-extrabold tracking-wide">MR: {patient.mr_number || '--'}</p>
+
+                                                                <div className="flex items-center gap-2 pt-0.5">
+                                                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${getReviewBadgeClass(patient.reviewCategory)}`}>
+                                                                        {getReviewFilterLabel(patient.reviewCategory)}
+                                                                    </span>
+                                                                    <span className="text-[11px] text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded-full border border-orange-100">
+                                                                        Visits: {patient.prescriptions?.length || 0}
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                        </div>
 
-                                                        {/* Age */}
-                                                        <span className="text-sm text-gray-700">{patient.age || '—'}</span>
+                                                            <div className="shrink-0 w-full max-w-full space-y-2.5">
+                                                                <div className="flex flex-wrap justify-start items-center gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setRxHistoryPatient(patient)}
+                                                                        className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-orange-200 text-orange-700 bg-white hover:bg-orange-50 transition-colors"
+                                                                    >
+                                                                        View Rx
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => openCallLog(patient)}
+                                                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                                                                    >
+                                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                                        </svg>
+                                                                        Call Log
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => confirmDelete('patient', patient.id, patient.name)}
+                                                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                                        title="Delete Patient Record"
+                                                                    >
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
 
-                                                        {/* Phone */}
-                                                        <span className="text-sm text-gray-700 font-mono">{patient.phone || '—'}</span>
-
-                                                        {/* MR # */}
-                                                        <span className="text-xs text-gray-700 font-medium truncate min-w-0" title={patient.mr_number || ''}>{patient.mr_number || '—'}</span>
-
-                                                        {/* BH ID */}
-                                                        <span className="text-xs text-gray-500 font-mono truncate min-w-0" title={patient.beanhealth_id || ''}>{patient.beanhealth_id || '—'}</span>
-
-                                                        {/* Visits */}
-                                                        <span className="text-sm font-semibold text-orange-600">{patient.prescriptions?.length || 0}</span>
-
-                                                        {/* Delete Button */}
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                confirmDelete('patient', patient.id, patient.name);
-                                                            }}
-                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                            title="Delete Patient Record"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </button>
-
-                                                        {/* Expand arrow */}
-                                                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expandedPatientId === patient.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                        </svg>
-                                                    </div>
-
-                                                    {/* Expanded: Prescription History */}
-                                                    {expandedPatientId === patient.id && (
-                                                        <div className="bg-gray-50 border-t border-gray-100">
-                                                            {patient.prescriptions?.length > 0 ? (
-                                                                <div className="px-5 py-3 space-y-2">
-                                                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Prescription History</p>
-                                                                    {patient.prescriptions.map((rx: any) => (
-                                                                        <div key={rx.id} className="bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors">
-                                                                            <div className="flex items-center justify-between gap-2">
-                                                                                <div className="min-w-0">
-                                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                                        <span className="text-xs font-semibold text-gray-800">
-                                                                                            {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                                                            <span className="text-gray-400 font-normal ml-1">
-                                                                                                {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                                                                                            </span>
+                                                                <div className="rounded-xl border border-gray-200 bg-white p-3.5">
+                                                                    <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1">Call History</p>
+                                                                    {patient.callHistory && patient.callHistory.length > 0 ? (
+                                                                        <div className="space-y-1.5">
+                                                                            {visibleCallHistory.map((entry) => (
+                                                                                <div key={entry.id} className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-2">
+                                                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                                                        <span className="font-semibold text-gray-700">
+                                                                                            {entry.called_at ? new Date(entry.called_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}
                                                                                         </span>
-                                                                                        {rx.doctor?.name && (
-                                                                                            <span className="text-[10px] text-gray-500 font-medium">
-                                                                                                · {formatDoctorName(rx.doctor.name)}
-                                                                                            </span>
-                                                                                        )}
-                                                                                        {rx.next_review_date && (
-                                                                                            <span className="text-[10px] font-semibold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded">
-                                                                                                Review {new Date(rx.next_review_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                                                            </span>
-                                                                                        )}
-                                                                                        {rx.status === 'dispensed' && (
-                                                                                            <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
-                                                                                        )}
+                                                                                        <span className={`font-bold px-1.5 py-0.5 rounded ${entry.call_status === 'picked' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                                                                            {entry.call_status === 'picked' ? 'Picked' : 'Not Picked'}
+                                                                                        </span>
                                                                                     </div>
+                                                                                    <p className="mt-1 text-gray-600 leading-relaxed">Response: {entry.patient_response || '--'}</p>
                                                                                 </div>
+                                                                            ))}
+                                                                            {hiddenCallCount > 0 && (
                                                                                 <button
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        setRxViewPatient(patient);
-                                                                                        setRxViewPrescription(rx);
-                                                                                    }}
-                                                                                    className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors"
+                                                                                    type="button"
+                                                                                    onClick={() => togglePatientCallHistory(patient.id)}
+                                                                                    className="text-xs font-semibold text-sky-700 hover:text-sky-800 mt-1"
                                                                                 >
-                                                                                    View Rx
-                                                                                <div className="mt-2 flex justify-end">
-                                                                                    <button
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation();
-                                                                                            openCallLog(patient);
-                                                                                        }}
-                                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
-                                                                                    >
-                                                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                                                                        </svg>
-                                                                                        Call Log
-                                                                                    </button>
-                                                                                </div>
+                                                                                    {isCallHistoryExpanded ? 'Show less call history' : `Show ${hiddenCallCount} more call entr${hiddenCallCount === 1 ? 'y' : 'ies'}`}
                                                                                 </button>
-                                                                            </div>
+                                                                            )}
                                                                         </div>
-                                                                    ))}
+                                                                    ) : (
+                                                                        <p className="text-xs text-gray-400">No previous call history.</p>
+                                                                    )}
                                                                 </div>
-                                                            ) : (
-                                                                <div className="px-5 py-4 text-center">
-                                                                    <p className="text-xs text-gray-400">No prescriptions recorded</p>
-                                                                </div>
-                                                            )}
+                                                            </div>
                                                         </div>
-                                                    )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -2395,6 +2595,74 @@ const ReceptionDashboard: React.FC = () => {
             )}
 
             {/* View Rx Modal — Past Records */}
+            {rxHistoryPatient && (
+                <div className="fixed inset-0 z-[97] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col">
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">Past Prescriptions</h3>
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                    {rxHistoryPatient.name}{rxHistoryPatient.mr_number ? ` · ${rxHistoryPatient.mr_number}` : ''}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setRxHistoryPatient(null)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="p-5 overflow-y-auto space-y-2">
+                            {(rxHistoryPatient.prescriptions || []).length === 0 ? (
+                                <p className="text-sm text-gray-500 text-center py-8">No past prescriptions found for this patient.</p>
+                            ) : (
+                                rxHistoryPatient.prescriptions.map((rx: any) => (
+                                    <div key={rx.id} className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-gray-800">
+                                                {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                <span className="text-gray-400 font-normal ml-2">
+                                                    {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </p>
+                                            {rx.doctor?.name && (
+                                                <p className="text-xs text-gray-500 mt-1">{formatDoctorName(rx.doctor.name)}</p>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setRxViewPatient(rxHistoryPatient);
+                                                setRxViewPrescription(rx);
+                                                setRxHistoryPatient(null);
+                                            }}
+                                            className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors"
+                                        >
+                                            Open Rx
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div className="p-4 border-t border-gray-100 bg-gray-50">
+                            <button
+                                type="button"
+                                onClick={() => setRxHistoryPatient(null)}
+                                className="w-full py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {rxViewPrescription && rxViewPatient && (
                 <PrescriptionModal
                     doctor={rxViewPrescription.doctor || {}}
@@ -2492,6 +2760,33 @@ const ReceptionDashboard: React.FC = () => {
                                     placeholder={callLogStatus === 'picked' ? 'e.g. Patient confirmed the review date' : 'e.g. Called twice, no answer'}
                                     className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 resize-none"
                                 />
+                            </div>
+
+                            <div className="border border-gray-200 rounded-xl overflow-hidden">
+                                <div className="px-3.5 py-2.5 bg-gray-50 border-b border-gray-200">
+                                    <p className="text-xs font-bold uppercase tracking-wide text-gray-600">Call History</p>
+                                </div>
+                                <div className="max-h-44 overflow-y-auto divide-y divide-gray-100">
+                                    {callHistoryLoading ? (
+                                        <p className="text-sm text-gray-500 px-3.5 py-4">Loading call history...</p>
+                                    ) : callHistory.length === 0 ? (
+                                        <p className="text-sm text-gray-500 px-3.5 py-4">No previous call history.</p>
+                                    ) : (
+                                        callHistory.map((entry) => (
+                                            <div key={entry.id} className="px-3.5 py-2.5">
+                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                                                    <span className="font-semibold text-gray-700">
+                                                        {new Date(entry.called_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    </span>
+                                                    <span className={`font-bold px-2 py-0.5 rounded-full ${entry.call_status === 'picked' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                                        {entry.call_status === 'picked' ? 'Picked' : 'Not Picked'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-600 mt-1">Response: {entry.patient_response || '--'}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
 
                             <div className="flex gap-3 pt-1">
