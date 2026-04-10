@@ -564,6 +564,9 @@ A prescription typed for patient **Vishnu Patel (KNH/17/017575)** was sent and r
 
 ---
 
+| 2026-04-10 | Wired the enterprise doctor dashboard past-records tab to the shared reception review service so it now uses the current reception past-records data model instead of the legacy doctor-only prescription query | `src/components/EnterpriseDoctorDashboard.tsx`, `CLAUDE.md` |
+| 2026-04-10 | Added reception-style past-records panel to enterprise doctor dashboard with review filters, review-date filter, print list, call log modal, call history preview, and expandable Rx history | `src/components/enterprise/DoctorPastRecordsPanel.tsx`, `src/components/EnterpriseDoctorDashboard.tsx`, `CLAUDE.md` |
+
 ## Git / Branch Notes
 
 ### This repo has two unrelated git histories

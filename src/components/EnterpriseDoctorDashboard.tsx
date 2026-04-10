@@ -8,7 +8,12 @@ import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
 import DoctorTeamAuditModal from './modals/DoctorTeamAuditModal';
 import TwoStepConfirmModal from './common/TwoStepConfirmModal';
 import EnterpriseCKDSnapshotView from './EnterpriseCKDSnapshotView';
-import TrackPatientsPage from './enterprise/TrackPatientsPage';
+import DoctorPastRecordsPanel from './enterprise/DoctorPastRecordsPanel';
+import {
+    fetchReceptionPastRecords,
+    type ReceptionPastRecordPatient,
+    type ReceptionReviewFilter,
+} from '../services/enterpriseReviewService';
 import { LogoIcon } from './icons/LogoIcon';
 import DoctorSettingsModal from './modals/DoctorSettingsModal';
 import { type DoctorActorSession } from '../utils/doctorActorSession';
@@ -59,6 +64,63 @@ const formatDoctorName = (name: string) => {
     return `Dr. ${cleanName}`;
 };
 
+const toLocalISODate = (date: Date): string => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+};
+
+const getReviewFilterLabel = (filterKey: ReceptionReviewFilter): string => {
+    if (filterKey === 'all') return 'All';
+    if (filterKey === 'due_today') return 'Due Today';
+    if (filterKey === 'due_tomorrow') return 'Due Tomorrow';
+    if (filterKey === 'upcoming') return 'Upcoming';
+    if (filterKey === 'overdue') return 'Over Due';
+    if (filterKey === 'followup_needed') return 'Followup Needed';
+    if (filterKey === 'review_completed') return 'Review Completed';
+    return 'Not Completed';
+};
+
+const getReviewBadgeClass = (category: ReceptionReviewFilter): string => {
+    if (category === 'due_today') return 'bg-orange-50 text-orange-700';
+    if (category === 'due_tomorrow') return 'bg-sky-50 text-sky-700';
+    if (category === 'upcoming') return 'bg-emerald-50 text-emerald-700';
+    if (category === 'overdue') return 'bg-rose-50 text-rose-700';
+    if (category === 'followup_needed') return 'bg-amber-50 text-amber-700';
+    if (category === 'not_completed') return 'bg-red-50 text-red-700';
+    return 'bg-gray-100 text-gray-600';
+};
+
+const formatPastDate = (value?: string | null): string => {
+    if (!value) return '--';
+    return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const escapeHtml = (value: string): string =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+type CallLogStatus = 'picked' | 'not_picked';
+
+interface CallLogTarget {
+    patientId: string;
+    mrNumber: string | null;
+    patientName: string;
+    reviewDate: string | null;
+}
+
+interface CallHistoryEntry {
+    id: string;
+    called_at: string;
+    call_status: string | null;
+    patient_response: string | null;
+}
+
 interface EnterpriseDoctorDashboardProps {
     doctor: DoctorProfile;
     onBack: () => void;
@@ -83,7 +145,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [notes, setNotes] = useState('');
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
 
-    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records' | 'track_patients'>('queue');
+    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records'>('queue');
     const [historyList, setHistoryList] = useState<any[]>([]);
 
     const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -233,8 +295,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     }, [doctor.id]);
 
     // Patient Database State (Past Records tab)
-    const [pastRecords, setPastRecords] = useState<any[]>([]);
+    const [pastRecords, setPastRecords] = useState<ReceptionPastRecordPatient[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [reviewFilter, setReviewFilter] = useState<ReceptionReviewFilter>('all');
+    const [reviewDateFilter, setReviewDateFilter] = useState('');
     const [pastRecordsPage, setPastRecordsPage] = useState(0);
     const [hasMorePastRecords, setHasMorePastRecords] = useState(true);
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
@@ -242,58 +306,34 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [expandedPatientId, setExpandedPatientId] = useState<string | null>(null);
     const [rxViewPatient, setRxViewPatient] = useState<any>(null);
     const [rxViewPrescription, setRxViewPrescription] = useState<any>(null);
+    const [callLogTarget, setCallLogTarget] = useState<CallLogTarget | null>(null);
+    const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
+    const [callHistoryLoading, setCallHistoryLoading] = useState(false);
+    const [expandedCallHistoryPatientIds, setExpandedCallHistoryPatientIds] = useState<Set<string>>(new Set());
+    const [callLogSubmitting, setCallLogSubmitting] = useState(false);
+    const [callLogStatus, setCallLogStatus] = useState<CallLogStatus>('picked');
+    const [callLogNotes, setCallLogNotes] = useState('');
+    const [callLogNextDate, setCallLogNextDate] = useState('');
+    const [callLogRescheduleDate, setCallLogRescheduleDate] = useState('');
     const PAST_RECORDS_PER_PAGE = 50;
 
-    // Helper: deduplicate prescriptions by patient
-    const groupPrescriptionsByPatient = (prescriptions: any[]) => {
-        const patientMap = new Map<string, any>();
-        for (const rx of prescriptions) {
-            const pid = rx.patient_id;
-            if (!patientMap.has(pid)) {
-                patientMap.set(pid, {
-                    ...rx.patient,
-                    prescriptions: []
-                });
-            }
-            patientMap.get(pid)!.prescriptions.push(rx);
-        }
-        // Sort prescriptions within each patient by date desc
-        for (const patient of patientMap.values()) {
-            patient.prescriptions.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        }
-        return Array.from(patientMap.values());
-    };
-
     const fetchPastRecords = useCallback(async (isBackground = false, page = 0, append = false) => {
+        if (!doctor.hospital_id) return;
         if (!isBackground && !append) setLoading(true);
         if (append) setIsLoadingMorePast(true);
         try {
-            // Get unique patient count for this doctor
-            if (!append) {
-                const { data: countData } = await supabase
-                    .from('hospital_prescriptions' as any)
-                    .select('patient_id')
-                    .eq('doctor_id', doctor.id);
-                const uniquePatients = new Set((countData || []).map((r: any) => r.patient_id));
-                setPastRecordsTotal(uniquePatients.size);
-            }
+            const result = await fetchReceptionPastRecords({
+                hospitalId: doctor.hospital_id,
+                page,
+                pageSize: PAST_RECORDS_PER_PAGE,
+                searchQuery,
+                reviewFilter,
+                reviewDate: reviewDateFilter,
+            });
 
-            const { data, error } = await supabase
-                .from('hospital_prescriptions' as any)
-                .select(`
-                    id, medications, notes, status, token_number, created_at, patient_id,
-                    patient:hospital_patients!hospital_prescriptions_patient_id_fkey(*)
-                `)
-                .eq('doctor_id', doctor.id)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            const grouped = groupPrescriptionsByPatient(data || []);
-            const paged = append
-                ? grouped.slice(0, (page + 1) * PAST_RECORDS_PER_PAGE)
-                : grouped.slice(0, PAST_RECORDS_PER_PAGE);
-            setHasMorePastRecords(paged.length < grouped.length);
-            setPastRecords(paged);
+            setPastRecordsTotal(result.totalCount);
+            setHasMorePastRecords(result.hasMore);
+            setPastRecords(prev => append ? [...prev, ...result.patients] : result.patients);
             setPastRecordsPage(page);
         } catch (error) {
             console.error('Error fetching patients:', error);
@@ -302,7 +342,265 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             if (!isBackground && !append) setLoading(false);
             if (append) setIsLoadingMorePast(false);
         }
-    }, [doctor.id]);
+    }, [doctor.hospital_id, searchQuery, reviewFilter, reviewDateFilter]);
+
+    const handlePrintPastRecordsList = () => {
+        if (reviewFilter !== 'due_today' && reviewFilter !== 'due_tomorrow') {
+            toast.error('Print List is available only for Due Today or Due Tomorrow');
+            return;
+        }
+
+        if (pastRecords.length === 0) {
+            toast.error('No patient records to print');
+            return;
+        }
+
+        const printWindow = window.open('', '_blank', 'width=1200,height=800');
+        if (!printWindow) {
+            toast.error('Pop-up blocked. Please allow pop-ups to print the list.');
+            return;
+        }
+
+        const generatedAt = new Date().toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+        });
+
+        const rowsHtml = pastRecords
+            .map((patient, index) => {
+                const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${escapeHtml(patient.name || '--')}</td>
+                        <td>${patient.age ?? '--'}</td>
+                        <td>${relationLabel} ${escapeHtml(patient.father_husband_name || '--')}</td>
+                        <td>${escapeHtml(patient.mr_number || '--')}</td>
+                        <td>${formatPastDate(patient.latestReviewDate)}</td>
+                        <td>${formatPastDate(patient.lastVisitAt)}</td>
+                    </tr>
+                `;
+            })
+            .join('');
+
+        const filterLabel = getReviewFilterLabel(reviewFilter);
+
+        const html = `
+            <!doctype html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>Past Records Print List</title>
+                <style>
+                    * { box-sizing: border-box; }
+                    body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 24px; color: #1f2937; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+                    .title { font-size: 20px; font-weight: 700; margin: 0; }
+                    .meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
+                    .pill { display: inline-block; background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; margin-right: 8px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+                    thead th { text-align: left; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px; }
+                    tbody td { border: 1px solid #e5e7eb; padding: 10px; font-size: 12px; vertical-align: top; }
+                    tbody tr:nth-child(even) { background: #fcfcfd; }
+                    .footer { margin-top: 14px; font-size: 11px; color: #6b7280; }
+                    @media print {
+                        body { margin: 10mm; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <h1 class="title">Past Records List</h1>
+                        <p class="meta">${escapeHtml(doctor.name || 'Doctor')}</p>
+                        <p class="meta">Generated: ${generatedAt}</p>
+                    </div>
+                    <div>
+                        <span class="pill">Filter: ${escapeHtml(filterLabel)}</span>
+                        <span class="pill">Total: ${pastRecords.length}</span>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>S/o / W/o</th>
+                            <th>MR ID</th>
+                            <th>Due Date</th>
+                            <th>Last Visit Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+
+                <p class="footer">Printed from Doctor Past Records module.</p>
+
+                <script>
+                    window.onload = function () {
+                        window.print();
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
+    };
+
+    const openCallLog = async (patient: ReceptionPastRecordPatient) => {
+        if (!doctor.hospital_id) return;
+        setCallLogTarget({
+            patientId: patient.id,
+            mrNumber: patient.mr_number || null,
+            patientName: patient.name,
+            reviewDate: patient.latestReviewDate,
+        });
+        setCallHistory([]);
+        setCallHistoryLoading(true);
+        setCallLogStatus('picked');
+        setCallLogNotes('');
+        setCallLogNextDate('');
+        setCallLogRescheduleDate('');
+
+        try {
+            const { data, error } = await (supabase as any)
+                .from('hospital_patient_followups')
+                .select('id, called_at, call_status, patient_response')
+                .eq('hospital_id', doctor.hospital_id)
+                .eq('patient_id', patient.id)
+                .order('called_at', { ascending: false })
+                .limit(15);
+
+            if (error) throw error;
+            setCallHistory((data || []) as CallHistoryEntry[]);
+        } catch (error) {
+            console.error('Call history fetch error:', error);
+            toast.error('Failed to load call history');
+            setCallHistory([]);
+        } finally {
+            setCallHistoryLoading(false);
+        }
+    };
+
+    const closeCallLog = () => {
+        setCallLogTarget(null);
+        setCallHistory([]);
+        setCallHistoryLoading(false);
+        setCallLogSubmitting(false);
+        setCallLogStatus('picked');
+        setCallLogNotes('');
+        setCallLogNextDate('');
+        setCallLogRescheduleDate('');
+    };
+
+    const togglePatientCallHistory = (patientId: string) => {
+        setExpandedCallHistoryPatientIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(patientId)) {
+                next.delete(patientId);
+            } else {
+                next.add(patientId);
+            }
+            return next;
+        });
+    };
+
+    const handleSubmitCallLog = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!doctor.hospital_id || !callLogTarget) return;
+
+        setCallLogSubmitting(true);
+        try {
+            const effectiveReviewDate = callLogStatus === 'picked'
+                ? callLogRescheduleDate
+                : callLogNextDate;
+
+            const { data: existingReview, error: existingError } = await (supabase as any)
+                .from('hospital_patient_reviews')
+                .select('id, patient_id')
+                .eq('hospital_id', doctor.hospital_id)
+                .eq('patient_id', callLogTarget.patientId)
+                .in('status', ['pending', 'rescheduled'])
+                .order('next_review_date', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (existingError) throw existingError;
+
+            const reviewPatch = {
+                status: callLogStatus === 'picked' ? 'rescheduled' : 'pending',
+                next_review_date: effectiveReviewDate || callLogTarget.reviewDate,
+                cancelled_at: null,
+                completed_at: null,
+                updated_at: new Date().toISOString(),
+            };
+
+            if (existingReview?.id) {
+                const { error: updateError } = await (supabase as any)
+                    .from('hospital_patient_reviews')
+                    .update(reviewPatch)
+                    .eq('id', existingReview.id);
+                if (updateError) throw updateError;
+            } else if (callLogTarget.mrNumber) {
+                const { data: mrPatient, error: mrLookupError } = await (supabase as any)
+                    .from('hospital_patients')
+                    .select('id')
+                    .eq('hospital_id', doctor.hospital_id)
+                    .eq('mr_number', callLogTarget.mrNumber)
+                    .maybeSingle();
+
+                if (mrLookupError) throw mrLookupError;
+
+                if (mrPatient?.id) {
+                    const { error: insertError } = await (supabase as any)
+                        .from('hospital_patient_reviews')
+                        .insert({
+                            hospital_id: doctor.hospital_id,
+                            patient_id: mrPatient.id,
+                            doctor_id: doctor.id,
+                            next_review_date: effectiveReviewDate || callLogTarget.reviewDate,
+                            status: callLogStatus === 'picked' ? 'rescheduled' : 'pending',
+                        });
+                    if (insertError) throw insertError;
+                }
+            }
+
+            await (supabase as any)
+                .from('hospital_patient_followups')
+                .insert({
+                    hospital_id: doctor.hospital_id,
+                    review_id: existingReview?.id || null,
+                    patient_id: callLogTarget.patientId,
+                    called_at: new Date().toISOString(),
+                    call_status: callLogStatus,
+                    patient_response: callLogNotes.trim() || null,
+                    next_followup_date: callLogStatus === 'not_picked' ? (callLogNextDate || null) : null,
+                    attended: null,
+                    created_by_name: doctor.name || null,
+                });
+
+            toast.success('Call log saved');
+            closeCallLog();
+            await fetchPastRecords(false, 0, false);
+        } catch (error: any) {
+            console.error('Call log save error:', error);
+            toast.error(error.message || 'Failed to save call log');
+        } finally {
+            setCallLogSubmitting(false);
+        }
+    };
 
     const handleLoadMorePastRecords = () => {
         fetchPastRecords(true, pastRecordsPage + 1, true);
@@ -310,48 +608,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
     const handleSearchPastRecords = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        try {
-            if (!searchQuery.trim()) {
-                await fetchPastRecords();
-                return;
-            }
-
-            // Step 1: find patients matching name OR mr_number
-            const { data: matchedPatients } = await (supabase as any)
-                .from('hospital_patients')
-                .select('id')
-                .eq('hospital_id', doctor.hospital_id)
-                .or(`name.ilike.%${searchQuery}%,mr_number.ilike.%${searchQuery}%`);
-
-            const matchedIds = (matchedPatients || []).map((p: any) => p.id);
-            if (matchedIds.length === 0) {
-                setPastRecords([]);
-                setHasMorePastRecords(false);
-                return;
-            }
-
-            // Step 2: fetch prescriptions for those patients from this doctor
-            const { data, error } = await supabase
-                .from('hospital_prescriptions' as any)
-                .select(`
-                    id, medications, notes, status, token_number, created_at, patient_id,
-                    patient:hospital_patients!hospital_prescriptions_patient_id_fkey(*)
-                `)
-                .eq('doctor_id', doctor.id)
-                .in('patient_id', matchedIds)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            const grouped = groupPrescriptionsByPatient(data || []);
-            setPastRecords(grouped);
-            setHasMorePastRecords(false);
-        } catch (err) {
-            console.error(err);
-            toast.error('Search failed');
-        } finally {
-            setLoading(false);
-        }
+        setPastRecords([]);
+        setPastRecordsPage(0);
+        setHasMorePastRecords(true);
+        await fetchPastRecords(false, 0, false);
     };
 
     // Loading timeout - prevents infinite loading state
@@ -375,6 +635,19 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             fetchPastRecords();
         }
     }, [doctor.id, viewMode, fetchQueue, fetchHistory, fetchPastRecords]);
+
+    useEffect(() => {
+        if (viewMode !== 'past_records') return;
+
+        const debounce = setTimeout(() => {
+            setPastRecords([]);
+            setPastRecordsPage(0);
+            setHasMorePastRecords(true);
+            fetchPastRecords(true, 0, false);
+        }, 350);
+
+        return () => clearTimeout(debounce);
+    }, [searchQuery, viewMode, reviewFilter, reviewDateFilter, fetchPastRecords]);
 
     // Realtime subscription for queue updates with error handling
     useEffect(() => {
@@ -407,7 +680,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     } else if (viewMode === 'history') {
                         fetchHistory(true);
                     } else if (viewMode === 'past_records') {
-                        // Past records usually don't change by self-updates unless we modify them, strict reload might not be needed but safe
+                        // Past records are derived from shared review data, so keep the tab in sync.
+                        fetchPastRecords(true);
                     }
                 }
             )
@@ -458,11 +732,6 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     useEffect(() => {
         if (viewMode === 'queue') {
             logViewEvent('view.queue.open', {
-                route: `/enterprise-dashboard/doctors/${doctor.id}/dashboard`,
-            });
-        } else if (viewMode === 'track_patients') {
-            logViewEvent('view.track_patients.open', {
-                eventCategory: 'view',
                 route: `/enterprise-dashboard/doctors/${doctor.id}/dashboard`,
             });
         }
@@ -1269,30 +1538,24 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                         {/* Tab switcher — scrollable container prevents overflow on small tablets */}
                         <div className="flex-1 overflow-x-auto">
-                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm inline-grid grid-cols-4 gap-1 min-w-max w-full">
+                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm inline-grid grid-cols-3 gap-1 min-w-max w-full max-w-md">
                                 <button
                                     onClick={() => setViewMode('queue')}
-                                    className={`px-3 md:px-5 py-2 rounded-xl text-center text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-2.5 md:px-4 py-1.5 rounded-xl text-center text-[10px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Active Queue
                                 </button>
                                 <button
                                     onClick={() => setViewMode('history')}
-                                    className={`px-3 md:px-5 py-2 rounded-xl text-center text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'history' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-2.5 md:px-4 py-1.5 rounded-xl text-center text-[10px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'history' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     History Log
                                 </button>
                                 <button
                                     onClick={() => setViewMode('past_records')}
-                                    className={`px-3 md:px-5 py-2 rounded-xl text-center text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
+                                    className={`px-2.5 md:px-4 py-1.5 rounded-xl text-center text-[10px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Past Records
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('track_patients')}
-                                    className={`px-3 md:px-5 py-2 rounded-xl text-center text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'track_patients' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
-                                >
-                                    Track Patients
                                 </button>
                             </div>
                         </div>
@@ -1347,8 +1610,13 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     doctor={doctor}
                     onBack={() => setViewMode('queue')}
                 />
-            ) : viewMode === 'track_patients' ? (
-                <TrackPatientsPage onBack={() => setViewMode('queue')} readOnly={true} />
+            ) : viewMode === 'past_records' ? (
+                <DoctorPastRecordsPanel
+                    doctor={currentDoctor}
+                    onBack={() => setViewMode('queue')}
+                    onViewPrescription={handleViewPrescription}
+                    onEditResend={handleEditResend}
+                />
             ) : (
                 <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
                     {viewMode === 'queue' ? (
