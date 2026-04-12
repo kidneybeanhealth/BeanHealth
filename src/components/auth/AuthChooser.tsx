@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DoctorIcon } from '../icons/DoctorIcon';
 import { UserIcon } from '../icons/UserIcon';
 
@@ -11,6 +12,7 @@ interface AuthChooserProps {
 
 const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: onAdminLogin, onHospitalPatientLogin }) => {
     const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor' | null>(null);
+    const navigate = useNavigate();
 
     const handleRoleSelect = (role: 'patient' | 'doctor') => {
         setSelectedRole(role);
@@ -149,6 +151,39 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: on
                     }`}
             >
                 Continue
+            </button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-gray-200"></div>
+                <span className="text-xs text-gray-400 font-medium">OR</span>
+                <div className="flex-1 h-px bg-gray-200"></div>
+            </div>
+
+            {/* Patient App (Beta) */}
+            <button
+                onClick={() => navigate('/patient-app')}
+                className="w-full p-4 rounded-2xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 hover:border-emerald-400 hover:shadow-md transition-all duration-200 text-left flex items-center gap-4 group"
+            >
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base !text-gray-900">
+                        Patient App
+                        <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white px-2 py-0.5 rounded-full align-middle">
+                            Beta
+                        </span>
+                    </h3>
+                    <p className="text-xs sm:text-sm !text-gray-500">
+                        View prescriptions & health dashboard
+                    </p>
+                </div>
+                <svg className="w-5 h-5 text-gray-400 group-hover:text-emerald-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
             </button>
 
 

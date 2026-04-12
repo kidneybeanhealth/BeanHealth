@@ -14,6 +14,7 @@ interface PatientMatch {
     hospital_name: string;
     age: number;
     created_at: string;
+    app_access_enabled?: boolean;
 }
 
 const HospitalPatientLogin: React.FC<HospitalPatientLoginProps> = ({ onSwitchToChooser }) => {
@@ -41,7 +42,16 @@ const HospitalPatientLogin: React.FC<HospitalPatientLoginProps> = ({ onSwitchToC
                 setError('No patient records found for this phone number. Please check the number you provided at the hospital.');
                 return;
             }
-            setPatients(results);
+
+            // Only allow records explicitly enabled for Patient App access.
+            const hasAppAccess = results.some(p => p.app_access_enabled === true);
+            if (!hasAppAccess) {
+                setError('Your doctor has not enabled Patient App access for your account yet. Please contact the hospital reception directly to request access.');
+                return;
+            }
+
+            const authorizedPatients = results.filter(p => p.app_access_enabled === true);
+            setPatients(authorizedPatients);
             setStep('verify');
         } catch (err) {
             setError('Something went wrong. Please try again.');

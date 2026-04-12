@@ -421,6 +421,7 @@ export class AuthService {
     hospital_name: string;
     age: number;
     created_at: string;
+    app_access_enabled: boolean;
   }[]> {
     const digits = phone.replace(/\D/g, '');
 

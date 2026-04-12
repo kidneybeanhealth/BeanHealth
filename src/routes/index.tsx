@@ -55,6 +55,9 @@ import ProtectedRoute from '../components/ProtectedRoute';
 const OnboardingFlow = React.lazy(() => import('../components/OnboardingFlow'));
 const TermsAndConditionsModal = React.lazy(() => import('../components/modals/TermsAndConditionsModal'));
 
+// Patient App (MR ID-based, no Supabase Auth)
+const PatientApp = React.lazy(() => import('../components/patient/PatientApp'));
+
 // Loading fallback component for lazy-loaded routes
 const PageLoader: React.FC = () => (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
@@ -209,6 +212,9 @@ const AppRoutes: React.FC = () => {
 
                 {/* Profile Setup */}
                 <Route path="/setup" element={<ProfileSetupRoute />} />
+
+                {/* ============ PATIENT APP (MR ID Login) ============ */}
+                <Route path="/patient-app" element={<PatientApp />} />
 
                 {/* ============ PROTECTED DASHBOARD ROUTES ============ */}
 
