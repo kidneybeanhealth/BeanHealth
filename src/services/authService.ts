@@ -421,6 +421,7 @@ export class AuthService {
     hospital_name: string;
     age: number;
     created_at: string;
+    past_records_enabled?: boolean;
     app_access_enabled: boolean;
   }[]> {
     const digits = phone.replace(/\D/g, '');
@@ -464,6 +465,22 @@ export class AuthService {
 
       const hospitalPatient = verifyData[0];
       console.log('[AuthService] Patient verified:', hospitalPatient.patient_name);
+
+      // Compatibility rollout: prefer past_records_enabled, fallback to app_access_enabled.
+      // If access flags are present and both are false, block login.
+      const hasAccessFlags =
+        hospitalPatient.past_records_enabled !== undefined ||
+        hospitalPatient.app_access_enabled !== undefined;
+      const hasPastRecordsAccess =
+        hospitalPatient.past_records_enabled === true ||
+        hospitalPatient.app_access_enabled === true;
+
+      if (hasAccessFlags && !hasPastRecordsAccess) {
+        return {
+          success: false,
+          error: 'Past records access is not enabled for your account yet. Please contact the hospital reception.'
+        };
+      }
 
       // Step 2: Try to sign in (returning user)
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({

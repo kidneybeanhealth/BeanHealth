@@ -14,6 +14,8 @@ interface PatientMatch {
     hospital_name: string;
     age: number;
     created_at: string;
+    past_records_enabled?: boolean;
+    app_access_enabled?: boolean;
 }
 
 const HospitalPatientLogin: React.FC<HospitalPatientLoginProps> = ({ onSwitchToChooser }) => {
@@ -42,15 +44,19 @@ const HospitalPatientLogin: React.FC<HospitalPatientLoginProps> = ({ onSwitchToC
                 return;
             }
 
-            // Check if ANY matched hospital patient record has explicit app access granted
-            const hasAppAccess = results.some(p => p.app_access_enabled === true);
-            if (!hasAppAccess) {
-                setError('Your doctor has not enabled Patient App access for your account yet. Please contact the hospital reception directly to request access.');
+            // Compatibility rollout: prefer past_records_enabled, fallback to app_access_enabled.
+            const hasPastRecordsAccess = results.some(
+                p => p.past_records_enabled === true || p.app_access_enabled === true
+            );
+            if (!hasPastRecordsAccess) {
+                setError('Past records access is not enabled for your account yet. Please contact the hospital reception directly to request access.');
                 return;
             }
 
-            // Filter out patients who don't have access so they don't see hospitals they aren't enabled for
-            const authorizedPatients = results.filter(p => p.app_access_enabled);
+            // Filter out patients who do not have past-record access.
+            const authorizedPatients = results.filter(
+                p => p.past_records_enabled === true || p.app_access_enabled === true
+            );
             
             setPatients(authorizedPatients);
             setStep('verify');

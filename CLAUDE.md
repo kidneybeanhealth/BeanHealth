@@ -432,6 +432,7 @@ Use Tailwind `dark:` classes. Theme state comes from `ThemeContext`.
 | 2026-03-16 | Add dummy MR number to printer setup sandbox preview so MR row is always visible during layout testing | `src/components/PrinterSetupModal.tsx` |
 | 2026-03-17 | Add multi-dosage support for saved drugs: dosage list input in Manage Saved Drugs, persisted `dosages` array, and per-row dosage suggestion dropdown on drug selection while still allowing manual typing | `src/components/modals/PrescriptionModal.tsx`, `src/components/modals/ManageDrugsModal.tsx`, `ADD_DOSAGES_TO_DRUGS.sql` |
 | 2026-03-17 | Redesign PrescriptionModal Manage Saved Drugs with explicit Type/Drug/Dosages/Default Timing fields, persist `default_timing`, and hydrate dosage suggestions even when saved drug is typed manually before clicking dosage | `src/components/modals/PrescriptionModal.tsx` |
+| 2026-04-12 | Patient app login access migrated toward `past_records_enabled` with backward-compatible fallback to `app_access_enabled`; added SQL migration to expose both flags in phone lookup and verify RPCs | `src/components/auth/HospitalPatientLogin.tsx`, `src/services/authService.ts`, `sql/20260412_past_records_access.sql` |
 
 ---
 
