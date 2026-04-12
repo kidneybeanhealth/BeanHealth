@@ -109,6 +109,32 @@ export const PatientAppProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setPrescribedFluid(null);
   }, []);
 
+  // Revalidate persisted session in case access was revoked from dashboard toggles.
+  useEffect(() => {
+    if (!session?.patient?.mr_number) return;
+
+    let isActive = true;
+    const validateSessionAccess = async () => {
+      const result = await PatientAppService.lookupByMRID(session.patient.mr_number as string, {
+        persistSession: false,
+      });
+
+      if (!isActive) return;
+
+      if (result.error || !result.data || result.data.patient.id !== session.patient.id) {
+        PatientAppService.clearSession();
+        setSession(null);
+        setError(result.error || 'Patient App access is disabled for this account.');
+      }
+    };
+
+    validateSessionAccess();
+
+    return () => {
+      isActive = false;
+    };
+  }, [session?.patient?.id, session?.patient?.mr_number]);
+
   // ── Vitals ─────────────────────────────────────────────
   const refreshVitals = useCallback(async () => {
     if (!session?.patient.id) return;

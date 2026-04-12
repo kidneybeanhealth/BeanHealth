@@ -40,6 +40,7 @@ export interface ReceptionPastRecordPatient {
     mr_number?: string | null;
     beanhealth_id?: string | null;
     father_husband_name?: string | null;
+    app_access_enabled?: boolean;
     created_at?: string;
     latestReviewDate: string | null;
     reviewCategory: ReceptionReviewFilter;
@@ -204,7 +205,7 @@ export async function fetchReceptionPastRecords(
     let patientsQuery: any = (supabase
         .from('hospital_patients') as any)
         .select(
-            'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, created_at',
+            'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at',
             { count: 'exact' }
         )
         .eq('hospital_id', hospitalId)
@@ -504,5 +505,37 @@ export async function syncReviewFromPrescription(
 
     if (insertResult.error) {
         throw insertResult.error;
+    }
+}
+
+interface UpdatePatientAppAccessParams {
+    hospitalId: string;
+    patientId: string;
+    enabled: boolean;
+}
+
+export async function updatePatientAppAccess(
+    params: UpdatePatientAppAccessParams
+): Promise<void> {
+    const { hospitalId, patientId, enabled } = params;
+
+    if (!hospitalId || !patientId) {
+        throw new Error('Missing hospital or patient identifier');
+    }
+
+    const updateResult = await withTimeout(
+        ((supabase
+            .from('hospital_patients' as any) as any)
+            .update({
+                app_access_enabled: enabled,
+            })
+            .eq('hospital_id', hospitalId)
+            .eq('id', patientId)) as any,
+        10000,
+        'Timed out while updating patient app access'
+    ) as SupabaseResult;
+
+    if (updateResult.error) {
+        throw updateResult.error;
     }
 }

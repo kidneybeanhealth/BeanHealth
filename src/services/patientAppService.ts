@@ -18,6 +18,7 @@ export interface HospitalPatient {
   mr_number: string | null;
   token_number: string | null;
   beanhealth_id: string | null;
+  app_access_enabled?: boolean;
   created_at: string;
 }
 
@@ -144,7 +145,10 @@ export class PatientAppService {
   }
 
   // ── MR ID Lookup ────────────────────────────────────────
-  static async lookupByMRID(mrNumber: string): Promise<{
+  static async lookupByMRID(
+    mrNumber: string,
+    options?: { persistSession?: boolean }
+  ): Promise<{
     data: PatientSessionData | null;
     error: string | null;
   }> {
@@ -166,7 +170,27 @@ export class PatientAppService {
         return { data: null, error: 'No patient found with this MR ID. Please check the number and try again.' };
       }
 
+      if (result.access_denied === true) {
+        this.clearSession();
+        return {
+          data: null,
+          error: 'Patient App access is currently disabled for this MR ID. Please contact reception or your doctor.',
+        };
+      }
+
       const patient = result.patient as HospitalPatient;
+
+      // Backward compatible guard:
+      // - Explicit false must always deny.
+      // - Undefined is tolerated for legacy RPC payloads until DB migration is applied.
+      if (patient.app_access_enabled === false) {
+        this.clearSession();
+        return {
+          data: null,
+          error: 'Patient App access is currently disabled for this MR ID. Please contact reception or your doctor.',
+        };
+      }
+
       const hospital = result.hospital as PatientHospital | null;
       const queue = result.queue as { created_at: string; doctor_id: string; doctor_name: string; specialty: string } | null;
 
@@ -192,7 +216,9 @@ export class PatientAppService {
         department,
       };
 
-      this.saveSession(sessionData);
+      if (options?.persistSession !== false) {
+        this.saveSession(sessionData);
+      }
       return { data: sessionData, error: null };
     } catch (error: any) {
       console.error('MR ID lookup error:', error);

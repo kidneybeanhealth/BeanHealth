@@ -121,34 +121,40 @@ const VitalsCard: React.FC<Props> = ({ onOpenUrineModal }) => {
         </div>
 
         {/* Blood Pressure — Tap to open scroll picker */}
-        <div className="pa-vital-row pa-grid-row">
+        <div className="pa-vital-row pa-grid-row pa-bp-row">
           <div className="pa-vital-label">{t('vitals.bp')}</div>
-          <div onClick={() => setShowBPPicker(true)} style={{
-            display: 'flex', alignItems: 'baseline', gap: 2,
-            padding: '6px 14px', borderRadius: 10, cursor: 'pointer',
-            background: hasBP ? '#FEF2F2' : '#F3F4F6',
-            border: `1px solid ${hasBP ? '#FECACA' : '#E5E7EB'}`,
-            transition: 'all 0.2s ease',
-          }}>
-            <span style={{ fontSize: 18, fontWeight: 900, color: hasBP ? '#EF4444' : '#D1D5DB', fontVariantNumeric: 'tabular-nums' }}>
-              {hasBP ? systole : '—'}
-            </span>
-            <span style={{ fontSize: 14, fontWeight: 300, color: '#D1D5DB' }}>/</span>
-            <span style={{ fontSize: 18, fontWeight: 900, color: hasBP ? '#3B82F6' : '#D1D5DB', fontVariantNumeric: 'tabular-nums' }}>
-              {hasBP ? diastole : '—'}
-            </span>
+
+          <div className="pa-bp-control-stack">
+            <div className="pa-bp-meta-row">
+              <button
+                type="button"
+                onClick={() => setShowBPPicker(true)}
+                className={`pa-bp-pill ${hasBP ? 'has-value' : 'is-empty'}`}
+                aria-label={t('bp.title')}
+              >
+                <span className="pa-bp-value pa-bp-systole">
+                  {hasBP ? systole : '—'}
+                </span>
+                <span className="pa-bp-separator-inline">/</span>
+                <span className="pa-bp-value pa-bp-diastole">
+                  {hasBP ? diastole : '—'}
+                </span>
+              </button>
+              <span className="pa-vital-unit">mmHg</span>
+            </div>
+
+            <div className="pa-bp-action-row">
+              {isBpChanged && (
+                <button className="pa-vital-action" onClick={() => handleSaveVital('bp')} disabled={savingField === 'bp'}>
+                  {savingField === 'bp' ? <div className="pa-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : t('action.save')}
+                </button>
+              )}
+              {isBpSaved && (
+                 <button className="pa-vital-action saved" disabled><CheckIcon />{t('action.saved')}</button>
+              )}
+              {!isBpChanged && !isBpSaved && <div className="pa-vital-spacer" />}
+            </div>
           </div>
-          <span className="pa-vital-unit">mmHg</span>
-          
-          {isBpChanged && (
-            <button className="pa-vital-action" onClick={() => handleSaveVital('bp')} disabled={savingField === 'bp'}>
-              {savingField === 'bp' ? <div className="pa-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : t('action.save')}
-            </button>
-          )}
-          {isBpSaved && (
-             <button className="pa-vital-action saved" disabled><CheckIcon />{t('action.saved')}</button>
-          )}
-          {!isBpChanged && !isBpSaved && <div style={{ minWidth: 60 }} />}
         </div>
 
         {/* Blood Glucose */}

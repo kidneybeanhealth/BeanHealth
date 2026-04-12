@@ -735,6 +735,104 @@
   color: var(--pa-text-tertiary);
 }
 
+.pa-bp-pill {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  min-width: clamp(120px, 30vw, 170px);
+  padding: clamp(6px, 1.8vw, 8px) clamp(10px, 2.8vw, 14px);
+  border-radius: 10px;
+  border: 1px solid #E5E7EB;
+  background: #F3F4F6;
+  cursor: pointer;
+  transition: all var(--pa-transition-fast);
+  flex: 0 1 auto;
+}
+
+.pa-bp-row {
+  align-items: flex-start;
+}
+
+.pa-bp-control-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.pa-bp-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pa-bp-action-row {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+.pa-bp-pill.has-value {
+  background: #FEF2F2;
+  border-color: #FECACA;
+}
+
+.pa-bp-pill:active {
+  transform: scale(0.98);
+}
+
+.pa-bp-value {
+  font-size: clamp(17px, 4.2vw, 20px);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pa-bp-systole {
+  color: #EF4444;
+}
+
+.pa-bp-diastole {
+  color: #3B82F6;
+}
+
+.pa-bp-pill.is-empty .pa-bp-systole,
+.pa-bp-pill.is-empty .pa-bp-diastole {
+  color: #D1D5DB;
+}
+
+.pa-bp-separator-inline {
+  font-size: clamp(12px, 3vw, 14px);
+  font-weight: 500;
+  color: #D1D5DB;
+  line-height: 1;
+}
+
+.pa-vital-spacer {
+  min-width: 60px;
+}
+
+@media (max-width: 380px) {
+  .pa-bp-control-stack {
+    width: 100%;
+  }
+
+  .pa-bp-pill {
+    min-width: 110px;
+  }
+
+  .pa-vital-unit {
+    min-width: auto;
+  }
+
+  .pa-vital-spacer {
+    min-width: 0;
+    width: 0;
+  }
+}
+
 /* ── Urine Output ──────────────────────────────────────── */
 .pa-urine-list {
   max-height: 160px;

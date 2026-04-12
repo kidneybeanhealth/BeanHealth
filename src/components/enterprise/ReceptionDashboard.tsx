@@ -15,6 +15,7 @@ import { BeanhealthIdService } from '../../services/beanhealthIdService';
 import PrescriptionModal from '../modals/PrescriptionModal';
 import {
     fetchReceptionPastRecords,
+    updatePatientAppAccess,
     type ReceptionPastRecordPatient,
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
@@ -304,6 +305,7 @@ const ReceptionDashboard: React.FC = () => {
     const [callLogNotes, setCallLogNotes] = useState('');
     const [callLogNextDate, setCallLogNextDate] = useState('');
     const [callLogRescheduleDate, setCallLogRescheduleDate] = useState('');
+    const [updatingAccessPatientIds, setUpdatingAccessPatientIds] = useState<Set<string>>(new Set());
     const PAST_RECORDS_PER_PAGE = 50;
     const isPastRegistration = registrationMode === 'past_record';
 
@@ -538,6 +540,42 @@ const ReceptionDashboard: React.FC = () => {
             }
             return next;
         });
+    };
+
+    const handleTogglePatientAppAccess = async (patient: ReceptionPastRecordPatient) => {
+        if (!profile?.id) return;
+
+        const nextEnabled = !Boolean(patient.app_access_enabled);
+        setUpdatingAccessPatientIds((prev) => {
+            const next = new Set(prev);
+            next.add(patient.id);
+            return next;
+        });
+
+        try {
+            await updatePatientAppAccess({
+                hospitalId: profile.id,
+                patientId: patient.id,
+                enabled: nextEnabled,
+            });
+
+            setPastRecords((prev) => prev.map((item) => (
+                item.id === patient.id
+                    ? { ...item, app_access_enabled: nextEnabled }
+                    : item
+            )));
+
+            toast.success(`Patient App access ${nextEnabled ? 'enabled' : 'disabled'} for ${patient.name}`);
+        } catch (error: any) {
+            console.error('Failed to update patient app access:', error);
+            toast.error(error?.message || 'Failed to update Patient App access');
+        } finally {
+            setUpdatingAccessPatientIds((prev) => {
+                const next = new Set(prev);
+                next.delete(patient.id);
+                return next;
+            });
+        }
     };
 
     const handleSubmitCallLog = async (e: React.FormEvent) => {
@@ -1862,6 +1900,19 @@ const ReceptionDashboard: React.FC = () => {
 
                                                             <div className="shrink-0 w-full max-w-full space-y-2.5">
                                                                 <div className="flex flex-wrap justify-start items-center gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleTogglePatientAppAccess(patient)}
+                                                                        disabled={updatingAccessPatientIds.has(patient.id)}
+                                                                        className={`px-3.5 py-2 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-60 ${patient.app_access_enabled
+                                                                            ? 'border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                                                                            : 'border-gray-200 text-gray-700 bg-gray-50 hover:bg-gray-100'
+                                                                            }`}
+                                                                    >
+                                                                        {updatingAccessPatientIds.has(patient.id)
+                                                                            ? 'Updating...'
+                                                                            : `Patient App: ${patient.app_access_enabled ? 'ON' : 'OFF'}`}
+                                                                    </button>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => setRxHistoryPatient(patient)}
