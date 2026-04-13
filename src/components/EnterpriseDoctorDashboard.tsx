@@ -17,6 +17,10 @@ import {
 import { LogoIcon } from './icons/LogoIcon';
 import DoctorSettingsModal from './modals/DoctorSettingsModal';
 import { type DoctorActorSession } from '../utils/doctorActorSession';
+import {
+    fetchDepartmentQueueMetrics,
+    type QueuePatientMetricsSnapshot,
+} from '../services/departmentPatientMetricsService';
 
 interface DoctorProfile {
     id: string;
@@ -24,6 +28,7 @@ interface DoctorProfile {
     specialty: string;
     hospital_id: string;
     signature_url?: string;
+    avatar_url?: string;
 }
 
 interface Patient {
@@ -31,6 +36,8 @@ interface Patient {
     name: string;
     age: number;
     token_number: string;
+    mr_number?: string | null;
+    app_access_enabled?: boolean | null;
 }
 
 interface QueueItem {
@@ -97,6 +104,19 @@ const formatPastDate = (value?: string | null): string => {
     return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+const formatMetricsTimestamp = (value?: string | null): string => {
+    if (!value) return 'No updates yet';
+    return `Updated ${new Date(value).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
+};
+
+const formatMetricsDate = (value: string): string => {
+    return new Date(`${value}T00:00:00`).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
+};
+
 const escapeHtml = (value: string): string =>
     value
         .replace(/&/g, '&amp;')
@@ -144,6 +164,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     ]);
     const [notes, setNotes] = useState('');
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
+    const [queueMetricsByPatientId, setQueueMetricsByPatientId] = useState<Record<string, QueuePatientMetricsSnapshot>>({});
+    const [queueMetricsLoading, setQueueMetricsLoading] = useState(false);
+    const [expandedQueuePatientIds, setExpandedQueuePatientIds] = useState<Set<string>>(new Set());
 
     const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records'>('queue');
     const [historyList, setHistoryList] = useState<any[]>([]);
@@ -262,6 +285,18 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             if (!isBackground) setLoading(false);
         }
     }, [doctor.id]);
+
+    const toggleQueuePatientMetrics = useCallback((patientId: string) => {
+        setExpandedQueuePatientIds(prev => {
+            const next = new Set(prev);
+            if (next.has(patientId)) {
+                next.delete(patientId);
+            } else {
+                next.add(patientId);
+            }
+            return next;
+        });
+    }, []);
 
     const fetchHistory = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
@@ -648,6 +683,59 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
         return () => clearTimeout(debounce);
     }, [searchQuery, viewMode, reviewFilter, reviewDateFilter, fetchPastRecords]);
+
+    useEffect(() => {
+        const queuePatientIds = queue.map(item => item.patient_id).filter(Boolean);
+        if (queuePatientIds.length === 0) {
+            setExpandedQueuePatientIds(new Set());
+            setQueueMetricsByPatientId({});
+            return;
+        }
+
+        setExpandedQueuePatientIds(prev => {
+            const next = new Set<string>();
+            const allowed = new Set(queuePatientIds);
+            prev.forEach(patientId => {
+                if (allowed.has(patientId)) next.add(patientId);
+            });
+            return next;
+        });
+    }, [queue]);
+
+    useEffect(() => {
+        if (viewMode !== 'queue') return;
+
+        const queuePatientIds = queue.map(item => item.patient_id).filter(Boolean);
+        if (!doctor.hospital_id || queuePatientIds.length === 0) {
+            setQueueMetricsByPatientId({});
+            return;
+        }
+
+        let isActive = true;
+        const loadQueueMetrics = async () => {
+            setQueueMetricsLoading(true);
+            try {
+                const metrics = await fetchDepartmentQueueMetrics({
+                    hospitalId: doctor.hospital_id,
+                    patientIds: queuePatientIds,
+                    doctorSpecialty: currentDoctor.specialty || null,
+                });
+                if (isActive) {
+                    setQueueMetricsByPatientId(metrics);
+                }
+            } catch (error) {
+                console.error('Failed to load queue patient metrics:', error);
+            } finally {
+                if (isActive) setQueueMetricsLoading(false);
+            }
+        };
+
+        loadQueueMetrics();
+
+        return () => {
+            isActive = false;
+        };
+    }, [viewMode, queue, doctor.hospital_id, currentDoctor.specialty]);
 
     // Realtime subscription for queue updates with error handling
     useEffect(() => {
@@ -1363,9 +1451,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             // and remove it from the pharmacy queue display as well.
             const oldPrescriptionId = editResendItem?.id;
             if (oldPrescriptionId && oldPrescriptionId !== prescriptionId) {
-                await supabase
-                    .from('hospital_prescriptions' as any)
-                    .update({ status: 'cancelled' } as any)
+                await (supabase
+                    .from('hospital_prescriptions' as any) as any)
+                    .update({ status: 'cancelled' })
                     .eq('id', oldPrescriptionId);
                 await (supabase as any)
                     .from('hospital_pharmacy_queue')
@@ -1666,66 +1754,253 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             ) : (
                                 <div className={`divide-y divide-gray-50 ${isAnyModalOpen ? 'pointer-events-none opacity-60' : ''}`}>
                                     {queue.map((item) => (
-                                        <div key={item.id} className="p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors group gap-4">
-                                            <div className="flex items-center gap-4 sm:gap-6">
-                                                <div className={`w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-bold text-base shadow-sm flex-shrink-0 px-2
-                                                    ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
-                                                        item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                    {item.patient.token_number}
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
-                                                    {item.patient.mr_number && (
-                                                        <div className="text-xs font-bold text-gray-700">{item.patient.mr_number}</div>
-                                                    )}
-                                                    {item.preparing_by && (
-                                                        <div className="mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                                            {item.preparing_by} preparing
+                                        <div key={item.id} className="p-5 sm:p-6 md:p-8 hover:bg-gray-50 transition-colors group">
+                                            <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_420px] lg:grid-cols-[minmax(0,1fr)_500px] md:items-start gap-4">
+                                                <div className="flex items-center gap-4 sm:gap-6">
+                                                    <div className={`w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-bold text-base shadow-sm flex-shrink-0 px-2
+                                                        ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
+                                                            item.status === 'in_progress' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                        {item.patient.token_number}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
+                                                        {item.patient.mr_number && (
+                                                            <div className="text-xs font-bold text-gray-700">{item.patient.mr_number}</div>
+                                                        )}
+                                                        {item.preparing_by && (
+                                                            <div className="mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                                {item.preparing_by} preparing
+                                                            </div>
+                                                        )}
+                                                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">
+                                                                {item.patient.age} yrs
+                                                            </span>
+                                                            {(() => {
+                                                                const metrics = queueMetricsByPatientId[item.patient_id];
+                                                                if (queueMetricsLoading && !metrics) {
+                                                                    return (
+                                                                        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold">
+                                                                            Syncing metrics...
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                if (!metrics) {
+                                                                    return (
+                                                                        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-gray-100 text-gray-500 text-xs font-bold">
+                                                                            Metrics unavailable
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                if (!metrics.profileConfigured) {
+                                                                    return (
+                                                                        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-violet-50 text-violet-700 text-xs font-bold border border-violet-100">
+                                                                            {metrics.profileLabel} pending
+                                                                        </span>
+                                                                    );
+                                                                }
+
+                                                                const availabilityClass = metrics.availability === 'complete'
+                                                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                                                    : metrics.availability === 'partial'
+                                                                        ? 'bg-amber-50 text-amber-700 border border-amber-100'
+                                                                        : 'bg-rose-50 text-rose-700 border border-rose-100';
+                                                                const availabilityLabel = metrics.availability === 'complete'
+                                                                    ? 'Metrics complete'
+                                                                    : metrics.availability === 'partial'
+                                                                        ? 'Metrics partial'
+                                                                        : 'No metrics today';
+                                                                return (
+                                                                    <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${availabilityClass}`}>
+                                                                        {availabilityLabel}
+                                                                    </span>
+                                                                );
+                                                            })()}
                                                         </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="w-full md:w-auto mt-2 sm:mt-0">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                                                    <button
+                                                        onClick={() => toggleQueuePatientMetrics(item.patient_id)}
+                                                        className="px-4 sm:px-5 py-2.5 text-sm font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-slate-100 border border-slate-200 transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                                                    >
+                                                        <span>Patient Metrics</span>
+                                                        <svg className={`w-4 h-4 transition-transform ${expandedQueuePatientIds.has(item.patient_id) ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                        </svg>
+                                                    </button>
+
+                                                    {item.status === 'pending' && (
+                                                        <button
+                                                            onClick={() => handleUpdateStatus(item.id, 'in_progress')}
+                                                            className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 whitespace-nowrap"
+                                                        >
+                                                            Call In
+                                                        </button>
                                                     )}
-                                                    <div className="flex items-center gap-2 text-sm text-gray-700 font-medium whitespace-nowrap">
-                                                        <span>{item.patient.age} yrs</span>
+                                                    {item.status !== 'pending' && (
+                                                        <div className="hidden sm:block" aria-hidden="true" />
+                                                    )}
+
+                                                    <button
+                                                        onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'new' })}
+                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                        <span className="hidden xs:inline">Prescribe</span>
+                                                        <span className="xs:hidden">Prescribe</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'past' })}
+                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 rounded-xl hover:bg-indigo-100 border border-indigo-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        <span>Past Rx</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => setMarkDoneCandidate({ queueId: item.id, patientName: item.patient.name })}
+                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors whitespace-nowrap"
+                                                    >
+                                                        Mark Done
+                                                    </button>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
-                                                {item.status === 'pending' && (
-                                                    <button
-                                                        onClick={() => handleUpdateStatus(item.id, 'in_progress')}
-                                                        className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 whitespace-nowrap"
-                                                    >
-                                                        Call In
-                                                    </button>
-                                                )}
+                                            {expandedQueuePatientIds.has(item.patient_id) && (
+                                                <div className="mt-4 bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-2xl p-4 sm:p-5 animate-fade-in">
+                                                    {(() => {
+                                                        const metrics = queueMetricsByPatientId[item.patient_id];
+                                                        if (!metrics) {
+                                                            return (
+                                                                <div className="text-sm text-slate-600 font-medium">
+                                                                    Patient metrics are syncing. Please wait a moment.
+                                                                </div>
+                                                            );
+                                                        }
 
-                                                <button
-                                                    onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'new' })}
-                                                    className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                    <span className="hidden xs:inline">Prescribe</span>
-                                                    <span className="xs:hidden">Prescribe</span>
-                                                </button>
+                                                        if (item.patient.app_access_enabled === false) {
+                                                            return (
+                                                                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-700 text-sm font-medium">
+                                                                    Patient App access is currently disabled for this patient. Enable app access to view submitted vitals and consumption data.
+                                                                </div>
+                                                            );
+                                                        }
 
-                                                <button
-                                                    onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'past' })}
-                                                    className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 rounded-xl hover:bg-indigo-100 border border-indigo-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <span>Past Rx</span>
-                                                </button>
+                                                        if (!metrics.profileConfigured) {
+                                                            return (
+                                                                <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-violet-700 text-sm font-medium">
+                                                                    This department does not have a configured queue metrics profile yet. Nephrology is isolated and active; other departments can be added with their own adapter.
+                                                                </div>
+                                                            );
+                                                        }
 
-                                                <button
-                                                    onClick={() => setMarkDoneCandidate({ queueId: item.id, patientName: item.patient.name })}
-                                                    className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors whitespace-nowrap"
-                                                >
-                                                    Mark Done
-                                                </button>
-                                            </div>
+                                                        if (metrics.sections.length === 0) {
+                                                            return (
+                                                                <div className="text-sm text-slate-600 font-medium">
+                                                                    No metrics captured for today.
+                                                                </div>
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <>
+                                                                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                                                                    <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+                                                                        {metrics.profileLabel}
+                                                                    </div>
+                                                                    <div className="text-xs font-medium text-slate-500">{formatMetricsTimestamp(metrics.lastUpdatedAt)}</div>
+                                                                </div>
+                                                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                                                                    {metrics.sections.map(section => (
+                                                                        <div key={section.key} className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                                                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{section.title}</div>
+                                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                                                {section.cards.map(card => (
+                                                                                    <div key={card.key} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
+                                                                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{card.label}</div>
+                                                                                        <div className={`mt-1 text-base font-bold ${card.value === '--' ? 'text-slate-400' : 'text-slate-900'}`}>
+                                                                                            {card.value}
+                                                                                            {card.unit && <span className="ml-1 text-xs font-semibold text-slate-500">{card.unit}</span>}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+
+                                                                <div className="mt-4 rounded-xl border border-slate-200 bg-white overflow-hidden">
+                                                                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                                                                        <div>
+                                                                            <div className="text-xs font-bold uppercase tracking-wide text-slate-500">Date-wise Patient App Metrics</div>
+                                                                            <div className="text-sm font-semibold text-slate-800 mt-0.5">
+                                                                                {`${formatMetricsDate(metrics.timelineEndDate)} to ${formatMetricsDate(metrics.timelineStartDate)} (latest to oldest)`}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-lg px-2.5 py-1">
+                                                                            {metrics.timelineDays.length} days
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="overflow-x-auto">
+                                                                        <div className="min-w-[860px]">
+                                                                            <div className="grid grid-cols-[130px_120px_170px_90px_110px_100px_110px] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 bg-slate-50/70">
+                                                                                <span>Date</span>
+                                                                                <span>BP</span>
+                                                                                <span>Glucose</span>
+                                                                                <span>Weight</span>
+                                                                                <span>Fluid</span>
+                                                                                <span>Salt</span>
+                                                                                <span>Urine</span>
+                                                                            </div>
+                                                                            <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                                                                                {metrics.timelineDays.map(day => (
+                                                                                    <div
+                                                                                        key={day.date}
+                                                                                        className={`grid grid-cols-[130px_120px_170px_90px_110px_100px_110px] px-4 py-2.5 text-sm ${day.hasAnyData ? 'bg-white' : 'bg-slate-50/40'}`}
+                                                                                    >
+                                                                                        <div className="font-semibold text-slate-800">{formatMetricsDate(day.date)}</div>
+                                                                                        <div className={`${day.bloodPressure === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
+                                                                                            {day.bloodPressure === '--' ? '--' : `${day.bloodPressure} mmHg`}
+                                                                                        </div>
+                                                                                        <div className={`${day.bloodGlucose === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
+                                                                                            {day.bloodGlucose === '--'
+                                                                                                ? '--'
+                                                                                                : day.bloodGlucoseType && day.bloodGlucoseType !== '--'
+                                                                                                    ? `${day.bloodGlucose} mg/dL (${day.bloodGlucoseType})`
+                                                                                                    : `${day.bloodGlucose} mg/dL`}
+                                                                                        </div>
+                                                                                        <div className={`${day.weight === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
+                                                                                            {day.weight === '--' ? '--' : `${day.weight} kg`}
+                                                                                        </div>
+                                                                                        <div className={`${day.fluidIntake === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
+                                                                                            {day.fluidIntake === '--' ? '--' : `${day.fluidIntake} ml`}
+                                                                                        </div>
+                                                                                        <div className={`${day.saltIntake === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
+                                                                                            {day.saltIntake === '--' ? '--' : `${day.saltIntake} g`}
+                                                                                        </div>
+                                                                                        <div className={`${day.urineOutput === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
+                                                                                            {day.urineOutput === '--' ? '--' : `${day.urineOutput} ml`}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
