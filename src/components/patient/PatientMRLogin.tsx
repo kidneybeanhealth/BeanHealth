@@ -16,7 +16,25 @@ const PatientMRLogin: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
+    const root = document.documentElement;
+    const body = document.body;
+    const previousRootOverflow = root.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+
+    root.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      inputRef.current?.focus({ preventScroll: true });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      root.style.overflow = previousRootOverflow;
+      body.style.overflow = previousBodyOverflow;
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +43,7 @@ const PatientMRLogin: React.FC = () => {
 
     if (!mrId.trim()) {
       setLocalError(t('login.enterMR'));
-      inputRef.current?.focus();
+      inputRef.current?.focus({ preventScroll: true });
       return;
     }
 
@@ -117,10 +135,7 @@ const PatientMRLogin: React.FC = () => {
       </form>
 
       {/* Footer */}
-      <p style={{
-        fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.25)',
-        marginTop: 32, textAlign: 'center',
-      }}>
+      <p className="pa-login-footer">
         {t('login.footer')}
       </p>
     </div>
