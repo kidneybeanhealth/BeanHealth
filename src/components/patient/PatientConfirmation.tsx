@@ -21,6 +21,10 @@ const PatientConfirmation: React.FC<Props> = ({ onConfirm, onReject }) => {
 
   const { patient, hospital, doctor, latestVisitDate, department } = session;
 
+  const confirmationHint = lang === 'ta'
+    ? 'இது உங்கள் கணக்கு தானா? உறுதிப்படுத்துங்கள்.'
+    : 'Is this your account? Please confirm.';
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
     try {
@@ -37,78 +41,79 @@ const PatientConfirmation: React.FC<Props> = ({ onConfirm, onReject }) => {
     return cleaned.charAt(0)?.toUpperCase() || '?';
   };
 
+  const detailRows = [
+    {
+      key: 'fatherHusband',
+      label: t('confirm.fatherHusband'),
+      value: patient.father_husband_name || null,
+    },
+    {
+      key: 'ageGender',
+      label: `${t('confirm.age')} / ${t('confirm.gender')}`,
+      value: `${patient.age ? `${patient.age} ${t('confirm.yrs')}` : '—'}${patient.gender ? `, ${patient.gender}` : ''}`,
+    },
+    {
+      key: 'visitDate',
+      label: t('confirm.visitDate'),
+      value: formatDate(latestVisitDate),
+    },
+    {
+      key: 'hospital',
+      label: t('confirm.hospital'),
+      value: hospital ? (hospital.display_name || hospital.hospital_name) : null,
+    },
+    {
+      key: 'department',
+      label: t('confirm.department'),
+      value: department || null,
+    },
+    {
+      key: 'doctor',
+      label: t('confirm.doctor'),
+      value: doctor ? `Dr. ${doctor.name}` : null,
+    },
+  ].filter((row) => Boolean(row.value));
+
   return (
     <div className="pa-confirm">
       <div className="pa-confirm-card">
-        {/* Logo */}
-        <div className="pa-confirm-logo-wrap">
-          <div className="pa-confirm-logo-circle">
-            <img src="/logo.png" alt="BeanHealth" />
-          </div>
-          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 800, color: '#1A1A1A', letterSpacing: -0.3 }}>
-            Bean<span style={{ color: '#8AC43C' }}>Health</span>
-          </span>
-        </div>
-
-        {/* Avatar */}
-        <div className="pa-confirm-avatar">
-          {getInitial(patient.name)}
-        </div>
-
-        <h2 className="pa-confirm-name">{patient.name}</h2>
-        <p className="pa-confirm-mr">MR: {patient.mr_number}</p>
-
-        {/* Details Grid */}
-        <div className="pa-detail-grid">
-          {patient.father_husband_name && (
-            <div className="pa-detail-item full-width">
-              <div className="pa-detail-label">{t('confirm.fatherHusband')}</div>
-              <div className="pa-detail-value">{patient.father_husband_name}</div>
+        <div className="pa-confirm-head">
+          <div className="pa-confirm-logo-wrap">
+            <div className="pa-confirm-logo-circle">
+              <img src="/logo.png" alt="BeanHealth" />
             </div>
-          )}
-
-          <div className="pa-detail-item">
-            <div className="pa-detail-label">{t('confirm.age')}</div>
-            <div className="pa-detail-value">{patient.age ? `${patient.age} ${t('confirm.yrs')}` : '—'}</div>
+            <span className="pa-confirm-brand">
+              Bean<span>Health</span>
+            </span>
           </div>
 
-          <div className="pa-detail-item">
-            <div className="pa-detail-label">{t('confirm.gender')}</div>
-            <div className="pa-detail-value" style={{ textTransform: 'capitalize' }}>
-              {patient.gender || '—'}
+          <div className="pa-confirm-identity">
+            <div className="pa-confirm-avatar">
+              {getInitial(patient.name)}
+            </div>
+            <div className="pa-confirm-main-text">
+              <h2 className="pa-confirm-name">{patient.name}</h2>
+              <p className="pa-confirm-mr">MR: {patient.mr_number}</p>
+              <p className="pa-confirm-hint">{confirmationHint}</p>
             </div>
           </div>
+        </div>
 
-          <div className="pa-detail-item full-width">
-            <div className="pa-detail-label">{t('confirm.visitDate')}</div>
-            <div className="pa-detail-value">{formatDate(latestVisitDate)}</div>
-          </div>
-
-          {hospital && (
-            <div className="pa-detail-item full-width">
-              <div className="pa-detail-label">{t('confirm.hospital')}</div>
-              <div className="pa-detail-value">
-                {hospital.display_name || hospital.hospital_name}
+        <div className="pa-confirm-details">
+          {detailRows.map((row) => (
+            <div className="pa-confirm-row" key={row.key}>
+              <div className="pa-confirm-row-label">{row.label}</div>
+              <div className="pa-confirm-row-value">
+                {row.key === 'ageGender' ? (
+                  <span style={{ textTransform: 'capitalize' }}>{row.value}</span>
+                ) : (
+                  row.value
+                )}
               </div>
             </div>
-          )}
-
-          {department && (
-            <div className="pa-detail-item">
-              <div className="pa-detail-label">{t('confirm.department')}</div>
-              <div className="pa-detail-value">{department}</div>
-            </div>
-          )}
-
-          {doctor && (
-            <div className="pa-detail-item">
-              <div className="pa-detail-label">{t('confirm.doctor')}</div>
-              <div className="pa-detail-value">Dr. {doctor.name}</div>
-            </div>
-          )}
+          ))}
         </div>
 
-        {/* Actions */}
         <div className="pa-confirm-actions">
           <button className="pa-btn-primary" onClick={onConfirm}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

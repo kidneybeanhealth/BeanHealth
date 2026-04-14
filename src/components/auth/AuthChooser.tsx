@@ -23,6 +23,11 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: on
         }
     };
 
+    const handleOpenPatientApp = () => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        navigate('/patient-app');
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -39,7 +44,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({ onNext, onEnterpriseLogin: on
             <div className="space-y-3">
                 {/* Patient App (Beta) */}
                 <button
-                    onClick={() => navigate('/patient-app')}
+                    onClick={handleOpenPatientApp}
                     className="w-full p-4 rounded-2xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 hover:border-emerald-400 hover:shadow-md transition-all duration-200 text-left flex items-center gap-4 group"
                 >
                     <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-colors">

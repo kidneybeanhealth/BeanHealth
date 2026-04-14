@@ -158,39 +158,66 @@ const VitalsCard: React.FC<Props> = ({ onOpenUrineModal }) => {
         </div>
 
         {/* Blood Glucose */}
-        <div className="pa-vital-row pa-grid-row">
+        <div className="pa-vital-row pa-grid-row pa-vital-standard-row">
           <div className="pa-vital-label">{t('vitals.glucose')}</div>
-          <input type="number" className="pa-vital-input" placeholder="—" value={glucose}
-            onChange={e => setGlucose(e.target.value)} inputMode="decimal" />
-          <span className="pa-vital-unit">mg/dL</span>
-          
-          {isGlucoseChanged && (
-            <button className="pa-vital-action" onClick={() => handleSaveVital('glucose')} disabled={savingField === 'glucose'}>
-              {savingField === 'glucose' ? <div className="pa-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : t('action.save')}
-            </button>
-          )}
-          {isGlucoseSaved && (
-            <button className="pa-vital-action saved" disabled><CheckIcon />{t('action.saved')}</button>
-          )}
-          {!isGlucoseChanged && !isGlucoseSaved && <div style={{ minWidth: 60 }} />}
+
+          <div className="pa-vital-control-stack">
+            <div className="pa-vital-meta-row">
+              <input
+                type="number"
+                className="pa-vital-input"
+                placeholder="—"
+                value={glucose}
+                onChange={e => setGlucose(e.target.value)}
+                inputMode="decimal"
+              />
+              <span className="pa-vital-unit">mg/dL</span>
+            </div>
+
+            <div className="pa-vital-action-row">
+              {isGlucoseChanged && (
+                <button className="pa-vital-action" onClick={() => handleSaveVital('glucose')} disabled={savingField === 'glucose'}>
+                  {savingField === 'glucose' ? <div className="pa-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : t('action.save')}
+                </button>
+              )}
+              {isGlucoseSaved && (
+                <button className="pa-vital-action saved" disabled><CheckIcon />{t('action.saved')}</button>
+              )}
+              {!isGlucoseChanged && !isGlucoseSaved && <div className="pa-vital-action-placeholder" />}
+            </div>
+          </div>
         </div>
 
         {/* Weight */}
-        <div className="pa-vital-row pa-grid-row">
+        <div className="pa-vital-row pa-grid-row pa-vital-standard-row">
           <div className="pa-vital-label">{t('vitals.weight')}</div>
-          <input type="number" className="pa-vital-input" placeholder="—" value={weight}
-            onChange={e => setWeight(e.target.value)} inputMode="decimal" step="0.1" />
-          <span className="pa-vital-unit">kg</span>
-          
-          {isWeightChanged && (
-            <button className="pa-vital-action" onClick={() => handleSaveVital('weight')} disabled={savingField === 'weight'}>
-              {savingField === 'weight' ? <div className="pa-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : t('action.save')}
-            </button>
-          )}
-          {isWeightSaved && (
-            <button className="pa-vital-action saved" disabled><CheckIcon />{t('action.saved')}</button>
-          )}
-          {!isWeightChanged && !isWeightSaved && <div style={{ minWidth: 60 }} />}
+
+          <div className="pa-vital-control-stack">
+            <div className="pa-vital-meta-row">
+              <input
+                type="number"
+                className="pa-vital-input"
+                placeholder="—"
+                value={weight}
+                onChange={e => setWeight(e.target.value)}
+                inputMode="decimal"
+                step="0.1"
+              />
+              <span className="pa-vital-unit">kg</span>
+            </div>
+
+            <div className="pa-vital-action-row">
+              {isWeightChanged && (
+                <button className="pa-vital-action" onClick={() => handleSaveVital('weight')} disabled={savingField === 'weight'}>
+                  {savingField === 'weight' ? <div className="pa-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : t('action.save')}
+                </button>
+              )}
+              {isWeightSaved && (
+                <button className="pa-vital-action saved" disabled><CheckIcon />{t('action.saved')}</button>
+              )}
+              {!isWeightChanged && !isWeightSaved && <div className="pa-vital-action-placeholder" />}
+            </div>
+          </div>
         </div>
 
         {/* Urine Output */}
