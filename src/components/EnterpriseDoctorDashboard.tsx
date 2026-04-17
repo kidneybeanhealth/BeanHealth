@@ -11,9 +11,11 @@ import EnterpriseCKDSnapshotView from './EnterpriseCKDSnapshotView';
 import DoctorPastRecordsPanel from './enterprise/DoctorPastRecordsPanel';
 import {
     fetchReceptionPastRecords,
+    admitPatientFromQueue,
     type ReceptionPastRecordPatient,
     type ReceptionReviewFilter,
 } from '../services/enterpriseReviewService';
+import AdmittedPatientsPanel, { type AdmittedPrescribeContext } from './enterprise/AdmittedPatientsPanel';
 import { LogoIcon } from './icons/LogoIcon';
 import DoctorSettingsModal from './modals/DoctorSettingsModal';
 import { type DoctorActorSession } from '../utils/doctorActorSession';
@@ -168,7 +170,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [queueMetricsLoading, setQueueMetricsLoading] = useState(false);
     const [expandedQueuePatientIds, setExpandedQueuePatientIds] = useState<Set<string>>(new Set());
 
-    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records'>('queue');
+    const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records' | 'admitted'>('queue');
     const [historyList, setHistoryList] = useState<any[]>([]);
 
     const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -1016,6 +1018,39 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         }
     };
 
+    // Admit a patient directly from the live queue (no prescription).
+    // Stamps hospital_queues with admission_status='admitted' and
+    // sets status='completed' so the row leaves the live queue.
+    const handleAdmitPatient = async (queueId: string) => {
+        const toastId = toast.loading('Admitting patient...');
+        try {
+            await admitPatientFromQueue({ queueId, hospitalId: doctor.hospital_id });
+            toast.success('Patient admitted', { id: toastId });
+            fetchQueue(true);
+            setAdmittedRefreshToken(t => t + 1);
+        } catch (err) {
+            console.error('[EnterpriseDoctorDashboard] admit failed', err);
+            toast.error('Could not admit patient', { id: toastId });
+        }
+    };
+
+    // Launch the prescribe flow for an already-admitted patient.
+    // Reuses the same machinery as queue-row Prescribe: sets
+    // selectedPatient + selectedQueueId and opens the Rx modal.
+    const handlePrescribeAdmitted = (ctx: AdmittedPrescribeContext) => {
+        setSelectedPatient({
+            id: ctx.patient.id,
+            name: ctx.patient.name,
+            age: ctx.patient.age,
+            token_number: ctx.tokenNumber || '',
+            mr_number: ctx.patient.mr_number || null,
+            app_access_enabled: null,
+        });
+        setSelectedQueueId(ctx.queueId);
+        setShowRxModal(true);
+        logViewEvent('view.patient.open', { patientId: ctx.patientId, queueId: ctx.queueId });
+    };
+
     // ... (rest of handlers like handleMedChange, handleSendToPharmacy remain same)
     const handleAddMedication = () => {
         setMedications([...medications, { name: '', dosage: '', frequency: '', duration: '', instruction: '' }]);
@@ -1497,6 +1532,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     // View Item for History
     const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
     const [markDoneCandidate, setMarkDoneCandidate] = useState<{ queueId: string; patientName: string } | null>(null);
+    const [admitCandidate, setAdmitCandidate] = useState<{ queueId: string; patientName: string; mrNumber: string | null } | null>(null);
+    const [admittedRefreshToken, setAdmittedRefreshToken] = useState(0);
     const [prescribeCandidate, setPrescribeCandidate] = useState<{ queueItem: QueueItem; mode: 'new' | 'past' } | null>(null);
 
     // Edit & Resend state
@@ -1626,7 +1663,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                         {/* Tab switcher — scrollable container prevents overflow on small tablets */}
                         <div className="flex-1 overflow-x-auto">
-                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm inline-grid grid-cols-3 gap-1 min-w-max w-full max-w-md">
+                            <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-sm inline-grid grid-cols-4 gap-1 min-w-max w-full max-w-2xl">
                                 <button
                                     onClick={() => setViewMode('queue')}
                                     className={`px-2.5 md:px-4 py-1.5 rounded-xl text-center text-[10px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'queue' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
@@ -1644,6 +1681,12 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                     className={`px-2.5 md:px-4 py-1.5 rounded-xl text-center text-[10px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'past_records' ? 'bg-black text-white shadow-md' : 'text-gray-700 hover:text-black hover:bg-gray-50'}`}
                                 >
                                     Past Records
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('admitted')}
+                                    className={`px-2.5 md:px-4 py-1.5 rounded-xl text-center text-[10px] sm:text-xs md:text-sm font-bold transition-all duration-200 whitespace-nowrap ${viewMode === 'admitted' ? 'bg-rose-600 text-white shadow-md' : 'text-gray-700 hover:text-rose-700 hover:bg-rose-50'}`}
+                                >
+                                    Admitted
                                 </button>
                             </div>
                         </div>
@@ -1704,6 +1747,15 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     onBack={() => setViewMode('queue')}
                     onViewPrescription={handleViewPrescription}
                     onEditResend={handleEditResend}
+                />
+            ) : viewMode === 'admitted' ? (
+                <AdmittedPatientsPanel
+                    key={`admitted-${admittedRefreshToken}`}
+                    hospitalId={currentDoctor.hospital_id}
+                    doctor={currentDoctor}
+                    doctorId={currentDoctor.id}
+                    enablePrescribe={true}
+                    onPrescribe={handlePrescribeAdmitted}
                 />
             ) : (
                 <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
@@ -1833,17 +1885,16 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                         </svg>
                                                     </button>
 
-                                                    {item.status === 'pending' && (
-                                                        <button
-                                                            onClick={() => handleUpdateStatus(item.id, 'in_progress')}
-                                                            className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 whitespace-nowrap"
-                                                        >
-                                                            Call In
-                                                        </button>
-                                                    )}
-                                                    {item.status !== 'pending' && (
-                                                        <div className="hidden sm:block" aria-hidden="true" />
-                                                    )}
+                                                    <button
+                                                        onClick={() => setAdmitCandidate({
+                                                            queueId: item.id,
+                                                            patientName: item.patient.name,
+                                                            mrNumber: item.patient.mr_number || null,
+                                                        })}
+                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-rose-600 rounded-xl hover:bg-rose-700 shadow-lg shadow-rose-600/25 transition-all hover:-translate-y-0.5 whitespace-nowrap"
+                                                    >
+                                                        Admit
+                                                    </button>
 
                                                     <button
                                                         onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'new' })}
@@ -2543,6 +2594,51 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     setMarkDoneCandidate(null);
                 }}
             />
+
+            {/* Admit Patient confirmation — admits without prescription */}
+            {admitCandidate && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">Admit this patient?</h3>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Do you want to admit{' '}
+                            <span className="font-bold text-gray-900">{admitCandidate.patientName}</span>
+                            {admitCandidate.mrNumber ? (
+                                <>
+                                    {' '}(MR <span className="font-mono font-bold text-gray-900">{admitCandidate.mrNumber}</span>)
+                                </>
+                            ) : null}
+                            ? No prescription will be issued. The patient will move to the
+                            {' '}<span className="font-semibold text-rose-700">Admitted Patients</span> list until discharged.
+                        </p>
+                        <div className="flex items-center justify-end gap-3">
+                            <button
+                                onClick={() => setAdmitCandidate(null)}
+                                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-100"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const c = admitCandidate;
+                                    setAdmitCandidate(null);
+                                    if (c) handleAdmitPatient(c.queueId);
+                                }}
+                                className="px-4 py-2 text-sm font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700 shadow-sm"
+                            >
+                                Confirm Admit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
