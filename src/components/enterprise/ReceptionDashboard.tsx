@@ -19,6 +19,7 @@ import {
     type ReceptionPastRecordPatient,
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
+import AdmittedPatientsPanel from './AdmittedPatientsPanel';
 
 interface DoctorProfile {
     id: string;
@@ -137,7 +138,7 @@ const ReceptionDashboard: React.FC = () => {
     const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
     const [queue, setQueue] = useState<QueueItem[]>([]);
     const [isLoadingQueue, setIsLoadingQueue] = useState(false);
-    const [activeTab, setActiveTab] = useState<'queue' | 'patients' | 'past_records'>('queue');
+    const [activeTab, setActiveTab] = useState<'queue' | 'patients' | 'past_records' | 'admitted'>('queue');
 
     // Walk-in / Registration Modal
     const [showWalkInModal, setShowWalkInModal] = useState(false);
@@ -1759,11 +1760,26 @@ const ReceptionDashboard: React.FC = () => {
                             >
                                 Past Records
                             </button>
+                            <button
+                                onClick={() => setActiveTab('admitted')}
+                                className={`px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'admitted' ? 'bg-rose-600 text-white shadow-sm' : 'text-gray-700 hover:text-rose-700 hover:bg-rose-50'}`}
+                            >
+                                Admitted Patients
+                            </button>
                         </div>
                     </div>
 
                     {isLoadingQueue ? (
                         <div className="p-16 text-center text-gray-700">Loading...</div>
+                    ) : activeTab === 'admitted' ? (
+                        <div className="p-4 sm:p-6">
+                            {profile?.id && (
+                                <AdmittedPatientsPanel
+                                    hospitalId={profile.id}
+                                    enablePrescribe={false}
+                                />
+                            )}
+                        </div>
                     ) : activeTab === 'past_records' ? (
                         <>
                             {/* Patient Database Header */}

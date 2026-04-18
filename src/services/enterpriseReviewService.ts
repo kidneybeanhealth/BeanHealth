@@ -55,6 +55,35 @@ export interface ReceptionPastRecordsResult {
     hasMore: boolean;
 }
 
+/**
+ * Admitted Patient — a patient who was admitted directly from the
+ * live queue (bypassing prescription). Backed by hospital_queues
+ * rows with admission_status = 'admitted'. Stays here until the
+ * admission is discharged from the Admitted Patients panel.
+ */
+export interface AdmittedPatientRecord {
+    queueId: string;
+    patientId: string;
+    admittedAt: string | null;
+    dischargedAt: string | null;
+    admissionStatus: 'admitted' | 'discharged';
+    doctorId: string | null;
+    doctorName: string | null;
+    doctorSpecialty: string | null;
+    tokenNumber: string | null;
+    patient: {
+        id: string;
+        name: string;
+        age: number;
+        gender?: string | null;
+        phone?: string | null;
+        mr_number?: string | null;
+        beanhealth_id?: string | null;
+        father_husband_name?: string | null;
+    };
+    prescriptions: ReceptionVisitRecord[];
+}
+
 interface FetchReceptionPastRecordsParams {
     hospitalId: string;
     page: number;
@@ -538,4 +567,312 @@ export async function updatePatientAppAccess(
     if (updateResult.error) {
         throw updateResult.error;
     }
+}
+
+// ============================================================
+// Patient Admission flows (used by both Reception + Doctor)
+// ============================================================
+
+interface AdmitPatientFromQueueParams {
+    queueId: string;
+    hospitalId: string;
+}
+
+/**
+ * Admit a patient directly from the live queue (no prescription).
+ * The queue row is marked completed (so it exits the live queue
+ * and flows naturally to Past Records) and stamped with
+ * admission_status = 'admitted' + admitted_at timestamp.
+ */
+export async function admitPatientFromQueue(
+    params: AdmitPatientFromQueueParams
+): Promise<void> {
+    const { queueId, hospitalId } = params;
+    if (!queueId || !hospitalId) {
+        throw new Error('Missing queue or hospital identifier');
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const updateResult = await withTimeout(
+        ((supabase.from('hospital_queues' as any) as any)
+            .update({
+                status: 'completed',
+                admission_status: 'admitted',
+                admitted_at: nowIso,
+                discharged_at: null,
+                updated_at: nowIso,
+            })
+            .eq('id', queueId)
+            .eq('hospital_id', hospitalId)) as any,
+        10000,
+        'Timed out while admitting patient'
+    ) as SupabaseResult;
+
+    if (updateResult.error) {
+        throw updateResult.error;
+    }
+}
+
+interface DischargePatientParams {
+    queueId: string;
+    hospitalId: string;
+}
+
+/**
+ * Discharge an admitted patient. admission_status flips to
+ * 'discharged' and discharged_at gets a timestamp. The row
+ * remains in the Past Records view but leaves the
+ * Admitted Patients view.
+ */
+export async function dischargePatient(
+    params: DischargePatientParams
+): Promise<void> {
+    const { queueId, hospitalId } = params;
+    if (!queueId || !hospitalId) {
+        throw new Error('Missing queue or hospital identifier');
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const updateResult = await withTimeout(
+        ((supabase.from('hospital_queues' as any) as any)
+            .update({
+                admission_status: 'discharged',
+                discharged_at: nowIso,
+                updated_at: nowIso,
+            })
+            .eq('id', queueId)
+            .eq('hospital_id', hospitalId)) as any,
+        10000,
+        'Timed out while discharging patient'
+    ) as SupabaseResult;
+
+    if (updateResult.error) {
+        throw updateResult.error;
+    }
+}
+
+interface FetchAdmittedPatientsParams {
+    hospitalId: string;
+    doctorId?: string | null;
+    searchQuery?: string;
+}
+
+/**
+ * Fetch currently-admitted patients for a hospital (optionally
+ * scoped to a single doctor). Returns patient info + any
+ * prescriptions linked to the admission queue row (usually 0
+ * since admit skips prescribing, but kept for future hybrid flows).
+ *
+ * Admitted patients are hospital_queues rows where
+ * admission_status = 'admitted' (discharged rows are filtered out).
+ * Chunked lookups to avoid oversized REST URLs on large hospitals.
+ */
+export async function fetchAdmittedPatients(
+    params: FetchAdmittedPatientsParams
+): Promise<AdmittedPatientRecord[]> {
+    const { hospitalId, doctorId, searchQuery } = params;
+    if (!hospitalId) return [];
+
+    let query = (supabase.from('hospital_queues' as any) as any)
+        .select('id, patient_id, doctor_id, queue_number, admission_status, admitted_at, discharged_at')
+        .eq('hospital_id', hospitalId)
+        .eq('admission_status', 'admitted')
+        .order('admitted_at', { ascending: false, nullsFirst: false });
+
+    if (doctorId) {
+        query = query.eq('doctor_id', doctorId);
+    }
+
+    const queueResult = await withTimeout(query as any, 10000, 'Timed out loading admitted patients') as SupabaseResult<any[]>;
+    if (queueResult.error) throw queueResult.error;
+
+    const queueRows = Array.isArray(queueResult.data) ? queueResult.data : [];
+    if (queueRows.length === 0) return [];
+
+    const patientIds = Array.from(new Set(queueRows.map(r => r.patient_id).filter(Boolean))) as string[];
+    const doctorIds = Array.from(new Set(queueRows.map(r => r.doctor_id).filter(Boolean))) as string[];
+    const queueIds = queueRows.map(r => r.id as string);
+
+    // Chunked patient lookup
+    const PATIENT_CHUNK = 50;
+    const patientMap = new Map<string, any>();
+    for (let i = 0; i < patientIds.length; i += PATIENT_CHUNK) {
+        const chunk = patientIds.slice(i, i + PATIENT_CHUNK);
+        const res = await withTimeout(
+            (supabase.from('hospital_patients' as any) as any)
+                .select('id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, token_number')
+                .in('id', chunk) as any,
+            10000,
+            'Timed out loading admitted patient details'
+        ) as SupabaseResult<any[]>;
+        if (res.error) throw res.error;
+        (res.data || []).forEach((p: any) => patientMap.set(p.id, p));
+    }
+
+    // Doctor lookup (small, no chunking needed)
+    const doctorMap = new Map<string, any>();
+    if (doctorIds.length > 0) {
+        const res = await withTimeout(
+            (supabase.from('hospital_doctors' as any) as any)
+                .select('id, name, specialty')
+                .in('id', doctorIds) as any,
+            10000,
+            'Timed out loading doctor details'
+        ) as SupabaseResult<any[]>;
+        if (!res.error && Array.isArray(res.data)) {
+            res.data.forEach((d: any) => doctorMap.set(d.id, d));
+        }
+    }
+
+    // Prescriptions linked to these admission queue rows (usually empty)
+    const prescriptionsByQueue = new Map<string, ReceptionVisitRecord[]>();
+    if (queueIds.length > 0) {
+        const PRES_CHUNK = 50;
+        for (let i = 0; i < queueIds.length; i += PRES_CHUNK) {
+            const chunk = queueIds.slice(i, i + PRES_CHUNK);
+            const res = await withTimeout(
+                (supabase.from('hospital_prescriptions' as any) as any)
+                    .select('id, patient_id, queue_id, token_number, status, created_at, next_review_date, tests_to_review, specialists_to_review, medications, notes, metadata, dispensed_at, doctor_id')
+                    .in('queue_id', chunk)
+                    .order('created_at', { ascending: false }) as any,
+                10000,
+                'Timed out loading admission prescriptions'
+            ) as SupabaseResult<any[]>;
+            if (!res.error && Array.isArray(res.data)) {
+                for (const row of res.data) {
+                    const doc = row.doctor_id ? doctorMap.get(row.doctor_id) : null;
+                    const rec: ReceptionVisitRecord = {
+                        id: row.id,
+                        patient_id: row.patient_id,
+                        token_number: row.token_number,
+                        status: row.status,
+                        created_at: row.created_at,
+                        next_review_date: row.next_review_date,
+                        tests_to_review: row.tests_to_review,
+                        specialists_to_review: row.specialists_to_review,
+                        medications: row.medications,
+                        notes: row.notes,
+                        metadata: row.metadata,
+                        dispensed_at: row.dispensed_at,
+                        doctor: doc ? { id: doc.id, name: doc.name, specialty: doc.specialty } : undefined,
+                    };
+                    const arr = prescriptionsByQueue.get(row.queue_id) || [];
+                    arr.push(rec);
+                    prescriptionsByQueue.set(row.queue_id, arr);
+                }
+            }
+        }
+    }
+
+    const results: AdmittedPatientRecord[] = [];
+    for (const row of queueRows) {
+        const patient = patientMap.get(row.patient_id);
+        if (!patient) continue;
+
+        if (searchQuery) {
+            const q = searchQuery.trim().toLowerCase();
+            if (q) {
+                const hay = [
+                    patient.name,
+                    patient.mr_number,
+                    patient.beanhealth_id,
+                    patient.phone,
+                ].filter(Boolean).join(' ').toLowerCase();
+                if (!hay.includes(q)) continue;
+            }
+        }
+
+        const doc = row.doctor_id ? doctorMap.get(row.doctor_id) : null;
+        results.push({
+            queueId: row.id,
+            patientId: row.patient_id,
+            admittedAt: row.admitted_at || null,
+            dischargedAt: row.discharged_at || null,
+            admissionStatus: (row.admission_status || 'admitted') as 'admitted' | 'discharged',
+            doctorId: row.doctor_id || null,
+            doctorName: doc?.name || null,
+            doctorSpecialty: doc?.specialty || null,
+            tokenNumber: patient.token_number || null,
+            patient: {
+                id: patient.id,
+                name: patient.name,
+                age: patient.age,
+                gender: patient.gender,
+                phone: patient.phone,
+                mr_number: patient.mr_number,
+                beanhealth_id: patient.beanhealth_id,
+                father_husband_name: patient.father_husband_name,
+            },
+            prescriptions: prescriptionsByQueue.get(row.id) || [],
+        });
+    }
+
+    return results;
+}
+
+/**
+ * Fetch all prescriptions for a specific patient, newest first.
+ * Used by the "View Rx" action on Admitted Patients panels.
+ */
+export async function fetchPatientPrescriptions(
+    hospitalId: string,
+    patientId: string
+): Promise<ReceptionVisitRecord[]> {
+    if (!hospitalId || !patientId) return [];
+
+    const result = await withTimeout(
+        (supabase.from('hospital_prescriptions' as any) as any)
+            .select('id, patient_id, queue_id, token_number, status, created_at, next_review_date, tests_to_review, specialists_to_review, medications, notes, metadata, dispensed_at, doctor_id')
+            .eq('hospital_id', hospitalId)
+            .eq('patient_id', patientId)
+            .order('created_at', { ascending: false })
+            .limit(50) as any,
+        10000,
+        'Timed out loading patient prescriptions'
+    ) as SupabaseResult<any[]>;
+
+    if (result.error) throw result.error;
+    const rows = Array.isArray(result.data) ? result.data : [];
+    if (rows.length === 0) return [];
+
+    const doctorIds = Array.from(new Set(rows.map(r => r.doctor_id).filter(Boolean))) as string[];
+    const doctorMap = new Map<string, any>();
+    if (doctorIds.length > 0) {
+        const res = await withTimeout(
+            (supabase.from('hospital_doctors' as any) as any)
+                .select('id, name, specialty, signature_url')
+                .in('id', doctorIds) as any,
+            10000,
+            'Timed out loading doctor details'
+        ) as SupabaseResult<any[]>;
+        if (!res.error && Array.isArray(res.data)) {
+            res.data.forEach((d: any) => doctorMap.set(d.id, d));
+        }
+    }
+
+    return rows.map((row: any): ReceptionVisitRecord => {
+        const doc = row.doctor_id ? doctorMap.get(row.doctor_id) : null;
+        return {
+            id: row.id,
+            patient_id: row.patient_id,
+            token_number: row.token_number,
+            status: row.status,
+            created_at: row.created_at,
+            next_review_date: row.next_review_date,
+            tests_to_review: row.tests_to_review,
+            specialists_to_review: row.specialists_to_review,
+            medications: row.medications,
+            notes: row.notes,
+            metadata: row.metadata,
+            dispensed_at: row.dispensed_at,
+            doctor: doc ? {
+                id: doc.id,
+                name: doc.name,
+                specialty: doc.specialty,
+                signature_url: doc.signature_url,
+            } : undefined,
+        };
+    });
 }
