@@ -100,7 +100,7 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
 
   return (
     <div
-      className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6"
+      className="min-h-[100dvh] w-full flex flex-col justify-start sm:justify-center items-center px-3 py-3 sm:p-6 overflow-y-auto"
       style={{
         background: 'linear-gradient(135deg, #f8faf6 0%, #e8f5e0 50%, #f0f7ec 100%)'
       }}
@@ -112,29 +112,29 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
         viewOnly={true}
       />
 
-      <div className="w-full max-w-sm sm:max-w-md">
+      <div className="w-full max-w-sm sm:max-w-md md:max-w-lg pt-[max(env(safe-area-inset-top),12px)] sm:pt-0 pb-[max(env(safe-area-inset-bottom),8px)] sm:pb-0 my-auto">
         {/* Logo & Branding - Hero Vertical Layout */}
-        <div className="flex flex-col items-center justify-center gap-1 mb-10 animate-fade-in">
-          <div className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 relative transition-transform duration-700 hover:scale-105">
+        <div className="flex flex-col items-center justify-center gap-1 mb-5 sm:mb-10 animate-fade-in">
+          <div className="w-20 h-20 sm:w-40 sm:h-40 flex-shrink-0 relative transition-transform duration-700 hover:scale-105">
             <img
               src="/logo.png"
               alt="BeanHealth Logo"
               className="w-full h-full object-contain drop-shadow-md"
             />
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight !text-gray-900 leading-none text-center">
+          <h1 className="text-[30px] sm:text-5xl font-extrabold tracking-tight !text-gray-900 leading-none text-center">
             <span className="text-primary-500">Bean</span>
             <span className="text-secondary-500">Health</span>
           </h1>
         </div>
 
         {/* Auth Card - Elevated - Forces Light Theme */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-white shadow-[0_4px_24px_rgba(138,196,60,0.08),0_1px_3px_rgba(0,0,0,0.04)] border border-transparent">
+        <div className="p-4 sm:p-8 rounded-[24px] sm:rounded-[28px] bg-white/95 backdrop-blur-[1px] shadow-[0_6px_28px_rgba(138,196,60,0.10),0_2px_6px_rgba(0,0,0,0.05)] border border-white/70">
           {renderView()}
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs mt-6 text-gray-400">
+        <p className="text-center text-xs mt-4 sm:mt-6 text-gray-400">
           By continuing, you agree to our{' '}
           <button
             onClick={() => setShowTerms(true)}

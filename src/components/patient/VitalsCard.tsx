@@ -75,6 +75,14 @@ const VitalsCard: React.FC<Props> = ({ onOpenUrineModal }) => {
     setSystole(sys);
     setDiastole(dia);
     setShowBPPicker(false);
+
+    setSavingField('bp');
+    try {
+      await saveVitals({ bp_systole: sys, bp_diastole: dia });
+      checkAllComplete('bp', { sys, dia });
+    } finally {
+      setSavingField(null);
+    }
   };
 
   const handleSaveVital = async (field: 'bp' | 'glucose' | 'weight') => {
@@ -144,15 +152,15 @@ const VitalsCard: React.FC<Props> = ({ onOpenUrineModal }) => {
             </div>
 
             <div className="pa-bp-action-row">
-              {isBpChanged && (
-                <button className="pa-vital-action" onClick={() => handleSaveVital('bp')} disabled={savingField === 'bp'}>
-                  {savingField === 'bp' ? <div className="pa-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : t('action.save')}
+              {savingField === 'bp' && (
+                <button className="pa-vital-action" disabled>
+                  <div className="pa-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
                 </button>
               )}
               {isBpSaved && (
                  <button className="pa-vital-action saved" disabled><CheckIcon />{t('action.saved')}</button>
               )}
-              {!isBpChanged && !isBpSaved && <div className="pa-vital-spacer" />}
+              {savingField !== 'bp' && !isBpSaved && <div className="pa-vital-spacer" />}
             </div>
           </div>
         </div>

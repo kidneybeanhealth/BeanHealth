@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useReactToPrint } from 'react-to-print';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { supabase, getProxiedUrl } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import MobilePrescriptionInput from './MobilePrescriptionInput';
@@ -83,6 +85,7 @@ interface PrescriptionModalProps {
   workingHours?: string;
   footerDoctorText?: string;
   specialistOptions?: string[] | null;
+  forceDesktop?: boolean;
 }
 
 // Dose mappings for auto-populate: Morning, Noon, Evening, Night
@@ -173,6 +176,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   workingHours,
   footerDoctorText,
   specialistOptions,
+  forceDesktop = false,
 }) => {
   // Resolve specialist list: prefer tenant-provided, fall back to KKC defaults
   const SPECIALIST_OPTIONS = specialistOptions ?? DEFAULT_SPECIALIST_OPTIONS;
@@ -360,7 +364,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     const handleResize = () => {
       // Logic for mobile view detection
       const totalWidth = window.innerWidth;
-      setIsMobile(totalWidth < 768);
+      setIsMobile(!forceDesktop && totalWidth < 768);
 
       if (containerRef.current) {
         const availableWidth = containerRef.current.clientWidth;
@@ -392,7 +396,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [forceDesktop]);
 
   useEffect(() => {
     if (!readOnly) {
@@ -765,6 +769,54 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     },
     removeAfterPrint: true
   } as any);
+
+  const handleDownloadPdf = async () => {
+    const target = componentRef.current;
+    if (!target) {
+      toast.error('Unable to prepare PDF');
+      return;
+    }
+
+    try {
+      onPrintOpen?.();
+
+      const canvas = await html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        windowWidth: target.scrollWidth,
+        windowHeight: target.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+      }
+
+      const fileName = `Prescription-${(patient?.name || 'Patient').replace(/\s+/g, '_')}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Download PDF failed:', error);
+      toast.error('Failed to download PDF');
+    }
+  };
 
   // Medicine Handlers
   const addRow = () => {
@@ -2097,13 +2149,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                 </button>
               ) : (
                 <button
-                  onClick={handlePrint}
+                  onClick={readOnly ? handleDownloadPdf : handlePrint}
                   className="flex-[2] px-4 py-3.5 bg-gray-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-sm shadow-lg transition-all active:scale-95"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
-                  Print PDF
+                  {readOnly ? 'Download PDF' : 'Print PDF'}
                 </button>
               )}
             </div>
@@ -2117,11 +2169,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           </button>
           <div className="flex flex-1 sm:flex-none gap-3 order-1 sm:order-2">
             <button
-              onClick={handlePrint}
+              onClick={readOnly ? handleDownloadPdf : handlePrint}
               className="flex-1 sm:flex-none px-4 sm:px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 whitespace-nowrap"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-              <span>Print PDF</span>
+              <span>{readOnly ? 'Download PDF' : 'Print PDF'}</span>
             </button>
             {!readOnly && (
               <button

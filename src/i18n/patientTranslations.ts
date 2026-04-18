@@ -41,11 +41,11 @@ const translations: Record<string, Record<Lang, string>> = {
   // ── Confirmation Screen ────────────────────────────────────
   'confirm.yes': {
     en: 'Yes, this is me, Continue',
-    ta: 'ஆமாம், இது நான், தொடரவும்',
+    ta: 'ஆமாம், தொடரவும்',
   },
   'confirm.no': {
     en: 'Not me, Go back',
-    ta: 'இது நான் அல்ல, திரும்பு',
+    ta: 'இது நான் அல்ல',
   },
   'confirm.fatherHusband': {
     en: 'Father / Husband Name',

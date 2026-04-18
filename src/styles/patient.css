@@ -82,8 +82,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: calc(var(--pa-safe-top) + 16px) 20px 16px;
+  justify-content: center;
+  padding: calc(var(--pa-safe-top) + 12px) 20px calc(var(--pa-safe-bottom) + 12px);
   background: linear-gradient(160deg, #FFFFFF 0%, var(--pa-bg-secondary) 50%, #E8F5D6 100%);
   position: relative;
   overflow: hidden;
@@ -128,14 +128,14 @@
   animation: pa-slide-up 0.6s var(--pa-transition-spring) both;
   position: relative;
   z-index: 1;
-  margin-top: clamp(14px, 8vh, 72px);
+  margin-top: 0;
 }
 
 .pa-login-footer {
   font-size: 12px;
   font-weight: 600;
   color: rgba(0, 0, 0, 0.25);
-  margin-top: 16px;
+  margin-top: 12px;
   text-align: center;
   position: relative;
   z-index: 1;
@@ -528,6 +528,56 @@
 .pa-confirm-actions .pa-btn-secondary {
   width: 50%;
   min-height: 48px;
+}
+
+.pa-confirm-ta .pa-confirm-name,
+.pa-confirm-ta .pa-confirm-hint,
+.pa-confirm-ta .pa-confirm-row-label,
+.pa-confirm-ta .pa-confirm-row-value,
+.pa-confirm-ta .pa-confirm-actions .pa-btn-primary,
+.pa-confirm-ta .pa-confirm-actions .pa-btn-secondary {
+  font-family: 'Noto Sans Tamil', 'Nunito', 'Inter', sans-serif;
+}
+
+.pa-confirm-ta .pa-confirm-name {
+  font-size: clamp(19px, 4.6vw, 22px);
+  line-height: 1.35;
+}
+
+.pa-confirm-ta .pa-confirm-hint {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pa-confirm-ta .pa-confirm-row {
+  grid-template-columns: minmax(122px, 40%) 1fr;
+}
+
+.pa-confirm-ta .pa-confirm-row-label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pa-confirm-ta .pa-confirm-row-value {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.pa-confirm-actions-ta {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pa-confirm-actions-ta .pa-btn-primary,
+.pa-confirm-actions-ta .pa-btn-secondary {
+  width: 100%;
+  min-height: 50px;
+  font-size: 15px;
+  line-height: 1.35;
+  white-space: normal;
+  padding: 12px 14px;
 }
 
 /* G��G�� Dashboard Shell G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
@@ -1722,9 +1772,13 @@
 }
 
 @media (max-width: 480px) {
+  .pa-login {
+    padding: calc(var(--pa-safe-top) + 10px) 14px calc(var(--pa-safe-bottom) + 10px);
+  }
+
   .pa-login-card {
     padding: 28px 20px;
-    margin-top: clamp(8px, 5vh, 36px);
+    max-width: 100%;
   }
 
   .pa-confirm-card {
@@ -1744,6 +1798,30 @@
   .pa-confirm-actions .pa-btn-primary,
   .pa-confirm-actions .pa-btn-secondary {
     min-height: 46px;
+    font-size: 14px;
+  }
+
+  .pa-confirm-ta .pa-confirm-card {
+    gap: 10px;
+  }
+
+  .pa-confirm-ta .pa-confirm-row {
+    grid-template-columns: minmax(112px, 44%) 1fr;
+    gap: 6px;
+    padding: 9px 12px;
+  }
+
+  .pa-confirm-ta .pa-confirm-row-label {
+    font-size: 11.5px;
+  }
+
+  .pa-confirm-ta .pa-confirm-row-value {
+    font-size: 13.5px;
+  }
+
+  .pa-confirm-actions-ta .pa-btn-primary,
+  .pa-confirm-actions-ta .pa-btn-secondary {
+    min-height: 48px;
     font-size: 14px;
   }
 

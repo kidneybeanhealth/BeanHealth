@@ -13,6 +13,7 @@ import PatientHome from './PatientHome';
 import PatientTrends from './PatientTrends';
 import PatientPrescriptions from './PatientPrescriptions';
 import PatientBottomNav, { PatientTab } from './PatientBottomNav';
+import { getProxiedUrl, supabase } from '../../lib/supabase';
 import '../../styles/patient.css';
 
 type AppStep = 'login' | 'confirm' | 'dashboard';
@@ -45,12 +46,69 @@ const PatientAppInner: React.FC = () => {
   const [step, setStep] = useState<AppStep>(session ? 'dashboard' : 'login');
   const [activeTab, setActiveTab] = useState<PatientTab>('home');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const previousRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    if (document.documentElement) {
+      document.documentElement.scrollTop = 0;
+    }
+    if (document.body) {
+      document.body.scrollTop = 0;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.history.scrollRestoration = previousRestoration;
+    };
+  }, []);
 
   // Update time every minute
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const hospitalId = session?.hospital?.id || session?.patient?.hospital_id;
+    if (!hospitalId) {
+      setHospitalLogo(null);
+      return;
+    }
+
+    let isActive = true;
+    setHospitalLogo(null);
+
+    const fetchHospitalLogo = async () => {
+      try {
+        const { data } = await (supabase as any)
+          .from('hospital_profiles')
+          .select('hospital_logo')
+          .eq('id', hospitalId)
+          .maybeSingle();
+
+        if (!isActive) return;
+        setHospitalLogo(data?.hospital_logo ? getProxiedUrl(data.hospital_logo) : null);
+      } catch (error) {
+        if (isActive) {
+          setHospitalLogo(null);
+        }
+      }
+    };
+
+    fetchHospitalLogo();
+
+    return () => {
+      isActive = false;
+    };
+  }, [session?.hospital?.id, session?.patient?.hospital_id]);
 
   // When session changes (login success), go to confirm
   useEffect(() => {
@@ -116,7 +174,7 @@ const PatientAppInner: React.FC = () => {
             <div className="pa-header-left">
               {/* Logo */}
               <div className="pa-header-logo">
-                <img src="/logo.png" alt="BeanHealth" />
+                <img src={hospitalLogo || '/logo.png'} alt="Hospital Logo" />
               </div>
               {/* Brand name — visible on ≥640px */}
               <div className="pa-header-brand-name">

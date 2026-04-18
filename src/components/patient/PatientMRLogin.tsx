@@ -20,18 +20,22 @@ const PatientMRLogin: React.FC = () => {
     const body = document.body;
     const previousRootOverflow = root.style.overflow;
     const previousBodyOverflow = body.style.overflow;
+    const shouldAutoFocus = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
     root.style.overflow = 'hidden';
     body.style.overflow = 'hidden';
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 
-    const frame = window.requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      inputRef.current?.focus({ preventScroll: true });
-    });
+    const frame = shouldAutoFocus
+      ? window.requestAnimationFrame(() => {
+          inputRef.current?.focus({ preventScroll: true });
+        })
+      : null;
 
     return () => {
-      window.cancelAnimationFrame(frame);
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+      }
       root.style.overflow = previousRootOverflow;
       body.style.overflow = previousBodyOverflow;
     };
