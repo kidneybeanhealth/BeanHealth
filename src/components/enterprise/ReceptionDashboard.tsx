@@ -2739,6 +2739,7 @@ const ReceptionDashboard: React.FC = () => {
                     }}
                     onClose={() => { setRxViewPrescription(null); setRxViewPatient(null); }}
                     readOnly={true}
+                    forcePrint={true}
                     existingData={rxViewPrescription}
                     clinicLogo={profile?.avatar_url || undefined}
                 />

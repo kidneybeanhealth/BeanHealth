@@ -1306,6 +1306,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                     }}
                     onClose={() => setSelectedPrintPrescription(null)}
                     readOnly={true}
+                    forcePrint={true}
                     existingData={selectedPrintPrescription}
                     clinicLogo={hospitalLogo || undefined}
                 />

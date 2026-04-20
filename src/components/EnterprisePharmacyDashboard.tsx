@@ -1270,6 +1270,7 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     }}
                     onClose={() => setShowPrintModal(false)}
                     readOnly={true}
+                    forcePrint={true}
                     existingData={{
                         ...selectedPrescription,
                         dispensed_days: dispensingDays || (selectedPrescription as any).dispensed_days

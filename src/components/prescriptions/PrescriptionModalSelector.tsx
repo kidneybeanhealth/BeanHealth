@@ -42,6 +42,7 @@ export interface PrescriptionModalSelectorProps {
         callbackPatientId?: string
     ) => void;
     readOnly?: boolean;
+    forcePrint?: boolean;
     existingData?: any;
     clinicLogo?: string;
     actorAttribution?: {

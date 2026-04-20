@@ -2329,6 +2329,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     }}
                     onClose={() => { setRxViewPrescription(null); setRxViewPatient(null); }}
                     readOnly={true}
+                    forcePrint={true}
                     existingData={rxViewPrescription}
                     clinicLogo={doctor.avatar_url || undefined}
                 />
@@ -2368,6 +2369,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     }}
                     onClose={() => setSelectedHistoryItem(null)}
                     readOnly={true}
+                    forcePrint={true}
                     existingData={selectedHistoryItem}
                     clinicLogo={hospitalLogo || undefined}
                     onPrintOpen={() => {

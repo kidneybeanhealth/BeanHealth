@@ -92,6 +92,8 @@ interface PrescriptionModalProps {
   footerDoctorText?: string;
   specialistOptions?: string[] | null;
   forceDesktop?: boolean;
+  /** Force Print PDF behaviour even when readOnly=true (e.g. pharmacy view). */
+  forcePrint?: boolean;
 }
 
 // Dose mappings for auto-populate: Morning, Noon, Evening, Night
@@ -183,6 +185,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   footerDoctorText,
   specialistOptions,
   forceDesktop = false,
+  forcePrint = false,
 }) => {
   // Resolve specialist list: prefer tenant-provided, fall back to KKC defaults
   const SPECIALIST_OPTIONS = specialistOptions ?? DEFAULT_SPECIALIST_OPTIONS;
@@ -2145,13 +2148,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                 </button>
               ) : (
                 <button
-                  onClick={readOnly ? handleDownloadPdf : handlePrint}
+                  onClick={(readOnly && !forcePrint) ? handleDownloadPdf : handlePrint}
                   className="flex-[2] px-4 py-3.5 bg-gray-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-sm shadow-lg transition-all active:scale-95"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
-                  {readOnly ? 'Download PDF' : 'Print PDF'}
+                  {(readOnly && !forcePrint) ? 'Download PDF' : 'Print PDF'}
                 </button>
               )}
             </div>
@@ -2165,11 +2168,11 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           </button>
           <div className="flex flex-1 sm:flex-none gap-3 order-1 sm:order-2">
             <button
-              onClick={readOnly ? handleDownloadPdf : handlePrint}
+              onClick={(readOnly && !forcePrint) ? handleDownloadPdf : handlePrint}
               className="flex-1 sm:flex-none px-4 sm:px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 whitespace-nowrap"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-              <span>{readOnly ? 'Download PDF' : 'Print PDF'}</span>
+              <span>{(readOnly && !forcePrint) ? 'Download PDF' : 'Print PDF'}</span>
             </button>
             {!readOnly && (
               <button

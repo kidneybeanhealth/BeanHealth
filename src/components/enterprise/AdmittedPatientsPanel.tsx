@@ -342,6 +342,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                         }}
                         onClose={() => setSelectedRx(null)}
                         readOnly={true}
+                        forcePrint={true}
                         existingData={selectedRx}
                         clinicLogo={hospitalLogo || undefined}
                     />
