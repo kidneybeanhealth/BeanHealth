@@ -1891,7 +1891,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                             patientName: item.patient.name,
                                                             mrNumber: item.patient.mr_number || null,
                                                         })}
-                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-rose-600 rounded-xl hover:bg-rose-700 shadow-lg shadow-rose-600/25 transition-all hover:-translate-y-0.5 whitespace-nowrap"
+                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-all whitespace-nowrap"
                                                     >
                                                         Admit
                                                     </button>
