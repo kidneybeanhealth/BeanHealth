@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
+import {
+    deleteHospitalSavedDrug,
+    fetchHospitalSavedDrugs,
+    upsertHospitalSavedDrug,
+} from '../../services/hospitalCatalogService';
 
 // Drug types with icons and prefixes
 const DRUG_TYPES = [
@@ -22,10 +26,9 @@ const TIMING_COLORS: Record<string, string> = {
 interface SavedDrug {
     id: string;
     name: string;
-    drug_type?: string;
-    default_timing?: string;
+    drug_type?: string | null;
+    default_timing?: string | null;
     dosages?: string[];
-    doctor_id?: string;
     hospital_id?: string;
 }
 
@@ -71,14 +74,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
     useEffect(() => {
         const fetchAllDrugs = async () => {
             try {
-                // Fetch doctor's saved drugs
-                const { data: savedData, error: savedError } = await supabase
-                    .from('hospital_doctor_drugs' as any)
-                    .select('*')
-                    .eq('doctor_id', doctorId)
-                    .order('name', { ascending: true });
-
-                if (savedError) throw savedError;
+                const savedData = await fetchHospitalSavedDrugs(hospitalId);
                 setSavedDrugs(savedData || []);
             } catch (err) {
                 console.error('Error fetching drugs:', err);
@@ -88,7 +84,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
             }
         };
         fetchAllDrugs();
-    }, [doctorId]);
+    }, [hospitalId]);
 
     // Combine saved drugs for autocomplete
     const allDrugOptions: DrugOption[] = [
@@ -204,38 +200,31 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
         setIsSaving(true);
         try {
-            const drugsTable: any = supabase.from('hospital_doctor_drugs' as any);
             if (editingDrug) {
                 // Update existing drug
-                const { error } = await drugsTable
-                    .update({ name: normalizedName, drug_type: newDrugType, default_timing: newDrugTiming || null, dosages: parsedDosages } as any)
-                    .eq('id', editingDrug.id);
-                if (error) throw error;
+                const updatedDrug = await upsertHospitalSavedDrug({
+                    id: editingDrug.id,
+                    hospitalId,
+                    doctorId,
+                    name: normalizedName,
+                    drugType: newDrugType,
+                    defaultTiming: newDrugTiming,
+                    dosages: parsedDosages,
+                });
                 toast.success('Drug updated!', { icon: '✅' });
                 setSavedDrugs(savedDrugs.map(d =>
-                    d.id === editingDrug.id ? { ...d, name: normalizedName, drug_type: newDrugType, default_timing: newDrugTiming || undefined, dosages: parsedDosages } : d
+                    d.id === editingDrug.id ? updatedDrug : d
                 ));
             } else {
                 // Add new drug
-                const { data, error } = await drugsTable
-                    .insert({
-                        name: normalizedName,
-                        drug_type: newDrugType,
-                        default_timing: newDrugTiming || null,
-                        dosages: parsedDosages,
-                        doctor_id: doctorId,
-                        hospital_id: hospitalId
-                    } as any)
-                    .select()
-                    .single();
-
-                if (error) {
-                    if (error.code === '23505') {
-                        toast.error(`"${normalizedName}" already exists`, { icon: '⚠️' });
-                        return;
-                    }
-                    throw error;
-                }
+                const data = await upsertHospitalSavedDrug({
+                    hospitalId,
+                    doctorId,
+                    name: normalizedName,
+                    drugType: newDrugType,
+                    defaultTiming: newDrugTiming,
+                    dosages: parsedDosages,
+                });
                 toast.success('Drug added to your saved list!', { icon: '💊' });
                 setSavedDrugs([...savedDrugs, data as SavedDrug]);
             }
@@ -246,6 +235,10 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
             setEditingDrug(null);
         } catch (err: any) {
             console.error('Error saving drug:', err);
+            if (err?.code === '23505') {
+                        toast.error(`"${normalizedName}" already exists`, { icon: '⚠️' });
+                        return;
+            }
             toast.error(err.message || 'Failed to save drug');
         } finally {
             setIsSaving(false);
@@ -254,11 +247,7 @@ const ManageDrugsModal: React.FC<ManageDrugsModalProps> = ({ doctorId, hospitalI
 
     const handleDeleteDrug = async (id: string) => {
         try {
-            const { error } = await supabase
-                .from('hospital_doctor_drugs' as any)
-                .delete()
-                .eq('id', id);
-            if (error) throw error;
+            await deleteHospitalSavedDrug(hospitalId, id);
             toast.success('Drug removed!');
             setSavedDrugs(savedDrugs.filter(d => d.id !== id));
         } catch (err) {

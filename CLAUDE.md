@@ -170,6 +170,7 @@ All Supabase interactions go through service modules (never call Supabase direct
 | Service | Size | Responsibility |
 |---------|------|---------------|
 | `adminApiService.ts` | 11 KB | Admin-specific API calls |
+| `hospitalCatalogService.ts` | — | Hospital-shared saved drugs and diagnoses catalog CRUD |
 | `snapshotLogicService.ts` | 23 KB | Snapshot logic for enterprise views |
 | `categorizationService.ts` | 11 KB | Patient categorization |
 | `impersonationService.ts` | 8 KB | Admin impersonation of patients |
@@ -376,6 +377,8 @@ See `DATABASE.md` for setup details.
 | `hospital_queues` | `hospital_id`, `patient_id`, `doctor_id`, `queue_number`, `status` (pending/in_progress/completed/cancelled) | Reception → doctor queue |
 | `hospital_doctors` | `hospital_id`, `name`, `specialty` | Enterprise doctors (not in `users` table) |
 | `hospital_doctor_drugs` | `doctor_id`, `name`, `dosages[]`, `default_timing` | Per-doctor saved drug list for prescription autocomplete |
+| `hospital_saved_drugs` | `hospital_id`, `name`, `normalized_name`, `drug_type`, `dosages[]`, `default_timing` | Shared hospital-level drug library (visible to all doctors in same hospital) |
+| `hospital_saved_diagnoses` | `hospital_id`, `name`, `normalized_name` | Shared hospital-level diagnosis library (visible to all doctors in same hospital) |
 | `hospital_prescriptions` | `hospital_id`, `doctor_id`, `patient_id`, `medications` (JSONB), `queue_id` | Enterprise prescriptions (separate from standalone `prescriptions`) |
 | `hospital_pharmacy_queue` | `hospital_id`, `prescription_id`, `patient_name`, `token_number`, `status` (waiting/calling/dispensed/skipped) | Pharmacy calling system; realtime enabled |
 | `hospital_patient_reviews` | `hospital_id`, `patient_id`, `review_date`, `status` | Follow-up review tracking |
@@ -412,6 +415,7 @@ See `DATABASE.md` for setup details.
 - `enterprise_reception.sql` / `enterprise_recreate_reception_v2.sql` — Hospital walk-in queue
 - `004_pharmacy_queue.sql` — Pharmacy calling queue (realtime)
 - `hospital_doctor_drugs_schema.sql` — Per-doctor drug library
+- `sql/20260420_hospital_shared_catalog.sql` — Hospital-shared saved drugs/diagnoses tables, RLS, and backfill from doctor-scoped catalogs
 - `realtime_chat_setup.sql` — Chat pg_notify triggers
 - `visit_medications_schema.sql` — Visit-specific medications
 - `custom_lab_types_schema.sql` — Admin-defined custom lab types
@@ -564,6 +568,7 @@ Use Tailwind `dark:` classes. Theme state comes from `ThemeContext`.
 | 2026-04-18 | Hardened Patient App Rx logo fetch timing and key compatibility: introduced shared `resolveHospitalLogo` helper using `hospital_profiles.hospital_logo` with key fallback (`id` then `hospital_id`) and wired `Open PDF` to resolve logo immediately before opening `PrescriptionModal`, reducing fallback-to-`/logo.png` cases caused by fetch timing mismatches | `src/components/patient/PatientPrescriptions.tsx`, `CLAUDE.md` |
 | 2026-04-18 | Added direct `Download PDF` behavior in `PrescriptionModal` for read-only flows (patient app): integrated `html2canvas` + `jsPDF` export pipeline and switched read-only action labels from `Print PDF` to `Download PDF` while keeping editable enterprise flows on print | `src/components/modals/PrescriptionModal.tsx`, `package.json`, `CLAUDE.md` |
 | 2026-04-18 | Updated Patient App BP interaction to auto-save on confirmation: selecting BP in `BPScrollPicker` and confirming now persists immediately, removes dependence on separate BP Save button, and keeps inline saved/loading feedback in `VitalsCard` | `src/components/patient/VitalsCard.tsx`, `CLAUDE.md` |
+| 2026-04-20 | Migrated enterprise saved-drug and diagnosis catalogs from doctor-scoped tables to shared hospital-scoped catalogs: added migration + RLS/backfill, introduced `hospitalCatalogService`, and rewired enterprise prescription/manage modals to read/write shared hospital data | `sql/20260420_hospital_shared_catalog.sql`, `src/services/hospitalCatalogService.ts`, `src/components/modals/ManageDrugsModal.tsx`, `src/components/modals/ManageDiagnosesModal.tsx`, `src/components/modals/PrescriptionModal.tsx`, `src/components/prescriptions/templates/StandardPrescriptionModal.tsx`, `CLAUDE.md` |
 
 
 ## Known Issues (To Be Fixed)

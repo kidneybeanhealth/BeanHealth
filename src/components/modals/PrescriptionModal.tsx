@@ -5,6 +5,12 @@ import html2canvas from 'html2canvas';
 import { supabase, getProxiedUrl } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import MobilePrescriptionInput from './MobilePrescriptionInput';
+import {
+  deleteHospitalSavedDrug,
+  fetchHospitalSavedDiagnoses,
+  fetchHospitalSavedDrugs,
+  upsertHospitalSavedDrug,
+} from '../../services/hospitalCatalogService';
 
 interface SavedDrug {
   id: string;
@@ -400,12 +406,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
   useEffect(() => {
     if (!readOnly) {
-      if (doctor?.id) {
+      if (doctor?.hospital_id || doctor?.hospitalId) {
         fetchSavedDrugs();
         fetchSavedDiagnoses();
       }
     }
-  }, [doctor?.id, readOnly]);
+  }, [doctor?.id, doctor?.hospital_id, doctor?.hospitalId, readOnly]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -423,13 +429,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
   const fetchSavedDrugs = async () => {
     try {
-      const { data, error } = await supabase
-        .from('hospital_doctor_drugs' as any)
-        .select('*')
-        .eq('doctor_id', doctor.id)
-        .order('name', { ascending: true });
-
-      if (error) throw error;
+      const hospitalId = doctor?.hospital_id || doctor?.hospitalId;
+      if (!hospitalId) return;
+      const data = await fetchHospitalSavedDrugs(hospitalId);
       setSavedDrugs(data || []);
     } catch (error) {
       console.error('Error fetching saved drugs:', error);
@@ -438,12 +440,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
   const fetchSavedDiagnoses = async () => {
     try {
-      const { data, error } = await supabase
-        .from('hospital_doctor_diagnoses' as any)
-        .select('*')
-        .eq('doctor_id', doctor.id)
-        .order('name', { ascending: true });
-      if (error) throw error;
+      const hospitalId = doctor?.hospital_id || doctor?.hospitalId;
+      if (!hospitalId) return;
+      const data = await fetchHospitalSavedDiagnoses(hospitalId);
       setSavedDiagnoses(data || []);
     } catch (error) {
       console.error('Error fetching saved diagnoses:', error);
@@ -467,41 +466,34 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
     setIsSavingDrug(true);
     try {
+      const hospitalId = doctor?.hospital_id || doctor?.hospitalId;
+      if (!hospitalId) {
+        toast.error('Hospital context is missing');
+        return;
+      }
+
       if (editingDrug) {
         // Update existing drug
-        const { error } = await (supabase
-          .from('hospital_doctor_drugs') as any)
-          .update({
-            name: newDrugName.toUpperCase().trim(),
-            drug_type: newDrugType || null,
-            dosages: parsedDosages,
-            default_timing: newDrugDefaultTiming || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingDrug.id);
-
-        if (error) throw error;
+        await upsertHospitalSavedDrug({
+          id: editingDrug.id,
+          hospitalId,
+          doctorId: doctor?.id,
+          name: newDrugName.toUpperCase().trim(),
+          drugType: newDrugType || undefined,
+          defaultTiming: newDrugDefaultTiming || undefined,
+          dosages: parsedDosages,
+        });
         toast.success('Drug updated successfully');
       } else {
         // Insert new drug
-        const { error } = await (supabase
-          .from('hospital_doctor_drugs') as any)
-          .insert({
-            doctor_id: doctor.id,
-            name: newDrugName.toUpperCase().trim(),
-            drug_type: newDrugType || null,
-            dosages: parsedDosages,
-            default_timing: newDrugDefaultTiming || null,
-            created_at: new Date().toISOString()
-          });
-
-        if (error) {
-          if (error.code === '23505') {
-            toast.error('This drug already exists');
-            return;
-          }
-          throw error;
-        }
+        await upsertHospitalSavedDrug({
+          hospitalId,
+          doctorId: doctor?.id,
+          name: newDrugName.toUpperCase().trim(),
+          drugType: newDrugType || undefined,
+          defaultTiming: newDrugDefaultTiming || undefined,
+          dosages: parsedDosages,
+        });
         toast.success('Drug saved successfully');
       }
 
@@ -514,6 +506,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       fetchSavedDrugs();
     } catch (error: any) {
       console.error('Error saving drug:', error);
+      if (error?.code === '23505') {
+        toast.error('This drug already exists');
+        return;
+      }
       toast.error(error.message || 'Failed to save drug');
     } finally {
       setIsSavingDrug(false);
@@ -524,12 +520,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     if (!confirm('Are you sure you want to delete this drug?')) return;
 
     try {
-      const { error } = await supabase
-        .from('hospital_doctor_drugs' as any)
-        .delete()
-        .eq('id', drugId);
-
-      if (error) throw error;
+      const hospitalId = doctor?.hospital_id || doctor?.hospitalId;
+      if (!hospitalId) {
+        toast.error('Hospital context is missing');
+        return;
+      }
+      await deleteHospitalSavedDrug(hospitalId, drugId);
       toast.success('Drug deleted');
       fetchSavedDrugs();
     } catch (error: any) {

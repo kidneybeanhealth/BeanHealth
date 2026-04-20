@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
+import {
+    deleteHospitalSavedDiagnosis,
+    fetchHospitalSavedDiagnoses,
+    upsertHospitalSavedDiagnosis,
+} from '../../services/hospitalCatalogService';
 
 interface SavedDiagnosis {
     id: string;
     name: string;
-    doctor_id: string;
     hospital_id: string;
 }
 
@@ -26,13 +29,7 @@ const ManageDiagnosesModal: React.FC<ManageDiagnosesModalProps> = ({ doctorId, h
     useEffect(() => {
         const fetchDiagnoses = async () => {
             try {
-                const { data, error } = await supabase
-                    .from('hospital_doctor_diagnoses' as any)
-                    .select('*')
-                    .eq('doctor_id', doctorId)
-                    .order('name', { ascending: true });
-
-                if (error) throw error;
+                const data = await fetchHospitalSavedDiagnoses(hospitalId);
                 setSavedDiagnoses(data || []);
             } catch (err) {
                 console.error('Error fetching saved diagnoses:', err);
@@ -42,29 +39,30 @@ const ManageDiagnosesModal: React.FC<ManageDiagnosesModalProps> = ({ doctorId, h
             }
         };
         fetchDiagnoses();
-    }, [doctorId]);
+    }, [hospitalId]);
 
     const handleSaveDiagnosis = async () => {
         if (!newDiagnosisName.trim()) return;
         setIsSaving(true);
+        const normalizedName = newDiagnosisName.toUpperCase();
         try {
             if (editingDiagnosis) {
                 // Update existing diagnosis
-                const { error } = await supabase
-                    .from('hospital_doctor_diagnoses' as any)
-                    .update({ name: newDiagnosisName.toUpperCase() } as any)
-                    .eq('id', editingDiagnosis.id);
-                if (error) throw error;
+                const updatedDiagnosis = await upsertHospitalSavedDiagnosis({
+                    id: editingDiagnosis.id,
+                    hospitalId,
+                    doctorId,
+                    name: normalizedName,
+                });
                 toast.success('Diagnosis updated!');
-                setSavedDiagnoses(savedDiagnoses.map(d => d.id === editingDiagnosis.id ? { ...d, name: newDiagnosisName.toUpperCase() } : d));
+                setSavedDiagnoses(savedDiagnoses.map(d => d.id === editingDiagnosis.id ? updatedDiagnosis : d));
             } else {
                 // Add new diagnosis
-                const { data, error } = await supabase
-                    .from('hospital_doctor_diagnoses' as any)
-                    .insert({ name: newDiagnosisName.toUpperCase(), doctor_id: doctorId, hospital_id: hospitalId } as any)
-                    .select()
-                    .single();
-                if (error) throw error;
+                const data = await upsertHospitalSavedDiagnosis({
+                    hospitalId,
+                    doctorId,
+                    name: normalizedName,
+                });
                 toast.success('Diagnosis added!');
                 setSavedDiagnoses([...savedDiagnoses, data as any]);
             }
@@ -72,6 +70,10 @@ const ManageDiagnosesModal: React.FC<ManageDiagnosesModalProps> = ({ doctorId, h
             setEditingDiagnosis(null);
         } catch (err: any) {
             console.error('Error saving diagnosis:', err);
+            if (err?.code === '23505') {
+                toast.error(`"${normalizedName}" already exists`);
+                return;
+            }
             toast.error(err.message || 'Failed to save diagnosis');
         } finally {
             setIsSaving(false);
@@ -80,11 +82,7 @@ const ManageDiagnosesModal: React.FC<ManageDiagnosesModalProps> = ({ doctorId, h
 
     const handleDeleteDiagnosis = async (id: string) => {
         try {
-            const { error } = await supabase
-                .from('hospital_doctor_diagnoses' as any)
-                .delete()
-                .eq('id', id);
-            if (error) throw error;
+            await deleteHospitalSavedDiagnosis(hospitalId, id);
             toast.success('Diagnosis removed!');
             setSavedDiagnoses(savedDiagnoses.filter(d => d.id !== id));
         } catch (err) {

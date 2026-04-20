@@ -10,12 +10,26 @@ import { useReactToPrint } from 'react-to-print';
 import { supabase, getProxiedUrl } from '../../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { HospitalProfile, getTenantDisplayName, getTenantPhone } from '../../../contexts/TenantContext';
+import {
+  deleteHospitalSavedDrug,
+  fetchHospitalSavedDiagnoses,
+  fetchHospitalSavedDrugs,
+  upsertHospitalSavedDrug,
+} from '../../../services/hospitalCatalogService';
 
 /* ─────────── Types ─────────── */
-interface SavedDrug { id: string; name: string; drug_type?: string; }
+interface SavedDrug {
+  id: string;
+  name: string;
+  drug_type?: string;
+  default_timing?: string;
+  dosages?: string[];
+}
 interface DrugOption {
   id: string; name: string; genericName?: string;
   category?: string; drugType?: string; isReference?: boolean;
+  default_timing?: string;
+  dosages?: string[];
 }
 interface Medication {
   name: string; number: string; dose: string;
@@ -169,18 +183,22 @@ const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
 
   /* ── fetch saved drugs ── */
   const fetchSavedDrugs = useCallback(async () => {
-    if (!doctor?.id) return;
-    const { data } = await (supabase
-      .from('hospital_doctor_drugs' as any).select('id, name, drug_type')
-      .eq('doctor_id', doctor.id) as any);
+    const hospitalId = doctor?.hospital_id || doctor?.hospitalId;
+    if (!hospitalId) return;
+    const data = await fetchHospitalSavedDrugs(hospitalId);
     if (data) setSavedDrugs(data as SavedDrug[]);
-  }, [doctor?.id]);
+  }, [doctor?.hospital_id, doctor?.hospitalId]);
 
   useEffect(() => { fetchSavedDrugs(); }, [fetchSavedDrugs]);
 
   /* ── drug search filter ── */
   const allDrugOptions: DrugOption[] = savedDrugs.map(d => ({
-    id: d.id, name: d.name, drugType: d.drug_type, isReference: false,
+    id: d.id,
+    name: d.name,
+    drugType: d.drug_type,
+    default_timing: d.default_timing,
+    dosages: d.dosages,
+    isReference: false,
   }));
 
   useEffect(() => {
@@ -198,6 +216,7 @@ const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
       ...newMeds[index],
       name: option.name,
       drugType: option.drugType,
+      ...(option.default_timing && option.default_timing !== 'nil' ? { foodTiming: option.default_timing } : {}),
     };
     setMedications(newMeds);
     setShowDrugDropdown(null);
@@ -205,29 +224,31 @@ const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
   };
 
   const handleSaveDrug = async (name: string) => {
-    if (!doctor?.id || !name.trim()) return;
-    const { data } = await ((supabase
-      .from('hospital_doctor_drugs' as any) as any)
-      .insert({ doctor_id: doctor.id, name: name.trim().toUpperCase() })
-      .select().single());
+    const hospitalId = doctor?.hospital_id || doctor?.hospitalId;
+    if (!hospitalId || !name.trim()) return;
+    const data = await upsertHospitalSavedDrug({
+      hospitalId,
+      doctorId: doctor?.id,
+      name: name.trim().toUpperCase(),
+    });
     if (data) { setSavedDrugs(prev => [...prev, data as SavedDrug]); toast.success('Drug saved'); }
   };
 
   const handleDeleteDrug = async (id: string) => {
-    await (supabase.from('hospital_doctor_drugs' as any) as any).delete().eq('id', id);
+    const hospitalId = doctor?.hospital_id || doctor?.hospitalId;
+    if (!hospitalId) return;
+    await deleteHospitalSavedDrug(hospitalId, id);
     setSavedDrugs(prev => prev.filter(d => d.id !== id));
     toast.success('Drug removed');
   };
 
   /* ── fetch saved diagnoses ── */
   const fetchSavedDiagnoses = useCallback(async () => {
-    if (!doctor?.id) return;
-    const { data } = await (supabase
-      .from('hospital_doctor_diagnoses' as any).select('*')
-      .eq('doctor_id', doctor.id)
-      .order('name', { ascending: true }) as any);
+    const hospitalId = doctor?.hospital_id || doctor?.hospitalId;
+    if (!hospitalId) return;
+    const data = await fetchHospitalSavedDiagnoses(hospitalId);
     if (data) setSavedDiagnoses((data as any[]).map((r: any) => ({ id: r.id, name: r.name })));
-  }, [doctor?.id]);
+  }, [doctor?.hospital_id, doctor?.hospitalId]);
 
   useEffect(() => { fetchSavedDiagnoses(); }, [fetchSavedDiagnoses]);
 
