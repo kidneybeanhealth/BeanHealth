@@ -43,6 +43,9 @@ export interface ReceptionPastRecordPatient {
     app_access_enabled?: boolean;
     isDeceased?: boolean;
     deceasedAt?: string | null;
+    continuityStatus?: string | null;
+    followupStoppedAt?: string | null;
+    followupStopReason?: string | null;
     created_at?: string;
     latestReviewDate: string | null;
     reviewCategory: ReceptionReviewFilter;
@@ -236,7 +239,7 @@ export async function fetchReceptionPastRecords(
 
     const buildPatientsQuery = (includeDeceasedFields: boolean): any => {
         const selectClause = includeDeceasedFields
-            ? 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, is_deceased, deceased_at, created_at'
+            ? 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, is_deceased, deceased_at, continuity_status, followup_stopped_at, followup_stop_reason, created_at'
             : 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at';
 
         let query: any = (supabase
@@ -266,8 +269,13 @@ export async function fetchReceptionPastRecords(
 
     if (patientsResult.error) {
         const message = String(patientsResult.error.message || '').toLowerCase();
-        const missingDeceasedColumns = message.includes('is_deceased') || message.includes('deceased_at');
-        if (missingDeceasedColumns) {
+        const missingLifecycleColumns =
+            message.includes('is_deceased') ||
+            message.includes('deceased_at') ||
+            message.includes('continuity_status') ||
+            message.includes('followup_stopped_at') ||
+            message.includes('followup_stop_reason');
+        if (missingLifecycleColumns) {
             patientsResult = await withTimeout(
                 buildPatientsQuery(false),
                 10000,
@@ -402,6 +410,8 @@ export async function fetchReceptionPastRecords(
     const normalized: ReceptionPastRecordPatient[] = basePatients
         .map((p) => {
             const isDeceased = Boolean(p.is_deceased);
+            const continuityStatus = p.continuity_status || 'active_followup';
+            const isFollowupStopped = continuityStatus === 'transferred_out' || continuityStatus === 'inactive_lost_followup';
             const visitHistory = prescriptionsByPatient.get(p.id) || [];
             const latestPrescription = visitHistory[0] || null;
             const latestReview = pickPrimaryReview(reviewsByPatient.get(p.id) || []);
@@ -410,11 +420,11 @@ export async function fetchReceptionPastRecords(
             // prescription date is used as a fallback when no review row exists.
             const reviewDateFromReview = normalizeDateOnly(latestReview?.next_review_date || null);
             const fallbackReviewDate = normalizeDateOnly(latestPrescription?.next_review_date || null);
-            const latestReviewDate = isDeceased
+            const latestReviewDate = (isDeceased || isFollowupStopped)
                 ? null
                 : (reviewDateFromReview || fallbackReviewDate);
 
-            const reviewCategory = isDeceased
+            const reviewCategory = (isDeceased || isFollowupStopped)
                 ? 'not_completed'
                 : deriveReviewCategory(
                     latestReviewDate,
@@ -429,6 +439,9 @@ export async function fetchReceptionPastRecords(
                 ...p,
                 isDeceased,
                 deceasedAt: p.deceased_at || null,
+                continuityStatus,
+                followupStoppedAt: p.followup_stopped_at || null,
+                followupStopReason: p.followup_stop_reason || null,
                 latestReviewDate,
                 reviewCategory,
                 lastVisitAt: latestPrescription?.created_at || p.created_at || null,
@@ -568,6 +581,88 @@ interface UpdatePatientAppAccessParams {
     hospitalId: string;
     patientId: string;
     enabled: boolean;
+}
+
+interface StopPatientFollowupParams {
+    hospitalId: string;
+    patientId: string;
+    reason: string;
+    notes?: string;
+}
+
+/**
+ * Stop active follow-up for a patient who has moved care externally.
+ *
+ * This marks the patient continuity status as transferred_out and cancels
+ * all active review rows so they no longer appear in upcoming/pending buckets.
+ */
+export async function stopPatientFollowup(
+    params: StopPatientFollowupParams
+): Promise<void> {
+    const { hospitalId, patientId, reason, notes = '' } = params;
+
+    if (!hospitalId || !patientId || !reason.trim()) {
+        throw new Error('Missing required identifiers or reason');
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const patientUpdateResult = await withTimeout(
+        ((supabase
+            .from('hospital_patients' as any) as any)
+            .update({
+                continuity_status: 'transferred_out',
+                followup_stopped_at: nowIso,
+                followup_stop_reason: reason,
+                followup_stop_notes: notes || null,
+                updated_at: nowIso,
+            })
+            .eq('hospital_id', hospitalId)
+            .eq('id', patientId)) as any,
+        10000,
+        'Timed out while stopping patient follow-up'
+    ) as SupabaseResult;
+
+    if (patientUpdateResult.error) {
+        const message = String(patientUpdateResult.error.message || '').toLowerCase();
+        const missingLifecycleColumns =
+            message.includes('continuity_status') ||
+            message.includes('followup_stopped_at') ||
+            message.includes('followup_stop_reason') ||
+            message.includes('followup_stop_notes') ||
+            message.includes('updated_at');
+
+        if (!missingLifecycleColumns) {
+            throw patientUpdateResult.error;
+        }
+
+        // Backward compatibility: allow review cancellation even when the
+        // lifecycle columns have not been migrated yet.
+        console.warn('[stopPatientFollowup] lifecycle columns missing, proceeding with review cancellation only');
+    }
+
+    const cancelReviewsResult = await withTimeout(
+        ((supabase
+            .from('hospital_patient_reviews' as any) as any)
+            .update({
+                status: 'cancelled',
+                cancelled_at: nowIso,
+                next_review_date: null,
+                updated_at: nowIso,
+            })
+            .eq('hospital_id', hospitalId)
+            .eq('patient_id', patientId)
+            .in('status', ['pending', 'rescheduled'])) as any,
+        10000,
+        'Timed out while cancelling active reviews'
+    ) as SupabaseResult;
+
+    if (cancelReviewsResult.error) {
+        const message = String(cancelReviewsResult.error.message || '').toLowerCase();
+        if (!message.includes('hospital_patient_reviews')) {
+            throw cancelReviewsResult.error;
+        }
+    }
 }
 
 export async function updatePatientAppAccess(

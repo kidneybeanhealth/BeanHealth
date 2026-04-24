@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import {
     fetchReceptionPastRecords,
+    stopPatientFollowup,
     updatePatientAppAccess,
     type ReceptionPastRecordPatient,
     type ReceptionReviewFilter,
@@ -37,6 +38,12 @@ interface CallHistoryEntry {
     called_at: string;
     call_status: string | null;
     patient_response: string | null;
+}
+
+interface StopFollowupOverride {
+    continuityStatus: 'transferred_out';
+    followupStoppedAt: string;
+    followupStopReason: string;
 }
 
 const PAST_RECORDS_PER_PAGE = 50;
@@ -100,6 +107,8 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
     const [callLogNotes, setCallLogNotes] = useState('');
     const [callLogNextDate, setCallLogNextDate] = useState('');
     const [callLogRescheduleDate, setCallLogRescheduleDate] = useState('');
+    const [locallyStoppedFollowupIds, setLocallyStoppedFollowupIds] = useState<Set<string>>(new Set());
+    const [stopFollowupOverrides, setStopFollowupOverrides] = useState<Record<string, StopFollowupOverride>>({});
     const [updatingAccessPatientIds, setUpdatingAccessPatientIds] = useState<Set<string>>(new Set());
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -120,7 +129,18 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
 
             setPastRecordsTotal(result.totalCount);
             setHasMorePastRecords(result.hasMore);
-            setPastRecords(prev => append ? [...prev, ...result.patients] : result.patients);
+            const mergedPatients = result.patients.map((patient) => {
+                const localOverride = stopFollowupOverrides[patient.id];
+                if (!localOverride) return patient;
+                return {
+                    ...patient,
+                    continuityStatus: localOverride.continuityStatus,
+                    followupStoppedAt: patient.followupStoppedAt || localOverride.followupStoppedAt,
+                    followupStopReason: patient.followupStopReason || localOverride.followupStopReason,
+                    latestReviewDate: null,
+                };
+            });
+            setPastRecords(prev => append ? [...prev, ...mergedPatients] : mergedPatients);
             setPastRecordsPage(page);
         } catch (error) {
             console.error('Error fetching patients:', error);
@@ -129,7 +149,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
             if (!isBackground && !append) setLoading(false);
             if (append) setIsLoadingMorePast(false);
         }
-    }, [doctor.hospital_id, searchQuery, reviewFilter, reviewDateFilter]);
+    }, [doctor.hospital_id, searchQuery, reviewFilter, reviewDateFilter, stopFollowupOverrides]);
 
     useEffect(() => {
         fetchPastRecords();
@@ -359,6 +379,53 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
         }
     };
 
+    const handleStopFollowup = async (patient: ReceptionPastRecordPatient) => {
+        if (!doctor.hospital_id) return;
+        const confirmed = window.confirm(
+            `Stop follow-up for ${patient.name}?\n\nThis will cancel active upcoming/pending reviews for this patient.`
+        );
+        if (!confirmed) return;
+
+        try {
+            await stopPatientFollowup({
+                hospitalId: doctor.hospital_id,
+                patientId: patient.id,
+                reason: 'external_hospital_transfer',
+            });
+
+            const nowIso = new Date().toISOString();
+            setLocallyStoppedFollowupIds((prev) => {
+                const next = new Set(prev);
+                next.add(patient.id);
+                return next;
+            });
+            setStopFollowupOverrides((prev) => ({
+                ...prev,
+                [patient.id]: {
+                    continuityStatus: 'transferred_out',
+                    followupStoppedAt: nowIso,
+                    followupStopReason: patient.followupStopReason || 'external_hospital_transfer',
+                },
+            }));
+            setPastRecords((prev) => prev.map((item) => {
+                if (item.id !== patient.id) return item;
+                return {
+                    ...item,
+                    continuityStatus: 'transferred_out',
+                    followupStoppedAt: item.followupStoppedAt || nowIso,
+                    followupStopReason: item.followupStopReason || 'external_hospital_transfer',
+                    latestReviewDate: null,
+                };
+            }));
+
+            toast.success('Follow-up stopped and active reviews cancelled');
+            fetchPastRecords(true, 0, false);
+        } catch (error) {
+            console.error('Failed to stop follow-up:', error);
+            toast.error('Could not stop follow-up for this patient');
+        }
+    };
+
     const handleSubmitCallLog = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!doctor.hospital_id || !callLogTarget) return;
@@ -543,6 +610,9 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                             const initialName = (patient.name || '').replace(/^(MR\.|MRS\.|MS\.|DR\.)\s*/i, '').trim();
                             const initial = initialName.charAt(0)?.toUpperCase() || '?';
                             const isExpanded = expandedCallHistoryPatientIds.has(patient.id);
+                            const isFollowupStopped = patient.continuityStatus === 'transferred_out' || locallyStoppedFollowupIds.has(patient.id);
+                            const stopReasonText = patient.followupStopReason || stopFollowupOverrides[patient.id]?.followupStopReason || '';
+                            const stopDateText = patient.followupStoppedAt || stopFollowupOverrides[patient.id]?.followupStoppedAt || null;
                             const visibleCallHistory = patient.callHistory || [];
                             return (
                                 <div key={patient.id} className="p-4 sm:p-5 md:p-6 hover:bg-gray-50/60 transition-colors">
@@ -560,6 +630,11 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                                     {patient.isDeceased && (
                                                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200">
                                                             Patient Deceased
+                                                        </span>
+                                                    )}
+                                                    {isFollowupStopped && (
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-50 text-amber-700 border-amber-200">
+                                                            Follow-up Stopped
                                                         </span>
                                                     )}
                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getReviewBadgeClass(patient.reviewCategory)}`}>
@@ -580,6 +655,17 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                                 {patient.isDeceased && (
                                                     <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
                                                         Patient is deceased{patient.deceasedAt ? ` on ${formatPastDate(patient.deceasedAt)}` : ''}. Upcoming reviews have been cancelled.
+                                                    </div>
+                                                )}
+                                                {!patient.isDeceased && isFollowupStopped && (
+                                                    <div className="mt-2 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5 text-xs text-amber-900">
+                                                        <div className="font-bold text-amber-800">Follow-up stopped{stopDateText ? ` on ${formatPastDate(stopDateText)}` : ''}</div>
+                                                        <div className="mt-1 font-semibold text-amber-700">Active upcoming reviews were cancelled.</div>
+                                                        {stopReasonText && (
+                                                            <div className="mt-2 rounded-md border border-amber-200 bg-white/70 px-2 py-1.5 text-[11px] leading-relaxed text-amber-900">
+                                                                <span className="font-bold text-amber-800">Reason:</span> {stopReasonText}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                                 <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -614,6 +700,22 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                             >
                                                 Call Log
                                             </button>
+                                            {!patient.isDeceased && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (!isFollowupStopped) handleStopFollowup(patient);
+                                                    }}
+                                                    disabled={isFollowupStopped}
+                                                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${
+                                                        isFollowupStopped
+                                                            ? 'bg-amber-100 text-amber-700 border-amber-200 cursor-not-allowed'
+                                                            : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                                    }`}
+                                                >
+                                                    {isFollowupStopped ? 'Follow-up Stopped' : 'Stop Follow-up'}
+                                                </button>
+                                            )}
                                             <button
                                                 type="button"
                                                 onClick={() => togglePatientCallHistory(patient.id)}

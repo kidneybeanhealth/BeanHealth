@@ -15,6 +15,7 @@ import { BeanhealthIdService } from '../../services/beanhealthIdService';
 import PrescriptionModal from '../modals/PrescriptionModal';
 import {
     fetchReceptionPastRecords,
+    stopPatientFollowup,
     updatePatientAppAccess,
     type ReceptionPastRecordPatient,
     type ReceptionReviewFilter,
@@ -69,6 +70,17 @@ interface CallLogTarget {
     mrNumber: string | null;
     patientName: string;
     reviewDate: string | null;
+}
+
+interface StopFollowupTarget {
+    patientId: string;
+    patientName: string;
+}
+
+interface StopFollowupOverride {
+    continuityStatus: 'transferred_out';
+    followupStoppedAt: string;
+    followupStopReason: string;
 }
 
 interface CallHistoryEntry {
@@ -306,6 +318,11 @@ const ReceptionDashboard: React.FC = () => {
     const [callLogNotes, setCallLogNotes] = useState('');
     const [callLogNextDate, setCallLogNextDate] = useState('');
     const [callLogRescheduleDate, setCallLogRescheduleDate] = useState('');
+    const [stopFollowupTarget, setStopFollowupTarget] = useState<StopFollowupTarget | null>(null);
+    const [stopFollowupReason, setStopFollowupReason] = useState('');
+    const [stopFollowupSubmitting, setStopFollowupSubmitting] = useState(false);
+    const [locallyStoppedFollowupIds, setLocallyStoppedFollowupIds] = useState<Set<string>>(new Set());
+    const [stopFollowupOverrides, setStopFollowupOverrides] = useState<Record<string, StopFollowupOverride>>({});
     const [updatingAccessPatientIds, setUpdatingAccessPatientIds] = useState<Set<string>>(new Set());
     const PAST_RECORDS_PER_PAGE = 50;
     const isPastRegistration = registrationMode === 'past_record';
@@ -335,10 +352,21 @@ const ReceptionDashboard: React.FC = () => {
 
             setPastRecordsTotal(result.totalCount);
             setHasMorePastRecords(result.hasMore);
+            const mergedPatients = result.patients.map((patient) => {
+                const localOverride = stopFollowupOverrides[patient.id];
+                if (!localOverride) return patient;
+                return {
+                    ...patient,
+                    continuityStatus: localOverride.continuityStatus,
+                    followupStoppedAt: patient.followupStoppedAt || localOverride.followupStoppedAt,
+                    followupStopReason: patient.followupStopReason || localOverride.followupStopReason,
+                    latestReviewDate: null,
+                };
+            });
             if (append) {
-                setPastRecords(prev => [...prev, ...result.patients]);
+                setPastRecords(prev => [...prev, ...mergedPatients]);
             } else {
-                setPastRecords(result.patients);
+                setPastRecords(mergedPatients);
             }
             setPastRecordsPage(page);
         } catch (error) {
@@ -348,7 +376,7 @@ const ReceptionDashboard: React.FC = () => {
             if (!isBackground && !append) setIsLoadingQueue(false);
             if (append) setIsLoadingMorePast(false);
         }
-    }, [profile?.id]);
+    }, [profile?.id, stopFollowupOverrides]);
 
     const handleLoadMorePastRecords = () => {
         fetchPastRecords(true, pastRecordsPage + 1, true, {
@@ -576,6 +604,78 @@ const ReceptionDashboard: React.FC = () => {
                 next.delete(patient.id);
                 return next;
             });
+        }
+    };
+
+    const handleStopFollowup = (patient: ReceptionPastRecordPatient) => {
+        setStopFollowupTarget({
+            patientId: patient.id,
+            patientName: patient.name,
+        });
+        setStopFollowupReason(patient.followupStopReason || '');
+    };
+
+    const closeStopFollowupModal = () => {
+        if (stopFollowupSubmitting) return;
+        setStopFollowupTarget(null);
+        setStopFollowupReason('');
+    };
+
+    const handleSubmitStopFollowup = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!profile?.id || !stopFollowupTarget) return;
+
+        const reason = stopFollowupReason.trim();
+        if (!reason) {
+            toast.error('Reason is required to stop follow-up');
+            return;
+        }
+
+        setStopFollowupSubmitting(true);
+        try {
+            await stopPatientFollowup({
+                hospitalId: profile.id,
+                patientId: stopFollowupTarget.patientId,
+                reason,
+            });
+
+            const nowIso = new Date().toISOString();
+            setLocallyStoppedFollowupIds((prev) => {
+                const next = new Set(prev);
+                next.add(stopFollowupTarget.patientId);
+                return next;
+            });
+            setStopFollowupOverrides((prev) => ({
+                ...prev,
+                [stopFollowupTarget.patientId]: {
+                    continuityStatus: 'transferred_out',
+                    followupStoppedAt: nowIso,
+                    followupStopReason: reason,
+                },
+            }));
+            setPastRecords((prev) => prev.map((item) => {
+                if (item.id !== stopFollowupTarget.patientId) return item;
+                return {
+                    ...item,
+                    continuityStatus: 'transferred_out',
+                    followupStoppedAt: item.followupStoppedAt || nowIso,
+                    followupStopReason: reason,
+                    latestReviewDate: null,
+                };
+            }));
+
+            toast.success('Follow-up stopped and active reviews cancelled');
+            closeStopFollowupModal();
+            fetchPastRecords(true, 0, false, {
+                searchValue: searchQuery,
+                reviewFilterValue: reviewFilter,
+                reviewDateValue: reviewDateFilter,
+            });
+        } catch (error) {
+            console.error('Failed to stop follow-up:', error);
+            toast.error('Could not stop follow-up for this patient');
+        } finally {
+            setStopFollowupSubmitting(false);
         }
     };
 
@@ -1882,6 +1982,9 @@ const ReceptionDashboard: React.FC = () => {
                                         {pastRecords.map((patient, index) => {
                                             const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
                                             const isCallHistoryExpanded = expandedCallHistoryPatientIds.has(patient.id);
+                                            const isFollowupStopped = patient.continuityStatus === 'transferred_out' || locallyStoppedFollowupIds.has(patient.id);
+                                            const stopReasonText = patient.followupStopReason || stopFollowupOverrides[patient.id]?.followupStopReason || '';
+                                            const stopDateText = patient.followupStoppedAt || stopFollowupOverrides[patient.id]?.followupStoppedAt || null;
                                             const visibleCallHistory = isCallHistoryExpanded ? patient.callHistory : patient.callHistory.slice(0, 2);
                                             const hiddenCallCount = Math.max((patient.callHistory?.length || 0) - 2, 0);
 
@@ -1896,6 +1999,11 @@ const ReceptionDashboard: React.FC = () => {
                                                                     {patient.isDeceased && (
                                                                         <span className="inline-flex items-center text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-full px-2.5 py-1">
                                                                             Patient Deceased
+                                                                        </span>
+                                                                    )}
+                                                                    {isFollowupStopped && (
+                                                                        <span className="inline-flex items-center text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+                                                                            Follow-up Stopped
                                                                         </span>
                                                                     )}
                                                                     <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1">
@@ -1916,6 +2024,18 @@ const ReceptionDashboard: React.FC = () => {
                                                                     <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
                                                                         Patient is deceased{patient.deceasedAt ? ` on ${new Date(patient.deceasedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}.
                                                                         Upcoming reviews have been cancelled.
+                                                                    </div>
+                                                                )}
+
+                                                                {!patient.isDeceased && isFollowupStopped && (
+                                                                    <div className="rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5 text-xs text-amber-900">
+                                                                        <div className="font-bold text-amber-800">Follow-up stopped{stopDateText ? ` on ${new Date(stopDateText).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}</div>
+                                                                        <div className="mt-1 font-semibold text-amber-700">Active upcoming reviews were cancelled.</div>
+                                                                        {stopReasonText && (
+                                                                            <div className="mt-2 rounded-md border border-amber-200 bg-white/70 px-2 py-1.5 text-[11px] leading-relaxed text-amber-900">
+                                                                                <span className="font-bold text-amber-800">Reason:</span> {stopReasonText}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 )}
 
@@ -1951,6 +2071,22 @@ const ReceptionDashboard: React.FC = () => {
                                                                     >
                                                                         View Rx
                                                                     </button>
+                                                                    {!patient.isDeceased && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                if (!isFollowupStopped) handleStopFollowup(patient);
+                                                                            }}
+                                                                            disabled={isFollowupStopped}
+                                                                            className={`px-3.5 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                                                                                isFollowupStopped
+                                                                                    ? 'border-amber-200 text-amber-700 bg-amber-100 cursor-not-allowed'
+                                                                                    : 'border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100'
+                                                                            }`}
+                                                                        >
+                                                                            {isFollowupStopped ? 'Follow-up Stopped' : 'Stop Follow-up'}
+                                                                        </button>
+                                                                    )}
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => openCallLog(patient)}
@@ -2875,6 +3011,68 @@ const ReceptionDashboard: React.FC = () => {
                             <div className="flex gap-3 pt-1">
                                 <button type="button" onClick={closeCallLog} className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
                                 <button type="submit" disabled={callLogSubmitting} className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-md transition-all disabled:opacity-60">{callLogSubmitting ? 'Saving...' : 'Save Call Log'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {stopFollowupTarget && (
+                <div className="fixed inset-0 z-[99] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="px-6 py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white flex items-start justify-between gap-3">
+                            <div>
+                                <h3 className="text-lg font-bold">Stop Follow-up</h3>
+                                <p className="text-amber-100 text-sm mt-0.5 font-medium">
+                                    {stopFollowupTarget.patientName}
+                                </p>
+                            </div>
+                            <button
+                                onClick={closeStopFollowupModal}
+                                disabled={stopFollowupSubmitting}
+                                className="p-1.5 rounded-lg text-amber-100 hover:text-white hover:bg-amber-700/50 transition-colors disabled:opacity-50"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmitStopFollowup} className="p-6 space-y-4">
+                            <p className="text-sm text-gray-600">
+                                This will cancel active upcoming or pending reviews for this patient.
+                            </p>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                    Reason <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    value={stopFollowupReason}
+                                    onChange={(e) => setStopFollowupReason(e.target.value)}
+                                    rows={3}
+                                    placeholder="Enter reason for stopping follow-up"
+                                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 resize-none"
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={closeStopFollowupModal}
+                                    disabled={stopFollowupSubmitting}
+                                    className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-60"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={stopFollowupSubmitting}
+                                    className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 shadow-md transition-all disabled:opacity-60"
+                                >
+                                    {stopFollowupSubmitting ? 'Saving...' : 'Stop Follow-up'}
+                                </button>
                             </div>
                         </form>
                     </div>
