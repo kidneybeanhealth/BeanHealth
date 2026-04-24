@@ -22,11 +22,24 @@ import {
     dischargePatient,
     markPatientDeceased,
     fetchPatientPrescriptions,
+    admitPatientDirectly,
+    fetchPatientPendingReviews,
     type AdmittedPatientRecord,
     type ReceptionVisitRecord,
+    type PendingReviewInfo,
 } from '../../services/enterpriseReviewService';
 
 const PrescriptionModalSelector = lazy(() => import('../prescriptions/PrescriptionModalSelector'));
+
+interface PatientSearchResult {
+    id: string;
+    name: string;
+    age: number | null;
+    gender?: string | null;
+    mr_number: string | null;
+    father_husband_name?: string | null;
+    phone?: string | null;
+}
 
 export interface AdmittedPrescribeContext {
     queueId: string;
@@ -74,12 +87,26 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [dischargeCandidate, setDischargeCandidate] = useState<AdmittedPatientRecord | null>(null);
+    const [dischargeStep, setDischargeStep] = useState<1 | 2>(1);
+    const [dischargeReviewDate, setDischargeReviewDate] = useState('');
+    const [dischargeConfirmReady, setDischargeConfirmReady] = useState(false);
     const [deceasedCandidate, setDeceasedCandidate] = useState<AdmittedPatientRecord | null>(null);
     const [rxModalPatient, setRxModalPatient] = useState<AdmittedPatientRecord | null>(null);
     const [rxModalLoading, setRxModalLoading] = useState(false);
     const [rxModalPrescriptions, setRxModalPrescriptions] = useState<ReceptionVisitRecord[]>([]);
     const [selectedRx, setSelectedRx] = useState<ReceptionVisitRecord | null>(null);
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
+
+    // Add Patient modal
+    const [showAddPatient, setShowAddPatient] = useState(false);
+    const [addSearch, setAddSearch] = useState('');
+    const [addDebouncedSearch, setAddDebouncedSearch] = useState('');
+    const [addResults, setAddResults] = useState<PatientSearchResult[]>([]);
+    const [addSearching, setAddSearching] = useState(false);
+    const [addCandidate, setAddCandidate] = useState<PatientSearchResult | null>(null);
+    const [addPendingReviews, setAddPendingReviews] = useState<PendingReviewInfo[]>([]);
+    const [addReviewsLoading, setAddReviewsLoading] = useState(false);
+    const [addConfirming, setAddConfirming] = useState(false);
 
     // Debounce search input
     useEffect(() => {
@@ -125,14 +152,49 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
         loadRecords();
     }, [loadRecords]);
 
+    const openDischargeFlow = (record: AdmittedPatientRecord) => {
+        setDischargeCandidate(record);
+        setDischargeStep(1);
+        setDischargeReviewDate('');
+        setDischargeConfirmReady(false);
+    };
+
+    // When step 2 opens, unlock the confirm button after 1s (same safety delay as TwoStepConfirmModal)
+    useEffect(() => {
+        if (!dischargeCandidate || dischargeStep !== 2) return;
+        setDischargeConfirmReady(false);
+        const t = window.setTimeout(() => setDischargeConfirmReady(true), 1000);
+        return () => window.clearTimeout(t);
+    }, [dischargeCandidate, dischargeStep]);
+
     const handleConfirmDischarge = async () => {
         if (!dischargeCandidate) return;
-        const { queueId, patient } = dischargeCandidate;
+        const { queueId, patient, patientId } = dischargeCandidate;
+        const reviewDate = dischargeReviewDate.trim();
         setDischargeCandidate(null);
         const toastId = toast.loading('Discharging patient...');
         try {
             await dischargePatient({ queueId, hospitalId });
-            toast.success(`${patient.name} discharged`, { id: toastId });
+            // Schedule a follow-up review if a date was chosen
+            if (reviewDate) {
+                try {
+                    await (supabase.from('hospital_patient_reviews' as any) as any).insert({
+                        hospital_id: hospitalId,
+                        patient_id: patientId,
+                        next_review_date: reviewDate,
+                        status: 'pending',
+                    });
+                } catch (reviewErr) {
+                    console.error('[AdmittedPatientsPanel] review schedule failed', reviewErr);
+                    // Non-fatal — discharge still succeeded
+                }
+            }
+            toast.success(
+                reviewDate
+                    ? `${patient.name} discharged · Review scheduled for ${new Date(reviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                    : `${patient.name} discharged`,
+                { id: toastId }
+            );
             loadRecords();
         } catch (err) {
             console.error('[AdmittedPatientsPanel] discharge failed', err);
@@ -178,6 +240,66 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
         setSelectedRx(rx);
     };
 
+    // ── Add Patient modal logic ────────────────────────────────────────
+    useEffect(() => {
+        const t = window.setTimeout(() => setAddDebouncedSearch(addSearch.trim()), 350);
+        return () => window.clearTimeout(t);
+    }, [addSearch]);
+
+    useEffect(() => {
+        if (!showAddPatient) return;
+        if (!addDebouncedSearch) { setAddResults([]); return; }
+        (async () => {
+            setAddSearching(true);
+            try {
+                const { data } = await (supabase.from('hospital_patients') as any)
+                    .select('id, name, age, gender, mr_number, father_husband_name, phone')
+                    .eq('hospital_id', hospitalId)
+                    .or(`name.ilike.%${addDebouncedSearch}%,mr_number.ilike.%${addDebouncedSearch}%`)
+                    .order('name', { ascending: true })
+                    .limit(20);
+                setAddResults((data || []) as PatientSearchResult[]);
+            } catch { /* non-critical */ }
+            finally { setAddSearching(false); }
+        })();
+    }, [addDebouncedSearch, hospitalId, showAddPatient]);
+
+    const selectAddCandidate = async (p: PatientSearchResult) => {
+        setAddCandidate(p);
+        setAddPendingReviews([]);
+        setAddReviewsLoading(true);
+        try {
+            const reviews = await fetchPatientPendingReviews(hospitalId, p.id);
+            setAddPendingReviews(reviews);
+        } catch { /* non-critical */ }
+        finally { setAddReviewsLoading(false); }
+    };
+
+    const resetAddPatientModal = () => {
+        setShowAddPatient(false);
+        setAddSearch('');
+        setAddDebouncedSearch('');
+        setAddResults([]);
+        setAddCandidate(null);
+        setAddPendingReviews([]);
+    };
+
+    const handleConfirmAddPatient = async () => {
+        if (!addCandidate || addConfirming) return;
+        setAddConfirming(true);
+        const toastId = toast.loading('Admitting patient…');
+        try {
+            await admitPatientDirectly({ hospitalId, patientId: addCandidate.id });
+            toast.success(`${addCandidate.name} admitted`, { id: toastId });
+            resetAddPatientModal();
+            loadRecords();
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not admit patient', { id: toastId });
+        } finally {
+            setAddConfirming(false);
+        }
+    };
+
     const handlePrescribeClick = (record: AdmittedPatientRecord) => {
         if (!onPrescribe) return;
         onPrescribe({
@@ -207,8 +329,17 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search name / MR / phone"
-                        className="w-full sm:w-72 px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                        className="w-full sm:w-64 px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
                     />
+                    <button
+                        onClick={() => setShowAddPatient(true)}
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm whitespace-nowrap"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Patient
+                    </button>
                     <button
                         onClick={loadRecords}
                         className="px-3 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-100"
@@ -271,7 +402,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                             </button>
                                         )}
                                         <button
-                                            onClick={() => setDischargeCandidate(record)}
+                                            onClick={() => openDischargeFlow(record)}
                                             className="px-3 py-2 text-xs sm:text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm"
                                         >
                                             Discharge
@@ -292,16 +423,129 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                 </div>
             )}
 
-            {/* Discharge confirm */}
-            <TwoStepConfirmModal
-                isOpen={Boolean(dischargeCandidate)}
-                title="Discharge this patient?"
-                description={dischargeCandidate ? `${dischargeCandidate.patient.name} will be marked as discharged and removed from the Admitted Patients list.` : ''}
-                continueLabel="Continue"
-                confirmLabel="Yes, Discharge"
-                onCancel={() => setDischargeCandidate(null)}
-                onConfirm={handleConfirmDischarge}
-            />
+            {/* Discharge flow — custom multi-step modal */}
+            {dischargeCandidate && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
+
+                        {/* Step 1 — Schedule review */}
+                        {dischargeStep === 1 && (
+                            <>
+                                <div className="px-5 py-4 border-b border-gray-100">
+                                    <h3 className="text-base font-bold text-gray-900">Discharge patient</h3>
+                                    <p className="text-xs text-gray-500 mt-0.5">{dischargeCandidate.patient.name} · MR {dischargeCandidate.patient.mr_number || 'N/A'}</p>
+                                </div>
+                                <div className="px-5 py-5 space-y-4">
+                                    <p className="text-sm text-gray-700 font-medium">Would you like to schedule a follow-up review?</p>
+                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                        Setting a review date will add this patient back into Past Records tracking so they don't fall out of the follow-up loop. This is optional.
+                                    </p>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Review Date <span className="font-normal text-gray-400 normal-case">(optional)</span></label>
+                                        <input
+                                            type="date"
+                                            value={dischargeReviewDate}
+                                            min={new Date().toISOString().split('T')[0]}
+                                            onChange={e => setDischargeReviewDate(e.target.value)}
+                                            className="mt-1.5 w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-200 bg-gray-50"
+                                        />
+                                        {dischargeReviewDate && (
+                                            <p className="mt-1.5 text-xs text-emerald-700 font-medium flex items-center gap-1.5">
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                Review on {new Date(dischargeReviewDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-2">
+                                    <button
+                                        onClick={() => setDischargeCandidate(null)}
+                                        className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        {dischargeReviewDate ? (
+                                            <button
+                                                onClick={() => { setDischargeReviewDate(''); setDischargeStep(2); }}
+                                                className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+                                            >
+                                                Skip review
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => setDischargeStep(2)}
+                                                className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+                                            >
+                                                Continue without review
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => setDischargeStep(2)}
+                                            className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                        >
+                                            Continue
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Step 2 — Confirm summary */}
+                        {dischargeStep === 2 && (
+                            <>
+                                <div className="px-5 py-4 border-b border-gray-100">
+                                    <h3 className="text-base font-bold text-gray-900">Please confirm once more</h3>
+                                </div>
+                                <div className="px-5 py-5 space-y-3">
+                                    {/* Patient summary */}
+                                    <div className="bg-gray-50 rounded-xl border border-gray-200 px-4 py-3">
+                                        <p className="text-sm font-bold text-gray-900">{dischargeCandidate.patient.name}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">MR: {dischargeCandidate.patient.mr_number || 'N/A'} · Age {dischargeCandidate.patient.age}</p>
+                                    </div>
+
+                                    {/* Review date confirmation */}
+                                    {dischargeReviewDate ? (
+                                        <div className="bg-emerald-50 rounded-xl border border-emerald-200 px-4 py-3 flex items-start gap-3">
+                                            <svg className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            <div>
+                                                <p className="text-xs font-bold text-emerald-800">Follow-up review scheduled</p>
+                                                <p className="text-sm font-bold text-emerald-900 mt-0.5">
+                                                    {new Date(dischargeReviewDate).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                                                </p>
+                                                <p className="text-xs text-emerald-600 mt-0.5">Patient will appear in Past Records tracking after discharge.</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-gray-50 rounded-xl border border-gray-200 px-4 py-3 flex items-center gap-2.5">
+                                            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <p className="text-xs text-gray-500">No review scheduled — patient will be discharged without a follow-up date.</p>
+                                        </div>
+                                    )}
+
+                                    <p className="text-xs text-gray-400">This action was rechecked for safety.</p>
+                                </div>
+                                <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-2">
+                                    <button
+                                        onClick={() => setDischargeStep(1)}
+                                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                        Go Back
+                                    </button>
+                                    <button
+                                        onClick={handleConfirmDischarge}
+                                        disabled={!dischargeConfirmReady}
+                                        className="px-5 py-2 text-sm font-bold text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                    >
+                                        {dischargeConfirmReady ? 'Yes, Discharge' : 'Confirming…'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Deceased confirm */}
             <TwoStepConfirmModal
@@ -360,6 +604,174 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                         );
                                     })}
                                 </ul>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Patient modal */}
+            {showAddPatient && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={e => { if (e.target === e.currentTarget) resetAddPatientModal(); }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+
+                        {/* Modal header */}
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900">Add Patient to Admitted</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Search from past records by name or MR number</p>
+                            </div>
+                            <button onClick={resetAddPatientModal} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto">
+                            {/* Search input */}
+                            <div className="px-5 pt-4 pb-3">
+                                <div className="relative">
+                                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                    <input
+                                        type="text"
+                                        value={addSearch}
+                                        onChange={e => { setAddSearch(e.target.value); setAddCandidate(null); }}
+                                        placeholder="Type name or MR number…"
+                                        autoFocus
+                                        className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                    />
+                                    {addSearching && (
+                                        <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Search results */}
+                            {!addCandidate && (
+                                <div className="px-3 pb-3">
+                                    {!addDebouncedSearch ? (
+                                        <p className="text-center text-sm text-gray-400 py-8">Start typing to search patients</p>
+                                    ) : addResults.length === 0 && !addSearching ? (
+                                        <p className="text-center text-sm text-gray-400 py-8">No patients found</p>
+                                    ) : (
+                                        <ul className="divide-y divide-gray-100">
+                                            {addResults.map(p => {
+                                                const rel = p.gender === 'Female' ? 'W/o' : 'S/o';
+                                                return (
+                                                    <li key={p.id}>
+                                                        <button
+                                                            onClick={() => selectAddCandidate(p)}
+                                                            className="w-full text-left px-3 py-3 rounded-xl hover:bg-rose-50 transition-colors flex items-center justify-between gap-3"
+                                                        >
+                                                            <div className="min-w-0">
+                                                                <p className="text-sm font-bold text-gray-900 truncate">{p.name}</p>
+                                                                <p className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-3">
+                                                                    <span>MR: <span className="font-mono font-semibold text-gray-700">{p.mr_number || 'N/A'}</span></span>
+                                                                    {p.age && <span>Age {p.age}</span>}
+                                                                    {p.father_husband_name && <span>{rel} {p.father_husband_name}</span>}
+                                                                </p>
+                                                            </div>
+                                                            <svg className="w-4 h-4 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                            </svg>
+                                                        </button>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Confirmation panel — shown after a patient is selected */}
+                            {addCandidate && (
+                                <div className="px-5 pb-5 space-y-4">
+                                    {/* Back */}
+                                    <button
+                                        onClick={() => setAddCandidate(null)}
+                                        className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                        Back to search
+                                    </button>
+
+                                    {/* Patient card */}
+                                    <div className="bg-gray-50 rounded-xl border border-gray-200 px-4 py-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-700 font-black text-sm flex-shrink-0">
+                                                {addCandidate.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-gray-900">{addCandidate.name}</p>
+                                                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-600 mt-1">
+                                                    <span>MR: <span className="font-mono font-bold text-gray-900">{addCandidate.mr_number || 'N/A'}</span></span>
+                                                    {addCandidate.age && <span>Age {addCandidate.age}</span>}
+                                                    {addCandidate.father_husband_name && (
+                                                        <span>{addCandidate.gender === 'Female' ? 'W/o' : 'S/o'} {addCandidate.father_husband_name}</span>
+                                                    )}
+                                                    {addCandidate.phone && <span>{addCandidate.phone}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Pending reviews section */}
+                                    {addReviewsLoading ? (
+                                        <div className="text-xs text-gray-400 text-center py-2">Checking scheduled reviews…</div>
+                                    ) : addPendingReviews.length > 0 ? (
+                                        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                <p className="text-xs font-bold text-amber-800">
+                                                    {addPendingReviews.length} scheduled review{addPendingReviews.length !== 1 ? 's' : ''} will be cancelled
+                                                </p>
+                                            </div>
+                                            <ul className="space-y-1 pl-6">
+                                                {addPendingReviews.map(r => (
+                                                    <li key={r.id} className="text-xs text-amber-700 flex items-center gap-2">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                                                        {r.next_review_date
+                                                            ? new Date(r.next_review_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                                                            : 'Date TBD'}
+                                                        <span className="capitalize text-amber-500">({r.status})</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <p className="text-[11px] text-amber-600 pl-6">
+                                                These will be automatically cancelled when you confirm admission.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-2">
+                                            <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <p className="text-xs font-medium text-emerald-700">No scheduled reviews — patient can be admitted directly.</p>
+                                        </div>
+                                    )}
+
+                                    {/* Confirm button */}
+                                    <button
+                                        onClick={handleConfirmAddPatient}
+                                        disabled={addConfirming || addReviewsLoading}
+                                        className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${addConfirming || addReviewsLoading ? 'bg-rose-200 text-rose-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm shadow-rose-600/25'}`}
+                                    >
+                                        {addConfirming ? (
+                                            <><svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>Admitting…</>
+                                        ) : addPendingReviews.length > 0 ? (
+                                            <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" transform="rotate(180 12 12)" /></svg>Cancel Reviews &amp; Admit Patient</>
+                                        ) : (
+                                            <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" transform="rotate(180 12 12)" /></svg>Confirm Admission</>
+                                        )}
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>

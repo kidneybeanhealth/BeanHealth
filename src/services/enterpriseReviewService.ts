@@ -806,7 +806,6 @@ export async function markPatientDeceased(
             .update({
                 is_deceased: true,
                 deceased_at: nowIso,
-                updated_at: nowIso,
             })
             .eq('hospital_id', hospitalId)
             .eq('id', patientId)) as any,
@@ -856,6 +855,94 @@ export async function markPatientDeceased(
             throw cancelReviewsResult.error;
         }
     }
+}
+
+export interface AdmitPatientDirectlyParams {
+    hospitalId: string;
+    patientId: string;
+}
+
+export interface PendingReviewInfo {
+    id: string;
+    next_review_date: string | null;
+    status: string;
+}
+
+/**
+ * Admit a patient directly (not from the live queue).
+ * Creates a new completed queue row with admission_status='admitted'
+ * and cancels any active review rows so the patient doesn't remain
+ * in upcoming/overdue review buckets while admitted.
+ */
+export async function admitPatientDirectly(
+    params: AdmitPatientDirectlyParams
+): Promise<void> {
+    const { hospitalId, patientId } = params;
+    if (!hospitalId || !patientId) {
+        throw new Error('Missing hospital or patient identifier');
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const insertResult = await withTimeout(
+        ((supabase.from('hospital_queues' as any) as any).insert({
+            hospital_id: hospitalId,
+            patient_id: patientId,
+            queue_number: 0,
+            status: 'completed',
+            admission_status: 'admitted',
+            admitted_at: nowIso,
+            updated_at: nowIso,
+        })) as any,
+        10000,
+        'Timed out while admitting patient'
+    ) as SupabaseResult;
+
+    if (insertResult.error) throw insertResult.error;
+
+    const cancelResult = await withTimeout(
+        ((supabase.from('hospital_patient_reviews' as any) as any)
+            .update({
+                status: 'cancelled',
+                cancelled_at: nowIso,
+                next_review_date: null,
+                updated_at: nowIso,
+            })
+            .eq('hospital_id', hospitalId)
+            .eq('patient_id', patientId)
+            .in('status', ['pending', 'rescheduled'])) as any,
+        10000,
+        'Timed out while cancelling reviews for admission'
+    ) as SupabaseResult;
+
+    if (cancelResult.error) {
+        const msg = String(cancelResult.error.message || '').toLowerCase();
+        if (!msg.includes('hospital_patient_reviews')) throw cancelResult.error;
+    }
+}
+
+/**
+ * Fetch active (pending/rescheduled) review rows for a patient.
+ * Used by the direct-admit confirmation modal to warn the receptionist
+ * that scheduled reviews will be cancelled on admission.
+ */
+export async function fetchPatientPendingReviews(
+    hospitalId: string,
+    patientId: string
+): Promise<PendingReviewInfo[]> {
+    if (!hospitalId || !patientId) return [];
+    const result = await withTimeout(
+        ((supabase.from('hospital_patient_reviews' as any) as any)
+            .select('id, next_review_date, status')
+            .eq('hospital_id', hospitalId)
+            .eq('patient_id', patientId)
+            .in('status', ['pending', 'rescheduled'])
+            .order('next_review_date', { ascending: true })) as any,
+        8000,
+        'Timed out loading pending reviews'
+    ) as SupabaseResult<PendingReviewInfo[]>;
+    if (result.error) return [];
+    return Array.isArray(result.data) ? result.data : [];
 }
 
 interface FetchAdmittedPatientsParams {

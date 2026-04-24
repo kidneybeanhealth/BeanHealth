@@ -423,3 +423,126 @@ export function getStatusIcon(status: VitalStatus): string {
             return '⚪';
     }
 }
+
+// ============================================
+// CKD-EPI 2021 (RACE-FREE eGFR)
+// ============================================
+
+/**
+ * CKD-EPI Creatinine 2021 equation (race-free).
+ * Reference: Inker et al., NEJM 2021.
+ *
+ * @param creatinine - Serum creatinine in mg/dL
+ * @param age        - Age in years
+ * @param sex        - 'male' | 'female'
+ * @returns eGFR in mL/min/1.73m²
+ */
+export function calculateEGFR(creatinine: number, age: number, sex: 'male' | 'female'): number {
+    if (creatinine <= 0 || age <= 0) return 0;
+
+    const isFemale = sex === 'female';
+    const kappa = isFemale ? 0.7 : 0.9;
+    const alpha = isFemale ? -0.241 : -0.302;
+    const sexFactor = isFemale ? 1.012 : 1.0;
+
+    const ratio = creatinine / kappa;
+    const term1 = Math.min(ratio, 1) ** alpha;
+    const term2 = Math.max(ratio, 1) ** -1.200;
+    const ageTerm = 0.9938 ** age;
+
+    return Math.round(142 * term1 * term2 * ageTerm * sexFactor * 10) / 10;
+}
+
+// ============================================
+// KFRE — KIDNEY FAILURE RISK EQUATION
+// ============================================
+
+export interface KFREResult {
+    risk2yr: number;   // 2-year kidney failure risk (0–1)
+    risk5yr: number;   // 5-year kidney failure risk (0–1)
+    risk2yrPct: string;
+    risk5yrPct: string;
+    riskTier: 'low' | 'moderate' | 'high' | 'very-high';
+}
+
+/**
+ * KFRE 4-variable model (Tangri et al., JAMA 2016 / NEJM 2011).
+ * Validated in CKD stages 3–5 (eGFR 15–59).
+ *
+ * @param age - Age in years
+ * @param sex - 'male' | 'female'
+ * @param egfr - eGFR in mL/min/1.73m² (computed or measured)
+ * @param acr  - Urine albumin-to-creatinine ratio in mg/g
+ */
+export function calculateKFRE(age: number, sex: 'male' | 'female', egfr: number, acr: number): KFREResult {
+    const male = sex === 'male' ? 1 : 0;
+
+    // Linear predictor (Tangri 2016 recalibrated coefficients)
+    const lp =
+        -0.2201 * (age / 10 - 7.036) +
+        0.2467 * (male - 0.5642) +
+        -0.5567 * (egfr / 5 - 7.222) +
+        0.4510 * (Math.log(acr) - 5.137);
+
+    // Baseline survivals from Tangri 2016
+    const s0_2yr = 0.9750;
+    const s0_5yr = 0.9240;
+
+    const risk2yr = 1 - s0_2yr ** Math.exp(lp);
+    const risk5yr = 1 - s0_5yr ** Math.exp(lp);
+
+    const risk5yrPct = (risk5yr * 100).toFixed(1);
+    let riskTier: KFREResult['riskTier'] = 'low';
+    if (risk5yr >= 0.5) riskTier = 'very-high';
+    else if (risk5yr >= 0.2) riskTier = 'high';
+    else if (risk5yr >= 0.05) riskTier = 'moderate';
+
+    return {
+        risk2yr,
+        risk5yr,
+        risk2yrPct: (risk2yr * 100).toFixed(1),
+        risk5yrPct,
+        riskTier,
+    };
+}
+
+/**
+ * KFRE 8-variable model (adds albumin, phosphorus, bicarbonate, calcium).
+ * More accurate for high-risk patients.
+ */
+export function calculateKFRE8(
+    age: number,
+    sex: 'male' | 'female',
+    egfr: number,
+    acr: number,
+    albumin: number,        // g/dL
+    phosphorus: number,     // mg/dL
+    bicarbonate: number,    // mEq/L
+    calcium: number         // mg/dL
+): KFREResult {
+    const male = sex === 'male' ? 1 : 0;
+
+    const lp =
+        -0.2201 * (age / 10 - 7.036) +
+        0.2467 * (male - 0.5642) +
+        -0.5567 * (egfr / 5 - 7.222) +
+        0.4510 * (Math.log(acr) - 5.137) +
+        -0.3399 * (albumin - 3.997) +
+        0.2904 * (phosphorus - 3.916) +
+        -0.1102 * (bicarbonate - 25.719) +
+        -0.2075 * (calcium - 9.355);
+
+    const s0_2yr = 0.9750;
+    const s0_5yr = 0.9240;
+
+    const risk2yr = 1 - s0_2yr ** Math.exp(lp);
+    const risk5yr = 1 - s0_5yr ** Math.exp(lp);
+
+    const risk5yrPct = (risk5yr * 100).toFixed(1);
+    let riskTier: KFREResult['riskTier'] = 'low';
+    if (risk5yr >= 0.5) riskTier = 'very-high';
+    else if (risk5yr >= 0.2) riskTier = 'high';
+    else if (risk5yr >= 0.05) riskTier = 'moderate';
+
+    return { risk2yr, risk5yr, risk2yrPct: (risk2yr * 100).toFixed(1), risk5yrPct, riskTier };
+}
