@@ -168,8 +168,8 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
     };
 
     const handlePrintPastRecordsList = () => {
-        if (reviewFilter !== 'due_today' && reviewFilter !== 'due_tomorrow') {
-            toast.error('Print List is available only for Due Today or Due Tomorrow');
+        if (!['due_today', 'due_tomorrow', 'upcoming', 'overdue'].includes(reviewFilter)) {
+            toast.error('Print List is available for Due Today, Due Tomorrow, Upcoming, or Over Due');
             return;
         }
 
@@ -485,7 +485,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                 {getReviewFilterLabel(filterKey)}
                             </button>
                         ))}
-                        {(reviewFilter === 'due_today' || reviewFilter === 'due_tomorrow') && (
+                        {(['due_today', 'due_tomorrow', 'upcoming', 'overdue'] as ReceptionReviewFilter[]).includes(reviewFilter) && (
                             <button
                                 type="button"
                                 onClick={handlePrintPastRecordsList}
@@ -557,6 +557,11 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">{patient.name}</p>
+                                                    {patient.isDeceased && (
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200">
+                                                            Patient Deceased
+                                                        </span>
+                                                    )}
                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getReviewBadgeClass(patient.reviewCategory)}`}>
                                                         {getReviewFilterLabel(patient.reviewCategory)}
                                                     </span>
@@ -565,9 +570,18 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                                     <span>{patient.age || '—'} yrs</span>
                                                     <span>{patient.phone || 'No phone'}</span>
                                                     <span>MR: {patient.mr_number || '—'}</span>
-                                                    <span>Review: {formatPastDate(patient.latestReviewDate)}</span>
+                                                    <span>
+                                                        {patient.isDeceased
+                                                            ? `Deceased: ${formatPastDate(patient.deceasedAt)}`
+                                                            : `Review: ${formatPastDate(patient.latestReviewDate)}`}
+                                                    </span>
                                                     <span>Last visit: {formatPastDate(patient.lastVisitAt)}</span>
                                                 </div>
+                                                {patient.isDeceased && (
+                                                    <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                                                        Patient is deceased{patient.deceasedAt ? ` on ${formatPastDate(patient.deceasedAt)}` : ''}. Upcoming reviews have been cancelled.
+                                                    </div>
+                                                )}
                                                 <div className="mt-2 flex flex-wrap items-center gap-2">
                                                     {patient.beanhealth_id && (
                                                         <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">

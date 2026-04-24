@@ -126,6 +126,54 @@ const DOSE_OPTIONS = [
 
 const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'E/S', 'S/C B/F'];
 
+interface DuplicateMedicationEntry {
+  rowNumber: number;
+  dosage: string;
+  dose: string;
+  frequency: string;
+  foodTiming: string;
+  quantity: string;
+}
+
+interface DuplicateMedicationGroup {
+  drugName: string;
+  entries: DuplicateMedicationEntry[];
+}
+
+const normalizeDrugName = (value: string): string => {
+  return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+};
+
+const formatMedicationFrequency = (med: Medication): string => {
+  return `${med.morning || '0'}-${med.noon || '0'}-${med.evening || '0'}-${med.night || '0'}`;
+};
+
+const findDuplicateMedications = (rows: Medication[]): DuplicateMedicationGroup[] => {
+  const grouped = new Map<string, DuplicateMedicationEntry[]>();
+
+  rows.forEach((med, index) => {
+    const normalizedName = normalizeDrugName(med.name || '');
+    if (!normalizedName) return;
+
+    const entry: DuplicateMedicationEntry = {
+      rowNumber: index + 1,
+      dosage: med.dosage_value || '--',
+      dose: med.dose || '--',
+      frequency: formatMedicationFrequency(med),
+      foodTiming: med.foodTiming || '--',
+      quantity: med.number ? `${med.number} tab` : '--',
+    };
+
+    const existing = grouped.get(normalizedName) || [];
+    existing.push(entry);
+    grouped.set(normalizedName, existing);
+  });
+
+  return Array.from(grouped.entries())
+    .filter(([, entries]) => entries.length > 1)
+    .map(([drugName, entries]) => ({ drugName, entries }));
+};
+
 // Slot-specific time ranges
 const MORNING_TIMES = ['4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM'];
 const NOON_TIMES = ['12 PM', '1 PM', '2 PM', '3 PM', '4 PM'];
@@ -248,6 +296,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   const [showSendPreview, setShowSendPreview] = useState(false);
   const [showConfirmSendModal, setShowConfirmSendModal] = useState(false);
   const [showConfirmCloseModal, setShowConfirmCloseModal] = useState(false);
+  const [showDuplicateWarningModal, setShowDuplicateWarningModal] = useState(false);
+  const [duplicateMedicationGroups, setDuplicateMedicationGroups] = useState<DuplicateMedicationGroup[]>([]);
 
   // Saved Drugs State
   const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
@@ -847,6 +897,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     setMedications(newMeds);
   };
 
+  const continueToSendFlow = () => {
+    if (isMobile) {
+      // On mobile, show the print preview with confirm overlay
+      setShowSendPreview(true);
+    } else {
+      setShowConfirmSendModal(true);
+    }
+  };
+
   // Show confirmation popup instead of sending directly
   const handleSend = () => {
     if (readOnly) return;
@@ -858,12 +917,15 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     if (diagnosisSearchQuery.trim()) {
       addDiagnosis(diagnosisSearchQuery.trim());
     }
-    if (isMobile) {
-      // On mobile, show the print preview with confirm overlay
-      setShowSendPreview(true);
-    } else {
-      setShowConfirmSendModal(true);
+
+    const duplicateGroups = findDuplicateMedications(medications);
+    if (duplicateGroups.length > 0) {
+      setDuplicateMedicationGroups(duplicateGroups);
+      setShowDuplicateWarningModal(true);
+      return;
     }
+
+    continueToSendFlow();
   };
 
   // Actually send to pharmacy after confirmation
@@ -900,6 +962,71 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       }, patient?.id);
     }
   };
+
+  const DuplicateMedicationWarningModal = () => (
+    <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowDuplicateWarningModal(false)}>
+      <div
+        className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-scale-in"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-5 flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Duplicate Drug Detected</h3>
+            <p className="text-amber-100 text-sm">Review duplicate entries before sending</p>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 max-h-[55vh] overflow-y-auto space-y-4">
+          <p className="text-sm text-gray-700">
+            Same drug is entered multiple times in this prescription. Please verify if this is intentional.
+          </p>
+
+          {duplicateMedicationGroups.map(group => (
+            <div key={group.drugName} className="rounded-xl border border-amber-200 bg-amber-50/40 p-3">
+              <p className="text-sm font-bold text-amber-900 mb-2">{group.drugName}</p>
+              <div className="space-y-2">
+                {group.entries.map(entry => (
+                  <div key={`${group.drugName}-${entry.rowNumber}`} className="rounded-lg border border-amber-100 bg-white px-3 py-2 text-xs text-gray-700">
+                    <p className="font-semibold text-gray-900 mb-1">Row {entry.rowNumber}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <span>Dosage: <strong>{entry.dosage}</strong></span>
+                      <span>Dose: <strong>{entry.dose}</strong></span>
+                      <span>Frequency: <strong>{entry.frequency}</strong></span>
+                      <span>Food: <strong>{entry.foodTiming}</strong></span>
+                      <span>Qty: <strong>{entry.quantity}</strong></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-6 pb-5 flex gap-3">
+          <button
+            onClick={() => setShowDuplicateWarningModal(false)}
+            className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+          >
+            Back to Edit
+          </button>
+          <button
+            onClick={() => {
+              setShowDuplicateWarningModal(false);
+              continueToSendFlow();
+            }}
+            className="flex-1 px-4 py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 transition-all active:scale-95"
+          >
+            Confirm Send Anyway
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   // Confirmation Modal Component (shared between mobile and desktop)
   const ConfirmSendModal = () => (
@@ -1036,6 +1163,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           setShowDrugDropdown={setShowDrugDropdown}
           SPECIALIST_OPTIONS={SPECIALIST_OPTIONS}
         />
+        {showDuplicateWarningModal && <DuplicateMedicationWarningModal />}
         {showConfirmSendModal && <ConfirmSendModal />}
         {showConfirmCloseModal && <ConfirmCloseModal />}
       </>
@@ -2107,6 +2235,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             })()}
           </div>
         </div>
+
+        {showDuplicateWarningModal && <DuplicateMedicationWarningModal />}
 
         {/* Mobile Preview sticky actions: stick to bottom */}
         {isMobile && (showPrintView || showSendPreview) && (

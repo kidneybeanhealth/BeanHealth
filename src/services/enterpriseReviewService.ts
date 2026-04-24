@@ -41,6 +41,8 @@ export interface ReceptionPastRecordPatient {
     beanhealth_id?: string | null;
     father_husband_name?: string | null;
     app_access_enabled?: boolean;
+    isDeceased?: boolean;
+    deceasedAt?: string | null;
     created_at?: string;
     latestReviewDate: string | null;
     reviewCategory: ReceptionReviewFilter;
@@ -66,7 +68,7 @@ export interface AdmittedPatientRecord {
     patientId: string;
     admittedAt: string | null;
     dischargedAt: string | null;
-    admissionStatus: 'admitted' | 'discharged';
+    admissionStatus: 'admitted' | 'discharged' | 'deceased';
     doctorId: string | null;
     doctorName: string | null;
     doctorSpecialty: string | null;
@@ -75,6 +77,7 @@ export interface AdmittedPatientRecord {
         id: string;
         name: string;
         age: number;
+        token_number?: string | null;
         gender?: string | null;
         phone?: string | null;
         mr_number?: string | null;
@@ -231,30 +234,47 @@ export async function fetchReceptionPastRecords(
     const to = from + pageSize - 1;
     const needsDerivedFiltering = reviewFilter !== 'all' || Boolean(reviewDate);
 
-    let patientsQuery: any = (supabase
-        .from('hospital_patients') as any)
-        .select(
-            'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at',
-            { count: 'exact' }
-        )
-        .eq('hospital_id', hospitalId)
-        .order('created_at', { ascending: false });
+    const buildPatientsQuery = (includeDeceasedFields: boolean): any => {
+        const selectClause = includeDeceasedFields
+            ? 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, is_deceased, deceased_at, created_at'
+            : 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at';
 
-    if (!needsDerivedFiltering) {
-        patientsQuery = patientsQuery.range(from, to);
-    }
+        let query: any = (supabase
+            .from('hospital_patients') as any)
+            .select(selectClause, { count: 'exact' })
+            .eq('hospital_id', hospitalId)
+            .order('created_at', { ascending: false });
 
-    const trimmedSearch = searchQuery.trim();
-    if (trimmedSearch) {
-        const escaped = escapeForIlike(trimmedSearch);
-        patientsQuery = patientsQuery.or(`name.ilike.%${escaped}%,mr_number.ilike.%${escaped}%`);
-    }
+        if (!needsDerivedFiltering) {
+            query = query.range(from, to);
+        }
 
-    const patientsResult = await withTimeout(
-        patientsQuery,
+        const trimmedSearch = searchQuery.trim();
+        if (trimmedSearch) {
+            const escaped = escapeForIlike(trimmedSearch);
+            query = query.or(`name.ilike.%${escaped}%,mr_number.ilike.%${escaped}%`);
+        }
+
+        return query;
+    };
+
+    let patientsResult = await withTimeout(
+        buildPatientsQuery(true),
         10000,
         'Timed out while loading patient records'
     ) as SupabaseResult<any[]>;
+
+    if (patientsResult.error) {
+        const message = String(patientsResult.error.message || '').toLowerCase();
+        const missingDeceasedColumns = message.includes('is_deceased') || message.includes('deceased_at');
+        if (missingDeceasedColumns) {
+            patientsResult = await withTimeout(
+                buildPatientsQuery(false),
+                10000,
+                'Timed out while loading patient records'
+            ) as SupabaseResult<any[]>;
+        }
+    }
 
     if (patientsResult.error) {
         throw patientsResult.error;
@@ -381,6 +401,7 @@ export async function fetchReceptionPastRecords(
 
     const normalized: ReceptionPastRecordPatient[] = basePatients
         .map((p) => {
+            const isDeceased = Boolean(p.is_deceased);
             const visitHistory = prescriptionsByPatient.get(p.id) || [];
             const latestPrescription = visitHistory[0] || null;
             const latestReview = pickPrimaryReview(reviewsByPatient.get(p.id) || []);
@@ -389,19 +410,25 @@ export async function fetchReceptionPastRecords(
             // prescription date is used as a fallback when no review row exists.
             const reviewDateFromReview = normalizeDateOnly(latestReview?.next_review_date || null);
             const fallbackReviewDate = normalizeDateOnly(latestPrescription?.next_review_date || null);
-            const latestReviewDate = reviewDateFromReview || fallbackReviewDate;
+            const latestReviewDate = isDeceased
+                ? null
+                : (reviewDateFromReview || fallbackReviewDate);
 
-            const reviewCategory = deriveReviewCategory(
-                latestReviewDate,
-                latestReview?.status || null,
-                latestReview?.completed_at || null,
-                latestReview?.updated_at || null,
-                latestReview?.created_at || null,
-                latestFollowupStatusByPatient.get(p.id) || null
-            );
+            const reviewCategory = isDeceased
+                ? 'not_completed'
+                : deriveReviewCategory(
+                    latestReviewDate,
+                    latestReview?.status || null,
+                    latestReview?.completed_at || null,
+                    latestReview?.updated_at || null,
+                    latestReview?.created_at || null,
+                    latestFollowupStatusByPatient.get(p.id) || null
+                );
 
             return {
                 ...p,
+                isDeceased,
+                deceasedAt: p.deceased_at || null,
                 latestReviewDate,
                 reviewCategory,
                 lastVisitAt: latestPrescription?.created_at || p.created_at || null,
@@ -653,6 +680,89 @@ export async function dischargePatient(
     }
 }
 
+interface MarkPatientDeceasedParams {
+    queueId: string;
+    hospitalId: string;
+    patientId: string;
+}
+
+/**
+ * Mark an admitted patient as deceased.
+ *
+ * Effects:
+ * 1) Patient row is flagged (`is_deceased=true`, `deceased_at=now`).
+ * 2) Admission queue row is closed with `admission_status='deceased'`.
+ * 3) Any active review rows (`pending`/`rescheduled`) are cancelled and
+ *    `next_review_date` is cleared so deceased patients don't remain in
+ *    upcoming/overdue review buckets.
+ */
+export async function markPatientDeceased(
+    params: MarkPatientDeceasedParams
+): Promise<void> {
+    const { queueId, hospitalId, patientId } = params;
+    if (!queueId || !hospitalId || !patientId) {
+        throw new Error('Missing queue, hospital, or patient identifier');
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const patientUpdateResult = await withTimeout(
+        ((supabase.from('hospital_patients' as any) as any)
+            .update({
+                is_deceased: true,
+                deceased_at: nowIso,
+                updated_at: nowIso,
+            })
+            .eq('hospital_id', hospitalId)
+            .eq('id', patientId)) as any,
+        10000,
+        'Timed out while marking patient as deceased'
+    ) as SupabaseResult;
+
+    if (patientUpdateResult.error) {
+        throw patientUpdateResult.error;
+    }
+
+    const queueUpdateResult = await withTimeout(
+        ((supabase.from('hospital_queues' as any) as any)
+            .update({
+                admission_status: 'deceased',
+                discharged_at: nowIso,
+                updated_at: nowIso,
+            })
+            .eq('id', queueId)
+            .eq('hospital_id', hospitalId)) as any,
+        10000,
+        'Timed out while marking admission as deceased'
+    ) as SupabaseResult;
+
+    if (queueUpdateResult.error) {
+        throw queueUpdateResult.error;
+    }
+
+    const cancelReviewsResult = await withTimeout(
+        ((supabase.from('hospital_patient_reviews' as any) as any)
+            .update({
+                status: 'cancelled',
+                cancelled_at: nowIso,
+                next_review_date: null,
+                updated_at: nowIso,
+            })
+            .eq('hospital_id', hospitalId)
+            .eq('patient_id', patientId)
+            .in('status', ['pending', 'rescheduled'])) as any,
+        10000,
+        'Timed out while cancelling upcoming reviews for deceased patient'
+    ) as SupabaseResult;
+
+    if (cancelReviewsResult.error) {
+        const message = String(cancelReviewsResult.error.message || '').toLowerCase();
+        if (!message.includes('hospital_patient_reviews')) {
+            throw cancelReviewsResult.error;
+        }
+    }
+}
+
 interface FetchAdmittedPatientsParams {
     hospitalId: string;
     doctorId?: string | null;
@@ -790,7 +900,7 @@ export async function fetchAdmittedPatients(
             patientId: row.patient_id,
             admittedAt: row.admitted_at || null,
             dischargedAt: row.discharged_at || null,
-            admissionStatus: (row.admission_status || 'admitted') as 'admitted' | 'discharged',
+            admissionStatus: (row.admission_status || 'admitted') as 'admitted' | 'discharged' | 'deceased',
             doctorId: row.doctor_id || null,
             doctorName: doc?.name || null,
             doctorSpecialty: doc?.specialty || null,
@@ -799,6 +909,7 @@ export async function fetchAdmittedPatients(
                 id: patient.id,
                 name: patient.name,
                 age: patient.age,
+                token_number: patient.token_number || null,
                 gender: patient.gender,
                 phone: patient.phone,
                 mr_number: patient.mr_number,

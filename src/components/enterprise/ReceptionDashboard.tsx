@@ -371,8 +371,8 @@ const ReceptionDashboard: React.FC = () => {
     };
 
     const handlePrintPastRecordsList = () => {
-        if (reviewFilter !== 'due_today' && reviewFilter !== 'due_tomorrow') {
-            toast.error('Print List is available only for Due Today or Due Tomorrow');
+        if (!['due_today', 'due_tomorrow', 'upcoming', 'overdue'].includes(reviewFilter)) {
+            toast.error('Print List is available for Due Today, Due Tomorrow, Upcoming, or Over Due');
             return;
         }
 
@@ -1777,6 +1777,7 @@ const ReceptionDashboard: React.FC = () => {
                                 <AdmittedPatientsPanel
                                     hospitalId={profile.id}
                                     enablePrescribe={false}
+                                    enableMarkDeceased={true}
                                 />
                             )}
                         </div>
@@ -1811,7 +1812,7 @@ const ReceptionDashboard: React.FC = () => {
                                         </button>
                                     ))}
 
-                                        {(reviewFilter === 'due_today' || reviewFilter === 'due_tomorrow') && (
+                                        {(['due_today', 'due_tomorrow', 'upcoming', 'overdue'] as ReceptionReviewFilter[]).includes(reviewFilter) && (
                                             <button
                                                 type="button"
                                                 onClick={handlePrintPastRecordsList}
@@ -1892,8 +1893,15 @@ const ReceptionDashboard: React.FC = () => {
                                                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                                                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-[11px] text-gray-500 font-bold">{index + 1}</span>
                                                                     <p className="text-base font-extrabold tracking-tight text-gray-900">{patient.name}</p>
+                                                                    {patient.isDeceased && (
+                                                                        <span className="inline-flex items-center text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-full px-2.5 py-1">
+                                                                            Patient Deceased
+                                                                        </span>
+                                                                    )}
                                                                     <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1">
-                                                                        Review Date: {patient.latestReviewDate ? new Date(patient.latestReviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}
+                                                                        {patient.isDeceased
+                                                                            ? `Review Cancelled${patient.deceasedAt ? ` (${new Date(patient.deceasedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })})` : ''}`
+                                                                            : `Review Date: ${patient.latestReviewDate ? new Date(patient.latestReviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}`}
                                                                     </span>
                                                                 </div>
 
@@ -1903,6 +1911,13 @@ const ReceptionDashboard: React.FC = () => {
                                                                 </div>
 
                                                                 <p className="text-base text-gray-900 font-extrabold tracking-wide">MR: {patient.mr_number || '--'}</p>
+
+                                                                {patient.isDeceased && (
+                                                                    <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                                                                        Patient is deceased{patient.deceasedAt ? ` on ${new Date(patient.deceasedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}.
+                                                                        Upcoming reviews have been cancelled.
+                                                                    </div>
+                                                                )}
 
                                                                 <div className="flex items-center gap-2 pt-0.5">
                                                                     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${getReviewBadgeClass(patient.reviewCategory)}`}>

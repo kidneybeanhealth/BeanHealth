@@ -20,6 +20,7 @@ import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 import {
     fetchAdmittedPatients,
     dischargePatient,
+    markPatientDeceased,
     fetchPatientPrescriptions,
     type AdmittedPatientRecord,
     type ReceptionVisitRecord,
@@ -42,6 +43,8 @@ interface AdmittedPatientsPanelProps {
     doctorId?: string | null;
     /** Whether to show the Prescribe action (only doctor dashboard). */
     enablePrescribe?: boolean;
+    /** Whether to show Mark Deceased action (reception dashboard only). */
+    enableMarkDeceased?: boolean;
     /** Invoked when user clicks Prescribe for an admitted patient. */
     onPrescribe?: (ctx: AdmittedPrescribeContext) => void;
 }
@@ -63,6 +66,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     doctor,
     doctorId,
     enablePrescribe = false,
+    enableMarkDeceased = false,
     onPrescribe,
 }) => {
     const [records, setRecords] = useState<AdmittedPatientRecord[]>([]);
@@ -70,6 +74,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [dischargeCandidate, setDischargeCandidate] = useState<AdmittedPatientRecord | null>(null);
+    const [deceasedCandidate, setDeceasedCandidate] = useState<AdmittedPatientRecord | null>(null);
     const [rxModalPatient, setRxModalPatient] = useState<AdmittedPatientRecord | null>(null);
     const [rxModalLoading, setRxModalLoading] = useState(false);
     const [rxModalPrescriptions, setRxModalPrescriptions] = useState<ReceptionVisitRecord[]>([]);
@@ -132,6 +137,25 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
         } catch (err) {
             console.error('[AdmittedPatientsPanel] discharge failed', err);
             toast.error('Could not discharge patient', { id: toastId });
+        }
+    };
+
+    const handleConfirmDeceased = async () => {
+        if (!deceasedCandidate) return;
+        const { queueId, patient } = deceasedCandidate;
+        setDeceasedCandidate(null);
+        const toastId = toast.loading('Marking patient as deceased...');
+        try {
+            await markPatientDeceased({
+                queueId,
+                hospitalId,
+                patientId: patient.id,
+            });
+            toast.success(`${patient.name} marked as deceased`, { id: toastId });
+            loadRecords();
+        } catch (err) {
+            console.error('[AdmittedPatientsPanel] mark deceased failed', err);
+            toast.error('Could not mark patient as deceased', { id: toastId });
         }
     };
 
@@ -252,6 +276,14 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                         >
                                             Discharge
                                         </button>
+                                        {enableMarkDeceased && (
+                                            <button
+                                                onClick={() => setDeceasedCandidate(record)}
+                                                className="px-3 py-2 text-xs sm:text-sm font-semibold text-rose-700 bg-white hover:bg-rose-50 border border-rose-200 rounded-lg"
+                                            >
+                                                Mark Deceased
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -269,6 +301,17 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                 confirmLabel="Yes, Discharge"
                 onCancel={() => setDischargeCandidate(null)}
                 onConfirm={handleConfirmDischarge}
+            />
+
+            {/* Deceased confirm */}
+            <TwoStepConfirmModal
+                isOpen={Boolean(deceasedCandidate)}
+                title="Mark this patient as deceased?"
+                description={deceasedCandidate ? `${deceasedCandidate.patient.name} will be marked as deceased, upcoming reviews will be cancelled, and this patient will be removed from Admitted Patients.` : ''}
+                continueLabel="Continue"
+                confirmLabel="Yes, Mark Deceased"
+                onCancel={() => setDeceasedCandidate(null)}
+                onConfirm={handleConfirmDeceased}
             />
 
             {/* View Rx — prescription list modal */}
@@ -337,7 +380,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                             id: rxModalPatient.patient.id,
                             name: rxModalPatient.patient.name,
                             age: rxModalPatient.patient.age,
-                            token_number: rxModalPatient.patient.token_number || selectedRx.token_number || '',
+                            token_number: rxModalPatient.tokenNumber || selectedRx.token_number || '',
                             mr_number: rxModalPatient.patient.mr_number,
                         }}
                         onClose={() => setSelectedRx(null)}
