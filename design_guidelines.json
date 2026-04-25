@@ -1,0 +1,119 @@
+{
+  "theme_and_archetype": {
+    "theme": "light",
+    "archetype": "1 (Organic & Earthy)",
+    "description": "Premium clinical app for patients with end-stage renal disease. The interface focuses on clarity, medical-grade trust, and approachability. Uses a muted, warm clinical palette instead of cold 'tech' colors."
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Outfit, sans-serif",
+      "body": "IBM Plex Sans, sans-serif"
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl tracking-tight font-medium",
+      "h2": "text-2xl sm:text-3xl tracking-tight font-medium",
+      "h3": "text-xl sm:text-2xl font-medium",
+      "body": "text-base sm:text-lg leading-relaxed",
+      "small": "text-sm tracking-wide text-muted-foreground"
+    },
+    "instructions": "Use Outfit for all headings and major numbers (like vital readings). Use IBM Plex Sans for general body text, form labels, and tables. Avoid standard Arial/Inter to maintain a premium feel. Use larger base fonts (16-18px minimum) to ensure readability for the older demographic (30-70 years)."
+  },
+  "colors": {
+    "palette": {
+      "background": "#F7F7F6",
+      "surface": "#FFFFFF",
+      "primary": "#3E6150",
+      "primary_hover": "#2C473A",
+      "text_primary": "#1A1C1A",
+      "text_secondary": "#5C5F5D",
+      "border": "#E6E6E4",
+      "accent_sage": "#8CA898",
+      "alert_critical": "#C94A4A",
+      "alert_warning": "#D68C45",
+      "alert_success": "#4A8C5B"
+    },
+    "tailwind_vars": {
+      "--background": "60 11% 97%",
+      "--foreground": "120 4% 11%",
+      "--card": "0 0% 100%",
+      "--card-foreground": "120 4% 11%",
+      "--primary": "151 22% 31%",
+      "--primary-foreground": "0 0% 100%",
+      "--muted": "120 3% 94%",
+      "--muted-foreground": "120 2% 36%",
+      "--border": "60 5% 90%",
+      "--destructive": "0 56% 54%",
+      "--destructive-foreground": "0 0% 100%"
+    },
+    "instructions": "Apply these colors to Tailwind configuration. Avoid pure black/white where possible, leaning into the soft off-white background (#F7F7F6) and charcoal text (#1A1C1A). Vitals charts should use distinct, accessible colors that fit this earthy palette."
+  },
+  "layout_and_spacing": {
+    "philosophy": "Generous Spacing Philosophy. The target demographic requires clear, large touch targets (minimum 44x44px) and ample breathing room between elements to reduce cognitive load.",
+    "container": "max-w-5xl mx-auto px-4 sm:px-6 lg:px-8",
+    "grid_system": "Bento Grid Protocol. Use grid-cols-1 md:grid-cols-2 or md:grid-cols-3 for dashboard widgets. Cards should have p-6 or p-8 internal padding.",
+    "border_radius": "rounded-xl for cards and panels. rounded-lg for buttons and inputs.",
+    "shadows": "Very soft, ambient shadows. shadow-sm for default cards, shadow-md on hover. Avoid harsh dark shadows."
+  },
+  "components": {
+    "buttons": "Large, accessible touch targets (min-h-[48px]). Primary buttons use bg-primary text-white hover:bg-primary-hover. Use subtle transition-all duration-200.",
+    "cards": "Solid white backgrounds (bg-card) with subtle 1px border (border-border). No glassmorphism. Flat solid surfaces are critical for health apps to prevent visual refraction of data.",
+    "forms": "Use Shadcn UI Input, Label, Select. Inputs should be tall (h-12) with text-base for easy tapping and reading.",
+    "charts": "Use Recharts. Line charts for vitals trends. Keep charts minimal: hide excessive grid lines, use smooth curves (type='monotone'), and ensure data points have tooltips.",
+    "navigation": "Sticky top header with a solid background and bottom border. Include app logo, patient name, and logout button. Mobile should use a simple bottom nav or hamburger menu."
+  },
+  "pages": {
+    "login": {
+      "layout": "Centered card layout. Minimalist form. MR ID input (text or number), Password input.",
+      "background_image": "https://images.unsplash.com/photo-1743046813915-94cf6d5e6942?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwxfHxjbGVhbiUyMG1lZGljYWwlMjBiYWNrZ3JvdW5kJTIwYWJzdHJhY3R8ZW58MHx8fHwxNzc3MTUwODE3fDA&ixlib=rb-4.1.0&q=85",
+      "visuals": "Use the abstract clean medical background image as a subtle page background behind the centered white login card."
+    },
+    "dashboard": {
+      "layout": "Greeting header. Quick-entry bento grid for today's vitals (BP, Weight, Glucose, Urine Output). Adherence checklist for daily medication.",
+      "widgets": "Vitals entry cards should have large input fields and clear 'Save' buttons. Medication list should use Shadcn Checkbox with strikethrough effect on check."
+    },
+    "vitals_history": {
+      "layout": "Tabs to switch between 'List View' and 'Trends (Graphs)'.",
+      "features": "List view uses a clean table or stacked cards showing date, vital type, and value with edit/delete actions. Trends view uses Recharts line graphs with date on X-axis and values on Y-axis."
+    },
+    "prescriptions": {
+      "layout": "Vertical list or grid of prescription cards.",
+      "features": "Each card shows doctor name, date, medication list, dosage, and frequency. Read-only view."
+    },
+    "profile": {
+      "layout": "Simple column layout.",
+      "features": "Displays MR ID, Father Name, Age, DOB, and Diagnosis in a clear key-value list (Shadcn description list or grid)."
+    }
+  },
+  "motion_and_interactions": {
+    "hover_states": "Buttons lift slightly (-translate-y-0.5) and shadows deepen. Interactive list items highlight background color on hover.",
+    "transitions": "Use transition-all duration-200 ease-in-out for buttons, links, and cards.",
+    "loading": "Use subtle pulse animations on skeleton loaders instead of spinning wheels where possible."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "usage": "Use icons to support text labels, not replace them. E.g., a heart icon for BP, a scale for weight, a droplet for glucose/urine."
+  },
+  "accessibility": {
+    "contrast": "Ensure all text, especially muted text, meets WCAG AA 4.5:1 against the background.",
+    "touch_targets": "Minimum 48x48px for all clickable elements.",
+    "testing": "All interactive elements (buttons, inputs, tabs) MUST have data-testid attributes (e.g., data-testid='login-submit-button', data-testid='vital-bp-input')."
+  },
+  "media": {
+    "image_urls": {
+      "login_background": {
+        "url": "https://images.unsplash.com/photo-1743046813915-94cf6d5e6942?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwxfHxjbGVhbiUyMG1lZGljYWwlMjBiYWNrZ3JvdW5kJTIwYWJzdHJhY3R8ZW58MHx8fHwxNzc3MTUwODE3fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract, flowing white lines on a soft background. Use on the login screen to provide a premium clinical feel without being distracting."
+      }
+    }
+  },
+  "instructions_to_main_agent": [
+    "Update tailwind.config.js with the provided colors in the colors.tailwind_vars section.",
+    "Install and configure Outfit and IBM Plex Sans fonts via Google Fonts in index.html.",
+    "Ensure the app layout handles a top navigation bar (Header) present on all authenticated pages.",
+    "Use Recharts for the Vitals History page graphs. Keep them clean, removing unnecessary grid lines.",
+    "Implement the Quick Entry dashboard for vitals using Shadcn components (Input, Button, Card).",
+    "Add 'data-testid' to every form input, submit button, and actionable item.",
+    "Do NOT implement dark mode. The application must remain light-themed to maintain the clean clinical aesthetic.",
+    "For the Medication Checklist, ensure checked items have a visual change (e.g., text-muted-foreground and line-through)."
+  ]
+}
