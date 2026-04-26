@@ -32,15 +32,20 @@ Patients log in via MR ID. The app tracks vitals, medications, and displays pres
 - [x] JWT auth with MR ID (httpOnly cookies + localStorage fallback)
 - [x] Patient registration and login
 - [x] Seed demo patient (MR001/demo123) with 14 days of vitals + 2 prescriptions
-- [x] Dashboard with 4 vital entry cards and last-recorded value display
+- [x] Dashboard with 4 WheelPicker vital cards (drum-roll iOS-style inertial scroll)
+  - BP: dual wheel (SYS/DIA), Weight, Glucose, Urine Output
+  - Confirmed state: picker goes grey, "Edit" button reactivates
 - [x] Daily medication checklist with progress bar and adherence persistence
 - [x] Vitals history: filtered list + 4 Recharts line charts
 - [x] Vitals edit (dialog) and delete functionality
 - [x] Prescriptions page with expandable medication details + doctor notes
 - [x] Patient profile page with calculated age
-- [x] Sticky header with navigation and logout
-- [x] Responsive design (mobile hamburger menu)
-- [x] Premium clinical design (Outfit/IBM Plex Sans, sage green theme)
+- [x] **BeanHealth** branding throughout
+- [x] **Bottom Navigation Bar** with 4 tabs (Dashboard, History, Prescriptions, Profile)
+  - Floating action button active state: green pill, elevated (-6px), shadow
+- [x] **Tamil / English language toggle** in header (Noto Sans Tamil font support)
+  - Full UI translation for all pages
+- [x] Responsive design, premium clinical design (Outfit/IBM Plex Sans + Noto Sans Tamil)
 
 ## Seed Data
 - Patient MR001: Ramesh Kumar, DOB 1975-06-15, ESRD post-transplant
