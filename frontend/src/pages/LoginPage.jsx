@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useLang } from "../contexts/LangContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -7,7 +8,7 @@ import { Label } from "../components/ui/label";
 import { Activity, Eye, EyeOff } from "lucide-react";
 
 function formatError(detail) {
-  if (!detail) return "Something went wrong. Please try again.";
+  if (!detail) return "Something went wrong.";
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((e) => e?.msg || JSON.stringify(e)).join(" ");
   return String(detail);
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { login, register } = useAuth();
+  const { t } = useLang();
   const navigate = useNavigate();
 
   const [loginForm, setLoginForm] = useState({ mr_id: "", password: "" });
@@ -27,8 +29,7 @@ export default function LoginPage() {
   });
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setError(""); setLoading(true);
+    e.preventDefault(); setError(""); setLoading(true);
     try {
       await login(loginForm.mr_id, loginForm.password);
       navigate("/");
@@ -58,48 +59,43 @@ export default function LoginPage() {
         backgroundSize: "cover", backgroundPosition: "center",
       }}
     >
-      <div className="absolute inset-0 bg-white/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-white/45 backdrop-blur-sm" />
 
       <div className="relative w-full max-w-md animate-fadeInUp">
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-border overflow-hidden">
           {/* Header */}
-          <div className="px-8 pt-8 pb-6 border-b border-border">
-            <div className="flex items-center gap-3 mb-4">
+          <div className="px-7 pt-7 pb-5 border-b border-border">
+            <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
                 <Activity className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>
-                  NephroTrack
+                  {t.appName}
                 </h1>
-                <p className="text-xs text-muted-foreground">Patient Portal</p>
+                <p className="text-xs text-muted-foreground">{t.appSubtitle}</p>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Kidney Transplant &amp; ESRD Patient Management
-            </p>
+            <p className="text-xs text-muted-foreground">{t.appDesc}</p>
           </div>
 
           {/* Tabs */}
           <div className="flex border-b border-border">
-            {["login", "register"].map((t) => (
+            {["login", "register"].map((tb) => (
               <button
-                key={t}
-                onClick={() => { setTab(t); setError(""); }}
-                data-testid={`tab-${t}`}
+                key={tb}
+                onClick={() => { setTab(tb); setError(""); }}
+                data-testid={`tab-${tb}`}
                 className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                  tab === t
-                    ? "text-primary border-b-2 border-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                  tab === tb ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t === "login" ? "Sign In" : "Register"}
+                {tb === "login" ? t.signIn : t.register}
               </button>
             ))}
           </div>
 
-          <div className="px-8 py-6">
+          <div className="px-7 py-5">
             {error && (
               <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg" data-testid="auth-error">
                 {error}
@@ -109,136 +105,74 @@ export default function LoginPage() {
             {tab === "login" ? (
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="mr_id">MR ID</Label>
+                  <Label htmlFor="mr_id">{t.mrId}</Label>
                   <Input
-                    id="mr_id"
-                    data-testid="login-mr-id"
-                    placeholder="e.g. MR001"
+                    id="mr_id" data-testid="login-mr-id"
+                    placeholder={t.mrIdPlaceholder}
                     value={loginForm.mr_id}
                     onChange={(e) => setLoginForm({ ...loginForm, mr_id: e.target.value })}
-                    required
-                    className="h-12 text-base uppercase"
+                    required className="h-12 text-base uppercase"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">{t.password}</Label>
                   <div className="relative">
                     <Input
-                      id="password"
-                      data-testid="login-password"
+                      id="password" data-testid="login-password"
                       type={showPwd ? "text" : "password"}
-                      placeholder="Enter password"
+                      placeholder={t.password}
                       value={loginForm.password}
                       onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                      required
-                      className="h-12 text-base pr-11"
+                      required className="h-12 text-base pr-11"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPwd(!showPwd)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    >
+                    <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                       {showPwd ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                 </div>
-                <Button
-                  type="submit"
-                  data-testid="login-submit-button"
-                  disabled={loading}
-                  className="w-full h-12 text-base bg-primary hover:bg-primary/90 btn-primary"
-                >
-                  {loading ? "Signing in…" : "Sign In"}
+                <Button type="submit" data-testid="login-submit-button" disabled={loading} className="w-full h-12 text-base bg-primary hover:bg-primary/90 btn-primary">
+                  {loading ? "…" : t.signIn}
                 </Button>
-                <p className="text-xs text-center text-muted-foreground mt-2">
-                  Demo account: <strong>MR001</strong> / <strong>demo123</strong>
+                <p className="text-xs text-center text-muted-foreground">
+                  {t.demoAccount}: <strong>MR001</strong> / <strong>demo123</strong>
                 </p>
               </form>
             ) : (
               <form onSubmit={handleRegister} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="reg_mr_id">MR ID</Label>
-                    <Input
-                      id="reg_mr_id"
-                      data-testid="register-mr-id"
-                      placeholder="e.g. MR002"
-                      value={regForm.mr_id}
-                      onChange={(e) => setRegForm({ ...regForm, mr_id: e.target.value })}
-                      required className="h-11 uppercase"
-                    />
+                    <Label>{t.mrId}</Label>
+                    <Input data-testid="register-mr-id" placeholder={t.mrIdPlaceholder} value={regForm.mr_id} onChange={(e) => setRegForm({ ...regForm, mr_id: e.target.value })} required className="h-11 uppercase" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="reg_dob">Date of Birth</Label>
-                    <Input
-                      id="reg_dob"
-                      data-testid="register-dob"
-                      type="date"
-                      value={regForm.dob}
-                      onChange={(e) => setRegForm({ ...regForm, dob: e.target.value })}
-                      required className="h-11"
-                    />
+                    <Label>{t.dob}</Label>
+                    <Input data-testid="register-dob" type="date" value={regForm.dob} onChange={(e) => setRegForm({ ...regForm, dob: e.target.value })} required className="h-11" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="reg_name">Full Name</Label>
-                  <Input
-                    id="reg_name" data-testid="register-name"
-                    placeholder="Patient's full name"
-                    value={regForm.name}
-                    onChange={(e) => setRegForm({ ...regForm, name: e.target.value })}
-                    required className="h-11"
-                  />
+                  <Label>{t.fullName}</Label>
+                  <Input data-testid="register-name" placeholder={t.fullName} value={regForm.name} onChange={(e) => setRegForm({ ...regForm, name: e.target.value })} required className="h-11" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="reg_father">Father's Name</Label>
-                  <Input
-                    id="reg_father" data-testid="register-father-name"
-                    placeholder="Father's full name"
-                    value={regForm.father_name}
-                    onChange={(e) => setRegForm({ ...regForm, father_name: e.target.value })}
-                    required className="h-11"
-                  />
+                  <Label>{t.fathersName}</Label>
+                  <Input data-testid="register-father-name" placeholder={t.fathersName} value={regForm.father_name} onChange={(e) => setRegForm({ ...regForm, father_name: e.target.value })} required className="h-11" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="reg_diagnosis">Diagnosis</Label>
-                  <Input
-                    id="reg_diagnosis" data-testid="register-diagnosis"
-                    placeholder="Primary diagnosis"
-                    value={regForm.diagnosis}
-                    onChange={(e) => setRegForm({ ...regForm, diagnosis: e.target.value })}
-                    required className="h-11"
-                  />
+                  <Label>{t.diagnosis}</Label>
+                  <Input data-testid="register-diagnosis" placeholder={t.diagnosis} value={regForm.diagnosis} onChange={(e) => setRegForm({ ...regForm, diagnosis: e.target.value })} required className="h-11" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="reg_pwd">Password</Label>
-                    <Input
-                      id="reg_pwd" data-testid="register-password"
-                      type="password" placeholder="Set password"
-                      value={regForm.password}
-                      onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                      required className="h-11"
-                    />
+                    <Label>{t.password}</Label>
+                    <Input data-testid="register-password" type="password" placeholder={t.password} value={regForm.password} onChange={(e) => setRegForm({ ...regForm, password: e.target.value })} required className="h-11" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="reg_confirm">Confirm</Label>
-                    <Input
-                      id="reg_confirm" data-testid="register-confirm-password"
-                      type="password" placeholder="Confirm"
-                      value={regForm.confirm}
-                      onChange={(e) => setRegForm({ ...regForm, confirm: e.target.value })}
-                      required className="h-11"
-                    />
+                    <Label>{t.confirmPwd}</Label>
+                    <Input data-testid="register-confirm-password" type="password" placeholder={t.confirmPwd} value={regForm.confirm} onChange={(e) => setRegForm({ ...regForm, confirm: e.target.value })} required className="h-11" />
                   </div>
                 </div>
-                <Button
-                  type="submit"
-                  data-testid="register-submit-button"
-                  disabled={loading}
-                  className="w-full h-12 text-base bg-primary hover:bg-primary/90 btn-primary mt-2"
-                >
-                  {loading ? "Creating account…" : "Create Account"}
+                <Button type="submit" data-testid="register-submit-button" disabled={loading} className="w-full h-12 text-base bg-primary hover:bg-primary/90 btn-primary mt-1">
+                  {loading ? "…" : t.register}
                 </Button>
               </form>
             )}

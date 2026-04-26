@@ -1,186 +1,215 @@
 import { useState, useEffect, useCallback } from "react";
 import Header from "../components/Header";
+import BottomNav from "../components/BottomNav";
+import WheelPicker from "../components/WheelPicker";
 import { useAuth, apiCall } from "../contexts/AuthContext";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
+import { useLang } from "../contexts/LangContext";
 import { Card } from "../components/ui/card";
 import { Checkbox } from "../components/ui/checkbox";
-import { Heart, Scale, Droplets, FlaskConical, Save, CheckCircle2 } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Heart, Scale, Droplets, FlaskConical, CheckCircle2 } from "lucide-react";
 
-const VITAL_CONFIG = {
-  bp: {
-    label: "Blood Pressure",
-    icon: Heart,
-    color: "text-rose-600",
-    bg: "bg-rose-50",
-    border: "border-rose-100",
-    unit: "mmHg",
-  },
-  weight: {
-    label: "Body Weight",
-    icon: Scale,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    border: "border-blue-100",
-    unit: "kg",
-  },
-  glucose: {
-    label: "Blood Glucose",
-    icon: FlaskConical,
-    color: "text-amber-600",
-    bg: "bg-amber-50",
-    border: "border-amber-100",
-    unit: "mg/dL",
-  },
-  urine: {
-    label: "Urine Output",
-    icon: Droplets,
-    color: "text-teal-600",
-    bg: "bg-teal-50",
-    border: "border-teal-100",
-    unit: "mL/24h",
-  },
-};
+// ── Picker value arrays ────────────────────────────────────────────────────
+const SYS_VALS = Array.from({ length: 141 }, (_, i) => i + 60);
+const DIA_VALS = Array.from({ length: 91 }, (_, i) => i + 40);
+const WEIGHT_VALS = Array.from({ length: 241 }, (_, i) =>
+  parseFloat((30 + i * 0.5).toFixed(1))
+);
+const GLUCOSE_VALS = Array.from({ length: 351 }, (_, i) => i + 50);
+const URINE_VALS = Array.from({ length: 81 }, (_, i) => i * 50);
 
-function VitalCard({ type, latestVital, onSave }) {
-  const config = VITAL_CONFIG[type];
-  const Icon = config.icon;
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  const [form, setForm] = useState(
-    type === "bp" ? { systolic: "", diastolic: "", notes: "" } : { value: "", notes: "" }
+const findNearest = (arr, target) =>
+  arr.reduce((prev, curr) =>
+    Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev
   );
 
-  const handleSave = async (e) => {
-    e.preventDefault();
+const VITAL_META = {
+  bp: { label: "bloodPressure", Icon: Heart, color: "#e11d48", bg: "bg-rose-50", border: "border-rose-100", unit: "mmHg" },
+  weight: { label: "bodyWeight", Icon: Scale, color: "#2563eb", bg: "bg-blue-50", border: "border-blue-100", unit: "kg" },
+  glucose: { label: "bloodGlucose", Icon: FlaskConical, color: "#d97706", bg: "bg-amber-50", border: "border-amber-100", unit: "mg/dL" },
+  urine: { label: "urineOutput", Icon: Droplets, color: "#0d9488", bg: "bg-teal-50", border: "border-teal-100", unit: "mL/24h" },
+};
+
+function VitalCard({ type, todayVital, onSave }) {
+  const { t } = useLang();
+  const meta = VITAL_META[type];
+  const Icon = meta.Icon;
+
+  const initPicker = () => {
+    if (type === "bp") {
+      return {
+        sys: todayVital ? todayVital.systolic : 120,
+        dia: todayVital ? todayVital.diastolic : 80,
+      };
+    }
+    const defMap = { weight: 70, glucose: 100, urine: 1500 };
+    const arr = type === "weight" ? WEIGHT_VALS : type === "glucose" ? GLUCOSE_VALS : URINE_VALS;
+    const raw = todayVital ? todayVital.value : defMap[type];
+    return { value: findNearest(arr, raw) };
+  };
+
+  const [picker, setPicker] = useState(initPicker);
+  const [confirmed, setConfirmed] = useState(!!todayVital);
+  const [saving, setSaving] = useState(false);
+
+  // Sync if today's vital loaded after mount
+  useEffect(() => {
+    if (todayVital) {
+      if (type === "bp") {
+        setPicker({ sys: todayVital.systolic, dia: todayVital.diastolic });
+      } else {
+        const arr = type === "weight" ? WEIGHT_VALS : type === "glucose" ? GLUCOSE_VALS : URINE_VALS;
+        setPicker({ value: findNearest(arr, todayVital.value) });
+      }
+      setConfirmed(true);
+    }
+  }, [todayVital, type]);
+
+  const handleRecord = async () => {
     setSaving(true);
     try {
-      const payload = {
-        vital_type: type,
-        unit: config.unit,
-        notes: form.notes,
-        ...(type === "bp"
-          ? { systolic: parseFloat(form.systolic), diastolic: parseFloat(form.diastolic) }
-          : { value: parseFloat(form.value) }),
-      };
+      const payload = { vital_type: type, unit: meta.unit, notes: "" };
+      if (type === "bp") {
+        payload.systolic = picker.sys;
+        payload.diastolic = picker.dia;
+      } else {
+        payload.value = picker.value;
+      }
       await apiCall("post", "/vitals", payload);
-      setSaved(true);
-      setForm(type === "bp" ? { systolic: "", diastolic: "", notes: "" } : { value: "", notes: "" });
+      setConfirmed(true);
       onSave();
-      setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     } finally {
       setSaving(false);
     }
   };
 
-  const displayValue = latestVital
-    ? type === "bp"
-      ? `${latestVital.systolic}/${latestVital.diastolic}`
-      : latestVital.value
-    : null;
+  const displayVal =
+    type === "bp"
+      ? `${picker.sys} / ${picker.dia}`
+      : `${picker.value}`;
 
   return (
-    <Card className={`p-5 border ${config.border} vital-card animate-fadeInUp`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className={`w-9 h-9 ${config.bg} rounded-lg flex items-center justify-center`}>
-            <Icon className={`w-5 h-5 ${config.color}`} />
+    <Card
+      className={`border ${meta.border} vital-card overflow-hidden animate-fadeInUp`}
+      data-testid={`vital-card-${type}`}
+    >
+      {/* Card header */}
+      <div className={`${meta.bg} px-4 py-3 flex items-center justify-between`}>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-white/70 rounded-lg flex items-center justify-center">
+            <Icon className="w-4 h-4" style={{ color: meta.color }} />
           </div>
           <div>
-            <p className="text-sm font-medium text-foreground">{config.label}</p>
-            <p className="text-xs text-muted-foreground">{config.unit}</p>
+            <p className="text-sm font-semibold text-foreground">{t[meta.label]}</p>
+            <p className="text-xs text-muted-foreground">{meta.unit}</p>
           </div>
         </div>
-        {saved && <CheckCircle2 className="w-5 h-5 text-green-600 animate-fadeInUp" />}
+        {confirmed && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground font-medium">{displayVal}</span>
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+          </div>
+        )}
       </div>
 
-      {displayValue && (
-        <div className="mb-3 p-2.5 bg-muted/50 rounded-lg">
-          <p className="text-xs text-muted-foreground mb-0.5">Last recorded</p>
-          <p className={`text-2xl font-semibold ${config.color}`} style={{ fontFamily: "Outfit, sans-serif" }}>
-            {displayValue}
-            <span className="text-xs text-muted-foreground font-normal ml-1">{config.unit}</span>
-          </p>
-        </div>
-      )}
-
-      <form onSubmit={handleSave} className="space-y-2">
+      {/* Picker area */}
+      <div className={`px-3 py-2 transition-colors duration-300 ${confirmed ? "bg-muted/30" : "bg-white"}`}>
         {type === "bp" ? (
-          <div className="flex gap-2">
-            <Input
-              data-testid={`vital-bp-systolic`}
-              type="number" placeholder="Systolic"
-              value={form.systolic}
-              onChange={(e) => setForm({ ...form, systolic: e.target.value })}
-              required className="h-10 text-sm"
-            />
-            <Input
-              data-testid={`vital-bp-diastolic`}
-              type="number" placeholder="Diastolic"
-              value={form.diastolic}
-              onChange={(e) => setForm({ ...form, diastolic: e.target.value })}
-              required className="h-10 text-sm"
-            />
+          <div className="flex items-center gap-1">
+            <div className="flex-1 text-center">
+              <p className="text-xs text-muted-foreground font-medium mb-1">{t.systolic}</p>
+              <WheelPicker
+                values={SYS_VALS}
+                value={picker.sys}
+                onChange={(v) => setPicker((p) => ({ ...p, sys: v }))}
+                disabled={confirmed}
+              />
+            </div>
+            <div className="flex flex-col items-center gap-1 px-1">
+              <span className="text-2xl text-muted-foreground/40 font-light" style={{ fontFamily: "Outfit, sans-serif" }}>/</span>
+            </div>
+            <div className="flex-1 text-center">
+              <p className="text-xs text-muted-foreground font-medium mb-1">{t.diastolic}</p>
+              <WheelPicker
+                values={DIA_VALS}
+                value={picker.dia}
+                onChange={(v) => setPicker((p) => ({ ...p, dia: v }))}
+                disabled={confirmed}
+              />
+            </div>
           </div>
         ) : (
-          <Input
-            data-testid={`vital-${type}-value`}
-            type="number" step="0.1"
-            placeholder={`Enter ${config.label.toLowerCase()}`}
-            value={form.value}
-            onChange={(e) => setForm({ ...form, value: e.target.value })}
-            required className="h-10 text-sm"
+          <WheelPicker
+            values={type === "weight" ? WEIGHT_VALS : type === "glucose" ? GLUCOSE_VALS : URINE_VALS}
+            value={picker.value}
+            onChange={(v) => setPicker({ value: v })}
+            disabled={confirmed}
           />
         )}
-        <Button
-          type="submit"
-          data-testid={`save-vital-${type}`}
-          disabled={saving}
-          size="sm"
-          className="w-full bg-primary hover:bg-primary/90 text-white h-9"
-        >
-          <Save className="w-3.5 h-3.5 mr-1.5" />
-          {saving ? "Saving…" : "Record"}
-        </Button>
-      </form>
+      </div>
+
+      {/* Action button */}
+      <div className="px-4 pb-4">
+        {confirmed ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-9 text-sm border-border hover:border-primary hover:text-primary transition-all"
+            onClick={() => setConfirmed(false)}
+            data-testid={`edit-vital-btn-${type}`}
+          >
+            {t.edit}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            className="w-full h-9 text-sm bg-primary hover:bg-primary/90 text-white"
+            onClick={handleRecord}
+            disabled={saving}
+            data-testid={`record-vital-btn-${type}`}
+          >
+            {saving ? "…" : t.record}
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }
 
-function MedicationChecklist({ checklist, prescription, onToggle }) {
+function MedChecklist({ checklist, prescription, onToggle }) {
+  const { t } = useLang();
   if (!prescription) return null;
   const taken = checklist.filter((m) => m.taken).length;
   return (
-    <Card className="p-6 border border-border">
-      <div className="flex items-center justify-between mb-4">
+    <Card className="p-5 border border-border">
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="font-semibold text-foreground">Today's Medications</h3>
+          <h3 className="font-semibold text-foreground text-sm">{t.todayMeds}</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Prescribed by {prescription.doctor_name} · {taken}/{checklist.length} taken
+            {prescription.doctor_name} · {taken}/{checklist.length} {t.taken}
           </p>
         </div>
         <div className="text-right">
-          <span className="text-2xl font-semibold text-primary" style={{ fontFamily: "Outfit, sans-serif" }}>
+          <span className="text-2xl font-bold text-primary" style={{ fontFamily: "Outfit, sans-serif" }}>
             {Math.round((taken / Math.max(checklist.length, 1)) * 100)}%
           </span>
-          <p className="text-xs text-muted-foreground">adherence</p>
+          <p className="text-xs text-muted-foreground">{t.adherence}</p>
         </div>
       </div>
-      <div className="w-full bg-muted rounded-full h-1.5 mb-5">
+      <div className="w-full bg-muted rounded-full h-1.5 mb-4">
         <div
           className="bg-primary h-1.5 rounded-full transition-all duration-500"
           style={{ width: `${(taken / Math.max(checklist.length, 1)) * 100}%` }}
         />
       </div>
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {checklist.map((med, i) => (
           <div
             key={i}
             data-testid={`med-item-${i}`}
-            className={`flex items-start gap-3 p-3 rounded-lg border transition-all duration-200 ${
+            className={`flex items-start gap-3 p-3 rounded-xl border transition-all duration-200 ${
               med.taken ? "bg-green-50 border-green-100" : "bg-white border-border"
             }`}
           >
@@ -213,6 +242,7 @@ function MedicationChecklist({ checklist, prescription, onToggle }) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { t } = useLang();
   const [todayVitals, setTodayVitals] = useState([]);
   const [medData, setMedData] = useState({ prescription: null, checklist: [] });
   const [loadingMed, setLoadingMed] = useState(true);
@@ -229,17 +259,12 @@ export default function DashboardPage() {
     try {
       const { data } = await apiCall("get", "/medication/today");
       setMedData(data);
-    } catch {} finally {
-      setLoadingMed(false);
-    }
+    } catch {} finally { setLoadingMed(false); }
   }, []);
 
-  useEffect(() => {
-    fetchTodayVitals();
-    fetchMedication();
-  }, [fetchTodayVitals, fetchMedication]);
+  useEffect(() => { fetchTodayVitals(); fetchMedication(); }, [fetchTodayVitals, fetchMedication]);
 
-  const getLatestVital = (type) => todayVitals.find((v) => v.vital_type === type) || null;
+  const getVital = (type) => todayVitals.find((v) => v.vital_type === type) || null;
 
   const handleMedToggle = async (med, checked) => {
     setMedData((prev) => ({
@@ -260,72 +285,65 @@ export default function DashboardPage() {
 
   const greeting = () => {
     const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
+    if (h < 12) return t.goodMorning;
+    if (h < 17) return t.goodAfternoon;
+    return t.goodEvening;
   };
-
-  const dateStr = new Date().toLocaleDateString("en-IN", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
-  });
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-32">
         {/* Greeting */}
-        <div className="mb-8 animate-fadeInUp">
-          <h1 className="text-3xl font-semibold text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="mb-6 animate-fadeInUp">
+          <h1 className="text-2xl font-semibold text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>
             {greeting()}, {user?.name?.split(" ")[0]}
           </h1>
-          <p className="text-muted-foreground mt-1">{dateStr}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+          </p>
         </div>
 
-        {/* Vitals Grid */}
-        <section className="mb-8">
-          <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
-            <span className="w-1 h-4 bg-primary rounded-full inline-block" />
-            Record Today's Vitals
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.keys(VITAL_CONFIG).map((type, i) => (
-              <div key={type} className={`stagger-${i + 1}`}>
-                <VitalCard type={type} latestVital={getLatestVital(type)} onSave={fetchTodayVitals} />
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Vitals section label */}
+        <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <span className="w-1 h-4 bg-primary rounded-full inline-block" />
+          {t.recordVitals}
+        </h2>
 
-        {/* Medication Checklist */}
-        <section className="animate-fadeInUp stagger-5">
-          <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
-            <span className="w-1 h-4 bg-primary rounded-full inline-block" />
-            Medication Checklist
-          </h2>
-          {loadingMed ? (
-            <Card className="p-6 border border-border">
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
-                ))}
-              </div>
-            </Card>
-          ) : medData.prescription ? (
-            <MedicationChecklist
-              checklist={medData.checklist}
-              prescription={medData.prescription}
-              onToggle={handleMedToggle}
-            />
-          ) : (
-            <Card className="p-8 border border-border text-center">
-              <p className="text-muted-foreground text-sm">No prescription found.</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Your doctor will add your prescription to the system.
-              </p>
-            </Card>
-          )}
-        </section>
+        {/* 2×2 Vital cards */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          {Object.keys(VITAL_META).map((type, i) => (
+            <div key={type} className={`stagger-${i + 1}`}>
+              <VitalCard type={type} todayVital={getVital(type)} onSave={fetchTodayVitals} />
+            </div>
+          ))}
+        </div>
+
+        {/* Medications */}
+        <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <span className="w-1 h-4 bg-primary rounded-full inline-block" />
+          {t.todayMeds}
+        </h2>
+
+        {loadingMed ? (
+          <Card className="p-5 border border-border">
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-muted animate-pulse rounded-xl" />)}
+            </div>
+          </Card>
+        ) : medData.prescription ? (
+          <MedChecklist
+            checklist={medData.checklist}
+            prescription={medData.prescription}
+            onToggle={handleMedToggle}
+          />
+        ) : (
+          <Card className="p-8 text-center border border-border">
+            <p className="text-sm text-muted-foreground">{t.noMedications}</p>
+          </Card>
+        )}
       </main>
+      <BottomNav />
     </div>
   );
 }
