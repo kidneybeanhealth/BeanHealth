@@ -654,11 +654,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           med.availableDosages.length === available.length &&
           med.availableDosages.every((v, i) => v === available[i]);
 
-        const sameTiming = (med.foodTiming || '') === ((matched.default_timing as string) || '');
         const shouldSetDosage = !med.dosage_value && available.length > 0 && !sameDosages;
         const shouldSetTiming = !med.foodTiming && !!matched.default_timing && !sameDosages;
 
-        if (sameDosages && (sameTiming || !matched.default_timing) && !shouldSetDosage) return med;
+        if (!shouldSetDosage && !shouldSetTiming && sameDosages) return med;
 
         changed = true;
         return {
