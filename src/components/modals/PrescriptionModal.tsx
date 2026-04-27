@@ -298,6 +298,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   const [showConfirmCloseModal, setShowConfirmCloseModal] = useState(false);
   const [showDuplicateWarningModal, setShowDuplicateWarningModal] = useState(false);
   const [duplicateMedicationGroups, setDuplicateMedicationGroups] = useState<DuplicateMedicationGroup[]>([]);
+  const [showIncompleteWarningModal, setShowIncompleteWarningModal] = useState(false);
+  const [incompleteDrugs, setIncompleteDrugs] = useState<{ name: string; missingDosage: boolean; missingFrequency: boolean }[]>([]);
 
   // Saved Drugs State
   const [savedDrugs, setSavedDrugs] = useState<SavedDrug[]>([]);
@@ -924,6 +926,20 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
       addDiagnosis(diagnosisSearchQuery.trim());
     }
 
+    const incomplete = medications
+      .filter(m => m.name)
+      .map(m => ({
+        name: m.name,
+        missingDosage: !m.dosage_value,
+        missingFrequency: !m.dose && !m.morning && !m.noon && !m.evening && !m.night
+      }))
+      .filter(m => m.missingDosage || m.missingFrequency);
+    if (incomplete.length > 0) {
+      setIncompleteDrugs(incomplete);
+      setShowIncompleteWarningModal(true);
+      return;
+    }
+
     const duplicateGroups = findDuplicateMedications(medications);
     if (duplicateGroups.length > 0) {
       setDuplicateMedicationGroups(duplicateGroups);
@@ -1028,6 +1044,62 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             className="flex-1 px-4 py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 transition-all active:scale-95"
           >
             Confirm Send Anyway
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const IncompleteDrugWarningModal = () => (
+    <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowIncompleteWarningModal(false)}>
+      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="bg-gradient-to-r from-red-500 to-rose-600 px-6 py-5 flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Incomplete Prescription</h3>
+            <p className="text-red-100 text-sm">Some drugs are missing required fields</p>
+          </div>
+        </div>
+        <div className="px-6 py-4 max-h-[50vh] overflow-y-auto space-y-3">
+          {incompleteDrugs.map((drug, i) => (
+            <div key={i} className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-xl">
+              <div className="mt-0.5 w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-red-600 text-xs font-bold">{i + 1}</span>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">{drug.name}</p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  {[drug.missingDosage && 'Dosage not entered', drug.missingFrequency && 'Frequency not entered'].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="px-6 pb-5 pt-2 flex gap-3">
+          <button
+            onClick={() => setShowIncompleteWarningModal(false)}
+            className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+          >
+            Go Back & Fix
+          </button>
+          <button
+            onClick={() => {
+              setShowIncompleteWarningModal(false);
+              const duplicateGroups = findDuplicateMedications(medications);
+              if (duplicateGroups.length > 0) {
+                setDuplicateMedicationGroups(duplicateGroups);
+                setShowDuplicateWarningModal(true);
+              } else {
+                continueToSendFlow();
+              }
+            }}
+            className="flex-1 px-4 py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 transition-all active:scale-95"
+          >
+            Continue Anyway
           </button>
         </div>
       </div>
@@ -1169,6 +1241,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           setShowDrugDropdown={setShowDrugDropdown}
           SPECIALIST_OPTIONS={SPECIALIST_OPTIONS}
         />
+        {showIncompleteWarningModal && <IncompleteDrugWarningModal />}
         {showDuplicateWarningModal && <DuplicateMedicationWarningModal />}
         {showConfirmSendModal && <ConfirmSendModal />}
         {showConfirmCloseModal && <ConfirmCloseModal />}
@@ -2242,6 +2315,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           </div>
         </div>
 
+        {showIncompleteWarningModal && <IncompleteDrugWarningModal />}
         {showDuplicateWarningModal && <DuplicateMedicationWarningModal />}
 
         {/* Mobile Preview sticky actions: stick to bottom */}
