@@ -181,10 +181,12 @@ const MedCard: React.FC<{
         updateMed(index, 'dose', opt);
         const m = DOSE_MAPPINGS[opt];
         if (m) {
-            updateMed(index, 'morning', m.morning === '0' ? '' : m.morning);
-            updateMed(index, 'noon', m.noon === '0' ? '' : m.noon);
-            updateMed(index, 'evening', m.evening === '0' ? '' : m.evening);
-            updateMed(index, 'night', m.night === '0' ? '' : m.night);
+            const isSyrup = /^SYP\./i.test(String(med.name || ''));
+            const unit = (v: string) => (isSyrup && v && v !== '0' ? `${v}ml` : v);
+            updateMed(index, 'morning', m.morning === '0' ? '' : unit(m.morning));
+            updateMed(index, 'noon', m.noon === '0' ? '' : unit(m.noon));
+            updateMed(index, 'evening', m.evening === '0' ? '' : unit(m.evening));
+            updateMed(index, 'night', m.night === '0' ? '' : unit(m.night));
         }
     };
 

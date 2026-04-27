@@ -593,12 +593,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     const prefix = drugType ? `${drugType}. ` : '';
     const defaultTiming = (drug as any).default_timing || '';
     const availableDosages = Array.isArray((drug as any).dosages) ? (drug as any).dosages : [];
+    const isSyrup = (drugType || '').toUpperCase() === 'SYP' || drug.name.toUpperCase().startsWith('SYP.');
     newMeds[index] = {
       ...newMeds[index],
       name: `${prefix}${drug.name}`.toUpperCase(),
       drugType: drugType || '',
       availableDosages,
       ...(availableDosages.length > 0 ? { dosage_value: availableDosages[0] } : {}),
+      ...(isSyrup ? { dose: 'ML' } : {}),
       ...(defaultTiming && defaultTiming !== 'nil' ? { foodTiming: defaultTiming } : {})
     };
     setMedications(newMeds);
@@ -651,7 +653,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           med.availableDosages.every((v, i) => v === available[i]);
 
         const sameTiming = (med.foodTiming || '') === ((matched.default_timing as string) || '');
-        const shouldSetDosage = !med.dosage_value && available.length > 0;
+        const shouldSetDosage = !med.dosage_value && available.length > 0 && !sameDosages;
+        const shouldSetTiming = !med.foodTiming && !!matched.default_timing && !sameDosages;
 
         if (sameDosages && (sameTiming || !matched.default_timing) && !shouldSetDosage) return med;
 
@@ -660,7 +663,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           ...med,
           availableDosages: available,
           ...(shouldSetDosage ? { dosage_value: available[0] } : {}),
-          ...(!med.foodTiming && matched.default_timing ? { foodTiming: matched.default_timing } : {})
+          ...(shouldSetTiming ? { foodTiming: matched.default_timing } : {})
         };
       });
       return changed ? next : prev;
@@ -889,9 +892,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     // Auto-populate morning/noon/night when dose is selected
     if (field === 'dose' && DOSE_MAPPINGS[value]) {
       const mapping = DOSE_MAPPINGS[value];
-      (newMeds[index] as any).morning = mapping.morning;
-      (newMeds[index] as any).noon = mapping.noon;
-      (newMeds[index] as any).night = mapping.night;
+      const isSyrup = /^SYP\./i.test(String((newMeds[index] as any).name || ''));
+      const applyUnit = (v: string) => (isSyrup && v && v !== '0' ? `${v}ml` : v);
+      (newMeds[index] as any).morning = applyUnit(mapping.morning);
+      (newMeds[index] as any).noon = applyUnit(mapping.noon);
+      (newMeds[index] as any).evening = applyUnit(mapping.evening);
+      (newMeds[index] as any).night = applyUnit(mapping.night);
     }
 
     setMedications(newMeds);
