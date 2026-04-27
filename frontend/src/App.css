@@ -44,7 +44,15 @@ h1, h2, h3, h4, h5, h6 {
   animation: fadeInUp 0.4s ease-out both;
 }
 
-.stagger-1 { animation-delay: 0.05s; }
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0.8; }
+  to   { transform: translateY(0);    opacity: 1;   }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 .stagger-2 { animation-delay: 0.1s; }
 .stagger-3 { animation-delay: 0.15s; }
 .stagger-4 { animation-delay: 0.2s; }
