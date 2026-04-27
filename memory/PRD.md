@@ -29,6 +29,7 @@ Patients log in via MR ID. The app tracks vitals, medications, and displays pres
 - `/profile` — Patient profile details
 
 ## What's Been Implemented (2026-04)
+- [x] **Vitals History redesign (2026-04-27)**: List view now groups by date. Each date card shows all 4 vitals (Blood Pressure, Body Weight, Blood Glucose, Urine Output) in a 2×2 grid with Fraunces serif date headings, pencil (edit) and red trash (delete-all-for-day) icons. Clicking the card or pencil opens a per-date edit dialog that supports editing or deleting individual vitals. Range chips simplified to 7d/30d/90d.
 - [x] JWT auth with MR ID (httpOnly cookies + localStorage fallback)
 - [x] Patient registration and login
 - [x] Seed demo patient (MR001/demo123) with 14 days of vitals + 2 prescriptions
