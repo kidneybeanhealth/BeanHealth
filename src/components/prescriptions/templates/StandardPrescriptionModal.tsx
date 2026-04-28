@@ -132,6 +132,7 @@ const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
   const [isMobile, setIsMobile]             = useState(false);
   const [showConfirmSendModal, setShowConfirmSendModal]   = useState(false);
   const [showConfirmCloseModal, setShowConfirmCloseModal] = useState(false);
+  const [showMissingDiagnosisWarningModal, setShowMissingDiagnosisWarningModal] = useState(false);
 
   // Drug autocomplete
   const [savedDrugs, setSavedDrugs]             = useState<SavedDrug[]>([]);
@@ -320,7 +321,21 @@ const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
   } as any);
 
   /* ── send ── */
-  const handleSend = () => { if (!readOnly) setShowConfirmSendModal(true); };
+  const handleSend = () => {
+    if (readOnly) return;
+    const hasDiagnosis = formData.diagnosis
+      .split(',')
+      .map(d => d.trim())
+      .filter(Boolean)
+      .length > 0;
+
+    if (!hasDiagnosis) {
+      setShowMissingDiagnosisWarningModal(true);
+      return;
+    }
+
+    setShowConfirmSendModal(true);
+  };
   const confirmSendToPharmacy = () => {
     setShowConfirmSendModal(false);
     const pharmacyMeds = medications.filter(m => m.name).map(m => ({
@@ -382,6 +397,37 @@ const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
           <button onClick={confirmSendToPharmacy} className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             Yes, Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const MissingDiagnosisWarningModal = () => (
+    <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowMissingDiagnosisWarningModal(false)}>
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="bg-gradient-to-r from-red-500 to-rose-600 px-6 py-5 flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Diagnosis Required</h3>
+            <p className="text-red-100 text-sm">Add a diagnosis before sending</p>
+          </div>
+        </div>
+        <div className="px-6 py-5">
+          <p className="text-sm text-gray-700 leading-relaxed">
+            This prescription has no diagnosis. Please add at least one diagnosis before sending it to the pharmacy.
+          </p>
+        </div>
+        <div className="px-6 pb-5">
+          <button
+            onClick={() => setShowMissingDiagnosisWarningModal(false)}
+            className="w-full px-4 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all active:scale-95"
+          >
+            Add Diagnosis
           </button>
         </div>
       </div>
@@ -774,6 +820,7 @@ const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
         </div>
         {showConfirmSendModal  && <ConfirmSendModal />}
         {showConfirmCloseModal && <ConfirmCloseModal />}
+        {showMissingDiagnosisWarningModal && <MissingDiagnosisWarningModal />}
       </>
     );
   }
@@ -1267,6 +1314,7 @@ const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
 
       {showConfirmSendModal  && <ConfirmSendModal />}
       {showConfirmCloseModal && <ConfirmCloseModal />}
+      {showMissingDiagnosisWarningModal && <MissingDiagnosisWarningModal />}
     </div>
   );
 };
