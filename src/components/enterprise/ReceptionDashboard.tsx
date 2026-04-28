@@ -297,6 +297,15 @@ const ReceptionDashboard: React.FC = () => {
         }
     }, [profile?.id]);
 
+    // Queue doctor filter
+    const [queueDoctorFilter, setQueueDoctorFilter] = useState<string>('all');
+
+    // Edit queue item state
+    const [editQueueItem, setEditQueueItem] = useState<any | null>(null);
+    const [editForm, setEditForm] = useState({ name: '', age: '', tokenNumber: '', doctorId: '', gender: '', fatherHusbandName: '', place: '', phone: '', mrNumber: '' });
+    const [editSaving, setEditSaving] = useState(false);
+    const [editTokenError, setEditTokenError] = useState('');
+
     // Patient Database State (Past Records tab)
     const [pastRecords, setPastRecords] = useState<ReceptionPastRecordPatient[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -1612,6 +1621,65 @@ const ReceptionDashboard: React.FC = () => {
         }
     };
 
+    const openEditQueueItem = (item: any) => {
+        setEditQueueItem(item);
+        setEditTokenError('');
+        setEditForm({
+            name: item.patient?.name || '',
+            age: String(item.patient?.age || ''),
+            tokenNumber: String(item.patient?.token_number || ''),
+            doctorId: item.doctor_id || '',
+            gender: item.patient?.gender || '',
+            fatherHusbandName: item.patient?.father_husband_name || '',
+            place: item.patient?.place || '',
+            phone: item.patient?.phone || '',
+            mrNumber: item.patient?.mr_number || ''
+        });
+    };
+
+    const handleSaveEditQueueItem = async () => {
+        if (!editQueueItem || !profile?.id) return;
+        const newToken = editForm.tokenNumber.trim();
+        // Check token uniqueness (excluding current patient)
+        const tokenConflict = queue.find(q =>
+            String(q.patient?.token_number) === newToken &&
+            q.patient?.id !== editQueueItem.patient?.id
+        );
+        if (tokenConflict) {
+            setEditTokenError(`Token ${newToken} is already assigned to ${tokenConflict.patient?.name}`);
+            return;
+        }
+        setEditSaving(true);
+        try {
+            const { error: patientErr } = await (supabase as any)
+                .from('hospital_patients')
+                .update({
+                    name: editForm.name.trim(),
+                    age: parseInt(editForm.age, 10) || null,
+                    token_number: newToken,
+                    gender: editForm.gender || null,
+                    father_husband_name: editForm.fatherHusbandName.trim() || null,
+                    place: editForm.place.trim() || null,
+                    phone: editForm.phone.trim() || null,
+                    mr_number: editForm.mrNumber.trim() || null
+                })
+                .eq('id', editQueueItem.patient?.id);
+            if (patientErr) throw patientErr;
+            const { error: queueErr } = await (supabase as any)
+                .from('hospital_queues')
+                .update({ doctor_id: editForm.doctorId || null })
+                .eq('id', editQueueItem.id);
+            if (queueErr) throw queueErr;
+            toast.success('Patient details updated');
+            setEditQueueItem(null);
+            fetchQueue(true);
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to save changes');
+        } finally {
+            setEditSaving(false);
+        }
+    };
+
     const confirmDelete = (type: 'queue' | 'patient', id: string, name: string, queueId?: string) => {
         setItemToDelete({ type, id, name, queueId });
         setShowDeleteModal(true);
@@ -1868,6 +1936,28 @@ const ReceptionDashboard: React.FC = () => {
                             </button>
                         </div>
                     </div>
+
+                    {/* Doctor filter — only shown on Live Queue / History Log tabs */}
+                    {(activeTab === 'queue' || activeTab === 'patients') && doctors.length > 1 && (
+                        <div className="px-6 py-3 border-b border-gray-100 flex items-center gap-2 flex-wrap bg-gray-50/60">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide mr-1">Doctor:</span>
+                            <button
+                                onClick={() => setQueueDoctorFilter('all')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${queueDoctorFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-700'}`}
+                            >
+                                All
+                            </button>
+                            {doctors.map(doc => (
+                                <button
+                                    key={doc.id}
+                                    onClick={() => setQueueDoctorFilter(queueDoctorFilter === doc.id ? 'all' : doc.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${queueDoctorFilter === doc.id ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-700'}`}
+                                >
+                                    {formatDoctorName(doc.name)}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     {isLoadingQueue ? (
                         <div className="p-16 text-center text-gray-700">Loading...</div>
@@ -2169,6 +2259,7 @@ const ReceptionDashboard: React.FC = () => {
                         <div className="divide-y divide-gray-50">
                             {queue
                                 .filter(item => activeTab === 'queue' ? (item.status === 'pending' || item.status === 'in_progress') : (item.status === 'completed' || item.status === 'cancelled'))
+                                .filter(item => queueDoctorFilter === 'all' || item.doctor_id === queueDoctorFilter)
                                 .map((item) => (
                                     <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
                                         <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
@@ -2210,6 +2301,17 @@ const ReceptionDashboard: React.FC = () => {
                                                 </svg>
                                             </button>
 
+                                            {/* Edit Button */}
+                                            <button
+                                                onClick={() => openEditQueueItem(item)}
+                                                className="p-2 rounded-xl border border-transparent hover:bg-indigo-50 hover:border-indigo-100 text-gray-300 hover:text-indigo-500 transition-all"
+                                                title="Edit Patient Details"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+
                                             {/* Delete Button (Queue) */}
                                             <button
                                                 onClick={() => confirmDelete('queue', item.patient?.id || '', item.patient?.name || 'Unknown', item.id)}
@@ -2239,6 +2341,91 @@ const ReceptionDashboard: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {/* Edit Queue Item Modal */}
+            {editQueueItem && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setEditQueueItem(null)}>
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="text-base font-bold text-gray-900">Edit Patient Details</h3>
+                            <button onClick={() => setEditQueueItem(null)} className="text-gray-400 hover:text-gray-700">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="px-6 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Patient Name</label>
+                                    <input type="text" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Age</label>
+                                    <input type="number" value={editForm.age} onChange={e => setEditForm(f => ({ ...f, age: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Gender</label>
+                                    <select value={editForm.gender} onChange={e => setEditForm(f => ({ ...f, gender: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+                                        <option value="">Select</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">S/o or W/o</label>
+                                    <input type="text" value={editForm.fatherHusbandName} onChange={e => setEditForm(f => ({ ...f, fatherHusbandName: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">MR Number</label>
+                                    <input type="text" value={editForm.mrNumber} onChange={e => setEditForm(f => ({ ...f, mrNumber: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Phone</label>
+                                    <input type="text" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Place</label>
+                                    <input type="text" value={editForm.place} onChange={e => setEditForm(f => ({ ...f, place: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Doctor</label>
+                                    <select value={editForm.doctorId} onChange={e => setEditForm(f => ({ ...f, doctorId: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+                                        <option value="">No Doctor</option>
+                                        {doctors.map(doc => (
+                                            <option key={doc.id} value={doc.id}>{doc.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Token Number</label>
+                                    <input type="text" value={editForm.tokenNumber}
+                                        onChange={e => { setEditTokenError(''); setEditForm(f => ({ ...f, tokenNumber: e.target.value })); }}
+                                        className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none ${editTokenError ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-indigo-400'}`} />
+                                    {editTokenError && <p className="text-xs text-red-600 mt-1">{editTokenError}</p>}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+                            <button onClick={() => setEditQueueItem(null)}
+                                className="flex-1 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-50 transition-all">
+                                Cancel
+                            </button>
+                            <button onClick={handleSaveEditQueueItem} disabled={editSaving || !editForm.name.trim()}
+                                className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                {editSaving ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Walk-In Modal */}
             {showWalkInModal && (
