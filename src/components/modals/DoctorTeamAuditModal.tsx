@@ -869,7 +869,7 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
                                                 <div className="text-gray-700">{new Date(row.created_at).toLocaleString('en-IN')}</div>
                                                 <div className={row.actor_type === 'assistant' ? 'border-l-2 border-amber-400 pl-2' : ''}>
                                                     <div className="font-bold text-gray-900">{row.actor_display_name}</div>
-                                                    <div className="text-[10px] uppercase text-gray-500">{row.actor_type === 'assistant' ? 'PA' : 'Chief'}</div>
+                                                    <div className="text-[10px] uppercase text-gray-500">{row.actor_type === 'assistant' ? 'Jr.' : 'Chief'}</div>
                                                 </div>
                                                 <div>
                                                     <div className="font-semibold text-gray-900">
@@ -904,7 +904,7 @@ const DoctorTeamAuditModal: React.FC<DoctorTeamAuditModalProps> = ({
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className={`flex-1 ${row.actor_type === 'assistant' ? 'border-l-2 border-amber-400 pl-2' : ''}`}>
                                                         <div className="font-bold text-gray-900 text-sm">{row.actor_display_name}</div>
-                                                        <div className="text-[10px] uppercase text-gray-500">{row.actor_type === 'assistant' ? 'PA' : 'Chief'}</div>
+                                                        <div className="text-[10px] uppercase text-gray-500">{row.actor_type === 'assistant' ? 'Jr.' : 'Chief'}</div>
                                                     </div>
                                                     <div className="text-xs text-gray-500 whitespace-nowrap">{new Date(row.created_at).toLocaleString('en-IN')}</div>
                                                 </div>

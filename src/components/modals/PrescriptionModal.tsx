@@ -1375,6 +1375,21 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                 height: auto !important;
                 min-height: 0 !important;
                 overflow: visible !important;
+                font-size: 12px !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+              }
+              
+              /* Responsive drug name sizing */
+              textarea[style*=\"clamp\"] {
+                font-size: 12px !important;
+              }
+              
+              /* Dropdown and display text sizing */
+              .line-clamp-2 {
+                display: -webkit-box !important;
+                -webkit-line-clamp: 2 !important;
+                -webkit-box-orient: vertical !important;
               }
             }
           `}</style>
@@ -1726,7 +1741,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 </div>
                                 <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
                                   <textarea
-                                    className="w-full outline-none font-bold uppercase text-sm bg-transparent resize-none leading-tight py-1 overflow-hidden"
+                                    className="w-full outline-none font-bold uppercase bg-transparent resize-none leading-tight py-1 overflow-hidden word-break overflow-wrap break-words"
+                                    style={{ fontSize: med.name && med.name.length > 20 ? 'clamp(9px, 1.8vw, 12px)' : 'clamp(10px, 2vw, 14px)' }}
                                     placeholder="Type drug name..."
                                     value={med.name}
                                     rows={2}
@@ -1772,7 +1788,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                           onMouseEnter={() => setHighlightedDropdownIndex(dIdx)}
                                         >
                                           <div className="flex items-center gap-2">
-                                            <span className="font-bold text-sm text-gray-900">{drug.name}</span>
+                                            <span className="font-bold text-gray-900 line-clamp-2" style={{ fontSize: drug.name && drug.name.length > 20 ? 'clamp(9px, 1.2vw, 12px)' : 'clamp(12px, 1.5vw, 14px)' }}>{drug.name}</span>
                                             {drug.category && (
                                               <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full font-medium uppercase">
                                                 {drug.category}

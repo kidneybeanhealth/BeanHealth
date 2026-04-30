@@ -455,7 +455,7 @@ const DoctorLogin: React.FC = () => {
                                             onClick={() => setAuthMode('assistant')}
                                             className={`py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-colors ${authMode === 'assistant' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
                                         >
-                                            PA
+                                            Jr.
                                         </button>
                                     </div>
                                 </div>
@@ -471,7 +471,7 @@ const DoctorLogin: React.FC = () => {
                                         value={assistantCode}
                                         onChange={(e) => setAssistantCode(e.target.value.toUpperCase())}
                                         className="w-full px-4 py-2.5 sm:py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:bg-white focus:border-primary-500 focus:ring-0 outline-none transition-all text-center text-base sm:text-lg font-bold tracking-wider"
-                                        placeholder="PA CODE"
+                                        placeholder="Jr. CODE"
                                         autoComplete="off"
                                     />
                                 </div>
@@ -479,7 +479,7 @@ const DoctorLogin: React.FC = () => {
 
                             <div>
                                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 sm:mb-3 ml-1">
-                                    {paAuthEnabled ? (authMode === 'chief' ? 'Chief Passcode' : 'PA Passcode') : 'Enter Your Passcode'}
+                                    {paAuthEnabled ? (authMode === 'chief' ? 'Chief Passcode' : 'Jr. Passcode') : 'Enter Your Passcode'}
                                 </label>
                                 <div className="relative">
                                     <input

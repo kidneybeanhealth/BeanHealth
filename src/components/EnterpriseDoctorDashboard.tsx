@@ -1610,7 +1610,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                     <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-wide mt-1 uppercase leading-none">{currentDoctor.specialty || 'GENERAL MEDICINE'}</p>
                                     {paActorAuthEnabled && (
                                         <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
-                                            <span>{actorType === 'chief' ? 'Chief' : `PA: ${actorDisplayName}`}</span>
+                                            <span>{actorType === 'chief' ? 'Chief' : `Jr. ${actorDisplayName}`}</span>
                                         </div>
                                     )}
                                 </div>
@@ -1632,7 +1632,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             <p className="text-sm sm:text-base md:text-lg text-gray-700 mt-1">Manage your patient queue and consultations</p>
                             {paActorAuthEnabled && (
                                 <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold">
-                                    {actorType === 'chief' ? 'Logged in as Chief' : `Logged in as PA: ${actorDisplayName}`}
+                                    {actorType === 'chief' ? 'Logged in as Chief' : `Logged in as Jr. ${actorDisplayName}`}
                                 </div>
                             )}
                         </div>
