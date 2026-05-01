@@ -1039,7 +1039,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     // Launch the prescribe flow for an already-admitted patient.
     // Reuses the same machinery as queue-row Prescribe: sets
     // selectedPatient + selectedQueueId and opens the Rx modal.
-    const handlePrescribeAdmitted = (ctx: AdmittedPrescribeContext) => {
+    const handlePrescribeAdmitted = async (ctx: AdmittedPrescribeContext) => {
         setSelectedPatient({
             id: ctx.patient.id,
             name: ctx.patient.name,
@@ -1049,6 +1049,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             app_access_enabled: null,
         });
         setSelectedQueueId(ctx.queueId);
+        await setPreparingIndicator(ctx.queueId);
+        setAdmittedRefreshToken(t => t + 1);
         setShowRxModal(true);
         logViewEvent('view.patient.open', { patientId: ctx.patientId, queueId: ctx.queueId });
     };
@@ -1228,6 +1230,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 setSelectedQueueId(null);
                 setSelectedPatient(null);
                 fetchQueue(true);
+                setAdmittedRefreshToken(t => t + 1);
                 return;
             }
 
@@ -1405,6 +1408,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             setPastRxQueueItem(null);
             setSelectedQueueId(null);
             setSelectedPatient(null);
+            setAdmittedRefreshToken(t => t + 1);
             await handleUpdateStatus(selectedQueueId, 'completed');
         } catch (error: any) {
             console.error('Full Error Object:', error);
@@ -1758,6 +1762,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     doctorId={currentDoctor.id}
                     enablePrescribe={true}
                     onPrescribe={handlePrescribeAdmitted}
+                    actorDisplayName={actorDisplayName}
                 />
             ) : (
                 <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
@@ -2373,6 +2378,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         setShowRxModal(false);
                         setSelectedQueueId(null);
                         setSelectedPatient(null);
+                        setAdmittedRefreshToken(t => t + 1);
                     }}
                     onSendToPharmacy={handleSendToPharmacy}
                     clinicLogo={hospitalLogo || undefined}

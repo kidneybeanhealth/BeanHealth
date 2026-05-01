@@ -76,6 +76,7 @@ export interface AdmittedPatientRecord {
     doctorName: string | null;
     doctorSpecialty: string | null;
     tokenNumber: string | null;
+    preparingBy: string | null;
     patient: {
         id: string;
         name: string;
@@ -968,7 +969,7 @@ export async function fetchAdmittedPatients(
     if (!hospitalId) return [];
 
     let query = (supabase.from('hospital_queues' as any) as any)
-        .select('id, patient_id, doctor_id, queue_number, admission_status, admitted_at, discharged_at')
+        .select('id, patient_id, doctor_id, queue_number, admission_status, admitted_at, discharged_at, preparing_by')
         .eq('hospital_id', hospitalId)
         .eq('admission_status', 'admitted')
         .order('admitted_at', { ascending: false, nullsFirst: false });
@@ -1087,6 +1088,7 @@ export async function fetchAdmittedPatients(
             doctorName: doc?.name || null,
             doctorSpecialty: doc?.specialty || null,
             tokenNumber: patient.token_number || null,
+            preparingBy: row.preparing_by || null,
             patient: {
                 id: patient.id,
                 name: patient.name,

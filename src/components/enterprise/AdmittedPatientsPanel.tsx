@@ -60,6 +60,8 @@ interface AdmittedPatientsPanelProps {
     enableMarkDeceased?: boolean;
     /** Invoked when user clicks Prescribe for an admitted patient. */
     onPrescribe?: (ctx: AdmittedPrescribeContext) => void;
+    /** Display name of the currently logged-in actor (doctor or Jr.) — shown on "preparing" badge. */
+    actorDisplayName?: string;
 }
 
 const formatAdmittedAt = (value?: string | null): string => {
@@ -81,6 +83,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     enablePrescribe = false,
     enableMarkDeceased = false,
     onPrescribe,
+    actorDisplayName,
 }) => {
     const [records, setRecords] = useState<AdmittedPatientRecord[]>([]);
     const [loading, setLoading] = useState(false);
@@ -411,6 +414,12 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-xs font-bold border border-rose-100">
                                                 Admitted
                                             </span>
+                                            {record.preparingBy && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                    {record.preparingBy} preparing
+                                                </span>
+                                            )}
                                             <span className="text-xs font-medium text-gray-500">
                                                 Admitted: {formatAdmittedAt(record.admittedAt)}
                                             </span>
