@@ -1385,6 +1385,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                 font-size: 12px !important;
               }
 
+
               /* Dropdown and display text sizing */
               .line-clamp-2 {
                 display: -webkit-box !important;
