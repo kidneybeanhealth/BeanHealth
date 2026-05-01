@@ -195,25 +195,25 @@ const PatientPrescriptions: React.FC = () => {
         {prescriptions.map((rx, i) => (
           <div key={rx.id} onClick={() => openRx(rx)} style={{
             display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', marginBottom: 8,
-            background: '#fff', borderRadius: 12, border: '1px solid #F3F4F6',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)', cursor: 'pointer',
+            background: 'hsl(var(--card))', borderRadius: 16, border: '1px solid hsl(var(--border))',
+            boxShadow: '0 1px 8px rgba(0,0,0,0.06)', cursor: 'pointer',
             transition: 'transform 0.15s ease, box-shadow 0.15s ease',
             animation: `pa-card-enter 0.3s ease ${i * 0.05}s both`,
           }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 8px rgba(0,0,0,0.06)'; }}
           >
-            <div style={{ width: 42, height: 42, borderRadius: 10, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><FileIcon /></div>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><FileIcon /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1A1A' }}>{fmtDate(rx.created_at)}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', marginTop: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'hsl(var(--foreground))', fontFamily: 'Outfit, sans-serif' }}>{fmtDate(rx.created_at)}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
                 {fmtTime(rx.created_at)}{rx.doctor?.name && ` · Dr. ${rx.doctor.name}`}
               </div>
             </div>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#6EA530', background: '#F0F7E6', padding: '3px 8px', borderRadius: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'hsl(var(--primary))', background: 'hsl(var(--accent))', padding: '3px 8px', borderRadius: 6 }}>
               {(rx.medications || []).length} {t('rx.meds')}
             </span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
           </div>
         ))}
       </div>

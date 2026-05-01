@@ -215,6 +215,9 @@ const AppRoutes: React.FC = () => {
 
                 {/* ============ PATIENT APP (MR ID Login) ============ */}
                 <Route path="/patient-app" element={<PatientApp />} />
+                <Route path="/patient-app/history" element={<PatientApp />} />
+                <Route path="/patient-app/prescriptions" element={<PatientApp />} />
+                <Route path="/patient-app/profile" element={<PatientApp />} />
 
                 {/* ============ PROTECTED DASHBOARD ROUTES ============ */}
 

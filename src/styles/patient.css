@@ -5,7 +5,7 @@
    G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 /* G��G�� Google Fonts G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Nunito:wght@400;500;600;700;800;900&family=Noto+Sans+Tamil:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Nunito:wght@400;500;600;700;800;900&family=Noto+Sans+Tamil:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
 /* G��G�� Design Tokens G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 :root {
@@ -1847,4 +1847,48 @@
 }
 .pa-hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* ── New Patient App Design Tokens (shadcn/ui compatible) ── */
+.patient-app {
+  --background: 60 11% 97%;
+  --foreground: 120 4% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 120 4% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 120 4% 11%;
+  --primary: 151 22% 31%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 120 3% 94%;
+  --secondary-foreground: 120 4% 11%;
+  --muted: 120 3% 94%;
+  --muted-foreground: 120 2% 36%;
+  --accent: 151 15% 88%;
+  --accent-foreground: 151 22% 20%;
+  --destructive: 0 56% 54%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 60 5% 90%;
+  --input: 60 5% 90%;
+  --ring: 151 22% 31%;
+  --radius: 0.75rem;
+  font-family: 'IBM Plex Sans', 'Noto Sans Tamil', sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.patient-app h1,
+.patient-app h2,
+.patient-app h3,
+.patient-app h4,
+.patient-app h5,
+.patient-app h6 {
+  font-family: 'Outfit', sans-serif;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeInUp {
+  animation: fadeInUp 0.3s ease forwards;
 }

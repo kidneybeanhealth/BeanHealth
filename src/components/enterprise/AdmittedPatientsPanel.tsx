@@ -99,6 +99,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
 
     // Add Patient modal
     const [showAddPatient, setShowAddPatient] = useState(false);
+    const [addTab, setAddTab] = useState<'search' | 'new'>('search');
     const [addSearch, setAddSearch] = useState('');
     const [addDebouncedSearch, setAddDebouncedSearch] = useState('');
     const [addResults, setAddResults] = useState<PatientSearchResult[]>([]);
@@ -107,6 +108,12 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     const [addPendingReviews, setAddPendingReviews] = useState<PendingReviewInfo[]>([]);
     const [addReviewsLoading, setAddReviewsLoading] = useState(false);
     const [addConfirming, setAddConfirming] = useState(false);
+
+    // New patient registration form (inside Add Patient modal)
+    const [newPatientForm, setNewPatientForm] = useState({
+        name: '', age: '', gender: '', fatherHusbandName: '', place: '', phone: '', mrNumber: '',
+    });
+    const [newPatientErrors, setNewPatientErrors] = useState<{ name?: string }>({});
 
     // Debounce search input
     useEffect(() => {
@@ -277,11 +284,44 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
 
     const resetAddPatientModal = () => {
         setShowAddPatient(false);
+        setAddTab('search');
         setAddSearch('');
         setAddDebouncedSearch('');
         setAddResults([]);
         setAddCandidate(null);
         setAddPendingReviews([]);
+        setNewPatientForm({ name: '', age: '', gender: '', fatherHusbandName: '', place: '', phone: '', mrNumber: '' });
+        setNewPatientErrors({});
+    };
+
+    const handleRegisterAndAdmit = async () => {
+        const errors: { name?: string } = {};
+        if (!newPatientForm.name.trim()) errors.name = 'Patient name is required';
+        if (Object.keys(errors).length) { setNewPatientErrors(errors); return; }
+        setAddConfirming(true);
+        const toastId = toast.loading('Registering and admitting patient…');
+        try {
+            const insertResult = await (supabase.from('hospital_patients') as any).insert({
+                hospital_id: hospitalId,
+                name: newPatientForm.name.trim(),
+                age: newPatientForm.age ? parseInt(newPatientForm.age, 10) : null,
+                gender: newPatientForm.gender || null,
+                father_husband_name: newPatientForm.fatherHusbandName.trim() || null,
+                place: newPatientForm.place.trim() || null,
+                phone: newPatientForm.phone.trim() || null,
+                mr_number: newPatientForm.mrNumber.trim() || null,
+            }).select('id').single();
+            if (insertResult.error) throw insertResult.error;
+            const newId = insertResult.data.id;
+            await admitPatientDirectly({ hospitalId, patientId: newId });
+            toast.success(`${newPatientForm.name.trim()} registered & admitted`, { id: toastId });
+            resetAddPatientModal();
+            loadRecords();
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not register patient', { id: toastId });
+        } finally {
+            setAddConfirming(false);
+        }
     };
 
     const handleConfirmAddPatient = async () => {
@@ -617,77 +657,95 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
 
                         {/* Modal header */}
                         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-                            <div>
-                                <h3 className="text-base font-bold text-gray-900">Add Patient to Admitted</h3>
-                                <p className="text-xs text-gray-500 mt-0.5">Search from past records by name or MR number</p>
-                            </div>
+                            <h3 className="text-base font-bold text-gray-900">Add Patient to Admitted</h3>
                             <button onClick={resetAddPatientModal} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto">
-                            {/* Search input */}
-                            <div className="px-5 pt-4 pb-3">
-                                <div className="relative">
-                                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                    <input
-                                        type="text"
-                                        value={addSearch}
-                                        onChange={e => { setAddSearch(e.target.value); setAddCandidate(null); }}
-                                        placeholder="Type name or MR number…"
-                                        autoFocus
-                                        className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
-                                    />
-                                    {addSearching && (
-                                        <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                    )}
-                                </div>
-                            </div>
+                        {/* Tabs */}
+                        <div className="flex border-b border-gray-100 px-5 flex-shrink-0">
+                            <button
+                                onClick={() => { setAddTab('search'); setAddCandidate(null); }}
+                                className={`py-2.5 px-1 mr-5 text-sm font-semibold border-b-2 transition-colors ${addTab === 'search' ? 'border-rose-500 text-rose-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Search Existing
+                            </button>
+                            <button
+                                onClick={() => setAddTab('new')}
+                                className={`py-2.5 px-1 text-sm font-semibold border-b-2 transition-colors ${addTab === 'new' ? 'border-rose-500 text-rose-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            >
+                                New Registration
+                            </button>
+                        </div>
 
-                            {/* Search results */}
-                            {!addCandidate && (
-                                <div className="px-3 pb-3">
-                                    {!addDebouncedSearch ? (
-                                        <p className="text-center text-sm text-gray-400 py-8">Start typing to search patients</p>
-                                    ) : addResults.length === 0 && !addSearching ? (
-                                        <p className="text-center text-sm text-gray-400 py-8">No patients found</p>
-                                    ) : (
-                                        <ul className="divide-y divide-gray-100">
-                                            {addResults.map(p => {
-                                                const rel = p.gender === 'Female' ? 'W/o' : 'S/o';
-                                                return (
-                                                    <li key={p.id}>
-                                                        <button
-                                                            onClick={() => selectAddCandidate(p)}
-                                                            className="w-full text-left px-3 py-3 rounded-xl hover:bg-rose-50 transition-colors flex items-center justify-between gap-3"
-                                                        >
-                                                            <div className="min-w-0">
-                                                                <p className="text-sm font-bold text-gray-900 truncate">{p.name}</p>
-                                                                <p className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-3">
-                                                                    <span>MR: <span className="font-mono font-semibold text-gray-700">{p.mr_number || 'N/A'}</span></span>
-                                                                    {p.age && <span>Age {p.age}</span>}
-                                                                    {p.father_husband_name && <span>{rel} {p.father_husband_name}</span>}
-                                                                </p>
-                                                            </div>
-                                                            <svg className="w-4 h-4 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                            </svg>
-                                                        </button>
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
-                                    )}
+                        <div className="flex-1 overflow-y-auto">
+                            {/* ── Search existing tab ── */}
+                            {addTab === 'search' && (
+                                <>
+                                {/* Search input */}
+                                <div className="px-5 pt-4 pb-3">
+                                    <div className="relative">
+                                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        <input
+                                            type="text"
+                                            value={addSearch}
+                                            onChange={e => { setAddSearch(e.target.value); setAddCandidate(null); }}
+                                            placeholder="Type name or MR number…"
+                                            autoFocus
+                                            className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                        />
+                                        {addSearching && (
+                                            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                        )}
+                                    </div>
                                 </div>
+
+                                {/* Search results */}
+                                {!addCandidate && (
+                                    <div className="px-3 pb-3">
+                                        {!addDebouncedSearch ? (
+                                            <p className="text-center text-sm text-gray-400 py-8">Start typing to search patients</p>
+                                        ) : addResults.length === 0 && !addSearching ? (
+                                            <p className="text-center text-sm text-gray-400 py-8">No patients found</p>
+                                        ) : (
+                                            <ul className="divide-y divide-gray-100">
+                                                {addResults.map(p => {
+                                                    const rel = p.gender === 'Female' ? 'W/o' : 'S/o';
+                                                    return (
+                                                        <li key={p.id}>
+                                                            <button
+                                                                onClick={() => selectAddCandidate(p)}
+                                                                className="w-full text-left px-3 py-3 rounded-xl hover:bg-rose-50 transition-colors flex items-center justify-between gap-3"
+                                                            >
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-bold text-gray-900 truncate">{p.name}</p>
+                                                                    <p className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-3">
+                                                                        <span>MR: <span className="font-mono font-semibold text-gray-700">{p.mr_number || 'N/A'}</span></span>
+                                                                        {p.age && <span>Age {p.age}</span>}
+                                                                        {p.father_husband_name && <span>{rel} {p.father_husband_name}</span>}
+                                                                    </p>
+                                                                </div>
+                                                                <svg className="w-4 h-4 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                                </svg>
+                                                            </button>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        )}
+                                    </div>
+                                )}
+                                </>
                             )}
 
-                            {/* Confirmation panel — shown after a patient is selected */}
-                            {addCandidate && (
+                            {/* Confirmation panel — shown after a patient is selected (search tab) */}
+                            {addTab === 'search' && addCandidate && (
                                 <div className="px-5 pb-5 space-y-4">
                                     {/* Back */}
                                     <button
@@ -769,6 +827,118 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                             <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" transform="rotate(180 12 12)" /></svg>Cancel Reviews &amp; Admit Patient</>
                                         ) : (
                                             <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" transform="rotate(180 12 12)" /></svg>Confirm Admission</>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* ── New Registration tab ── */}
+                            {addTab === 'new' && (
+                                <div className="px-5 py-4 space-y-3">
+                                    {/* Name */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 mb-1">Patient Name <span className="text-rose-500">*</span></label>
+                                        <input
+                                            type="text"
+                                            value={newPatientForm.name}
+                                            onChange={e => { setNewPatientForm(f => ({ ...f, name: e.target.value })); setNewPatientErrors({}); }}
+                                            placeholder="Full name"
+                                            className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200 ${newPatientErrors.name ? 'border-rose-400' : 'border-gray-200'}`}
+                                        />
+                                        {newPatientErrors.name && <p className="text-xs text-rose-500 mt-1">{newPatientErrors.name}</p>}
+                                    </div>
+
+                                    {/* Age + Gender row */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-700 mb-1">Age</label>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                value={newPatientForm.age}
+                                                onChange={e => setNewPatientForm(f => ({ ...f, age: e.target.value }))}
+                                                placeholder="Years"
+                                                className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-700 mb-1">Gender</label>
+                                            <select
+                                                value={newPatientForm.gender}
+                                                onChange={e => setNewPatientForm(f => ({ ...f, gender: e.target.value }))}
+                                                className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                            >
+                                                <option value="">Select</option>
+                                                <option value="Male">Male</option>
+                                                <option value="Female">Female</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Father / Husband name */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                            {newPatientForm.gender === 'Female' ? 'W/o (Husband name)' : 'S/o (Father name)'}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newPatientForm.fatherHusbandName}
+                                            onChange={e => setNewPatientForm(f => ({ ...f, fatherHusbandName: e.target.value }))}
+                                            placeholder={newPatientForm.gender === 'Female' ? 'Husband\'s name' : 'Father\'s name'}
+                                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                        />
+                                    </div>
+
+                                    {/* MR Number + Phone row */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-700 mb-1">MR Number</label>
+                                            <input
+                                                type="text"
+                                                value={newPatientForm.mrNumber}
+                                                onChange={e => setNewPatientForm(f => ({ ...f, mrNumber: e.target.value }))}
+                                                placeholder="MR / ID"
+                                                className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-700 mb-1">Phone</label>
+                                            <input
+                                                type="tel"
+                                                value={newPatientForm.phone}
+                                                onChange={e => setNewPatientForm(f => ({ ...f, phone: e.target.value }))}
+                                                placeholder="Mobile number"
+                                                className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Place */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 mb-1">Place</label>
+                                        <input
+                                            type="text"
+                                            value={newPatientForm.place}
+                                            onChange={e => setNewPatientForm(f => ({ ...f, place: e.target.value }))}
+                                            placeholder="City / Village"
+                                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-200"
+                                        />
+                                    </div>
+
+                                    {/* Submit */}
+                                    <button
+                                        onClick={handleRegisterAndAdmit}
+                                        disabled={addConfirming}
+                                        className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 mt-1 ${addConfirming ? 'bg-rose-200 text-rose-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm shadow-rose-600/25'}`}
+                                    >
+                                        {addConfirming ? (
+                                            <><svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>Registering…</>
+                                        ) : (
+                                            <>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                                                Register &amp; Admit
+                                            </>
                                         )}
                                     </button>
                                 </div>

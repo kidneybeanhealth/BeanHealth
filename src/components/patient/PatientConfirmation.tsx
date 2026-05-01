@@ -1,12 +1,6 @@
-/**
- * Patient Confirmation Screen
- * Shows patient details after MR ID lookup — confirms identity
- * Supports Tamil (default) ↔ English
- */
 import React from 'react';
 import { usePatientApp } from '../../contexts/PatientAppContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import '../../styles/patient.css';
 
 interface Props {
   onConfirm: () => void;
@@ -15,115 +9,131 @@ interface Props {
 
 const PatientConfirmation: React.FC<Props> = ({ onConfirm, onReject }) => {
   const { session } = usePatientApp();
-  const { t, lang } = useLanguage();
+  const { lang } = useLanguage();
 
   if (!session) return null;
 
-  const { patient, hospital, doctor, latestVisitDate, department } = session;
+  const { patient, hospital, doctor, latestVisitDate } = session;
 
-  const confirmationHint = lang === 'ta'
-    ? 'இது உங்கள் கணக்கு தானா? உறுதிப்படுத்துங்கள்.'
-    : 'Is this your account? Please confirm.';
+  const T = {
+    en: {
+      title: 'Confirm Identity',
+      subtitle: 'Is this your account?',
+      mr: 'MR',
+      age: 'Age',
+      yrs: 'yrs',
+      gender: 'Gender',
+      hospital: 'Hospital',
+      doctor: 'Doctor',
+      lastVisit: 'Last Visit',
+      confirm: 'Yes, this is me',
+      reject: "Not me",
+    },
+    ta: {
+      title: 'அடையாளம் உறுதிப்படுத்தல்',
+      subtitle: 'இது உங்கள் கணக்கு தானா?',
+      mr: 'MR',
+      age: 'வயது',
+      yrs: 'வயது',
+      gender: 'பாலினம்',
+      hospital: 'மருத்துவமனை',
+      doctor: 'மருத்துவர்',
+      lastVisit: 'கடைசி வருகை',
+      confirm: 'ஆம், இது நான்',
+      reject: 'இல்லை',
+    },
+  };
+  const t = T[lang as 'en' | 'ta'] ?? T.en;
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '—';
+  const formatDate = (d: string | null) => {
+    if (!d) return '—';
     try {
-      return new Date(dateStr).toLocaleDateString(lang === 'ta' ? 'ta-IN' : 'en-IN', {
+      return new Date(d).toLocaleDateString(lang === 'ta' ? 'ta-IN' : 'en-IN', {
         day: '2-digit', month: 'short', year: 'numeric',
       });
-    } catch {
-      return dateStr;
-    }
+    } catch { return d; }
   };
 
-  const getInitial = (name: string) => {
-    const cleaned = name.replace(/^(MR\.|MRS\.|MS\.|DR\.)\s*/i, '').trim();
-    return cleaned.charAt(0)?.toUpperCase() || '?';
-  };
+  const initial = patient.name.replace(/^(MR\.|MRS\.|MS\.|DR\.)\s*/i, '').charAt(0).toUpperCase() || '?';
+  const displayName = patient.name.replace(/^(MR\.|MRS\.|MS\.|DR\.)\s*/i, '').trim();
+  const hospitalName = hospital ? (hospital.display_name || hospital.hospital_name) : null;
 
-  const detailRows = [
-    {
-      key: 'fatherHusband',
-      label: t('confirm.fatherHusband'),
-      value: patient.father_husband_name || null,
-    },
-    {
-      key: 'ageGender',
-      label: `${t('confirm.age')} / ${t('confirm.gender')}`,
-      value: `${patient.age ? `${patient.age} ${t('confirm.yrs')}` : '—'}${patient.gender ? `, ${patient.gender}` : ''}`,
-    },
-    {
-      key: 'visitDate',
-      label: t('confirm.visitDate'),
-      value: formatDate(latestVisitDate),
-    },
-    {
-      key: 'hospital',
-      label: t('confirm.hospital'),
-      value: hospital ? (hospital.display_name || hospital.hospital_name) : null,
-    },
-    {
-      key: 'department',
-      label: t('confirm.department'),
-      value: department || null,
-    },
-    {
-      key: 'doctor',
-      label: t('confirm.doctor'),
-      value: doctor ? `Dr. ${doctor.name}` : null,
-    },
-  ].filter((row) => Boolean(row.value));
+  const rows = [
+    patient.age != null && { label: `${t.age} / ${t.gender}`, value: `${patient.age} ${t.yrs}${patient.gender ? `, ${patient.gender}` : ''}` },
+    hospitalName && { label: t.hospital, value: hospitalName },
+    doctor && { label: t.doctor, value: `Dr. ${doctor.name}` },
+    latestVisitDate && { label: t.lastVisit, value: formatDate(latestVisitDate) },
+  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
-    <div className={`pa-confirm ${lang === 'ta' ? 'pa-confirm-ta' : ''}`}>
-      <div className="pa-confirm-card">
-        <div className="pa-confirm-head">
-          <div className="pa-confirm-logo-wrap">
-            <div className="pa-confirm-logo-circle">
-              <img src="/logo.png" alt="BeanHealth" />
+    <div
+      className="patient-app min-h-screen flex items-center justify-center p-4"
+      style={{ background: 'linear-gradient(135deg, hsl(151 22% 95%) 0%, hsl(60 11% 97%) 100%)' }}
+    >
+      <div className="w-full max-w-md animate-fadeInUp">
+        <div className="bg-white rounded-2xl shadow-xl border border-border overflow-hidden">
+          {/* Header strip */}
+          <div className="px-7 pt-6 pb-5 border-b border-border flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
+              style={{ background: 'hsl(var(--primary))' }}>
+              <img src="/logo.png" alt="BeanHealth" className="w-7 h-7 object-contain" />
             </div>
-            <span className="pa-confirm-brand">
-              Bean<span>Health</span>
-            </span>
-          </div>
-
-          <div className="pa-confirm-identity">
-            <div className="pa-confirm-avatar">
-              {getInitial(patient.name)}
-            </div>
-            <div className="pa-confirm-main-text">
-              <h2 className="pa-confirm-name">{patient.name}</h2>
-              <p className="pa-confirm-mr">MR: {patient.mr_number}</p>
-              <p className="pa-confirm-hint">{confirmationHint}</p>
+            <div>
+              <h1 className="text-xl font-semibold text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                BeanHealth
+              </h1>
+              <p className="text-xs text-muted-foreground">{t.title}</p>
             </div>
           </div>
-        </div>
 
-        <div className="pa-confirm-details">
-          {detailRows.map((row) => (
-            <div className="pa-confirm-row" key={row.key}>
-              <div className="pa-confirm-row-label">{row.label}</div>
-              <div className="pa-confirm-row-value">
-                {row.key === 'ageGender' ? (
-                  <span style={{ textTransform: 'capitalize' }}>{row.value}</span>
-                ) : (
-                  row.value
-                )}
+          {/* Identity block */}
+          <div className="px-7 py-6">
+            <p className="text-xs text-muted-foreground font-medium mb-4">{t.subtitle}</p>
+
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold shrink-0"
+                style={{ background: 'hsl(var(--primary))' }}>
+                {initial}
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground leading-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                  {displayName}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{t.mr}: {patient.mr_number}</p>
               </div>
             </div>
-          ))}
-        </div>
 
-        <div className={`pa-confirm-actions ${lang === 'ta' ? 'pa-confirm-actions-ta' : ''}`}>
-          <button className="pa-btn-primary" onClick={onConfirm}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            {t('confirm.yes')}
-          </button>
-          <button className="pa-btn-secondary" onClick={onReject}>
-            {t('confirm.no')}
-          </button>
+            {rows.length > 0 && (
+              <div className="rounded-xl overflow-hidden border border-border">
+                {rows.map((row, i) => (
+                  <div key={i} className={`flex justify-between px-4 py-3 ${i < rows.length - 1 ? 'border-b border-border' : ''}`}>
+                    <span className="text-xs text-muted-foreground">{row.label}</span>
+                    <span className="text-xs font-semibold text-foreground text-right max-w-[55%] leading-tight" style={{ textTransform: 'capitalize' }}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="px-7 pb-7 flex flex-col gap-3">
+            <button
+              onClick={onConfirm}
+              className="w-full h-12 rounded-xl text-base font-semibold text-white flex items-center justify-center gap-2 transition-opacity active:opacity-80"
+              style={{ background: 'hsl(var(--primary))' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              {t.confirm}
+            </button>
+            <button
+              onClick={onReject}
+              className="w-full h-11 rounded-xl text-sm font-medium text-muted-foreground border border-border bg-white transition-colors hover:bg-gray-50"
+            >
+              {t.reject}
+            </button>
+          </div>
         </div>
       </div>
     </div>

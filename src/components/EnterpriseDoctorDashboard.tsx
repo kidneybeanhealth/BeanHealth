@@ -157,6 +157,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     paActorAuthEnabled = false,
 }) => {
     const [queue, setQueue] = useState<QueueItem[]>([]);
+    const [queueSearch, setQueueSearch] = useState('');
+    const [queueSearchOpen, setQueueSearchOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [showRxModal, setShowRxModal] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -1610,7 +1612,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                     <p className="text-[10px] font-bold text-[#717171] dark:text-[#a0a0a0] tracking-wide mt-1 uppercase leading-none">{currentDoctor.specialty || 'GENERAL MEDICINE'}</p>
                                     {paActorAuthEnabled && (
                                         <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
-                                            <span>{actorType === 'chief' ? 'Chief' : `PA: ${actorDisplayName}`}</span>
+                                            <span>{actorType === 'chief' ? 'Chief' : `Jr. ${actorDisplayName}`}</span>
                                         </div>
                                     )}
                                 </div>
@@ -1632,7 +1634,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             <p className="text-sm sm:text-base md:text-lg text-gray-700 mt-1">Manage your patient queue and consultations</p>
                             {paActorAuthEnabled && (
                                 <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold">
-                                    {actorType === 'chief' ? 'Logged in as Chief' : `Logged in as PA: ${actorDisplayName}`}
+                                    {actorType === 'chief' ? 'Logged in as Chief' : `Logged in as Jr. ${actorDisplayName}`}
                                 </div>
                             )}
                         </div>
@@ -1762,8 +1764,30 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     {viewMode === 'queue' ? (
                         <>
                             <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
                                     <h3 className="font-bold text-gray-900 text-lg">Current Queue</h3>
+                                    <div className="relative flex items-center">
+                                        <svg className="absolute left-2.5 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        <input
+                                            type="text"
+                                            value={queueSearch}
+                                            onChange={e => setQueueSearch(e.target.value)}
+                                            placeholder="Name or MR…"
+                                            className="pl-8 pr-8 py-1.5 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 w-44"
+                                        />
+                                        {queueSearch && (
+                                            <button
+                                                onClick={() => setQueueSearch('')}
+                                                className="absolute right-2 text-gray-400 hover:text-gray-600"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        )}
+                                    </div>
                                     <span className="text-sm font-medium text-gray-700 sm:hidden">{queue.length} waiting</span>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 sm:mt-0 w-full sm:w-auto">
@@ -1805,9 +1829,13 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                 </div>
                             ) : (
                                 <div className={`divide-y divide-gray-50 ${isAnyModalOpen ? 'pointer-events-none opacity-60' : ''}`}>
-                                    {queue.map((item) => (
+                                    {queue.filter(item => {
+                                        if (!queueSearch.trim()) return true;
+                                        const q = queueSearch.toLowerCase();
+                                        return item.patient.name?.toLowerCase().includes(q) || item.patient.mr_number?.toLowerCase().includes(q);
+                                    }).map((item) => (
                                         <div key={item.id} className="p-5 sm:p-6 md:p-8 hover:bg-gray-50 transition-colors group">
-                                            <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_420px] lg:grid-cols-[minmax(0,1fr)_500px] md:items-start gap-4">
+                                            <div className="flex flex-col min-[500px]:grid min-[500px]:grid-cols-[minmax(0,1fr)_240px] md:grid-cols-[minmax(0,1fr)_380px] lg:grid-cols-[minmax(0,1fr)_500px] min-[500px]:items-start gap-4">
                                                 <div className="flex items-center gap-4 sm:gap-6">
                                                     <div className={`w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-bold text-base shadow-sm flex-shrink-0 px-2
                                                         ${item.status === 'pending' ? 'bg-orange-50 text-orange-600' :
@@ -1873,8 +1901,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                     </div>
                                                 </div>
 
-                                                <div className="w-full md:w-auto mt-2 sm:mt-0">
-                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                                                <div className="w-full min-[500px]:w-auto mt-2 min-[500px]:mt-0">
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                                     <button
                                                         onClick={() => toggleQueuePatientMetrics(item.patient_id)}
                                                         className="px-4 sm:px-5 py-2.5 text-sm font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-slate-100 border border-slate-200 transition-colors flex items-center justify-center gap-2 whitespace-nowrap"

@@ -47,8 +47,7 @@ const TrendChart: React.FC<Props> = ({
 
   const formatDate = (dateStr: string) => {
     try {
-      const d = new Date(dateStr);
-      return `${d.getDate()}/${d.getMonth() + 1}`;
+      return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     } catch { return dateStr; }
   };
 
