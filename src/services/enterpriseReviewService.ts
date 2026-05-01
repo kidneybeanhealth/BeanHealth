@@ -974,7 +974,7 @@ export async function fetchAdmittedPatients(
         .order('admitted_at', { ascending: false, nullsFirst: false });
 
     if (doctorId) {
-        query = query.eq('doctor_id', doctorId);
+        query = query.or(`doctor_id.eq.${doctorId},doctor_id.is.null`);
     }
 
     const queueResult = await withTimeout(query as any, 10000, 'Timed out loading admitted patients') as SupabaseResult<any[]>;
