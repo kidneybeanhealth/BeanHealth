@@ -34,6 +34,7 @@ interface QueueItem {
     patient_id: string;
     doctor_id: string | null;
     queue_number: number;
+    token_number?: string | null;
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
     patient: {
         id?: string;
@@ -196,6 +197,12 @@ const ReceptionDashboard: React.FC = () => {
     const [printerConnected, setPrinterConnected] = useState(false);
     const [showPrintDialog, setShowPrintDialog] = useState(false);
     const [reviewAlertCount, setReviewAlertCount] = useState(0);
+    const [duplicateQueueWarning, setDuplicateQueueWarning] = useState<{
+        patientName: string;
+        existingDoctorName: string;
+        newDoctorName: string;
+    } | null>(null);
+    const duplicateOverrideRef = React.useRef(false);
     const [lastRegisteredPatient, setLastRegisteredPatient] = useState<{
         tokenNumber: string;
         name: string;
@@ -283,8 +290,8 @@ const ReceptionDashboard: React.FC = () => {
 
             // Sort by token_number descending (highest token first)
             const sortedQueue = (data as any || []).sort((a: any, b: any) => {
-                const tokenA = parseInt(a.patient?.token_number || '0', 10);
-                const tokenB = parseInt(b.patient?.token_number || '0', 10);
+                const tokenA = parseInt(a.token_number || a.patient?.token_number || '0', 10);
+                const tokenB = parseInt(b.token_number || b.patient?.token_number || '0', 10);
                 return tokenB - tokenA; // Descending: 9, 8, 7, 6...
             });
 
@@ -959,7 +966,7 @@ const ReceptionDashboard: React.FC = () => {
 
         // Extract numeric tokens, filtering out non-numeric ones
         const numericTokens = queue
-            .map(item => parseInt(item.patient?.token_number || '0', 10))
+            .map(item => parseInt(item.token_number || item.patient?.token_number || '0', 10))
             .filter(num => !isNaN(num) && num > 0);
 
         if (numericTokens.length === 0) return "1";
@@ -1327,8 +1334,8 @@ const ReceptionDashboard: React.FC = () => {
             // 1. UNIQUE TOKEN CHECK (For today)
             // Check against local queue state which contains all today's patients
             const isTokenTaken = queue.some(item =>
-                item.patient?.token_number === manualToken &&
-                item.status !== 'cancelled' // Optional: allow reusing tokens if previous was cancelled? stricter to say no.
+                (item.token_number || item.patient?.token_number) === manualToken &&
+                item.status !== 'cancelled'
             );
 
             if (isTokenTaken) {
@@ -1380,43 +1387,68 @@ const ReceptionDashboard: React.FC = () => {
             }
 
             // CHECK: Is this patient already in the queue TODAY?
-            if (patientId) {
+            if (patientId && !duplicateOverrideRef.current) {
                 const todayStart = new Date();
                 todayStart.setHours(0, 0, 0, 0);
 
-                const { data: existingQueueData, error: queueCheckError } = await supabase
-                    .from('hospital_queues')
-                    .select('id, queue_number, patient:hospital_patients(name)')
+                const { data: existingQueueData } = await (supabase
+                    .from('hospital_queues') as any)
+                    .select('id, queue_number, doctor_id, doctor:hospital_doctors(name)')
                     .eq('hospital_id', profile.id)
                     .eq('patient_id', patientId)
                     .gte('created_at', todayStart.toISOString())
+                    .limit(1)
                     .maybeSingle();
 
                 if (existingQueueData) {
-                    toast.dismiss(toastId);
-                    toast.error(`Patient ${existingPatientName || ''} is already in the queue today!`);
-                    return; // STOP execution
+                    const existingDoctorId = existingQueueData.doctor_id;
+                    const newDoctorId = walkInForm.doctorId;
+
+                    if (existingDoctorId === newDoctorId) {
+                        // Same doctor — hard block
+                        toast.dismiss(toastId);
+                        toast.error(`${existingPatientName || 'Patient'} is already in queue for this doctor today!`);
+                        return;
+                    } else {
+                        // Different doctor — prompt for confirmation
+                        const existingDoctorName = (existingQueueData.doctor as any)?.name || 'another doctor';
+                        const newDoctorName = doctors.find(d => d.id === newDoctorId)?.name || 'new doctor';
+                        toast.dismiss(toastId);
+                        setDuplicateQueueWarning({
+                            patientName: existingPatientName || walkInForm.name,
+                            existingDoctorName,
+                            newDoctorName,
+                        });
+                        return;
+                    }
                 }
             }
+            // Capture override state before resetting — needed to skip patient token update below
+            const wasDuplicateOverride = duplicateOverrideRef.current;
+            // Reset override flag after it's been used
+            duplicateOverrideRef.current = false;
 
             // Assign the validated manual token to globalToken variable to maintain compatibility with updated code below
             const globalToken = manualToken;
-
-            // Create/Update Patient
             if (patientId) {
+                const patientPayload: any = {
+                    name: walkInForm.name,
+                    age: parseInt(walkInForm.age, 10),
+                    gender: walkInForm.gender || null,
+                    mr_number: normalizedMrNumber,
+                    father_husband_name: walkInForm.fatherHusbandName || null,
+                    place: walkInForm.place || null,
+                    phone: normalizedPhone,
+                    linked_user_id: linkedUserId || null
+                };
+                // Skip patient token update on duplicate override — the second queue entry
+                // for a different doctor gets its own token stored on hospital_queues.token_number
+                if (!wasDuplicateOverride) {
+                    patientPayload.token_number = globalToken;
+                }
                 const patientUpdate = await (supabase
                     .from('hospital_patients') as any)
-                    .update({
-                        name: walkInForm.name,
-                        age: parseInt(walkInForm.age, 10),
-                        gender: walkInForm.gender || null,
-                        token_number: globalToken, // Use calculated global token
-                        mr_number: normalizedMrNumber,
-                        father_husband_name: walkInForm.fatherHusbandName || null,
-                        place: walkInForm.place || null,
-                        phone: normalizedPhone,
-                        linked_user_id: linkedUserId || null
-                    } as any)
+                    .update(patientPayload)
                     .eq('id', patientId);
                 if (patientUpdate.error) throw patientUpdate.error;
             } else {
@@ -1471,6 +1503,7 @@ const ReceptionDashboard: React.FC = () => {
                     patient_id: patientId,
                     doctor_id: walkInForm.doctorId,
                     queue_number: nextQueueNo,
+                    token_number: globalToken,
                     status: 'pending'
                 });
             queueError = queueInsert.error;
@@ -1601,7 +1634,7 @@ const ReceptionDashboard: React.FC = () => {
         const toastId = toast.loading('Printing token...');
         try {
             const tokenData = createTokenData({
-                tokenNumber: queueItem.patient?.token_number || String(queueItem.queue_number),
+                tokenNumber: queueItem.token_number || queueItem.patient?.token_number || String(queueItem.queue_number),
                 patientName: queueItem.patient?.name || 'Unknown',
                 mrNumber: queueItem.patient.mr_number || undefined,
                 doctorName: queueItem.doctor?.name || '',
@@ -1627,7 +1660,7 @@ const ReceptionDashboard: React.FC = () => {
         setEditForm({
             name: item.patient?.name || '',
             age: String(item.patient?.age || ''),
-            tokenNumber: String(item.patient?.token_number || ''),
+            tokenNumber: String(item.token_number || item.patient?.token_number || ''),
             doctorId: item.doctor_id || '',
             gender: item.patient?.gender || '',
             fatherHusbandName: item.patient?.father_husband_name || '',
@@ -1642,8 +1675,8 @@ const ReceptionDashboard: React.FC = () => {
         const newToken = editForm.tokenNumber.trim();
         // Check token uniqueness (excluding current patient)
         const tokenConflict = queue.find(q =>
-            String(q.patient?.token_number) === newToken &&
-            q.patient?.id !== editQueueItem.patient?.id
+            String(q.token_number || q.patient?.token_number) === newToken &&
+            q.id !== editQueueItem.id
         );
         if (tokenConflict) {
             setEditTokenError(`Token ${newToken} is already assigned to ${tokenConflict.patient?.name}`);
@@ -1667,7 +1700,7 @@ const ReceptionDashboard: React.FC = () => {
             if (patientErr) throw patientErr;
             const { error: queueErr } = await (supabase as any)
                 .from('hospital_queues')
-                .update({ doctor_id: editForm.doctorId || null })
+                .update({ doctor_id: editForm.doctorId || null, token_number: newToken })
                 .eq('id', editQueueItem.id);
             if (queueErr) throw queueErr;
             toast.success('Patient details updated');
@@ -2264,7 +2297,7 @@ const ReceptionDashboard: React.FC = () => {
                                     <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
                                         <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
                                             <div className="w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2 shrink-0">
-                                                {item.patient?.token_number || 'N/A'}
+                                                {item.token_number || item.patient?.token_number || 'N/A'}
                                             </div>
                                             <div className="min-w-0">
                                                 <h4 className="font-bold text-gray-900 truncate pr-2">{item.patient?.name}</h4>
@@ -2274,8 +2307,13 @@ const ReceptionDashboard: React.FC = () => {
                                                         {item.preparing_by} preparing
                                                     </div>
                                                 )}
-                                                <div className="flex items-center gap-3 text-sm text-gray-700 mt-1">
+                                                <div className="flex items-center gap-2 flex-wrap text-sm text-gray-700 mt-1">
                                                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                                    {item.patient?.mr_number && (
+                                                        <span className="text-[10px] font-mono font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                            {item.patient.mr_number}
+                                                        </span>
+                                                    )}
                                                     {item.patient?.beanhealth_id && (
                                                         <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
                                                             {item.patient.beanhealth_id}
@@ -2892,6 +2930,49 @@ const ReceptionDashboard: React.FC = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Duplicate queue warning — different doctor */}
+            {duplicateQueueWarning && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-base font-bold text-gray-900">Already in Queue</h3>
+                        </div>
+                        <div className="px-5 py-4 space-y-1">
+                            <p className="text-sm text-gray-700">
+                                <span className="font-bold">{duplicateQueueWarning.patientName}</span> is already in the live queue for{' '}
+                                <span className="font-bold text-rose-700">{duplicateQueueWarning.existingDoctorName}</span>.
+                            </p>
+                            <p className="text-sm text-gray-500 pt-1">
+                                Proceed to also register for <span className="font-semibold text-gray-700">{duplicateQueueWarning.newDoctorName}</span>?
+                            </p>
+                        </div>
+                        <div className="px-5 pb-5 flex gap-3">
+                            <button
+                                onClick={() => setDuplicateQueueWarning(null)}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setDuplicateQueueWarning(null);
+                                    duplicateOverrideRef.current = true;
+                                    handleWalkInSubmit({ preventDefault: () => {} } as React.FormEvent);
+                                }}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors"
+                            >
+                                Yes, Proceed
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
