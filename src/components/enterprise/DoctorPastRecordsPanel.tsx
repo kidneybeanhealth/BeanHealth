@@ -31,6 +31,8 @@ interface CallLogTarget {
     mrNumber: string | null;
     patientName: string;
     reviewDate: string | null;
+    doctorId?: string | null;  // Track which doctor's review
+    doctorName?: string | null; // Doctor name for display
 }
 
 interface CallHistoryEntry {
@@ -129,7 +131,15 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
 
             setPastRecordsTotal(result.totalCount);
             setHasMorePastRecords(result.hasMore);
-            const mergedPatients = result.patients.map((patient) => {
+            
+            // Filter to show only this doctor's reviews
+            const filteredPatients = result.patients.filter((patient) => {
+                // NEW: Check if this doctor has a review for this patient
+                const hasThisDoctor = patient.doctorReviews?.some(dr => dr.doctorId === doctor.id);
+                return hasThisDoctor;
+            });
+            
+            const mergedPatients = filteredPatients.map((patient) => {
                 const localOverride = stopFollowupOverrides[patient.id];
                 if (!localOverride) return patient;
                 return {
@@ -290,11 +300,17 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
 
     const openCallLog = async (patient: ReceptionPastRecordPatient) => {
         if (!doctor.hospital_id) return;
+        
+        // NEW: Get this doctor's specific review for the patient
+        const doctorReview = patient.doctorReviews?.find(dr => dr.doctorId === doctor.id);
+        
         setCallLogTarget({
             patientId: patient.id,
             mrNumber: patient.mr_number || null,
             patientName: patient.name,
-            reviewDate: patient.latestReviewDate,
+            reviewDate: doctorReview?.reviewDate || patient.latestReviewDate,
+            doctorId: doctor.id,  // Track the doctor ID
+            doctorName: doctor.name,  // Track the doctor name
         });
         setCallHistory([]);
         setCallHistoryLoading(true);
@@ -304,11 +320,18 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
         setCallLogRescheduleDate('');
 
         try {
-            const { data, error } = await (supabase as any)
+            let query = (supabase as any)
                 .from('hospital_patient_followups')
                 .select('id, called_at, call_status, patient_response')
                 .eq('hospital_id', doctor.hospital_id)
-                .eq('patient_id', patient.id)
+                .eq('patient_id', patient.id);
+            
+            // Filter by doctor ID
+            if (doctor.id) {
+                query = query.eq('doctor_id', doctor.id);
+            }
+            
+            const { data, error } = await query
                 .order('called_at', { ascending: false })
                 .limit(15);
 
@@ -439,6 +462,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                 .select('id, patient_id')
                 .eq('hospital_id', doctor.hospital_id)
                 .eq('patient_id', callLogTarget.patientId)
+                .eq('doctor_id', doctor.id)  // Filter by this doctor
                 .in('status', ['pending', 'rescheduled'])
                 .order('next_review_date', { ascending: false })
                 .limit(1)
@@ -489,6 +513,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     hospital_id: doctor.hospital_id,
                     review_id: existingReview?.id || null,
                     patient_id: callLogTarget.patientId,
+                    doctor_id: doctor.id,  // Include doctor_id
                     called_at: new Date().toISOString(),
                     call_status: callLogStatus,
                     patient_response: callLogNotes.trim() || null,
@@ -614,6 +639,10 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                             const stopReasonText = patient.followupStopReason || stopFollowupOverrides[patient.id]?.followupStopReason || '';
                             const stopDateText = patient.followupStoppedAt || stopFollowupOverrides[patient.id]?.followupStoppedAt || null;
                             const visibleCallHistory = patient.callHistory || [];
+                            
+                            // NEW: Get this doctor's specific review date (not all doctors)
+                            const doctorReview = patient.doctorReviews?.find(dr => dr.doctorId === doctor.id);
+                            const displayReviewDate = doctorReview?.reviewDate || patient.latestReviewDate;
                             return (
                                 <div key={patient.id} className="p-4 sm:p-5 md:p-6 hover:bg-gray-50/60 transition-colors">
                                     <div className="flex flex-col lg:flex-row gap-4 lg:items-start lg:justify-between">
@@ -648,7 +677,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                                     <span>
                                                         {patient.isDeceased
                                                             ? `Deceased: ${formatPastDate(patient.deceasedAt)}`
-                                                            : `Review: ${formatPastDate(patient.latestReviewDate)}`}
+                                                            : `Review: ${formatPastDate(displayReviewDate)}`}
                                                     </span>
                                                     <span>Last visit: {formatPastDate(patient.lastVisitAt)}</span>
                                                 </div>
@@ -840,7 +869,10 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
                         <div className="px-6 py-5 bg-gradient-to-r from-orange-500 to-amber-500 text-white">
                             <h3 className="text-lg font-bold">Call Log - {callLogTarget.patientName}</h3>
-                            <p className="text-sm text-orange-100">MR: {callLogTarget.mrNumber || '--'} · Review: {formatPastDate(callLogTarget.reviewDate)}</p>
+                            <p className="text-sm text-orange-100">
+                                MR: {callLogTarget.mrNumber || '--'} · Review: {formatPastDate(callLogTarget.reviewDate)}
+                                {callLogTarget.doctorName && ` · Dr. ${callLogTarget.doctorName}`}
+                            </p>
                         </div>
                         <form onSubmit={handleSubmitCallLog} className="p-6 space-y-5">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

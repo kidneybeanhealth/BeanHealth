@@ -31,6 +31,22 @@ export interface ReceptionCallHistoryEntry {
     patient_response: string | null;
 }
 
+/**
+ * Doctor-grouped review for a single doctor treating this patient
+ */
+export interface DoctorReview {
+    doctorId: string | null;
+    doctorName: string | null;
+    doctorSpecialty: string | null;
+    reviewDate: string | null;
+    reviewStatus: string | null;
+    reviewCompletedAt: string | null;
+    reviewUpdatedAt: string | null;
+    reviewCreatedAt: string | null;
+    latestFollowupStatus: string | null;
+    reviewCategory: ReceptionReviewFilter;
+}
+
 export interface ReceptionPastRecordPatient {
     id: string;
     name: string;
@@ -52,6 +68,12 @@ export interface ReceptionPastRecordPatient {
     lastVisitAt: string | null;
     prescriptions: ReceptionVisitRecord[];
     callHistory: ReceptionCallHistoryEntry[];
+    /**
+     * NEW: Multi-doctor support
+     * Array of reviews grouped by doctor when patient has multiple doctors
+     * Used internally for doctor-specific filtering in DoctorPastRecordsPanel
+     */
+    doctorReviews?: DoctorReview[];
 }
 
 export interface ReceptionPastRecordsResult {
@@ -109,6 +131,7 @@ interface SupabaseResult<T = any> {
 type ReviewRow = {
     id: string;
     patient_id: string;
+    doctor_id?: string | null;
     status?: string | null;
     next_review_date?: string | null;
     completed_at?: string | null;
@@ -119,6 +142,7 @@ type ReviewRow = {
 type FollowupRow = {
     id: string;
     patient_id: string;
+    doctor_id?: string | null;
     call_status?: string | null;
     called_at?: string | null;
     patient_response?: string | null;
@@ -201,6 +225,10 @@ const getReviewSortTime = (review: ReviewRow): number => {
     return ref ? new Date(ref).getTime() : 0;
 };
 
+/**
+ * DEPRECATED: Use groupReviewsByDoctor() instead
+ * Kept for backward compatibility
+ */
 const pickPrimaryReview = (patientReviews: ReviewRow[]): ReviewRow | null => {
     if (!patientReviews.length) return null;
 
@@ -220,6 +248,75 @@ const pickPrimaryReview = (patientReviews: ReviewRow[]): ReviewRow | null => {
     if (completed.length > 0) return completed[0];
 
     return patientReviews.sort((a, b) => getReviewSortTime(b) - getReviewSortTime(a))[0];
+};
+
+/**
+ * Group reviews by doctor and return primary review per doctor
+ * Handles multi-doctor scenarios where patient has reviews with multiple doctors
+ *
+ * @param patientReviews - All reviews for a single patient
+ * @param doctorNamesMap - Map of doctor_id → {name, specialty} (from prescriptions)
+ * @param followupsByDoctor - Map of doctor_id → latest followup status
+ * @returns Array of doctor-grouped reviews with primary review per doctor
+ */
+const groupReviewsByDoctor = (
+    patientReviews: ReviewRow[],
+    doctorNamesMap: Map<string, { name: string; specialty: string }>,
+    followupsByDoctor: Map<string, string | null>
+): DoctorReview[] => {
+    if (!patientReviews.length) return [];
+
+    // Group reviews by doctor_id
+    const reviewsByDoctor = new Map<string | null, ReviewRow[]>();
+    for (const review of patientReviews) {
+        const doctorId = review.doctor_id || null;
+        if (!reviewsByDoctor.has(doctorId)) {
+            reviewsByDoctor.set(doctorId, []);
+        }
+        reviewsByDoctor.get(doctorId)!.push(review);
+    }
+
+    // Pick primary review per doctor and build DoctorReview objects
+    const doctorReviews: DoctorReview[] = [];
+    for (const [doctorId, reviews] of reviewsByDoctor) {
+        const primaryReview = pickPrimaryReview(reviews);
+        if (primaryReview) {
+            const doctorInfo = doctorId ? doctorNamesMap.get(doctorId) : null;
+            const reviewDate = normalizeDateOnly(primaryReview.next_review_date || null);
+            const latestFollowupStatus = doctorId ? followupsByDoctor.get(doctorId) || null : null;
+
+            const reviewCategory = deriveReviewCategory(
+                reviewDate,
+                primaryReview.status || null,
+                primaryReview.completed_at || null,
+                primaryReview.updated_at || null,
+                primaryReview.created_at || null,
+                latestFollowupStatus
+            );
+
+            doctorReviews.push({
+                doctorId: doctorId || null,
+                doctorName: doctorInfo?.name || null,
+                doctorSpecialty: doctorInfo?.specialty || null,
+                reviewDate,
+                reviewStatus: primaryReview.status || null,
+                reviewCompletedAt: primaryReview.completed_at || null,
+                reviewUpdatedAt: primaryReview.updated_at || null,
+                reviewCreatedAt: primaryReview.created_at || null,
+                latestFollowupStatus,
+                reviewCategory,
+            });
+        }
+    }
+
+    // Sort by review date (newest first)
+    doctorReviews.sort((a, b) => {
+        const aTime = a.reviewDate ? new Date(a.reviewDate).getTime() : 0;
+        const bTime = b.reviewDate ? new Date(b.reviewDate).getTime() : 0;
+        return bTime - aTime;
+    });
+
+    return doctorReviews;
 };
 
 export async function fetchReceptionPastRecords(
@@ -324,7 +421,7 @@ export async function fetchReceptionPastRecords(
             withTimeout(
                 (supabase
                     .from('hospital_patient_reviews' as any)
-                    .select('id, patient_id, status, next_review_date, source_prescription_id, completed_at, created_at, updated_at')
+                    .select('id, patient_id, doctor_id, status, next_review_date, source_prescription_id, completed_at, created_at, updated_at')
                     .eq('hospital_id', hospitalId)
                     .in('patient_id', idChunk)
                     .order('updated_at', { ascending: false })) as any,
@@ -334,7 +431,7 @@ export async function fetchReceptionPastRecords(
             withTimeout(
                 (supabase
                     .from('hospital_patient_followups' as any)
-                    .select('id, patient_id, call_status, called_at, patient_response')
+                    .select('id, patient_id, doctor_id, call_status, called_at, patient_response')
                     .eq('hospital_id', hospitalId)
                     .in('patient_id', idChunk)
                     .order('called_at', { ascending: false })) as any,
@@ -387,10 +484,23 @@ export async function fetchReceptionPastRecords(
     }
 
     const latestFollowupStatusByPatient = new Map<string, string | null>();
+    const latestFollowupStatusByDoctorPerPatient = new Map<string, Map<string | null, string | null>>();
     const followupsByPatient = new Map<string, ReceptionCallHistoryEntry[]>();
+    
     for (const followup of followups) {
+        // Latest followup status per patient (backward compatibility)
         if (!latestFollowupStatusByPatient.has(followup.patient_id)) {
             latestFollowupStatusByPatient.set(followup.patient_id, followup.call_status || null);
+        }
+
+        // Latest followup status per doctor per patient (multi-doctor support)
+        if (!latestFollowupStatusByDoctorPerPatient.has(followup.patient_id)) {
+            latestFollowupStatusByDoctorPerPatient.set(followup.patient_id, new Map());
+        }
+        const doctorMap = latestFollowupStatusByDoctorPerPatient.get(followup.patient_id)!;
+        const doctorId = followup.doctor_id || null;
+        if (!doctorMap.has(doctorId)) {
+            doctorMap.set(doctorId, followup.call_status || null);
         }
 
         if (!followupsByPatient.has(followup.patient_id)) {
@@ -408,6 +518,17 @@ export async function fetchReceptionPastRecords(
         followupEntries.sort((a, b) => new Date(b.called_at).getTime() - new Date(a.called_at).getTime());
     }
 
+    // Build doctor name map from prescriptions for use in groupReviewsByDoctor
+    const doctorNamesMap = new Map<string, { name: string; specialty: string }>();
+    for (const rx of prescriptions) {
+        if (rx.doctor?.id && rx.doctor.name) {
+            doctorNamesMap.set(rx.doctor.id, {
+                name: rx.doctor.name,
+                specialty: rx.doctor.specialty || '',
+            });
+        }
+    }
+
     const normalized: ReceptionPastRecordPatient[] = basePatients
         .map((p) => {
             const isDeceased = Boolean(p.is_deceased);
@@ -416,6 +537,12 @@ export async function fetchReceptionPastRecords(
             const visitHistory = prescriptionsByPatient.get(p.id) || [];
             const latestPrescription = visitHistory[0] || null;
             const latestReview = pickPrimaryReview(reviewsByPatient.get(p.id) || []);
+
+            // NEW: Get doctor-grouped reviews for multi-doctor support
+            const followupsByDoctorMap = latestFollowupStatusByDoctorPerPatient.get(p.id) || new Map();
+            const doctorReviews = (isDeceased || isFollowupStopped)
+                ? []
+                : groupReviewsByDoctor(reviewsByPatient.get(p.id) || [], doctorNamesMap, followupsByDoctorMap);
 
             // Review rows are the operational source of truth (call logs/reschedules/completions);
             // prescription date is used as a fallback when no review row exists.
@@ -448,6 +575,7 @@ export async function fetchReceptionPastRecords(
                 lastVisitAt: latestPrescription?.created_at || p.created_at || null,
                 prescriptions: visitHistory,
                 callHistory: (followupsByPatient.get(p.id) || []).slice(0, 3),
+                doctorReviews,
             } as ReceptionPastRecordPatient;
         })
         .filter((patient) => {
@@ -1169,5 +1297,92 @@ export async function fetchPatientPrescriptions(
                 signature_url: doc.signature_url,
             } : undefined,
         };
+    });
+}
+
+// ============================================================================
+// HELPER FUNCTIONS: Multi-Doctor Support
+// ============================================================================
+
+/**
+ * Get doctor-specific reviews for a patient
+ * Used by DoctorPastRecordsPanel to show only the logged-in doctor's reviews
+ *
+ * @param patientRecord - Patient record from fetchReceptionPastRecords
+ * @param doctorId - Doctor ID to filter by
+ * @returns DoctorReview object for this doctor, or null if no review
+ */
+export function getDoctorSpecificReview(
+    patientRecord: ReceptionPastRecordPatient,
+    doctorId: string
+): DoctorReview | null {
+    if (!patientRecord.doctorReviews) return null;
+    return patientRecord.doctorReviews.find((dr) => dr.doctorId === doctorId) || null;
+}
+
+/**
+ * Get all doctor reviews for a patient (for multi-doctor display)
+ * Shows review dates grouped by doctor
+ *
+ * @param patientRecord - Patient record from fetchReceptionPastRecords
+ * @returns Array of doctor reviews, sorted by review date
+ */
+export function getAllDoctorReviews(patientRecord: ReceptionPastRecordPatient): DoctorReview[] {
+    return patientRecord.doctorReviews || [];
+}
+
+/**
+ * Format doctor reviews for display
+ * Example: "Dr. A - May 10 (Due) | Dr. B - May 15 (Upcoming)"
+ *
+ * @param patientRecord - Patient record with doctorReviews
+ * @returns Formatted string for display, or null if no reviews
+ */
+export function formatDoctorReviewsForDisplay(patientRecord: ReceptionPastRecordPatient): string | null {
+    const doctorReviews = getAllDoctorReviews(patientRecord);
+    if (doctorReviews.length === 0) return null;
+
+    const formatted = doctorReviews.map((dr) => {
+        const doctorName = dr.doctorName || 'Unknown';
+        const dateStr = dr.reviewDate ? new Date(dr.reviewDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Unscheduled';
+        const categoryLabel = getCategoryLabel(dr.reviewCategory);
+        return `${doctorName} - ${dateStr} (${categoryLabel})`;
+    });
+
+    return formatted.join(' | ');
+}
+
+/**
+ * Get user-friendly label for review category
+ */
+function getCategoryLabel(category: ReceptionReviewFilter): string {
+    const labels: Record<ReceptionReviewFilter, string> = {
+        'due_today': 'Due Today',
+        'due_tomorrow': 'Due Tomorrow',
+        'upcoming': 'Upcoming',
+        'overdue': 'Overdue',
+        'followup_needed': 'Followup Needed',
+        'not_completed': 'Not Completed',
+        'review_completed': 'Completed',
+        'all': 'All',
+    };
+    return labels[category] || category;
+}
+
+/**
+ * Filter patient records by doctor
+ * Used by DoctorPastRecordsPanel to show only patients with reviews from this doctor
+ *
+ * @param patients - Array of patient records
+ * @param doctorId - Doctor ID to filter by
+ * @returns Filtered array of patients who have reviews from this doctor
+ */
+export function filterPatientsByDoctor(
+    patients: ReceptionPastRecordPatient[],
+    doctorId: string
+): ReceptionPastRecordPatient[] {
+    return patients.filter((p) => {
+        const doctorReview = getDoctorSpecificReview(p, doctorId);
+        return doctorReview !== null;
     });
 }

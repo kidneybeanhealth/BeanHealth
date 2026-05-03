@@ -71,6 +71,8 @@ interface CallLogTarget {
     mrNumber: string | null;
     patientName: string;
     reviewDate: string | null;
+    doctorId?: string | null;  // Track which doctor's review
+    doctorName?: string | null; // Doctor name for display
 }
 
 interface StopFollowupTarget {
@@ -326,6 +328,7 @@ const ReceptionDashboard: React.FC = () => {
     const [rxViewPatient, setRxViewPatient] = useState<any>(null);
     const [rxViewPrescription, setRxViewPrescription] = useState<any>(null);
     const [callLogTarget, setCallLogTarget] = useState<CallLogTarget | null>(null);
+    const [callLogDoctorSelector, setCallLogDoctorSelector] = useState<{ patientId: string; patient: ReceptionPastRecordPatient } | null>(null);
     const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
     const [callHistoryLoading, setCallHistoryLoading] = useState(false);
     const [expandedCallHistoryPatientIds, setExpandedCallHistoryPatientIds] = useState<Set<string>>(new Set());
@@ -531,11 +534,22 @@ const ReceptionDashboard: React.FC = () => {
 
     const openCallLog = async (patient: ReceptionPastRecordPatient) => {
         if (!profile?.id) return;
+        
+        // If multiple doctors, show selector; otherwise proceed with primary doctor
+        if (patient.doctorReviews && patient.doctorReviews.length > 1) {
+            setCallLogDoctorSelector({ patientId: patient.id, patient });
+            return;
+        }
+        
+        // Single or no doctor review - use primary doctor
+        const primaryDoctor = patient.doctorReviews?.[0];
         setCallLogTarget({
             patientId: patient.id,
             mrNumber: patient.mr_number || null,
             patientName: patient.name,
-            reviewDate: patient.latestReviewDate,
+            reviewDate: primaryDoctor?.reviewDate || patient.latestReviewDate,
+            doctorId: primaryDoctor?.doctorId || null,
+            doctorName: primaryDoctor?.doctorName || null,
         });
         setCallHistory([]);
         setCallHistoryLoading(true);
@@ -545,11 +559,19 @@ const ReceptionDashboard: React.FC = () => {
         setCallLogRescheduleDate('');
 
         try {
-            const { data, error } = await (supabase as any)
+            let query = (supabase as any)
                 .from('hospital_patient_followups')
                 .select('id, called_at, call_status, patient_response')
                 .eq('hospital_id', profile.id)
-                .eq('patient_id', patient.id)
+                .eq('patient_id', patient.id);
+            
+            // Filter by doctor if available
+            const primaryDoctor = patient.doctorReviews?.[0];
+            if (primaryDoctor?.doctorId) {
+                query = query.eq('doctor_id', primaryDoctor.doctorId);
+            }
+            
+            const { data, error } = await query
                 .order('called_at', { ascending: false })
                 .limit(15);
 
@@ -566,6 +588,7 @@ const ReceptionDashboard: React.FC = () => {
 
     const closeCallLog = () => {
         setCallLogTarget(null);
+        setCallLogDoctorSelector(null);
         setCallHistory([]);
         setCallHistoryLoading(false);
         setCallLogSubmitting(false);
@@ -573,6 +596,21 @@ const ReceptionDashboard: React.FC = () => {
         setCallLogNotes('');
         setCallLogNextDate('');
         setCallLogRescheduleDate('');
+    };
+
+    const handleSelectDoctorForCallLog = async (doctorReview: any) => {
+        if (!profile?.id || !callLogDoctorSelector) return;
+        const patient = callLogDoctorSelector.patient;
+        
+        setCallLogTarget({
+            patientId: patient.id,
+            mrNumber: patient.mr_number || null,
+            patientName: patient.name,
+            reviewDate: doctorReview.reviewDate,
+            doctorId: doctorReview.doctorId,
+            doctorName: doctorReview.doctorName,
+        });
+        setCallLogDoctorSelector(null);
     };
 
     const togglePatientCallHistory = (patientId: string) => {
@@ -710,6 +748,7 @@ const ReceptionDashboard: React.FC = () => {
                 .select('id, patient_id')
                 .eq('hospital_id', profile.id)
                 .eq('patient_id', callLogTarget.patientId)
+                .eq('doctor_id', callLogTarget.doctorId || null)  // NEW: Filter by doctor_id
                 .in('status', ['pending', 'rescheduled'])
                 .order('next_review_date', { ascending: false })
                 .limit(1)
@@ -761,6 +800,7 @@ const ReceptionDashboard: React.FC = () => {
                     hospital_id: profile.id,
                     review_id: existingReview?.id || null,
                     patient_id: callLogTarget.patientId,
+                    doctor_id: callLogTarget.doctorId || null,  // NEW: Include doctor_id
                     called_at: new Date().toISOString(),
                     call_status: callLogStatus,
                     patient_response: callLogNotes.trim() || null,
@@ -2129,11 +2169,23 @@ const ReceptionDashboard: React.FC = () => {
                                                                             Follow-up Stopped
                                                                         </span>
                                                                     )}
-                                                                    <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1">
-                                                                        {patient.isDeceased
-                                                                            ? `Review Cancelled${patient.deceasedAt ? ` (${new Date(patient.deceasedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })})` : ''}`
-                                                                            : `Review Date: ${patient.latestReviewDate ? new Date(patient.latestReviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}`}
-                                                                    </span>
+                                                                    {patient.isDeceased ? (
+                                                                        <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1">
+                                                                            {`Review Cancelled${patient.deceasedAt ? ` (${new Date(patient.deceasedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })})` : ''}`}
+                                                                        </span>
+                                                                    ) : patient.doctorReviews && patient.doctorReviews.length > 0 ? (
+                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                            {patient.doctorReviews.map((dr) => (
+                                                                                <span key={dr.doctorId} className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1 whitespace-nowrap">
+                                                                                    {dr.doctorName ? `${dr.doctorName} - ` : ''}{dr.reviewDate ? new Date(dr.reviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '--'}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1">
+                                                                            {`Review Date: ${patient.latestReviewDate ? new Date(patient.latestReviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}`}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
 
                                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
@@ -3178,6 +3230,9 @@ const ReceptionDashboard: React.FC = () => {
                                 <p className="text-green-100 text-sm mt-0.5 font-medium">
                                     {callLogTarget.patientName}{callLogTarget.mrNumber ? ` · ${callLogTarget.mrNumber}` : ''}
                                 </p>
+                                {callLogTarget.doctorName && (
+                                    <p className="text-green-100 text-xs mt-1 font-semibold">Dr. {callLogTarget.doctorName}</p>
+                                )}
                             </div>
                             <button onClick={closeCallLog} className="p-1.5 rounded-lg text-green-100 hover:text-white hover:bg-green-700/50 transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3281,6 +3336,58 @@ const ReceptionDashboard: React.FC = () => {
                                 <button type="submit" disabled={callLogSubmitting} className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-md transition-all disabled:opacity-60">{callLogSubmitting ? 'Saving...' : 'Save Call Log'}</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Doctor Selector Modal (for multi-doctor call logs) */}
+            {callLogDoctorSelector && (
+                <div className="fixed inset-0 z-[98] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-start justify-between gap-3">
+                            <div>
+                                <h3 className="text-lg font-bold">Select Doctor</h3>
+                                <p className="text-blue-100 text-sm mt-0.5 font-medium">
+                                    Which doctor's review do you want to log a call for?
+                                </p>
+                            </div>
+                            <button onClick={() => setCallLogDoctorSelector(null)} className="p-1.5 rounded-lg text-blue-100 hover:text-white hover:bg-blue-700/50 transition-colors">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-2">
+                            {callLogDoctorSelector.patient.doctorReviews?.map((dr) => (
+                                <button
+                                    key={dr.doctorId}
+                                    onClick={() => handleSelectDoctorForCallLog(dr)}
+                                    className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <p className="font-semibold text-gray-900">Dr. {dr.doctorName || 'Unknown'}</p>
+                                            {dr.doctorSpecialty && (
+                                                <p className="text-xs text-gray-500 mt-0.5">{dr.doctorSpecialty}</p>
+                                            )}
+                                        </div>
+                                        <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full whitespace-nowrap ml-2">
+                                            {dr.reviewDate ? new Date(dr.reviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '--'}
+                                        </span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+                            <button
+                                onClick={() => setCallLogDoctorSelector(null)}
+                                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
