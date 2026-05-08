@@ -18,7 +18,7 @@ import { useTenant } from '../../contexts/TenantContext';
 // We wrap the independent Hospital Modals in React.lazy()
 // This forces Vite to split these into separate Javascript chunks,
 // meaning the browser only downloads the specific modal it needs.
-const PrescriptionModal = lazy(() => import('../modals/PrescriptionModal'));
+const KKCPrescriptionModal = lazy(() => import('./templates/KKCPrescriptionModal'));
 const StandardPrescriptionModal = lazy(() => import('./templates/StandardPrescriptionModal'));
 
 // ── ADD NEW HOSPITAL-SPECIFIC TEMPLATES HERE IN THE FUTURE ──
@@ -61,8 +61,9 @@ const PrescriptionModalSelector: React.FC<PrescriptionModalSelectorProps> = (pro
 
     switch (template) {
         case 'kkc':
-            // The KKC Custom Layout (Loaded directly from core modals)
-            SelectedModal = PrescriptionModal;
+            // Tenant-aware wrapper: derives clinic name/logo/address/phone/doctor list
+            // from TenantContext so every prescription screen gets the correct branding.
+            SelectedModal = KKCPrescriptionModal;
             break;
             
         // ── MAP NEW HOSPITALS HERE IN THE FUTURE ──

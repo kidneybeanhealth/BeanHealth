@@ -62,6 +62,8 @@ interface AdmittedPatientsPanelProps {
     onPrescribe?: (ctx: AdmittedPrescribeContext) => void;
     /** Display name of the currently logged-in actor (doctor or Jr.) — shown on "preparing" badge. */
     actorDisplayName?: string;
+    /** Hospital logo URL passed from the parent so View Rx uses the same logo as the live queue. */
+    clinicLogo?: string;
 }
 
 const formatAdmittedAt = (value?: string | null): string => {
@@ -84,6 +86,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     enableMarkDeceased = false,
     onPrescribe,
     actorDisplayName,
+    clinicLogo: clinicLogoProp,
 }) => {
     const [records, setRecords] = useState<AdmittedPatientRecord[]>([]);
     const [loading, setLoading] = useState(false);
@@ -978,7 +981,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                         readOnly={true}
                         forcePrint={true}
                         existingData={selectedRx}
-                        clinicLogo={hospitalLogo || undefined}
+                        clinicLogo={clinicLogoProp || hospitalLogo || undefined}
                     />
                 </Suspense>
             )}

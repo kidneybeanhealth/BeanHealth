@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { runPipeline, CanonicalDrug, PipelineStep } from '../utils/drugNormalizer';
 import { calculateEGFR, calculateKFRE, calculateKFRE8, KFREResult } from '../utils/ckdUtils';
+import { checkRenalDose, RenalDoseAlert, SEVERITY_CONFIG, highestSeverity, isEgfrStale } from '../services/renalDoseCheckerService';
 
 const PrescriptionModalSelector = lazy(() => import('./prescriptions/PrescriptionModalSelector'));
 
@@ -62,6 +63,7 @@ interface MedItem {
 interface PatientLabSnapshot {
     creatinine?: number;
     egfr?: number;
+    egfrDate?: string;
     acr?: number;
     albumin?: number;
     phosphorus?: number;
@@ -218,6 +220,9 @@ const EnterpriseCKDSnapshotView: React.FC<Props> = ({ doctor }) => {
     const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewQueueDraft>>({});
     const [approvingId, setApprovingId] = useState<string | null>(null);
 
+    /* Renal safety flags */
+    const [renalAlerts, setRenalAlerts] = useState<Map<number, RenalDoseAlert[]>>(new Map());
+
     /* Catalogue analysis */
     const [analysingCatalogue, setAnalysingCatalogue] = useState(false);
     const [catalogueResult, setCatalogueResult] = useState<CatalogueAnalysisResult | null>(null);
@@ -228,6 +233,26 @@ const EnterpriseCKDSnapshotView: React.FC<Props> = ({ doctor }) => {
         const t = window.setTimeout(() => setDebouncedQuery(searchQuery.trim()), 350);
         return () => window.clearTimeout(t);
     }, [searchQuery]);
+
+    /* ── Renal dose alerts — recompute when drugs or eGFR changes ─────── */
+    useEffect(() => {
+        if (canonicalDrugs.length === 0) { setRenalAlerts(new Map()); return; }
+        const effectiveEGFR = labSnapshot.egfr ?? computedEGFR ?? null;
+        const alertMap = new Map<number, RenalDoseAlert[]>();
+        canonicalDrugs.forEach((drug, idx) => {
+            // Use pipeline-resolved ingredients when available; fall back to raw name
+            const searchTerms = drug.components.length > 0 ? drug.components : [drug.name];
+            const alerts: RenalDoseAlert[] = [];
+            const seen = new Set<string>();
+            for (const term of searchTerms) {
+                for (const a of checkRenalDose(term, effectiveEGFR)) {
+                    if (!seen.has(a.label)) { alerts.push(a); seen.add(a.label); }
+                }
+            }
+            if (alerts.length > 0) alertMap.set(idx, alerts);
+        });
+        setRenalAlerts(alertMap);
+    }, [canonicalDrugs, labSnapshot.egfr, computedEGFR]);
 
     /* ── Fetch patients ───────────────────────────────────────────────── */
     const fetchPatients = useCallback(async () => {
@@ -285,7 +310,7 @@ const EnterpriseCKDSnapshotView: React.FC<Props> = ({ doctor }) => {
         // Fetch latest labs for KFRE (best-effort, non-blocking)
         try {
             const { data: labs } = await (supabase.from('lab_results') as any)
-                .select('test_type, value')
+                .select('test_type, value, test_date')
                 .eq('patient_id', p.id)
                 .in('test_type', ['creatinine', 'egfr', 'acr', 'albumin', 'bicarbonate'])
                 .order('test_date', { ascending: false })
@@ -296,6 +321,7 @@ const EnterpriseCKDSnapshotView: React.FC<Props> = ({ doctor }) => {
                 for (const lab of labs) {
                     if (!snap[lab.test_type as keyof PatientLabSnapshot]) {
                         (snap as any)[lab.test_type] = lab.value;
+                        if (lab.test_type === 'egfr') snap.egfrDate = lab.test_date;
                     }
                 }
                 setLabSnapshot(snap);
@@ -844,6 +870,12 @@ const EnterpriseCKDSnapshotView: React.FC<Props> = ({ doctor }) => {
                                             {canonicalDrugs.filter(d => d.is_combo).length} combos expanded
                                         </span>
                                     )}
+                                    {renalAlerts.size > 0 && (
+                                        <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                            <span>⚠</span>
+                                            {Array.from(renalAlerts.values()).reduce((sum, a) => sum + a.length, 0)} renal {Array.from(renalAlerts.values()).reduce((sum, a) => sum + a.length, 0) === 1 ? 'flag' : 'flags'}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -856,6 +888,84 @@ const EnterpriseCKDSnapshotView: React.FC<Props> = ({ doctor }) => {
                                 ))}
                             </div>
                         )}
+
+                        {/* Renal Safety Flags */}
+                        {analysisComplete && renalAlerts.size > 0 && (() => {
+                            const effectiveEGFR = labSnapshot.egfr ?? computedEGFR ?? null;
+                            const egfrStale = isEgfrStale(labSnapshot.egfrDate);
+                            const hasHardStop = Array.from(renalAlerts.values()).flat().some(a => a.hardStop);
+                            return (
+                                <div className="rounded-xl border overflow-hidden" style={{ borderColor: hasHardStop ? '#fca5a5' : '#fed7aa' }}>
+                                    {/* Panel header */}
+                                    <div className={`px-4 py-2.5 flex items-center justify-between gap-3 ${hasHardStop ? 'bg-red-50' : 'bg-orange-50'}`}>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-base">{hasHardStop ? '🛑' : '⚠️'}</span>
+                                            <span className={`text-xs font-bold ${hasHardStop ? 'text-red-700' : 'text-orange-700'}`}>
+                                                Renal Safety Flags
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            {effectiveEGFR !== null ? (
+                                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${egfrStale ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                                                    eGFR {Math.round(effectiveEGFR)}{egfrStale ? ' ⚠ stale' : ''}
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-gray-50 border-gray-200 text-gray-500">
+                                                    eGFR unknown — run KFRE ↑
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Per-drug alert rows */}
+                                    <div className="divide-y divide-gray-100 bg-white">
+                                        {Array.from(renalAlerts.entries()).map(([drugIdx, alerts]) => {
+                                            const drug = canonicalDrugs[drugIdx];
+                                            if (!drug) return null;
+                                            const worst = highestSeverity(alerts);
+                                            const cfg = SEVERITY_CONFIG[worst];
+                                            return (
+                                                <div key={drugIdx} className={`px-4 py-3 ${cfg.bg}`}>
+                                                    {/* Drug name row */}
+                                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                                        <div>
+                                                            <span className="text-xs font-bold text-gray-800">{drug.name}</span>
+                                                            {drug.components.length > 0 && (
+                                                                <span className="ml-2 text-[10px] text-gray-500">
+                                                                    ({drug.components.join(' + ')})
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+                                                            {cfg.icon} {cfg.label}
+                                                        </span>
+                                                    </div>
+                                                    {/* Individual alerts */}
+                                                    <div className="space-y-2">
+                                                        {alerts.map((alert, ai) => (
+                                                            <div key={ai} className={`rounded-lg border px-3 py-2 ${SEVERITY_CONFIG[alert.severity].bg} ${SEVERITY_CONFIG[alert.severity].border}`}>
+                                                                <p className={`text-[11px] font-semibold ${SEVERITY_CONFIG[alert.severity].text}`}>
+                                                                    {alert.egfrUnavailable
+                                                                        ? `⚠ ${alert.message}`
+                                                                        : `${SEVERITY_CONFIG[alert.severity].icon} ${alert.message}`
+                                                                    }
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-600 mt-1 leading-relaxed">
+                                                                    {alert.fullRecommendation}
+                                                                </p>
+                                                                <p className="text-[9px] text-gray-400 mt-1 font-mono">
+                                                                    {alert.source}
+                                                                </p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* Summary */}
                         {analysisComplete && canonicalDrugs.length > 0 && (

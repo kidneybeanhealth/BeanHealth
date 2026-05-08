@@ -41,9 +41,11 @@ export interface KKCPrescriptionModalProps {
       nextReviewDate: string | null;
       testsToReview: string;
       specialistsToReview: string;
-    }
+    },
+    callbackPatientId?: string
   ) => void;
   readOnly?: boolean;
+  forcePrint?: boolean;
   existingData?: any;
   clinicLogo?: string;       // Optional override — overrides tenant logo if supplied by caller
   actorAttribution?: {
@@ -51,6 +53,8 @@ export interface KKCPrescriptionModalProps {
     actorDisplayName: string;
   };
   onPrintOpen?: () => void;
+  /** Passed by PrescriptionModalSelector — ignored here since we use useTenant() directly */
+  tenant?: any;
 }
 
 const KKCPrescriptionModal: React.FC<KKCPrescriptionModalProps> = (props) => {

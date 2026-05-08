@@ -1305,6 +1305,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-2 bg-gray-100" ref={containerRef}>
+
+
           <div
             ref={componentRef}
             className="print-content bg-white shadow-sm p-4 max-w-[210mm] text-black w-full origin-top-left"

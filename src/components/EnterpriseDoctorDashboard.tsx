@@ -1763,6 +1763,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     enablePrescribe={true}
                     onPrescribe={handlePrescribeAdmitted}
                     actorDisplayName={actorDisplayName}
+                    clinicLogo={hospitalLogo || undefined}
                 />
             ) : (
                 <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden min-h-[500px]">
