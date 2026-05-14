@@ -264,6 +264,22 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   // Time options for timing dropdowns (removed internal constant, uses outside one)
 
   const prescribedByName = (() => {
+    // Priority 1: live session actor (actorAttribution prop).
+    // This covers both live-queue prescriptions AND edit-resend flows where
+    // the current user (PA, junior doctor, chief) must be credited — not the
+    // actor who wrote the original prescription being edited.
+    if (actorAttribution?.actorType === 'assistant') {
+      return `Prepared by ${actorAttribution.actorDisplayName}`;
+    }
+    if (actorAttribution?.actorType === 'chief') {
+      // Chief may have a specific display name too (e.g. junior doctor logged in as chief)
+      return actorAttribution.actorDisplayName
+        ? `Prepared by ${actorAttribution.actorDisplayName}`
+        : 'Prepared by Chief Doctor';
+    }
+
+    // Priority 2: saved metadata from existingData — used in read-only view
+    // (patient app, view-only Rx) where no live actorAttribution is supplied.
     const existingActorType = existingData?.metadata?.actorType;
     const existingPrescribedByName = existingData?.metadata?.actorDisplayName;
 
@@ -273,15 +289,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         : 'Prepared by PA';
     }
     if (existingActorType === 'chief') {
-      return 'Prepared by Chief Doctor';
+      return existingPrescribedByName
+        ? `Prepared by ${existingPrescribedByName}`
+        : 'Prepared by Chief Doctor';
     }
 
-    if (actorAttribution?.actorType === 'assistant') {
-      return `Prepared by ${actorAttribution.actorDisplayName}`;
-    }
-    if (actorAttribution?.actorType === 'chief') {
-      return 'Prepared by Chief Doctor';
-    }
+    // Priority 3: fall back to doctor prop name
     if (doctor?.name) {
       return `Prepared by ${doctor.name}`;
     }
