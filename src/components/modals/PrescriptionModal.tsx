@@ -10,6 +10,7 @@ import {
   fetchHospitalSavedDiagnoses,
   fetchHospitalSavedDrugs,
   upsertHospitalSavedDrug,
+  upsertHospitalSavedDiagnosis,
 } from '../../services/hospitalCatalogService';
 
 interface SavedDrug {
@@ -1009,6 +1010,27 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         testsToReview: formData.testsToReview || '',
         specialistsToReview: formData.specialistToReview || ''
       }, patient?.id);
+    }
+
+    // Auto-save any new diagnoses to the shared hospital catalog in the background.
+    // We compare against the already-loaded savedDiagnoses list so we only insert
+    // entries that genuinely don't exist yet — no duplicates, no noise for the doctor.
+    const hospitalId = doctor?.hospital_id || doctor?.hospitalId;
+    const doctorId = doctor?.id;
+    if (hospitalId && formData.diagnosis) {
+      const existingNormalized = new Set(
+        savedDiagnoses.map((d: any) => (d.normalized_name || d.name || '').toUpperCase().trim())
+      );
+      const newDiagnoses = formData.diagnosis
+        .split(',')
+        .map((d: string) => d.trim())
+        .filter((d: string) => d && !existingNormalized.has(d.toUpperCase()));
+
+      // Fire-and-forget: failures are silent so they never block or confuse the doctor
+      newDiagnoses.forEach((diagnosisName: string) => {
+        upsertHospitalSavedDiagnosis({ hospitalId, name: diagnosisName, doctorId })
+          .catch(() => {/* silently ignore — catalog update is best-effort */});
+      });
     }
   };
 
