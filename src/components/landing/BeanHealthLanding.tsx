@@ -80,7 +80,7 @@ const sectionReveal = {
 const iconMap = [HeartPulse, FileStack, Hourglass];
 
 const inputClassName =
-  "w-full rounded-[1.4rem] border border-slate-200/80 bg-white/80 px-5 py-4 text-sm text-slate-900 outline-none transition-[border-color,box-shadow,transform] duration-300 placeholder:text-slate-400 focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.12)]";
+  "w-full rounded-[1.4rem] border border-slate-200/80 bg-white/80 px-5 py-4 text-sm text-slate-900 outline-none transition-[border-color,box-shadow,transform] duration-300 placeholder:text-slate-400 focus:border-[#8FC94F] focus:shadow-[0_0_0_4px_rgba(115,186,39,0.12)]";
 
 interface FormState {
   name: string;
@@ -197,9 +197,9 @@ export default function BeanHealthLanding() {
               <a
                 key={link.label}
                 href={link.href}
-                className="group flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-blue-50 hover:text-blue-700"
+                className="group flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-[#F0F9E6] hover:text-[#5FA01F]"
               >
-                <link.Icon className="h-3.5 w-3.5 text-slate-400 transition-colors duration-200 group-hover:text-blue-600" />
+                <link.Icon className="h-3.5 w-3.5 text-slate-400 transition-colors duration-200 group-hover:text-[#73BA27]" />
                 {link.label}
               </a>
             ))}
@@ -208,13 +208,13 @@ export default function BeanHealthLanding() {
           <div className="flex items-center gap-3">
             <a
               href={loginHref}
-              className="hidden rounded-full border border-slate-200 bg-white/90 px-5 py-3 text-sm font-semibold text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_18px_36px_rgba(15,23,42,0.08)] sm:inline-flex"
+              className="hidden rounded-full border border-slate-200 bg-white/90 px-5 py-3 text-sm font-semibold text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-[#C2E29A] hover:shadow-[0_18px_36px_rgba(15,23,42,0.08)] sm:inline-flex"
             >
               Login
             </a>
             <a
               href="#cta"
-              className="hidden rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_40px_rgba(0,82,255,0.22)] transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_24px_50px_rgba(0,82,255,0.28)] sm:inline-flex"
+              className="hidden rounded-full bg-[#73BA27] px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_40px_rgba(92,160,31,0.22)] transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-0.5 hover:bg-[#5FA01F] hover:shadow-[0_24px_50px_rgba(92,160,31,0.28)] sm:inline-flex"
             >
               Schedule Demo
             </a>
@@ -238,7 +238,7 @@ export default function BeanHealthLanding() {
               <a
                 key={link.label}
                 href={link.href}
-                className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+                className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#F0F9E6] hover:text-[#5FA01F]"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <link.Icon className="h-4 w-4 text-slate-400" />
@@ -247,7 +247,7 @@ export default function BeanHealthLanding() {
             ))}
             <div className="grid gap-3 sm:grid-cols-2">
               <a href={loginHref} className="rounded-full border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-800" onClick={() => setMobileMenuOpen(false)}>Login</a>
-              <a href="#cta" className="rounded-full bg-blue-600 px-5 py-3 text-center text-sm font-semibold text-white" onClick={() => setMobileMenuOpen(false)}>Schedule Demo</a>
+              <a href="#cta" className="rounded-full bg-[#73BA27] px-5 py-3 text-center text-sm font-semibold text-white" onClick={() => setMobileMenuOpen(false)}>Schedule Demo</a>
             </div>
           </motion.div>
         )}
@@ -258,7 +258,7 @@ export default function BeanHealthLanding() {
         <section id="top" ref={heroRef} className="px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pb-28 lg:pt-12">
           <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-[1.03fr_0.97fr] lg:items-center">
             <motion.div initial="hidden" animate="visible" variants={sectionReveal} className="max-w-2xl">
-              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-blue-700 shadow-[0_12px_24px_rgba(0,82,255,0.08)]">
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#D4EDBC] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#5FA01F] shadow-[0_12px_24px_rgba(92,160,31,0.08)]">
                 <Sparkles className="h-3.5 w-3.5" />
                 For Hospitals &amp; Nephrologists
               </div>
@@ -277,17 +277,17 @@ export default function BeanHealthLanding() {
                 <span className="font-semibold text-slate-700">Provenance &amp; disclaimer:</span> BeanHealth extracts decision-relevant facts from clinical records and surfaces explainable, rule-based risk flags. The snapshot supports clinician decision-making and never replaces full medical review or clinical judgement.
               </p>
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-                <a href="#cta" className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-4 text-sm font-semibold text-white shadow-[0_18px_48px_rgba(0,82,255,0.24)] transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-1 hover:bg-blue-700">
+                <a href="#cta" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#73BA27] px-6 py-4 text-sm font-semibold text-white shadow-[0_18px_48px_rgba(92,160,31,0.24)] transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-1 hover:bg-[#5FA01F]">
                   Schedule Clinical Demo <ArrowRight className="h-4 w-4" />
                 </a>
-                <a href="#workflow" className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/80 px-6 py-4 text-sm font-semibold text-slate-800 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-blue-200">
+                <a href="#workflow" className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/80 px-6 py-4 text-sm font-semibold text-slate-800 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-[#C2E29A]">
                   See How It Works <ChevronRight className="h-4 w-4" />
                 </a>
               </div>
               <div className="mt-12 grid gap-4 sm:grid-cols-3">
                 {heroMetrics.map((metric) => (
                   <div key={metric.label} className="glass-panel rounded-[2rem] px-5 py-5">
-                    <div className="font-mono text-sm text-blue-600">{metric.value}</div>
+                    <div className="font-mono text-sm text-[#73BA27]">{metric.value}</div>
                     <p className="mt-3 text-sm leading-6 text-slate-600">{metric.label}</p>
                   </div>
                 ))}
@@ -298,6 +298,7 @@ export default function BeanHealthLanding() {
               <motion.img
                 src="https://images.pexels.com/photos/36022686/pexels-photo-36022686.png?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
                 alt="Abstract 3D healthcare background"
+                loading="lazy"
                 className="pointer-events-none absolute inset-x-10 top-4 hidden w-[78%] rounded-[3rem] opacity-90 sm:block"
                 style={{ x: accentX }}
               />
@@ -310,6 +311,7 @@ export default function BeanHealthLanding() {
                   <img
                     src="https://www.beanhealth.in/dashboard-mockup.png"
                     alt="BeanHealth dashboard mockup"
+                    fetchPriority="high"
                     className="relative z-10 w-full rounded-[2.1rem] border border-white/60 object-contain"
                   />
                 </motion.div>
@@ -324,7 +326,7 @@ export default function BeanHealthLanding() {
                   className="glass-panel absolute -right-1 bottom-4 z-20 max-w-[220px] rounded-[1.8rem] px-4 py-4 sm:-right-10"
                   style={{ y: provenanceY }}
                 >
-                  <div className="font-mono text-xs uppercase tracking-[0.24em] text-blue-600">Provenance ready</div>
+                  <div className="font-mono text-xs uppercase tracking-[0.24em] text-[#73BA27]">Provenance ready</div>
                   <p className="mt-3 text-sm font-medium text-slate-900">Every extracted fact links back to source text, page, and timestamp.</p>
                 </motion.div>
               </motion.div>
@@ -356,7 +358,7 @@ export default function BeanHealthLanding() {
                     >
                       <div className={`absolute inset-0 bg-gradient-to-br ${card.accent}`} />
                       <div className="relative z-10">
-                        <Icon className="h-6 w-6 text-blue-600" />
+                        <Icon className="h-6 w-6 text-[#73BA27]" />
                         <h3 className="mt-6 text-xl font-semibold text-slate-950">{card.title}</h3>
                         <p className="mt-3 text-sm leading-7 text-slate-600">{card.description}</p>
                       </div>
@@ -375,7 +377,7 @@ export default function BeanHealthLanding() {
                       <div className="font-mono text-xs uppercase tracking-[0.28em] text-slate-500">Who suffers?</div>
                       <h3 className="mt-3 text-2xl font-semibold text-slate-950">Every stakeholder pays for disconnected follow-up.</h3>
                     </div>
-                    <div className="rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">BeanHealth closes the visibility gap.</div>
+                    <div className="rounded-full bg-[#F0F9E6] px-4 py-2 text-sm font-medium text-[#5FA01F]">BeanHealth closes the visibility gap.</div>
                   </div>
                   <div className="mt-8 grid gap-4 md:grid-cols-3">
                     {stakeholderImpact.map((item) => (
@@ -394,11 +396,11 @@ export default function BeanHealthLanding() {
                 className="glass-panel section-sheen flex flex-col justify-between rounded-[2.4rem] p-8"
               >
                 <div>
-                  <div className="font-mono text-xs uppercase tracking-[0.28em] text-blue-600">AI assists, doctor decides</div>
+                  <div className="font-mono text-xs uppercase tracking-[0.28em] text-[#73BA27]">AI assists, doctor decides</div>
                   <p className="mt-4 text-2xl font-semibold text-slate-950">Insights surface instantly, but every clinical decision stays with the treating nephrologist.</p>
                 </div>
-                <div className="mt-8 rounded-[2rem] border border-blue-100 bg-blue-50/80 p-5">
-                  <ShieldCheck className="h-8 w-8 text-blue-600" />
+                <div className="mt-8 rounded-[2rem] border border-[#D4EDBC] bg-[#F0F9E6]/80 p-5">
+                  <ShieldCheck className="h-8 w-8 text-[#73BA27]" />
                   <p className="mt-4 text-sm leading-7 text-slate-700">Trusted decision support means explainable rules, transparent provenance, and zero black-box ambiguity.</p>
                 </div>
               </motion.div>
@@ -425,13 +427,13 @@ export default function BeanHealthLanding() {
               <div className="grid grid-cols-[1.1fr_0.95fr_1fr] border-b border-slate-200/70 bg-slate-50/90 px-6 py-5 text-sm font-semibold text-slate-600 sm:px-8">
                 <div>Capability</div>
                 <div>Traditional EMR / Telemedicine</div>
-                <div className="text-blue-700">BeanHealth</div>
+                <div className="text-[#5FA01F]">BeanHealth</div>
               </div>
               {comparisonRows.map(([capability, traditional, bean], index) => (
                 <div key={capability} className="grid grid-cols-1 gap-4 border-b border-slate-200/60 px-6 py-6 last:border-b-0 sm:px-8 md:grid-cols-[1.1fr_0.95fr_1fr]">
                   <div className="font-semibold text-slate-950">{capability}</div>
                   <div className="rounded-[1.5rem] bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">{traditional}</div>
-                  <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,rgba(239,246,255,1),rgba(255,255,255,0.95))] px-4 py-4 text-sm leading-6 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_0_32px_rgba(0,82,255,0.08)]">{bean}</div>
+                  <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,rgba(240,249,230,1),rgba(255,255,255,0.95))] px-4 py-4 text-sm leading-6 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_0_32px_rgba(92,160,31,0.08)]">{bean}</div>
                 </div>
               ))}
             </div>
@@ -446,12 +448,13 @@ export default function BeanHealthLanding() {
                 <img
                   src="https://images.unsplash.com/photo-1576669801838-1b1c52121e6a?crop=entropy&cs=srgb&fm=jpg&q=85"
                   alt="Modern clinical environment"
+                  loading="lazy"
                   className="aspect-[4/5] w-full rounded-[2.1rem] object-cover object-center"
                 />
               </motion.div>
               <div className="space-y-5">
                 <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} className="glass-panel rounded-[2.4rem] p-8">
-                  <div className="font-mono text-xs uppercase tracking-[0.28em] text-blue-600">How we fix it</div>
+                  <div className="font-mono text-xs uppercase tracking-[0.28em] text-[#73BA27]">How we fix it</div>
                   <h3 className="mt-4 text-2xl font-semibold text-slate-950">An explainable clinical snapshot for faster triage and auditable action.</h3>
                   <p className="mt-4 text-sm leading-7 text-slate-600">BeanHealth converts unstructured records into structured clinical facts, applies rule-based risk flags, and delivers actionable next steps without hiding the original evidence.</p>
                 </motion.div>
@@ -468,7 +471,7 @@ export default function BeanHealthLanding() {
                         transition={{ duration: 0.6, delay: index * 0.08 }}
                         className="glass-panel rounded-[2rem] p-6"
                       >
-                        <Icon className="h-6 w-6 text-blue-600" />
+                        <Icon className="h-6 w-6 text-[#73BA27]" />
                         <h3 className="mt-5 text-lg font-semibold text-slate-950">{component.title}</h3>
                         <p className="mt-3 text-sm leading-6 text-slate-600">{component.description}</p>
                       </motion.article>
@@ -490,7 +493,7 @@ export default function BeanHealthLanding() {
             </motion.div>
             <div className="mt-12 grid gap-10 lg:grid-cols-[0.72fr_1.28fr]">
               <div className="glass-panel sticky top-28 h-fit rounded-[2.4rem] p-8">
-                <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#F0F9E6] px-4 py-2 text-sm font-semibold text-[#5FA01F]">
                   <BadgeCheck className="h-4 w-4" />
                   Nephrologist-reviewed protocols
                 </div>
@@ -519,9 +522,9 @@ export default function BeanHealthLanding() {
                       transition={{ duration: 0.65, delay: index * 0.04 }}
                       className="relative"
                     >
-                      <div className="absolute left-[-2.4rem] top-7 flex h-5 w-5 items-center justify-center rounded-full border-4 border-white bg-blue-500 shadow-[0_0_0_12px_rgba(59,130,246,0.12)] sm:left-[-2.8rem]" />
+                      <div className="absolute left-[-2.4rem] top-7 flex h-5 w-5 items-center justify-center rounded-full border-4 border-white bg-[#73BA27] shadow-[0_0_0_12px_rgba(115,186,39,0.12)] sm:left-[-2.8rem]" />
                       <div className="glass-panel rounded-[2.2rem] p-7">
-                        <div className="font-mono text-xs uppercase tracking-[0.28em] text-blue-600">Step {step.step}</div>
+                        <div className="font-mono text-xs uppercase tracking-[0.28em] text-[#73BA27]">Step {step.step}</div>
                         <h3 className="mt-4 text-xl font-semibold text-slate-950">{step.title}</h3>
                         <p className="mt-3 text-sm leading-7 text-slate-600">{step.description}</p>
                       </div>
@@ -553,13 +556,13 @@ export default function BeanHealthLanding() {
                     className="glass-panel flex flex-col rounded-[2.2rem] p-6"
                   >
                     <div className="mb-4">
-                      <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700">{column.badge}</span>
+                      <span className="inline-block rounded-full bg-[#F0F9E6] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#5FA01F]">{column.badge}</span>
                       <h3 className="mt-3 text-base font-semibold leading-snug text-slate-950">{column.category}</h3>
                     </div>
                     <div className="space-y-3">
                       {column.items.map((item) => (
                         <div key={item} className="flex gap-2.5 text-sm leading-6 text-slate-600">
-                          <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-blue-600" />
+                          <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-[#73BA27]" />
                           <span>{item}</span>
                         </div>
                       ))}
@@ -578,7 +581,7 @@ export default function BeanHealthLanding() {
                   <div>
                     <p className="font-mono text-xs uppercase tracking-[0.28em] text-slate-500">eGFR Trend</p>
                     <h3 className="mt-2 text-2xl font-semibold text-slate-950">Last 6 months</h3>
-                    <p className="mt-1.5 text-sm text-blue-700">Declining trajectory surfaced before emergency threshold.</p>
+                    <p className="mt-1.5 text-sm text-[#5FA01F]">Declining trajectory surfaced before emergency threshold.</p>
                   </div>
                   <span className="shrink-0 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600">Declining</span>
                 </div>
@@ -587,8 +590,8 @@ export default function BeanHealthLanding() {
                     <AreaChart data={eGFRData} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
                       <defs>
                         <linearGradient id="eGFRGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
-                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.03} />
+                          <stop offset="5%" stopColor="#73BA27" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#73BA27" stopOpacity={0.03} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
@@ -600,7 +603,7 @@ export default function BeanHealthLanding() {
                         labelStyle={{ fontWeight: 600, color: "#0F172A" }}
                       />
                       <ReferenceLine y={30} stroke="#FDA4AF" strokeDasharray="4 3" strokeWidth={1.5} label={{ value: "Stage 4", position: "insideTopRight", fontSize: 10, fill: "#F43F5E" }} />
-                      <Area type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2.5} fill="url(#eGFRGradient)" dot={{ r: 4, fill: "#2563EB", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#1D4ED8", strokeWidth: 0 }} />
+                      <Area type="monotone" dataKey="value" stroke="#73BA27" strokeWidth={2.5} fill="url(#eGFRGradient)" dot={{ r: 4, fill: "#5FA01F", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#4D8619", strokeWidth: 0 }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -625,7 +628,7 @@ export default function BeanHealthLanding() {
                 { icon: Users, title: "Patient consent management" },
               ] as const).map((item) => (
                 <div key={item.title} className="glass-panel rounded-[2rem] p-6">
-                  <item.icon className="h-6 w-6 text-blue-600" />
+                  <item.icon className="h-6 w-6 text-[#73BA27]" />
                   <p className="mt-5 text-lg font-semibold text-slate-950">{item.title}</p>
                 </div>
               ))}
@@ -645,7 +648,7 @@ export default function BeanHealthLanding() {
                     <button
                       key={key}
                       type="button"
-                      className={`rounded-full px-4 py-2 text-sm font-semibold transition-[background-color,color,transform] duration-300 ${billingCycle === key ? "bg-blue-600 text-white shadow-[0_10px_26px_rgba(0,82,255,0.18)]" : "text-slate-600 hover:-translate-y-0.5"}`}
+                      className={`rounded-full px-4 py-2 text-sm font-semibold transition-[background-color,color,transform] duration-300 ${billingCycle === key ? "bg-[#73BA27] text-white shadow-[0_10px_26px_rgba(92,160,31,0.18)]" : "text-slate-600 hover:-translate-y-0.5"}`}
                       onClick={() => setBillingCycle(key)}
                     >
                       {key === "annual" ? "Billed Annually" : "Billed Monthly"}
@@ -665,21 +668,21 @@ export default function BeanHealthLanding() {
                   className={`rounded-[2.5rem] p-8 glass-panel skeuomorph-card ${plan.emphasis ? "iridescent" : ""}`}
                 >
                   {plan.emphasis && (
-                    <div className="mb-5 inline-flex rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white">Most Popular</div>
+                    <div className="mb-5 inline-flex rounded-full bg-[#73BA27] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white">Most Popular</div>
                   )}
                   <h3 className="text-2xl font-semibold text-slate-950">{plan.name}</h3>
                   <p className="mt-5 text-4xl font-semibold text-slate-950">{plan[billingCycle]}</p>
                   <div className="mt-6 space-y-4">
                     {plan.features.map((feature) => (
                       <div key={feature} className="flex items-start gap-3 text-sm leading-6 text-slate-600">
-                        <Check className="mt-1 h-4 w-4 shrink-0 text-blue-600" />
+                        <Check className="mt-1 h-4 w-4 shrink-0 text-[#73BA27]" />
                         <span>{feature}</span>
                       </div>
                     ))}
                   </div>
                   <a
                     href="#cta"
-                    className={`mt-8 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-0.5 ${plan.emphasis ? "bg-blue-600 text-white shadow-[0_16px_42px_rgba(0,82,255,0.24)] hover:bg-blue-700" : "border border-slate-200 bg-white text-slate-900 hover:shadow-[0_16px_38px_rgba(15,23,42,0.08)]"}`}
+                    className={`mt-8 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-0.5 ${plan.emphasis ? "bg-[#73BA27] text-white shadow-[0_16px_42px_rgba(92,160,31,0.24)] hover:bg-[#5FA01F]" : "border border-slate-200 bg-white text-slate-900 hover:shadow-[0_16px_38px_rgba(15,23,42,0.08)]"}`}
                   >
                     Request Pilot <ArrowRight className="h-4 w-4" />
                   </a>
@@ -687,7 +690,7 @@ export default function BeanHealthLanding() {
               ))}
             </div>
 
-            <div className="mt-8 rounded-[2rem] border border-blue-100 bg-blue-50/75 px-6 py-5 text-sm leading-7 text-slate-700">
+            <div className="mt-8 rounded-[2rem] border border-[#D4EDBC] bg-[#F0F9E6]/75 px-6 py-5 text-sm leading-7 text-slate-700">
               Already have an EMR or prescription system? Integrate the CKD Snapshot module with your existing workflow. Pricing is per clinic with no setup or development fees and a free 7-day pilot for clinics.
             </div>
           </div>
@@ -710,7 +713,7 @@ export default function BeanHealthLanding() {
                   className="glass-panel rounded-[2.4rem] p-7 lg:grid lg:grid-cols-[minmax(240px,300px)_1fr] lg:items-center lg:gap-8 lg:p-9"
                 >
                   <div className="mx-auto w-full max-w-[300px] lg:max-w-none">
-                    <img src={member.image} alt={member.name} className="aspect-[4/5] w-full rounded-[2rem] border border-white/70 object-cover object-top shadow-[0_24px_54px_rgba(15,23,42,0.1)]" />
+                    <img src={member.image} alt={member.name} loading="lazy" className="aspect-[4/5] w-full rounded-[2rem] border border-white/70 object-cover object-top shadow-[0_24px_54px_rgba(15,23,42,0.1)]" />
                   </div>
                   <div>
                     <div className="mt-7 lg:mt-0">
@@ -718,7 +721,7 @@ export default function BeanHealthLanding() {
                       <p className="mt-2 text-sm font-medium text-slate-500">{member.role}</p>
                       <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600">{member.description}</p>
                     </div>
-                    <div className="mt-6 rounded-[1.8rem] border border-blue-100 bg-blue-50/70 p-5">
+                    <div className="mt-6 rounded-[1.8rem] border border-[#D4EDBC] bg-[#F0F9E6]/70 p-5">
                       <p className="text-sm leading-7 text-slate-700">Driving product, technology, and business strategy to turn BeanHealth into scalable chronic-care infrastructure for the next generation of telemedicine.</p>
                     </div>
                     <div className="mt-6 flex flex-wrap gap-2">
@@ -762,7 +765,7 @@ export default function BeanHealthLanding() {
                     transition={{ duration: 0.65, delay: (index + 1) * 0.08 }}
                     className="glass-panel rounded-[2.4rem] p-7"
                   >
-                    <img src={member.image} alt={member.name} className="h-24 w-24 rounded-full border border-white/70 object-cover object-[center_18%] shadow-[0_18px_40px_rgba(15,23,42,0.08)]" />
+                    <img src={member.image} alt={member.name} loading="lazy" className="h-24 w-24 rounded-full border border-white/70 object-cover object-[center_18%] shadow-[0_18px_40px_rgba(15,23,42,0.08)]" />
                     <div className="mt-6">
                       <h3 className="text-xl font-semibold text-slate-950">{member.name}</h3>
                       <p className="mt-2 text-sm font-medium text-slate-500">{member.role}</p>
@@ -817,13 +820,13 @@ export default function BeanHealthLanding() {
               {ongoingProjects.map((project, index) => {
                 const statusStyles: Record<string, { badge: string; dot: string }> = {
                   amber: { badge: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-400" },
-                  blue: { badge: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
+                  blue: { badge: "bg-[#F0F9E6] text-[#5FA01F] border-[#C2E29A]", dot: "bg-[#73BA27]" },
                   slate: { badge: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
-                  green: { badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+                  green: { badge: "bg-[#F0F9E6] text-[#5FA01F] border-[#C2E29A]", dot: "bg-[#73BA27]" },
                 };
                 const cardAccents = [
-                  { gradient: "from-violet-500/10 via-blue-400/5 to-transparent", icon: "bg-violet-50", iconColor: "text-violet-600", bar: "bg-gradient-to-r from-violet-500 to-blue-500", tag: "bg-violet-50 text-violet-700", featured: false },
-                  { gradient: "from-blue-600/22 via-cyan-400/18 to-indigo-500/10", icon: "bg-blue-100", iconColor: "text-blue-700", bar: "bg-gradient-to-r from-blue-600 via-cyan-400 to-indigo-500", tag: "bg-blue-100 text-blue-800", featured: true },
+                  { gradient: "from-violet-500/10 via-[#8FC94F]/5 to-transparent", icon: "bg-violet-50", iconColor: "text-violet-600", bar: "bg-gradient-to-r from-violet-500 to-[#73BA27]", tag: "bg-violet-50 text-violet-700", featured: false },
+                  { gradient: "from-[#73BA27]/22 via-cyan-400/18 to-indigo-500/10", icon: "bg-[#D4EDBC]", iconColor: "text-[#5FA01F]", bar: "bg-gradient-to-r from-[#73BA27] via-cyan-400 to-indigo-500", tag: "bg-[#D4EDBC] text-[#4D8619]", featured: true },
                   { gradient: "from-emerald-500/10 via-teal-400/5 to-transparent", icon: "bg-emerald-50", iconColor: "text-emerald-600", bar: "bg-gradient-to-r from-emerald-500 to-teal-400", tag: "bg-emerald-50 text-emerald-700", featured: false },
                   { gradient: "from-rose-500/10 via-orange-400/5 to-transparent", icon: "bg-rose-50", iconColor: "text-rose-600", bar: "bg-gradient-to-r from-rose-500 to-orange-400", tag: "bg-rose-50 text-rose-700", featured: false },
                 ];
@@ -836,11 +839,11 @@ export default function BeanHealthLanding() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-100px" }}
                     transition={{ duration: 0.6, delay: index * 0.08 }}
-                    className={`glass-panel relative flex flex-col overflow-hidden rounded-[2.4rem] p-7 ${accent.featured ? "ring-2 ring-blue-400/40 shadow-[0_0_48px_rgba(59,130,246,0.18),0_20px_60px_rgba(59,130,246,0.12)]" : ""}`}
+                    className={`glass-panel relative flex flex-col overflow-hidden rounded-[2.4rem] p-7 ${accent.featured ? "ring-2 ring-[#8FC94F]/40 shadow-[0_0_48px_rgba(115,186,39,0.18),0_20px_60px_rgba(115,186,39,0.12)]" : ""}`}
                   >
                     <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent.gradient}`} />
                     {accent.featured && (
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/80 to-transparent" />
+                      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#8FC94F]/80 to-transparent" />
                     )}
                     <div className="flex items-start justify-between gap-4">
                       <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${accent.icon}`}>
@@ -848,7 +851,7 @@ export default function BeanHealthLanding() {
                       </div>
                       <div className="flex items-center gap-2">
                         {accent.featured && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-[0_4px_12px_rgba(37,99,235,0.35)]">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#73BA27] px-3 py-1 text-xs font-semibold text-white shadow-[0_4px_12px_rgba(93,153,31,0.35)]">
                             ★ Core Product
                           </span>
                         )}
@@ -899,7 +902,7 @@ export default function BeanHealthLanding() {
               <div className="mt-8 grid gap-4 md:grid-cols-2">
                 {valueItems.map((item) => (
                   <div key={item} className="glass-panel flex gap-3 rounded-[1.7rem] p-4 text-sm leading-6 text-slate-600">
-                    <Check className="mt-1 h-4 w-4 shrink-0 text-blue-600" />
+                    <Check className="mt-1 h-4 w-4 shrink-0 text-[#73BA27]" />
                     <span>{item}</span>
                   </div>
                 ))}
@@ -922,8 +925,8 @@ export default function BeanHealthLanding() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {deploymentModes.map((mode) => (
-                  <div key={mode} className="flex items-center gap-3 rounded-full border border-blue-100 bg-white px-4 py-3 text-sm text-slate-600">
-                    <Building2 className="h-4 w-4 text-blue-600" />
+                  <div key={mode} className="flex items-center gap-3 rounded-full border border-[#D4EDBC] bg-white px-4 py-3 text-sm text-slate-600">
+                    <Building2 className="h-4 w-4 text-[#73BA27]" />
                     {mode}
                   </div>
                 ))}
@@ -937,7 +940,7 @@ export default function BeanHealthLanding() {
           <div className="mx-auto grid max-w-7xl gap-6 rounded-[3rem] glass-panel skeuomorph-card px-6 py-10 sm:px-10 lg:grid-cols-[0.88fr_1.12fr] lg:px-12 lg:py-12">
             <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} className="flex flex-col justify-between">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#F0F9E6] px-4 py-2 text-sm font-semibold text-[#5FA01F]">
                   <Stethoscope className="h-4 w-4" />
                   Modernise your CKD department today
                 </div>
@@ -947,7 +950,7 @@ export default function BeanHealthLanding() {
               <div className="mt-10 grid gap-4 sm:grid-cols-2">
                 {["Reduced complication load", "Faster clinician triage", "Audit-ready follow-up", "Clear integration path"].map((item) => (
                   <div key={item} className="glass-panel flex items-center gap-3 rounded-[1.6rem] px-4 py-4 text-sm font-medium text-slate-700">
-                    <BadgeCheck className="h-4 w-4 text-blue-600" />
+                    <BadgeCheck className="h-4 w-4 text-[#73BA27]" />
                     {item}
                   </div>
                 ))}
@@ -977,7 +980,7 @@ export default function BeanHealthLanding() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-4 text-sm font-semibold text-white shadow-[0_16px_44px_rgba(0,82,255,0.24)] transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#73BA27] px-6 py-4 text-sm font-semibold text-white shadow-[0_16px_44px_rgba(92,160,31,0.24)] transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-0.5 hover:bg-[#5FA01F] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? "Sending Request" : "Request Demo"}
                   <ArrowRight className="h-4 w-4" />

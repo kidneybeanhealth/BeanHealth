@@ -69,7 +69,10 @@ export default defineConfig({
           // Split vendor chunks for better caching
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-supabase': ['@supabase/supabase-js'],
-          'vendor-ui': ['react-hot-toast', 'lucide-react']
+          'vendor-ui': ['react-hot-toast', 'lucide-react'],
+          // Heavy visualization libs — only loaded by lazy-loaded landing page
+          'vendor-charts': ['recharts'],
+          'vendor-motion': ['framer-motion']
         }
       }
     }

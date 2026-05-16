@@ -20,44 +20,44 @@ const roles = [
     Icon: User,
     label: "I'm a Patient",
     description: 'Track health, medications & connect with doctors',
-    gradient: 'from-emerald-500/15 via-teal-400/8 to-transparent',
-    iconBg: 'bg-emerald-50',
-    iconColor: 'text-emerald-600',
-    accent: 'border-emerald-200/60',
-    hoverRing: 'hover:ring-emerald-300/50',
+    gradient: 'from-[#73BA27]/15 via-[#8FC94F]/8 to-transparent',
+    iconBg: 'bg-[#F0F9E6]',
+    iconColor: 'text-[#73BA27]',
+    accent: 'border-[#D4EDBC]/60',
+    hoverRing: 'hover:ring-[#C2E29A]/50',
   },
   {
     id: 'doctor' as const,
     Icon: Stethoscope,
     label: "I'm a Doctor",
     description: 'Manage patients & provide care remotely',
-    gradient: 'from-blue-500/15 via-cyan-400/8 to-transparent',
-    iconBg: 'bg-blue-50',
-    iconColor: 'text-blue-600',
-    accent: 'border-blue-200/60',
-    hoverRing: 'hover:ring-blue-300/50',
+    gradient: 'from-[#5FA01F]/15 via-[#73BA27]/8 to-transparent',
+    iconBg: 'bg-[#F0F9E6]',
+    iconColor: 'text-[#5FA01F]',
+    accent: 'border-[#C2E29A]/60',
+    hoverRing: 'hover:ring-[#8FC94F]/50',
   },
   {
     id: 'hospital' as const,
     Icon: Phone,
     label: 'I Visited a Hospital',
     description: 'Login with your phone number',
-    gradient: 'from-amber-500/15 via-orange-400/8 to-transparent',
-    iconBg: 'bg-amber-50',
-    iconColor: 'text-amber-600',
-    accent: 'border-amber-200/60',
-    hoverRing: 'hover:ring-amber-300/50',
+    gradient: 'from-[#8FC94F]/15 via-[#C2E29A]/8 to-transparent',
+    iconBg: 'bg-[#F0F9E6]',
+    iconColor: 'text-[#8FC94F]',
+    accent: 'border-[#D4EDBC]/60',
+    hoverRing: 'hover:ring-[#C2E29A]/50',
   },
   {
     id: 'enterprise' as const,
     Icon: Building2,
     label: 'Enterprise Login',
     description: 'Hospital & Organization Access',
-    gradient: 'from-[#3d5c35]/12 via-[#4a6741]/6 to-transparent',
-    iconBg: 'bg-[#eef3ec]',
-    iconColor: 'text-[#3d5c35]',
-    accent: 'border-[#b5cbaf]/60',
-    hoverRing: 'hover:ring-[#7aab6e]/40',
+    gradient: 'from-[#4D8619]/12 via-[#5FA01F]/6 to-transparent',
+    iconBg: 'bg-[#F0F9E6]',
+    iconColor: 'text-[#4D8619]',
+    accent: 'border-[#C2E29A]/60',
+    hoverRing: 'hover:ring-[#8FC94F]/40',
   },
 ];
 
@@ -77,7 +77,7 @@ const AuthChooser: React.FC<AuthChooserProps> = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {roles.map((r, i) => (
         <motion.button
           key={r.id}
@@ -85,23 +85,23 @@ const AuthChooser: React.FC<AuthChooserProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: i * 0.07 }}
           onClick={() => handleClick(r.id)}
-          className={`glass-panel skeuomorph-card relative w-full overflow-hidden rounded-[1.8rem] p-5 text-left ring-1 ring-transparent transition-all duration-300 hover:-translate-y-0.5 ${r.hoverRing} ${r.accent}`}
+          className={`glass-panel skeuomorph-card group relative flex w-full flex-col items-start gap-4 overflow-hidden rounded-[1.8rem] p-6 text-left ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${r.hoverRing} ${r.accent}`}
         >
           {/* gradient wash */}
           <div
             className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${r.gradient}`}
           />
-          <div className="relative flex items-center gap-4">
+          <div className="relative flex w-full items-center justify-between">
             <div
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${r.iconBg}`}
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${r.iconBg}`}
             >
-              <r.Icon className={`h-5 w-5 ${r.iconColor}`} />
+              <r.Icon className={`h-6 w-6 ${r.iconColor}`} />
             </div>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-slate-900">{r.label}</div>
-              <div className="mt-0.5 text-xs text-slate-500">{r.description}</div>
-            </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+            <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 transition-transform duration-300 group-hover:translate-x-1" />
+          </div>
+          <div className="relative">
+            <div className="text-base font-semibold text-slate-900">{r.label}</div>
+            <div className="mt-1 text-xs leading-relaxed text-slate-500">{r.description}</div>
           </div>
         </motion.button>
       ))}

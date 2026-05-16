@@ -123,7 +123,7 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
           </a>
           <a
             href="/"
-            className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-blue-50 hover:text-blue-700"
+            className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-[#F0F9E6] hover:text-[#5FA01F]"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to home
@@ -171,12 +171,12 @@ const Auth: React.FC<AuthProps> = ({ initialView = 'chooser' }) => {
                 By continuing you agree to BeanHealth's{' '}
                 <button
                   onClick={() => setShowTerms(true)}
-                  className="text-blue-500 underline-offset-2 hover:underline cursor-pointer"
+                  className="text-[#73BA27] underline-offset-2 hover:underline cursor-pointer"
                 >
                   Terms
                 </button>{' '}
                 &{' '}
-                <button className="text-blue-500 underline-offset-2 hover:underline cursor-pointer">
+                <button className="text-[#73BA27] underline-offset-2 hover:underline cursor-pointer">
                   Privacy Policy
                 </button>
               </p>

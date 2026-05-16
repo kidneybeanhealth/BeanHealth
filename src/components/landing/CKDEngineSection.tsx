@@ -46,7 +46,7 @@ const TABS = [
 const riskBadge: Record<string, string> = {
   critical: "bg-rose-50 text-rose-700 border border-rose-200",
   high: "bg-amber-50 text-amber-700 border border-amber-200",
-  medium: "bg-blue-50 text-blue-700 border border-blue-200",
+  medium: "bg-[#F0F9E6] text-[#5FA01F] border border-[#C2E29A]",
   low: "bg-slate-100 text-slate-600 border border-slate-200",
 };
 
@@ -93,7 +93,7 @@ function PatientProfileTab() {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Current Medications</p>
             <div className="flex flex-wrap gap-2">
               {ckdPatient.medications.map((m) => (
-                <span key={m} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{m}</span>
+                <span key={m} className="rounded-full bg-[#F0F9E6] px-3 py-1 text-xs font-medium text-[#5FA01F]">{m}</span>
               ))}
             </div>
           </div>
@@ -141,7 +141,7 @@ function PatientProfileTab() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {ruleCategories.map((cat) => {
             const colors: Record<string, { bg: string; text: string; count: string }> = {
-              blue: { bg: "bg-blue-50", text: "text-blue-700", count: "bg-blue-600" },
+              blue: { bg: "bg-[#F0F9E6]", text: "text-[#5FA01F]", count: "bg-[#73BA27]" },
               amber: { bg: "bg-amber-50", text: "text-amber-700", count: "bg-amber-500" },
               purple: { bg: "bg-violet-50", text: "text-violet-700", count: "bg-violet-600" },
               emerald: { bg: "bg-emerald-50", text: "text-emerald-700", count: "bg-emerald-600" },
@@ -179,7 +179,7 @@ function TrendRulesTab() {
           ].map((item) => (
             <div key={item.label} className="rounded-xl bg-slate-50 p-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{item.label}</p>
-              <p className="mt-1.5 font-mono text-xs text-blue-700">{item.formula}</p>
+              <p className="mt-1.5 font-mono text-xs text-[#5FA01F]">{item.formula}</p>
               <p className="mt-1 text-xs text-slate-500">{item.note}</p>
             </div>
           ))}
@@ -274,14 +274,14 @@ function CrossMarkerTab() {
                       <ul className="space-y-1.5">
                         {rule.ifCondition.map((c) => (
                           <li key={c} className="flex items-start gap-2 text-xs leading-5 text-slate-700">
-                            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+                            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#73BA27]" />
                             <span className="font-mono">{c}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
-                    <div className="rounded-xl bg-blue-50/60 p-4">
-                      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-600">Tony's Values</p>
+                    <div className="rounded-xl bg-[#F0F9E6]/60 p-4">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#73BA27]">Tony's Values</p>
                       <ul className="space-y-1.5">
                         {Object.entries(rule.patientValues).map(([k, v]) => (
                           <li key={k} className="text-xs leading-5 text-slate-700">
@@ -312,7 +312,7 @@ function CrossMarkerTab() {
 function TherapyGapsTab() {
   const statusStyle: Record<string, { badge: string; dot: string }> = {
     amber: { badge: "bg-amber-50 text-amber-700 ring-1 ring-amber-200", dot: "bg-amber-400" },
-    blue: { badge: "bg-blue-50 text-blue-700 ring-1 ring-blue-200", dot: "bg-blue-400" },
+    blue: { badge: "bg-[#F0F9E6] text-[#5FA01F] ring-1 ring-[#C2E29A]", dot: "bg-[#8FC94F]" },
     rose: { badge: "bg-rose-50 text-rose-700 ring-1 ring-rose-200", dot: "bg-rose-500" },
   };
   return (
@@ -327,7 +327,7 @@ function TherapyGapsTab() {
                   <span className="text-xs font-bold text-slate-400">{rule.id}</span>
                   <h4 className="text-base font-semibold text-slate-950">{rule.name}</h4>
                 </div>
-                <p className="mt-1 text-sm text-blue-700">{rule.drug}</p>
+                <p className="mt-1 text-sm text-[#5FA01F]">{rule.drug}</p>
               </div>
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${s.badge}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
@@ -356,8 +356,8 @@ function TherapyGapsTab() {
                     </li>
                   ))}
                 </ul>
-                <div className="mt-3 rounded-xl bg-blue-50/60 p-3">
-                  <p className="text-[11px] font-semibold text-blue-600">Interaction Analysis</p>
+                <div className="mt-3 rounded-xl bg-[#F0F9E6]/60 p-3">
+                  <p className="text-[11px] font-semibold text-[#73BA27]">Interaction Analysis</p>
                   <p className="mt-1 text-[11px] leading-4 text-slate-600">{rule.interactions}</p>
                 </div>
               </div>
@@ -422,7 +422,7 @@ function DashboardTab() {
           {therapyRoadmap.map((phase, i) => (
             <div key={phase.phase} className="flex gap-3">
               <div className="flex flex-col items-center">
-                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${i === 0 ? "bg-rose-500" : "bg-blue-500"}`}>{i + 1}</div>
+                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${i === 0 ? "bg-rose-500" : "bg-[#73BA27]"}`}>{i + 1}</div>
                 {i < therapyRoadmap.length - 1 && <div className="mt-1 h-full w-px bg-slate-200" />}
               </div>
               <div className="pb-3">
@@ -483,7 +483,7 @@ function DashboardTab() {
 function LinkageMapTab() {
   const matrixColor = (val: string) => {
     if (val === "—") return "bg-slate-100 text-slate-400 font-medium";
-    if (val === "+") return "bg-blue-50 text-blue-700 font-semibold";
+    if (val === "+") return "bg-[#F0F9E6] text-[#5FA01F] font-semibold";
     if (val === "-") return "bg-rose-50 text-rose-600 font-semibold";
     return "bg-slate-50 text-slate-400";
   };
@@ -494,7 +494,7 @@ function LinkageMapTab() {
         <div className="space-y-3">
           {causalChains.map((c, i) => (
             <div key={i} className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">{i + 1}</span>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#73BA27] text-xs font-bold text-white">{i + 1}</span>
               <div>
                 <p className="font-mono text-sm font-semibold text-slate-900">{c.chain}</p>
                 <p className="mt-0.5 text-xs text-slate-500">Driver: {c.driver}</p>
@@ -507,7 +507,7 @@ function LinkageMapTab() {
       <div className="glass-panel overflow-hidden rounded-[2rem] p-6">
         <p className="mb-1 text-sm font-semibold text-slate-800">Biomarker Cross-Reference Matrix</p>
         <div className="mb-4 flex gap-4 text-xs text-slate-500">
-          <span><span className="font-semibold text-blue-600">+</span> = positive correlation</span>
+          <span><span className="font-semibold text-[#73BA27]">+</span> = positive correlation</span>
           <span><span className="font-semibold text-rose-600">−</span> = inverse correlation</span>
           <span><span className="font-semibold text-slate-400">—</span> = self</span>
         </div>
@@ -550,7 +550,7 @@ function ValueDeltaTab() {
         <div className="grid grid-cols-[1.2fr_1.8fr_1.8fr_0.8fr] gap-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
           <span>Dimension</span>
           <span className="text-slate-400">Without BeanHealth</span>
-          <span className="text-blue-700">With BeanHealth</span>
+          <span className="text-[#5FA01F]">With BeanHealth</span>
           <span className="text-emerald-700">Gain</span>
         </div>
       </div>
@@ -594,8 +594,8 @@ export default function CKDEngineSection() {
     >
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-xs font-semibold text-blue-700">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#F0F9E6] px-4 py-1.5 text-xs font-semibold text-[#5FA01F]">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#73BA27]" />
             Beta · In Active Development
           </div>
           <h3 className="mt-3 text-2xl font-semibold text-slate-950 sm:text-3xl">

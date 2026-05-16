@@ -2,14 +2,12 @@ import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-// Auth Components - kept eager as they're needed immediately
-import Auth from '../components/auth/Auth';
-import AuthChooser from '../components/auth/AuthChooser';
-import Login from '../components/auth/Login';
-import EnterpriseLogin from '../components/auth/EnterpriseLogin';
-import AdminLogin from '../components/auth/AdminLogin';
-import ProfileSetup from '../components/auth/ProfileSetup';
-import BeanHealthLanding from '../components/landing/BeanHealthLanding';
+// Auth Components - LAZY LOADED (not needed until user navigates to auth pages)
+const Auth = React.lazy(() => import('../components/auth/Auth'));
+const ProfileSetup = React.lazy(() => import('../components/auth/ProfileSetup'));
+
+// Landing Page - LAZY LOADED (heavy: framer-motion, recharts, CKD engine)
+const BeanHealthLanding = React.lazy(() => import('../components/landing/BeanHealthLanding'));
 
 // Dashboard Components - LAZY LOADED for faster initial load
 const PatientDashboard = React.lazy(() => import('../components/PatientDashboard'));
@@ -46,7 +44,9 @@ const DoctorDashboardWrapper = React.lazy(() =>
 );
 
 // These are needed synchronously for route protection
-import { DepartmentProtectedRoute, DoctorProtectedRoute } from '../components/enterprise';
+// Import directly from files to avoid pulling in the entire enterprise barrel (~400KB)
+import DepartmentProtectedRoute from '../components/enterprise/DepartmentProtectedRoute';
+import DoctorProtectedRoute from '../components/enterprise/DoctorProtectedRoute';
 
 // Route Guards
 import ProtectedRoute from '../components/ProtectedRoute';

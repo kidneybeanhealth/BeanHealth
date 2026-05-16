@@ -27,7 +27,7 @@ export const problemCards: { title: string; description: string; accent: string 
     title: "Reactive emergency-driven care",
     description:
       "Delayed follow-up and missed actions contribute to avoidable admissions and poor continuity of care.",
-    accent: "from-blue-500/20 via-transparent to-transparent",
+    accent: "from-[#73BA27]/20 via-transparent to-transparent",
   },
 ];
 
@@ -237,7 +237,7 @@ export const ongoingProjects: {
   {
     name: "CKD Risk Intelligence Engine",
     status: "Beta",
-    statusColor: "blue",
+    statusColor: "green",
     description:
       "AI-powered module that stratifies chronic kidney disease risk from lab trends, flags deterioration early, and surfaces explainable decision provenance for clinicians.",
     tags: ["Machine Learning", "Python", "FastAPI", "FHIR"],
