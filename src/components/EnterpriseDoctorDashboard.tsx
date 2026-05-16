@@ -1466,7 +1466,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 .single();
 
             if (insertResult.error) {
-                // Fallback for DBs missing newer columns
+                // Fallback for DBs missing newer columns (next_review_date, tests_to_review, etc.)
+                // metadata is a JSONB column that exists on all DB versions — always include it
+                // so actor attribution is never lost even when the primary insert fails.
                 const fallbackInsert = await supabase
                     .from('hospital_prescriptions' as any)
                     .insert({
@@ -1476,7 +1478,12 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         token_number: editResendItem.token_number || patient.token_number,
                         medications: prescriptionMeds,
                         notes: prescriptionNotes,
-                        status: 'pending'
+                        status: 'pending',
+                        metadata: {
+                            actorType,
+                            actorDisplayName,
+                            resent_from: editResendItem.id
+                        }
                     } as any)
                     .select('id')
                     .single();

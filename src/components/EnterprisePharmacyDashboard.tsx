@@ -1276,6 +1276,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                         dispensed_days: dispensingDays || (selectedPrescription as any).dispensed_days
                     }}
                     clinicLogo={hospitalLogo || undefined}
+                    actorAttribution={
+                        (selectedPrescription as any).metadata?.actorType
+                            ? {
+                                actorType: (selectedPrescription as any).metadata.actorType,
+                                actorDisplayName: (selectedPrescription as any).metadata.actorDisplayName
+                              }
+                            : undefined
+                    }
                 />
             )}
         </div>
