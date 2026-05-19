@@ -45,23 +45,28 @@ export interface UpsertHospitalDiagnosisInput {
 }
 
 export const fetchHospitalSavedDrugs = async (hospitalId: string): Promise<HospitalSavedDrug[]> => {
-    const { data, error } = await withTimeout<any>(
-        (supabase
-            .from(HOSPITAL_SAVED_DRUGS_TABLE as any)
-            .select('*')
-            .eq('hospital_id', hospitalId)
-            .eq('is_active', true)
-            .order('name', { ascending: true })
-            .limit(10000) as any),
-        10000,
-        'Timed out while loading shared hospital drugs'
-    );
-
-    if (error) {
-        throw error;
+    const PAGE = 1000;
+    const all: HospitalSavedDrug[] = [];
+    let from = 0;
+    while (true) {
+        const { data, error } = await withTimeout<any>(
+            (supabase
+                .from(HOSPITAL_SAVED_DRUGS_TABLE as any)
+                .select('*')
+                .eq('hospital_id', hospitalId)
+                .eq('is_active', true)
+                .order('name', { ascending: true })
+                .range(from, from + PAGE - 1) as any),
+            10000,
+            'Timed out while loading shared hospital drugs'
+        );
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < PAGE) break;
+        from += PAGE;
     }
-
-    return (data || []) as HospitalSavedDrug[];
+    return all;
 };
 
 export const upsertHospitalSavedDrug = async (input: UpsertHospitalDrugInput): Promise<HospitalSavedDrug> => {
@@ -145,23 +150,28 @@ export const deleteHospitalSavedDrug = async (hospitalId: string, id: string): P
 };
 
 export const fetchHospitalSavedDiagnoses = async (hospitalId: string): Promise<HospitalSavedDiagnosis[]> => {
-    const { data, error } = await withTimeout<any>(
-        (supabase
-            .from(HOSPITAL_SAVED_DIAGNOSES_TABLE as any)
-            .select('*')
-            .eq('hospital_id', hospitalId)
-            .eq('is_active', true)
-            .order('name', { ascending: true })
-            .limit(10000) as any),
-        10000,
-        'Timed out while loading shared hospital diagnoses'
-    );
-
-    if (error) {
-        throw error;
+    const PAGE = 1000;
+    const all: HospitalSavedDiagnosis[] = [];
+    let from = 0;
+    while (true) {
+        const { data, error } = await withTimeout<any>(
+            (supabase
+                .from(HOSPITAL_SAVED_DIAGNOSES_TABLE as any)
+                .select('*')
+                .eq('hospital_id', hospitalId)
+                .eq('is_active', true)
+                .order('name', { ascending: true })
+                .range(from, from + PAGE - 1) as any),
+            10000,
+            'Timed out while loading shared hospital diagnoses'
+        );
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < PAGE) break;
+        from += PAGE;
     }
-
-    return (data || []) as HospitalSavedDiagnosis[];
+    return all;
 };
 
 export const upsertHospitalSavedDiagnosis = async (input: UpsertHospitalDiagnosisInput): Promise<HospitalSavedDiagnosis> => {
