@@ -24,6 +24,7 @@ const ManageDiagnosesModal: React.FC<ManageDiagnosesModalProps> = ({ doctorId, h
     const [editingDiagnosis, setEditingDiagnosis] = useState<SavedDiagnosis | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Fetch saved diagnoses
     useEffect(() => {
@@ -142,6 +143,39 @@ const ManageDiagnosesModal: React.FC<ManageDiagnosesModalProps> = ({ doctorId, h
                     )}
                 </div>
 
+                {/* Search + Count Bar */}
+                {!loading && savedDiagnoses.length > 0 && (
+                    <div className="px-6 py-3 border-b border-gray-100 flex items-center gap-3">
+                        <div className="relative flex-1">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input
+                                type="text"
+                                placeholder="Search diagnoses..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
+                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                            {searchQuery
+                                ? `${savedDiagnoses.filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase())).length} of ${savedDiagnoses.length}`
+                                : `${savedDiagnoses.length} total`}
+                        </span>
+                    </div>
+                )}
+
                 {/* List Container */}
                 <div className="flex-1 overflow-y-auto px-6 py-4">
                     {loading ? (
@@ -156,36 +190,48 @@ const ManageDiagnosesModal: React.FC<ManageDiagnosesModalProps> = ({ doctorId, h
                             <p className="text-gray-500 text-sm">No saved diagnoses yet</p>
                             <p className="text-gray-400 text-xs mt-1">Add your common diagnoses above</p>
                         </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {savedDiagnoses.map(diag => (
-                                <div
-                                    key={diag.id}
-                                    className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 hover:bg-gray-100 transition-colors group"
-                                >
-                                    <span className="font-medium text-gray-900 text-sm">{diag.name}</span>
-                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => { setEditingDiagnosis(diag); setNewDiagnosisName(diag.name); }}
-                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteDiagnosis(diag.id)}
-                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
+                    ) : (() => {
+                        const filtered = savedDiagnoses
+                            .filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                            .sort((a, b) => a.name.localeCompare(b.name));
+
+                        if (filtered.length === 0) return (
+                            <div className="text-center py-8 text-gray-400 text-sm">
+                                No diagnoses match "{searchQuery}"
+                            </div>
+                        );
+
+                        return (
+                            <div className="space-y-2">
+                                {filtered.map(diag => (
+                                    <div
+                                        key={diag.id}
+                                        className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 hover:bg-gray-100 transition-colors group"
+                                    >
+                                        <span className="font-medium text-gray-900 text-sm">{diag.name}</span>
+                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => { setEditingDiagnosis(diag); setNewDiagnosisName(diag.name); }}
+                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteDiagnosis(diag.id)}
+                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
         </div>
