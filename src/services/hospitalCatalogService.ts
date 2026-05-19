@@ -51,7 +51,8 @@ export const fetchHospitalSavedDrugs = async (hospitalId: string): Promise<Hospi
             .select('*')
             .eq('hospital_id', hospitalId)
             .eq('is_active', true)
-            .order('name', { ascending: true }) as any),
+            .order('name', { ascending: true })
+            .limit(10000) as any),
         10000,
         'Timed out while loading shared hospital drugs'
     );
@@ -150,7 +151,8 @@ export const fetchHospitalSavedDiagnoses = async (hospitalId: string): Promise<H
             .select('*')
             .eq('hospital_id', hospitalId)
             .eq('is_active', true)
-            .order('name', { ascending: true }) as any),
+            .order('name', { ascending: true })
+            .limit(10000) as any),
         10000,
         'Timed out while loading shared hospital diagnoses'
     );
