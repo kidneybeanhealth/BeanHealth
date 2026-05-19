@@ -1022,9 +1022,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         savedDiagnoses.map((d: any) => (d.normalized_name || d.name || '').toUpperCase().trim())
       );
       const newDiagnoses = formData.diagnosis
-        .split(/[,/]/)
+        .split(',')
         .map((d: string) => d.trim())
-        .filter((d: string) => d.length > 1 && !existingNormalized.has(d.toUpperCase()));
+        .filter((d: string) => d && !existingNormalized.has(d.toUpperCase()));
 
       // Fire-and-forget: failures are silent so they never block or confuse the doctor
       newDiagnoses.forEach((diagnosisName: string) => {
