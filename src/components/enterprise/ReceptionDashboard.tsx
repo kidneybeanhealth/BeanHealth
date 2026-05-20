@@ -161,6 +161,7 @@ const ReceptionDashboard: React.FC = () => {
     const [walkInForm, setWalkInForm] = useState({
         name: '',
         age: '',
+        dob: '',
         gender: '',
         fatherHusbandName: '',
         place: '',
@@ -1022,6 +1023,7 @@ const ReceptionDashboard: React.FC = () => {
         setWalkInForm({
             name: '',
             age: '',
+            dob: '',
             gender: '',
             fatherHusbandName: '',
             place: '',
@@ -1041,6 +1043,7 @@ const ReceptionDashboard: React.FC = () => {
         setWalkInForm({
             name: '',
             age: '',
+            dob: '',
             gender: '',
             fatherHusbandName: '',
             place: '',
@@ -1129,7 +1132,7 @@ const ReceptionDashboard: React.FC = () => {
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
         setRegistrationMode('queue');
-        setWalkInForm({ name: '', age: '', gender: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '', reviewDate: '' });
+        setWalkInForm({ name: '', age: '', dob: '', gender: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '', reviewDate: '' });
         setBhidMatch(null);
         setIsSearchingBhid(false);
         setMrSuggestions([]);
@@ -1307,7 +1310,7 @@ const ReceptionDashboard: React.FC = () => {
 
             if (isPastRegistration) {
                 if (!walkInForm.name.trim() || !walkInForm.age.trim() || !normalizedMrNumber) {
-                    throw new Error('Please fill name, age, and MR number');
+                    throw new Error('Please fill name, date of birth, and MR number');
                 }
 
                 const { data: duplicateMr, error: duplicateMrError } = await (supabase as any)
@@ -2603,14 +2606,36 @@ const ReceptionDashboard: React.FC = () => {
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Age</label>
+                                    <label className="flex items-center justify-between text-xs font-semibold text-gray-700 uppercase mb-2">
+                                        <span>Date of Birth</span>
+                                        {walkInForm.age && (
+                                            <span className="text-gray-400 normal-case font-normal">
+                                                Age: {walkInForm.age} {parseInt(walkInForm.age, 10) === 1 ? 'year' : 'years'}
+                                            </span>
+                                        )}
+                                    </label>
                                     <input
-                                        type="number"
-                                        required
+                                        type="date"
+                                        max={new Date().toISOString().split('T')[0]}
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                        value={walkInForm.age}
-                                        onChange={e => setWalkInForm({ ...walkInForm, age: e.target.value })}
-                                        placeholder="Years"
+                                        value={walkInForm.dob}
+                                        onChange={e => {
+                                            const dob = e.target.value;
+                                            let computedAge = '';
+                                            if (dob) {
+                                                const birth = new Date(dob);
+                                                const today = new Date();
+                                                let years = today.getFullYear() - birth.getFullYear();
+                                                const m = today.getMonth() - birth.getMonth();
+                                                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                                                    years--;
+                                                }
+                                                if (years >= 0 && years < 150) {
+                                                    computedAge = String(years);
+                                                }
+                                            }
+                                            setWalkInForm({ ...walkInForm, dob, age: computedAge });
+                                        }}
                                     />
                                 </div>
                                 <div>
