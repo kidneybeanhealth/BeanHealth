@@ -991,6 +991,99 @@ export interface AdmitPatientDirectlyParams {
     patientId: string;
 }
 
+/**
+ * Admission/discharge event for a patient — used by the Visit Journey timeline.
+ * Sourced from hospital_queues rows where this patient was admitted/discharged.
+ */
+export interface PatientAdmissionEvent {
+    queueId: string;
+    admittedAt: string | null;
+    dischargedAt: string | null;
+    admissionStatus: 'admitted' | 'discharged' | 'deceased';
+    doctorId: string | null;
+    tokenNumber: string | null;
+}
+
+/**
+ * Fetch ALL prescriptions for a single patient — paginated to bypass the
+ * Supabase 1000-row server cap. Used by the Visit History timeline where
+ * we need the complete journey, not just the truncated rows from the
+ * past-records list query.
+ */
+export async function fetchAllPatientPrescriptions(
+    hospitalId: string,
+    patientId: string
+): Promise<ReceptionVisitRecord[]> {
+    if (!hospitalId || !patientId) return [];
+
+    const PAGE = 1000;
+    const all: ReceptionVisitRecord[] = [];
+    let from = 0;
+    while (true) {
+        const result = await withTimeout(
+            (supabase
+                .from('hospital_prescriptions' as any)
+                .select(`
+                    id, patient_id, token_number, status, created_at, next_review_date,
+                    tests_to_review, specialists_to_review, medications, notes, metadata, dispensed_at,
+                    doctor:hospital_doctors(id, name, specialty, signature_url)
+                `)
+                .eq('hospital_id', hospitalId)
+                .eq('patient_id', patientId)
+                .order('created_at', { ascending: false })
+                .range(from, from + PAGE - 1)) as any,
+            12000,
+            'Timed out while loading prescription history'
+        ) as SupabaseResult<ReceptionVisitRecord[]>;
+
+        if (result.error) throw result.error;
+        const rows = (result.data as ReceptionVisitRecord[]) || [];
+        if (rows.length === 0) break;
+        all.push(...rows);
+        if (rows.length < PAGE) break;
+        from += PAGE;
+    }
+    return all;
+}
+
+/**
+ * Fetch all admission/discharge events for a single patient in a hospital.
+ * Returns the raw queue rows that ever had an admission attached.
+ */
+export async function fetchPatientAdmissionEvents(
+    hospitalId: string,
+    patientId: string
+): Promise<PatientAdmissionEvent[]> {
+    if (!hospitalId || !patientId) return [];
+
+    const result = await withTimeout(
+        ((supabase.from('hospital_queues' as any) as any)
+            .select('id, patient_id, doctor_id, token_number, admission_status, admitted_at, discharged_at')
+            .eq('hospital_id', hospitalId)
+            .eq('patient_id', patientId)
+            .not('admitted_at', 'is', null)
+            .order('admitted_at', { ascending: false })) as any,
+        10000,
+        'Timed out while loading admission history'
+    ) as SupabaseResult;
+
+    if (result.error) {
+        // hospital_queues.admission_status / admitted_at may not be migrated on older DBs
+        const msg = String(result.error.message || '').toLowerCase();
+        if (msg.includes('admission_status') || msg.includes('admitted_at')) return [];
+        throw result.error;
+    }
+
+    return ((result.data as any[]) || []).map(row => ({
+        queueId: row.id,
+        admittedAt: row.admitted_at || null,
+        dischargedAt: row.discharged_at || null,
+        admissionStatus: (row.admission_status || 'admitted') as 'admitted' | 'discharged' | 'deceased',
+        doctorId: row.doctor_id || null,
+        tokenNumber: row.token_number || null,
+    }));
+}
+
 export interface PendingReviewInfo {
     id: string;
     next_review_date: string | null;
