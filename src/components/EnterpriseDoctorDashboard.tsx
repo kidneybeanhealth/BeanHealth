@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import PrescriptionModalSelector from './prescriptions/PrescriptionModalSelector';
+import DischargeCardModal from './modals/DischargeCardModal';
 import PrescriptionModal from './modals/PrescriptionModal';
 import ManageDrugsModal from './modals/ManageDrugsModal';
 import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
@@ -161,6 +162,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [queueSearchOpen, setQueueSearchOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [showRxModal, setShowRxModal] = useState(false);
+    const [showDischargeCardModal, setShowDischargeCardModal] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
     const [selectedQueueId, setSelectedQueueId] = useState<string | null>(null);
     const [medications, setMedications] = useState<Medication[]>([
@@ -1055,6 +1057,22 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         logViewEvent('view.patient.open', { patientId: ctx.patientId, queueId: ctx.queueId });
     };
 
+    const handleDischargeCardAdmitted = async (ctx: AdmittedPrescribeContext) => {
+        setSelectedPatient({
+            id: ctx.patient.id,
+            name: ctx.patient.name,
+            age: ctx.patient.age,
+            token_number: ctx.tokenNumber || '',
+            mr_number: ctx.patient.mr_number || null,
+            app_access_enabled: null,
+        });
+        setSelectedQueueId(ctx.queueId);
+        await setPreparingIndicator(ctx.queueId);
+        setAdmittedRefreshToken(t => t + 1);
+        setShowDischargeCardModal(true);
+        logViewEvent('view.patient.open', { patientId: ctx.patientId, queueId: ctx.queueId, type: 'discharge_card' } as any);
+    };
+
     // ... (rest of handlers like handleMedChange, handleSendToPharmacy remain same)
     const handleAddMedication = () => {
         setMedications([...medications, { name: '', dosage: '', frequency: '', duration: '', instruction: '' }]);
@@ -1204,7 +1222,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     p_specialists_to_review: reviewContext?.specialistsToReview || null,
                     p_metadata: {
                         actorType,
-                        actorDisplayName
+                        actorDisplayName,
+                        documentType: showDischargeCardModal ? 'discharge_card' : 'prescription'
                     }
                 });
 
@@ -1285,7 +1304,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         status: 'pending',
                         metadata: {
                             actorType,
-                            actorDisplayName
+                            actorDisplayName,
+                            documentType: showDischargeCardModal ? 'discharge_card' : 'prescription'
                         }
                     } as any)
                     .select('id')
@@ -1459,7 +1479,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     metadata: {
                         actorType,
                         actorDisplayName,
-                        resent_from: editResendItem.id
+                        resent_from: editResendItem.id,
+                        documentType: (editResendItem as any)?.metadata?.documentType || 'prescription'
                     }
                 } as any)
                 .select('id')
@@ -1482,7 +1503,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         metadata: {
                             actorType,
                             actorDisplayName,
-                            resent_from: editResendItem.id
+                            resent_from: editResendItem.id,
+                            documentType: (editResendItem as any)?.metadata?.documentType || 'prescription'
                         }
                     } as any)
                     .select('id')
@@ -1559,7 +1581,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
     // Fix 3 & 5: Track whether any prescription modal is open.
     // Used to (a) block queue button clicks and (b) suppress background refetches.
-    const isAnyModalOpen = showRxModal || !!pastRxQueueItem || prescriptionPickerItems.length > 0 || !!editResendItem || !!selectedHistoryItem || !!prescribeCandidate;
+    const isAnyModalOpen = showRxModal || showDischargeCardModal || !!pastRxQueueItem || prescriptionPickerItems.length > 0 || !!editResendItem || !!selectedHistoryItem || !!prescribeCandidate;
 
     // Fix 5: Keep the ref in sync so interval/realtime closures see the latest value
     useEffect(() => { isModalOpenRef.current = isAnyModalOpen; }, [isAnyModalOpen]);
@@ -1768,7 +1790,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     doctor={currentDoctor}
                     doctorId={currentDoctor.id}
                     enablePrescribe={true}
+                    enableDischargeCard={true}
                     onPrescribe={handlePrescribeAdmitted}
+                    onDischargeCard={handleDischargeCardAdmitted}
                     actorDisplayName={actorDisplayName}
                     clinicLogo={hospitalLogo || undefined}
                 />
@@ -2397,6 +2421,32 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             patientId: selectedPatient.id,
                             queueId: selectedQueueId || null,
                         });
+                    }}
+                />
+            )}
+
+            {/* Discharge Card Modal - Active (Admitted Patients flow) */}
+            {showDischargeCardModal && selectedPatient && (
+                <DischargeCardModal
+                    doctor={currentDoctor}
+                    patient={selectedPatient}
+                    onClose={() => {
+                        clearPreparingIndicator(selectedQueueId);
+                        setShowDischargeCardModal(false);
+                        setSelectedQueueId(null);
+                        setSelectedPatient(null);
+                        setAdmittedRefreshToken(t => t + 1);
+                    }}
+                    onSendToPharmacy={handleSendToPharmacy}
+                    clinicLogo={hospitalLogo || undefined}
+                    actorAttribution={{ actorType, actorDisplayName }}
+                    onPrintOpen={() => {
+                        logViewEvent('print.preview.open', {
+                            eventCategory: 'print',
+                            patientId: selectedPatient.id,
+                            queueId: selectedQueueId || null,
+                            type: 'discharge_card',
+                        } as any);
                     }}
                 />
             )}

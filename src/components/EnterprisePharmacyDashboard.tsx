@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import PrescriptionModal from './modals/PrescriptionModal';
 import { syncReviewFromPrescription } from '../services/enterpriseReviewService';
+
+const DischargeCardModal = lazy(() => import('./modals/DischargeCardModal'));
 
 interface PharmacyDashboardProps {
     hospitalId: string;
@@ -1260,32 +1262,38 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                 </div>
             )}
 
-            {/* Official Print Modal (Reusable PrescriptionModal) */}
-            {selectedPrescription && showPrintModal && (
-                <PrescriptionModal
-                    doctor={selectedPrescription.doctor}
-                    patient={{
+            {/* Official Print Modal — route to discharge card or prescription based on metadata */}
+            {selectedPrescription && showPrintModal && (() => {
+                const meta = (selectedPrescription as any).metadata || {};
+                const notesStr = (selectedPrescription as any).notes || '';
+                // Detect discharge cards by metadata flag OR legacy notes marker fallback
+                const isDischargeCard = meta.documentType === 'discharge_card' || notesStr.startsWith('DocType: discharge_card');
+                const commonProps = {
+                    doctor: selectedPrescription.doctor,
+                    patient: {
                         ...selectedPrescription.patient,
                         token_number: selectedPrescription.token_number || selectedPrescription.patient?.token_number
-                    }}
-                    onClose={() => setShowPrintModal(false)}
-                    readOnly={true}
-                    forcePrint={true}
-                    existingData={{
+                    },
+                    onClose: () => setShowPrintModal(false),
+                    readOnly: true as const,
+                    forcePrint: true as const,
+                    existingData: {
                         ...selectedPrescription,
                         dispensed_days: dispensingDays || (selectedPrescription as any).dispensed_days
-                    }}
-                    clinicLogo={hospitalLogo || undefined}
-                    actorAttribution={
-                        (selectedPrescription as any).metadata?.actorType
-                            ? {
-                                actorType: (selectedPrescription as any).metadata.actorType,
-                                actorDisplayName: (selectedPrescription as any).metadata.actorDisplayName
-                              }
-                            : undefined
-                    }
-                />
-            )}
+                    },
+                    clinicLogo: hospitalLogo || undefined,
+                    actorAttribution: meta.actorType
+                        ? { actorType: meta.actorType, actorDisplayName: meta.actorDisplayName }
+                        : undefined
+                };
+                return isDischargeCard ? (
+                    <Suspense fallback={null}>
+                        <DischargeCardModal {...commonProps} />
+                    </Suspense>
+                ) : (
+                    <PrescriptionModal {...commonProps} />
+                );
+            })()}
         </div>
     );
 };
