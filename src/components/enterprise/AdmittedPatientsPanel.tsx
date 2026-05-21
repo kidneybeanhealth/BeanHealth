@@ -21,15 +21,13 @@ import {
     fetchAdmittedPatients,
     dischargePatient,
     markPatientDeceased,
-    fetchPatientPrescriptions,
     admitPatientDirectly,
     fetchPatientPendingReviews,
     type AdmittedPatientRecord,
-    type ReceptionVisitRecord,
     type PendingReviewInfo,
 } from '../../services/enterpriseReviewService';
 
-const PrescriptionModalSelector = lazy(() => import('../prescriptions/PrescriptionModalSelector'));
+const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 
 interface PatientSearchResult {
     id: string;
@@ -56,10 +54,14 @@ interface AdmittedPatientsPanelProps {
     doctorId?: string | null;
     /** Whether to show the Prescribe action (only doctor dashboard). */
     enablePrescribe?: boolean;
+    /** Whether to show the Discharge Card action (only doctor dashboard). */
+    enableDischargeCard?: boolean;
     /** Whether to show Mark Deceased action (reception dashboard only). */
     enableMarkDeceased?: boolean;
     /** Invoked when user clicks Prescribe for an admitted patient. */
     onPrescribe?: (ctx: AdmittedPrescribeContext) => void;
+    /** Invoked when user clicks Discharge Card for an admitted patient. */
+    onDischargeCard?: (ctx: AdmittedPrescribeContext) => void;
     /** Display name of the currently logged-in actor (doctor or Jr.) — shown on "preparing" badge. */
     actorDisplayName?: string;
     /** Hospital logo URL passed from the parent so View Rx uses the same logo as the live queue. */
@@ -83,8 +85,10 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     doctor,
     doctorId,
     enablePrescribe = false,
+    enableDischargeCard = false,
     enableMarkDeceased = false,
     onPrescribe,
+    onDischargeCard,
     actorDisplayName,
     clinicLogo: clinicLogoProp,
 }) => {
@@ -97,10 +101,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     const [dischargeReviewDate, setDischargeReviewDate] = useState('');
     const [dischargeConfirmReady, setDischargeConfirmReady] = useState(false);
     const [deceasedCandidate, setDeceasedCandidate] = useState<AdmittedPatientRecord | null>(null);
-    const [rxModalPatient, setRxModalPatient] = useState<AdmittedPatientRecord | null>(null);
-    const [rxModalLoading, setRxModalLoading] = useState(false);
-    const [rxModalPrescriptions, setRxModalPrescriptions] = useState<ReceptionVisitRecord[]>([]);
-    const [selectedRx, setSelectedRx] = useState<ReceptionVisitRecord | null>(null);
+    const [journeyPatient, setJourneyPatient] = useState<AdmittedPatientRecord | null>(null);
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
 
     // Add Patient modal
@@ -234,25 +235,6 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
         }
     };
 
-    const openRxModal = async (record: AdmittedPatientRecord) => {
-        setRxModalPatient(record);
-        setRxModalPrescriptions([]);
-        setRxModalLoading(true);
-        try {
-            const rxs = await fetchPatientPrescriptions(hospitalId, record.patient.id);
-            setRxModalPrescriptions(rxs);
-        } catch (err) {
-            console.error('[AdmittedPatientsPanel] rx fetch failed', err);
-            toast.error('Could not load prescriptions');
-        } finally {
-            setRxModalLoading(false);
-        }
-    };
-
-    const handleRxRowClick = (rx: ReceptionVisitRecord) => {
-        setSelectedRx(rx);
-    };
-
     // ── Add Patient modal logic ────────────────────────────────────────
     useEffect(() => {
         const t = window.setTimeout(() => setAddDebouncedSearch(addSearch.trim()), 350);
@@ -356,6 +338,16 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
         });
     };
 
+    const handleDischargeCardClick = (record: AdmittedPatientRecord) => {
+        if (!onDischargeCard) return;
+        onDischargeCard({
+            queueId: record.queueId,
+            patientId: record.patientId,
+            tokenNumber: record.tokenNumber,
+            patient: record.patient,
+        });
+    };
+
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             {/* Header / search */}
@@ -440,10 +432,10 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
                                         <button
-                                            onClick={() => openRxModal(record)}
+                                            onClick={() => setJourneyPatient(record)}
                                             className="px-3 py-2 text-xs sm:text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-lg"
                                         >
-                                            View Rx
+                                            Visit History
                                         </button>
                                         {enablePrescribe && (
                                             <button
@@ -451,6 +443,14 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                                 className="px-3 py-2 text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg"
                                             >
                                                 Prescribe
+                                            </button>
+                                        )}
+                                        {enableDischargeCard && (
+                                            <button
+                                                onClick={() => handleDischargeCardClick(record)}
+                                                className="px-3 py-2 text-xs sm:text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-100 rounded-lg"
+                                            >
+                                                Discharge Card
                                             </button>
                                         )}
                                         <button
@@ -610,56 +610,18 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                 onConfirm={handleConfirmDeceased}
             />
 
-            {/* View Rx — prescription list modal */}
-            {rxModalPatient && !selectedRx && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
-                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-base font-bold text-gray-900">Past Prescriptions</h3>
-                                <p className="text-xs text-gray-500 mt-0.5">{rxModalPatient.patient.name} · MR {rxModalPatient.patient.mr_number || 'N/A'}</p>
-                            </div>
-                            <button
-                                onClick={() => setRxModalPatient(null)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {rxModalLoading ? (
-                                <div className="text-center py-8 text-gray-500 text-sm">Loading prescriptions...</div>
-                            ) : rxModalPrescriptions.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500 text-sm">No prescriptions found</div>
-                            ) : (
-                                <ul className="divide-y divide-gray-100">
-                                    {rxModalPrescriptions.map(rx => {
-                                        const date = rx.created_at ? new Date(rx.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--';
-                                        const medCount = Array.isArray(rx.medications) ? rx.medications.length : 0;
-                                        return (
-                                            <li
-                                                key={rx.id}
-                                                className="py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-gray-50 rounded-xl px-2 -mx-2 transition-colors"
-                                                onClick={() => handleRxRowClick(rx)}
-                                            >
-                                                <div className="min-w-0">
-                                                    <div className="text-sm font-bold text-gray-900">{date}</div>
-                                                    <div className="text-xs text-gray-500 mt-0.5">
-                                                        {rx.doctor?.name ? `By ${rx.doctor.name}` : 'Doctor —'}
-                                                        {medCount > 0 ? ` · ${medCount} med${medCount !== 1 ? 's' : ''}` : ''}
-                                                    </div>
-                                                </div>
-                                                <span className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-lg whitespace-nowrap flex-shrink-0">
-                                                    View →
-                                                </span>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            )}
-                        </div>
-                    </div>
-                </div>
+            {/* Visit History modal — timeline of prescriptions + admissions; routes
+                to the correct viewer (Prescription vs Discharge Card) internally. */}
+            {journeyPatient && (
+                <Suspense fallback={null}>
+                    <VisitJourneyModal
+                        hospitalId={hospitalId}
+                        patient={journeyPatient.patient}
+                        prescriptions={journeyPatient.prescriptions || []}
+                        clinicLogo={clinicLogoProp || hospitalLogo || undefined}
+                        onClose={() => setJourneyPatient(null)}
+                    />
+                </Suspense>
             )}
 
             {/* Add Patient modal */}
@@ -960,31 +922,6 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                 </div>
             )}
 
-            {/* Full prescription modal — read-only, exact same as Past Records view */}
-            {selectedRx && rxModalPatient && (
-                <Suspense fallback={null}>
-                    <PrescriptionModalSelector
-                        doctor={
-                            doctor ||
-                            (selectedRx.doctor
-                                ? { id: selectedRx.doctor.id, name: selectedRx.doctor.name, specialty: selectedRx.doctor.specialty, hospital_id: hospitalId, signature_url: selectedRx.doctor.signature_url }
-                                : { id: '', name: 'Doctor', specialty: '', hospital_id: hospitalId })
-                        }
-                        patient={{
-                            id: rxModalPatient.patient.id,
-                            name: rxModalPatient.patient.name,
-                            age: rxModalPatient.patient.age,
-                            token_number: rxModalPatient.tokenNumber || selectedRx.token_number || '',
-                            mr_number: rxModalPatient.patient.mr_number,
-                        }}
-                        onClose={() => setSelectedRx(null)}
-                        readOnly={true}
-                        forcePrint={true}
-                        existingData={selectedRx}
-                        clinicLogo={clinicLogoProp || hospitalLogo || undefined}
-                    />
-                </Suspense>
-            )}
         </div>
     );
 };

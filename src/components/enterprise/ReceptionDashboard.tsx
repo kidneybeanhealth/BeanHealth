@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useHospitalName } from '../../hooks/useHospitalName';
@@ -12,7 +12,7 @@ import { getReceiptBytes } from '../../utils/receipts/receiptGeneratorSelector';
 import PrinterPreview from '../PrinterPreview';
 import { useTenant } from '../../contexts/TenantContext';
 import { BeanhealthIdService } from '../../services/beanhealthIdService';
-import PrescriptionModal from '../modals/PrescriptionModal';
+const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 import {
     fetchReceptionPastRecords,
     stopPatientFollowup,
@@ -326,8 +326,6 @@ const ReceptionDashboard: React.FC = () => {
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
     const [pastRecordsTotal, setPastRecordsTotal] = useState(0);
     const [rxHistoryPatient, setRxHistoryPatient] = useState<ReceptionPastRecordPatient | null>(null);
-    const [rxViewPatient, setRxViewPatient] = useState<any>(null);
-    const [rxViewPrescription, setRxViewPrescription] = useState<any>(null);
     const [callLogTarget, setCallLogTarget] = useState<CallLogTarget | null>(null);
     const [callLogDoctorSelector, setCallLogDoctorSelector] = useState<{ patientId: string; patient: ReceptionPastRecordPatient } | null>(null);
     const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
@@ -2247,7 +2245,7 @@ const ReceptionDashboard: React.FC = () => {
                                                                         onClick={() => setRxHistoryPatient(patient)}
                                                                         className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-orange-200 text-orange-700 bg-white hover:bg-orange-50 transition-colors"
                                                                     >
-                                                                        View Rx
+                                                                        Visit History
                                                                     </button>
                                                                     {!patient.isDeceased && (
                                                                         <button
@@ -2609,7 +2607,7 @@ const ReceptionDashboard: React.FC = () => {
                                     <label className="flex items-center justify-between text-xs font-semibold text-gray-700 uppercase mb-2">
                                         <span>Date of Birth</span>
                                         {walkInForm.age && (
-                                            <span className="text-gray-400 normal-case font-normal">
+                                            <span className="text-blue-600 normal-case font-normal">
                                                 Age: {walkInForm.age} {parseInt(walkInForm.age, 10) === 1 ? 'year' : 'years'}
                                             </span>
                                         )}
@@ -3157,88 +3155,17 @@ const ReceptionDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* View Rx Modal — Past Records */}
-            {rxHistoryPatient && (
-                <div className="fixed inset-0 z-[97] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col">
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900">Past Prescriptions</h3>
-                                <p className="text-sm text-gray-500 mt-0.5">
-                                    {rxHistoryPatient.name}{rxHistoryPatient.mr_number ? ` · ${rxHistoryPatient.mr_number}` : ''}
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setRxHistoryPatient(null)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div className="p-5 overflow-y-auto space-y-2">
-                            {(rxHistoryPatient.prescriptions || []).length === 0 ? (
-                                <p className="text-sm text-gray-500 text-center py-8">No past prescriptions found for this patient.</p>
-                            ) : (
-                                rxHistoryPatient.prescriptions.map((rx: any) => (
-                                    <div key={rx.id} className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-semibold text-gray-800">
-                                                {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                <span className="text-gray-400 font-normal ml-2">
-                                                    {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </p>
-                                            {rx.doctor?.name && (
-                                                <p className="text-xs text-gray-500 mt-1">{formatDoctorName(rx.doctor.name)}</p>
-                                            )}
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setRxViewPatient(rxHistoryPatient);
-                                                setRxViewPrescription(rx);
-                                                setRxHistoryPatient(null);
-                                            }}
-                                            className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors"
-                                        >
-                                            Open Rx
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-
-                        <div className="p-4 border-t border-gray-100 bg-gray-50">
-                            <button
-                                type="button"
-                                onClick={() => setRxHistoryPatient(null)}
-                                className="w-full py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {rxViewPrescription && rxViewPatient && (
-                <PrescriptionModal
-                    doctor={rxViewPrescription.doctor || {}}
-                    patient={{
-                        ...rxViewPatient,
-                        token_number: rxViewPrescription.token_number || rxViewPatient.token_number,
-                    }}
-                    onClose={() => { setRxViewPrescription(null); setRxViewPatient(null); }}
-                    readOnly={true}
-                    forcePrint={true}
-                    existingData={rxViewPrescription}
-                    clinicLogo={profile?.avatar_url || undefined}
-                />
+            {/* Visit History (replaces old Past Prescriptions modal) */}
+            {rxHistoryPatient && profile?.id && (
+                <Suspense fallback={null}>
+                    <VisitJourneyModal
+                        hospitalId={profile.id}
+                        patient={rxHistoryPatient}
+                        prescriptions={rxHistoryPatient.prescriptions || []}
+                        clinicLogo={profile?.avatar_url || undefined}
+                        onClose={() => setRxHistoryPatient(null)}
+                    />
+                </Suspense>
             )}
 
             {callLogTarget && (

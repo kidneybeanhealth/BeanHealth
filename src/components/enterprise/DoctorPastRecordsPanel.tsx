@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, lazy, Suspense } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import {
@@ -8,6 +8,8 @@ import {
     type ReceptionPastRecordPatient,
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
+
+const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 
 interface DoctorProfileLike {
     id: string;
@@ -101,6 +103,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
     const [pastRecordsTotal, setPastRecordsTotal] = useState(0);
     const [expandedCallHistoryPatientIds, setExpandedCallHistoryPatientIds] = useState<Set<string>>(new Set());
+    const [journeyPatient, setJourneyPatient] = useState<ReceptionPastRecordPatient | null>(null);
     const [callLogTarget, setCallLogTarget] = useState<CallLogTarget | null>(null);
     const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
     const [callHistoryLoading, setCallHistoryLoading] = useState(false);
@@ -747,70 +750,32 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                             )}
                                             <button
                                                 type="button"
-                                                onClick={() => togglePatientCallHistory(patient.id)}
-                                                className="px-3 py-2 rounded-xl text-xs font-bold bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100 transition-colors"
+                                                onClick={() => setJourneyPatient(patient)}
+                                                className="px-3 py-2 rounded-xl text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition-colors"
                                             >
-                                                {isExpanded ? 'Hide Rx' : 'View Rx'}
+                                                Visit History
                                             </button>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 mt-4">
                                         <div className="space-y-2">
-                                            {isExpanded && patient.prescriptions?.length > 0 ? (
-                                                <div className="space-y-2">
-                                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Prescription History</p>
-                                                    {patient.prescriptions.map((rx, rxIndex) => (
-                                                        <div key={rx.id} className="bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors">
-                                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                                                <div className="min-w-0">
-                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                        <span className="text-xs font-semibold text-gray-800">
-                                                                            {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                                            <span className="text-gray-400 font-normal ml-1">
-                                                                                {new Date(rx.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                                                                            </span>
-                                                                        </span>
-                                                                        {rx.status === 'dispensed' && (
-                                                                            <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
-                                                                        )}
-                                                                        {rx.doctor?.name && (
-                                                                            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
-                                                                                Rx by {rx.doctor.name}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    {Array.isArray(rx.medications) && rx.medications.length > 0 && (
-                                                                        <p className="text-xs text-gray-500 mt-1 truncate">
-                                                                            💊 {rx.medications.slice(0, 3).map((m: any) => m.name || '').filter(Boolean).join(', ')}{rx.medications.length > 3 ? ` +${rx.medications.length - 3} more` : ''}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex items-center gap-2 shrink-0">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => onViewPrescription(rx)}
-                                                                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors"
-                                                                    >
-                                                                        View Rx
-                                                                    </button>
-                                                                    {onEditResend && (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => onEditResend(rx)}
-                                                                            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors"
-                                                                        >
-                                                                            Edit & Resend
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                            <div className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Visits</p>
+                                                    <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                                                        {patient.prescriptions?.length || 0} prescription{(patient.prescriptions?.length || 0) === 1 ? '' : 's'}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 mt-0.5">Open Visit History for timeline</p>
                                                 </div>
-                                            ) : (
-                                                <p className="text-xs text-gray-400">{patient.prescriptions?.length ? 'View prescriptions to expand' : 'No prescriptions recorded'}</p>
-                                            )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setJourneyPatient(patient)}
+                                                    className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg border border-orange-200 text-orange-700 hover:bg-orange-50 transition-colors"
+                                                >
+                                                    Open
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div className="bg-gray-50 rounded-2xl border border-gray-100 p-3 sm:p-4">
@@ -952,6 +917,19 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                         </form>
                     </div>
                 </div>
+            )}
+
+            {journeyPatient && (
+                <Suspense fallback={null}>
+                    <VisitJourneyModal
+                        hospitalId={doctor.hospital_id}
+                        patient={journeyPatient}
+                        prescriptions={journeyPatient.prescriptions || []}
+                        clinicLogo={hospitalLogo || undefined}
+                        onEditResend={onEditResend ? (rx) => { onEditResend(rx); setJourneyPatient(null); } : undefined}
+                        onClose={() => setJourneyPatient(null)}
+                    />
+                </Suspense>
             )}
         </div>
     );
