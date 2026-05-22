@@ -1029,7 +1029,7 @@ const ReceptionDashboard: React.FC = () => {
             department: '',
             doctorId: '',
             tokenNumber: nextToken, // Pre-fill with smart Auto-Calc
-            mrNumber: '',
+            mrNumber: 'KNH/',
             reviewDate: ''
         });
 
@@ -1049,7 +1049,7 @@ const ReceptionDashboard: React.FC = () => {
             department: '',
             doctorId: '',
             tokenNumber: '',
-            mrNumber: '',
+            mrNumber: 'KNH/',
             reviewDate: ''
         });
         setShowWalkInModal(true);
@@ -1302,7 +1302,10 @@ const ReceptionDashboard: React.FC = () => {
             }
 
             const manualToken = walkInForm.tokenNumber.trim();
-            const normalizedMrNumber = walkInForm.mrNumber.trim() || null;
+            // Treat a bare "KNH/" prefix (no MR digits typed) as empty so the
+            // autofilled prefix alone isn't saved as a real MR number.
+            const trimmedMr = walkInForm.mrNumber.trim();
+            const normalizedMrNumber = (trimmedMr && trimmedMr.toUpperCase() !== 'KNH/') ? trimmedMr : null;
             const normalizedPhone = walkInForm.phone.trim() || null;
             const linkedUserId = bhidMatch?.id || null;
 
