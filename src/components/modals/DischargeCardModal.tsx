@@ -254,6 +254,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
     specialistToReview: '',
     saltIntake: '',
     fluidIntake: '',
+    dischargeWeight: '',
     doctorNotes: '',
     // Discharge-card-specific fields:
     dateOfAdmission: '',
@@ -627,9 +628,11 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
       name: `${prefix}${drug.name}`.toUpperCase(),
       drugType: drugType || '',
       availableDosages,
-      ...(availableDosages.length > 0 ? { dosage_value: availableDosages[0] } : {}),
-      ...(isSyrup ? { dose: 'ML' } : {}),
-      ...(defaultTiming && defaultTiming !== 'nil' ? { foodTiming: defaultTiming } : {})
+      // Always overwrite drug-specific fields so they don't leak from the
+      // previously selected drug. Empty when the new drug has no saved dosage.
+      dosage_value: availableDosages.length > 0 ? availableDosages[0] : '',
+      dose: isSyrup ? 'ML' : '',
+      foodTiming: defaultTiming && defaultTiming !== 'nil' ? defaultTiming : ''
     };
     setMedications(newMeds);
     setShowDrugDropdown(null);
@@ -781,7 +784,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
         const keys = [
           'DocType:', 'Place:', 'Phone:', 'Diagnosis:', 'Review:', 'Tests:',
           'SpecialistToReview:', 'SpecialistsToReview:', 'SaltIntake:',
-          'FluidIntake:', 'Allergy:', 'DoctorNotes:',
+          'FluidIntake:', 'DischargeWeight:', 'Allergy:', 'DoctorNotes:',
           'RoomNo:', 'ExplainedBy:', 'AttenderName:',
           'DateOfAdmission:', 'DateOfDischarge:', 'Claim:', 'MLC:'
         ];
@@ -815,6 +818,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
         const salt = extractField(notes, 'SaltIntake:');
         const fluid = extractField(notes, 'FluidIntake:');
         const allergy = extractField(notes, 'Allergy:');
+        const dischargeWeight = extractField(notes, 'DischargeWeight:');
         const roomNo = extractField(notes, 'RoomNo:');
         const explainedBy = extractField(notes, 'ExplainedBy:');
         const attenderName = extractField(notes, 'AttenderName:');
@@ -834,6 +838,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
           doctorNotes: docNotes,
           saltIntake: salt,
           fluidIntake: fluid,
+          dischargeWeight: dischargeWeight || prev.dischargeWeight,
           allergy: allergy || prev.allergy,
           roomNo: roomNo || prev.roomNo,
           explainedBy: explainedBy || prev.explainedBy,
@@ -1031,7 +1036,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
 
     // We pack the extra metadata (Place, Phone, etc) into the notes field so it persists without schema changes.
     // DocType marker lets the pharmacy detect discharge cards and render the correct modal.
-    const notes = `DocType: discharge_card\nPlace: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}\nAllergy: ${formData.allergy}\nDoctorNotes: ${formData.doctorNotes}\nRoomNo: ${formData.roomNo}\nExplainedBy: ${formData.explainedBy}\nAttenderName: ${formData.attenderName}\nDateOfAdmission: ${formData.dateOfAdmission}\nDateOfDischarge: ${formData.dateOfDischarge}\nClaim: ${formData.claim}\nMLC: ${formData.mlc}`;
+    const notes = `DocType: discharge_card\nPlace: ${formData.place}\nPhone: ${formData.phone}\nDiagnosis: ${formData.diagnosis}\nReview: ${formData.reviewDate}\nTests: ${formData.testsToReview}\nSpecialistToReview: ${formData.specialistToReview}\nSaltIntake: ${formData.saltIntake}\nFluidIntake: ${formData.fluidIntake}\nDischargeWeight: ${formData.dischargeWeight}\nAllergy: ${formData.allergy}\nDoctorNotes: ${formData.doctorNotes}\nRoomNo: ${formData.roomNo}\nExplainedBy: ${formData.explainedBy}\nAttenderName: ${formData.attenderName}\nDateOfAdmission: ${formData.dateOfAdmission}\nDateOfDischarge: ${formData.dateOfDischarge}\nClaim: ${formData.claim}\nMLC: ${formData.mlc}`;
     if (onSendToPharmacy) {
       onSendToPharmacy(pharmacyMeds, notes, {
         nextReviewDate: formData.reviewDate || null,
@@ -1547,38 +1552,29 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                             <div className="flex-1 py-1 px-1.5 flex items-center uppercase">{patient.mr_number || ''}</div>
                           </div>
                         </div>
-                        {/* Row 2: Phone | DoA | DoD | Claim | MLC */}
+                        {/* Row 2: DoA | DoD | Claim | MLC */}
                         <div className="flex border-b border-black min-h-[24px]">
-                          <div className="w-2/5 flex border-r border-black">
-                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">போன் / PHONE</div>
-                            <input
-                              className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent"
-                              value={formData.phone}
-                              onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                              readOnly={readOnly}
-                            />
-                          </div>
-                          <div className="w-[14%] flex border-r border-black">
+                          <div className="flex-1 flex border-r border-black min-w-0">
                             <div className="w-14 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">DOA</div>
                             <input
                               type="date"
-                              className="flex-1 py-1 px-1 outline-none font-normal bg-transparent text-[10px]"
+                              className="flex-1 py-1 px-1 outline-none font-normal bg-transparent text-[10px] min-w-0"
                               value={formData.dateOfAdmission}
                               onChange={e => setFormData({ ...formData, dateOfAdmission: e.target.value })}
                               readOnly={readOnly}
                             />
                           </div>
-                          <div className="w-[14%] flex border-r border-black">
+                          <div className="flex-1 flex border-r border-black min-w-0">
                             <div className="w-14 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">DOD</div>
                             <input
                               type="date"
-                              className="flex-1 py-1 px-1 outline-none font-normal bg-transparent text-[10px]"
+                              className="flex-1 py-1 px-1 outline-none font-normal bg-transparent text-[10px] min-w-0"
                               value={formData.dateOfDischarge}
                               onChange={e => setFormData({ ...formData, dateOfDischarge: e.target.value })}
                               readOnly={readOnly}
                             />
                           </div>
-                          <div className="w-[16%] flex border-r border-black">
+                          <div className="flex-1 flex border-r border-black min-w-0">
                             <div className="w-12 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">CLAIM</div>
                             {readOnly ? (
                               <div className="flex-1 py-1 px-1.5 flex items-center uppercase">{formData.claim || '--'}</div>
@@ -1594,13 +1590,13 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                               </select>
                             )}
                           </div>
-                          <div className="flex-1 flex">
+                          <div className="flex-1 flex min-w-0">
                             <div className="w-12 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">MLC</div>
                             {readOnly ? (
-                              <div className="flex-1 py-1 px-1.5 flex items-center uppercase">{formData.mlc || '--'}</div>
+                              <div className="flex-1 py-1 px-1.5 flex items-center uppercase min-w-0">{formData.mlc || '--'}</div>
                             ) : (
                               <select
-                                className="flex-1 py-1 px-1 outline-none font-bold bg-transparent text-[10px]"
+                                className="flex-1 py-1 px-1 outline-none font-bold bg-transparent text-[10px] min-w-0"
                                 value={formData.mlc}
                                 onChange={e => setFormData({ ...formData, mlc: e.target.value })}
                               >
@@ -2264,11 +2260,11 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                               <p className="font-bold underline italic text-sm">TO BE SPECIFIED / MONITORED:</p>
                               <span className="font-bold text-sm">VEG ONLY DIET</span>
                             </div>
-                            <div className="flex gap-10 text-sm font-bold">
+                            <div className="flex gap-6 text-sm font-bold flex-wrap">
                               <div className="flex gap-1 items-baseline">
-                                <span className="shrink-0 uppercase">SALT INTAKE (உப்பு):</span>
+                                <span className="shrink-0 uppercase">SALT (உப்பு):</span>
                                 <input
-                                  className="w-28 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
+                                  className="w-20 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
                                   value={formData.saltIntake}
                                   onChange={e => setFormData({ ...formData, saltIntake: e.target.value.toUpperCase() })}
                                   placeholder="____"
@@ -2277,15 +2273,26 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                 <span className="shrink-0 uppercase">GM/DAY</span>
                               </div>
                               <div className="flex gap-1 items-baseline">
-                                <span className="shrink-0 uppercase">FLUID INTAKE (நீர்/திரவம்):</span>
+                                <span className="shrink-0 uppercase">FLUID (நீர்):</span>
                                 <input
-                                  className="w-28 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
+                                  className="w-20 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
                                   value={formData.fluidIntake}
                                   onChange={e => setFormData({ ...formData, fluidIntake: e.target.value.toUpperCase() })}
                                   placeholder="____"
                                   readOnly={readOnly}
                                 />
                                 <span className="shrink-0 uppercase">LIT/DAY</span>
+                              </div>
+                              <div className="flex gap-1 items-baseline">
+                                <span className="shrink-0 uppercase">DISCHARGE WT:</span>
+                                <input
+                                  className="w-20 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
+                                  value={formData.dischargeWeight}
+                                  onChange={e => setFormData({ ...formData, dischargeWeight: e.target.value.toUpperCase() })}
+                                  placeholder="____"
+                                  readOnly={readOnly}
+                                />
+                                <span className="shrink-0 uppercase">KG</span>
                               </div>
                             </div>
                           </div>

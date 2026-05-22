@@ -410,6 +410,7 @@ interface MobileDischargeCardInputProps {
         // Discharge-card-specific fields:
         dateOfAdmission?: string; dateOfDischarge?: string; claim?: string; mlc?: string;
         roomNo?: string; explainedBy?: string; attenderName?: string;
+        dischargeWeight?: string;
     };
     setFormData: (data: any) => void;
     medications: Medication[];
@@ -624,7 +625,7 @@ const MobileDischargeCardInput: React.FC<MobileDischargeCardInputProps> = ({
                 {/* Intake */}
                 <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
                     <h3 className="font-black text-gray-900 text-sm mb-2">Intake Restrictions</h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                         <div>
                             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Salt (gm/day)</label>
                             <input type="text" value={formData.saltIntake} onChange={e => setFormData((prev: any) => ({ ...prev, saltIntake: e.target.value }))}
@@ -634,6 +635,11 @@ const MobileDischargeCardInput: React.FC<MobileDischargeCardInputProps> = ({
                             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Fluid (lit/day)</label>
                             <input type="text" value={formData.fluidIntake} onChange={e => setFormData((prev: any) => ({ ...prev, fluidIntake: e.target.value }))}
                                 className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none" placeholder="e.g., 1.5" readOnly={readOnly} />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Discharge Wt (kg)</label>
+                            <input type="text" value={formData.dischargeWeight || ''} onChange={e => setFormData((prev: any) => ({ ...prev, dischargeWeight: e.target.value }))}
+                                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none" placeholder="e.g., 72" readOnly={readOnly} />
                         </div>
                     </div>
                 </div>
