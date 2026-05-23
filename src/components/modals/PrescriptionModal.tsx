@@ -1854,7 +1854,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 <div className="w-16 border-r border-black flex items-center justify-center shrink-0 relative">
                                   <input
                                     className="w-full h-full outline-none text-center bg-transparent py-1 px-1 font-bold text-[13px] uppercase"
-                                    placeholder="MG"
+                                    placeholder={readOnly ? '' : 'MG'}
                                     value={med.dosage_value || ''}
                                     onChange={(e) => {
                                       updateMed(globalIndex, 'dosage_value', e.target.value);
