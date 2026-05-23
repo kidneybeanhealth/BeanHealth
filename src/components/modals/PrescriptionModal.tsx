@@ -2161,10 +2161,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                           <div className={`border-t border-black pt-2 mt-1 ${scale.mb}`}>
                             <div className="flex justify-between items-baseline mb-1.5">
                               <p className="font-bold underline italic text-sm">TO BE SPECIFIED / MONITORED:</p>
-                              <span className="font-bold text-sm">VEG ONLY DIET</span>
+                              <span className="font-bold text-sm" style={{ marginRight: '2cm' }}>VEG ONLY DIET</span>
                             </div>
-                            <div className={`${scale.textSize} font-bold ${scale.spacing}`}>
-                              {/* SALT — input left edge aligned to shared w-32 label margin */}
+                            <div className={`flex gap-6 ${scale.textSize} font-bold`}>
+                              {/* Left column: SALT, FLUID, TESTS */}
+                              <div className={`flex-1 min-w-0 ${scale.spacing}`}>
+                              {/* SALT — input left edge aligned to shared label margin */}
                               <div className="flex gap-2 items-center">
                                 <span className="shrink-0 uppercase w-20 whitespace-nowrap">SALT (உப்பு):</span>
                                 <input
@@ -2188,10 +2190,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 />
                                 <span className="shrink-0 uppercase whitespace-nowrap">LIT/DAY</span>
                               </div>
-                              {/* TESTS (left) beside SPECIALISTS / REVIEW ON (right) */}
-                              <div className="flex gap-6">
-                                {/* Left: TESTS — label w-32 so box aligns with SALT/FLUID */}
-                                <div className="flex-1 min-w-0 flex gap-2 items-start">
+                              {/* TESTS — same left column, aligned with SALT/FLUID */}
+                              <div className="flex gap-2 items-start">
                                   <div className="shrink-0 whitespace-nowrap uppercase pt-1 w-20">TESTS :</div>
                                   {readOnly ? (
                                     <div className="flex-1 min-w-0 border border-gray-400 px-1.5 py-1 bg-transparent uppercase leading-tight whitespace-pre-wrap break-words min-h-[3.5em]">
@@ -2207,8 +2207,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     />
                                   )}
                                 </div>
-                                {/* Right: SPECIALISTS, REVIEW ON — beside TESTS */}
-                                <div className={`flex-1 min-w-0 ${scale.spacing}`}>
+                              </div>
+                              {/* Right column: SPECIALISTS, REVIEW ON — top, beside SALT */}
+                              <div className={`flex-1 min-w-0 ${scale.spacing}`}>
                                 <div>
                                   <div className="uppercase leading-tight flex items-baseline gap-2 mb-1">
                                     <span>SPECIALISTS :</span>
@@ -2326,7 +2327,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 </div>
                               </div>
                             </div>
-                          </div>
                           </div>
 
                           {/* Bottom Row: Notes on Left, Signature on Right */}
