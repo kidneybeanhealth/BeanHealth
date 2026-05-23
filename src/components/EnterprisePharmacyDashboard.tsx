@@ -956,6 +956,16 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                                     {item.token_number || item.patient?.token_number}
                                                 </div>
                                                 <div className="flex-1">
+                                                    {(() => {
+                                                        const meta = (item as any).metadata || {};
+                                                        const notesStr = (item as any).notes || '';
+                                                        const isDischargeCard = meta.documentType === 'discharge_card' || notesStr.startsWith('DocType: discharge_card');
+                                                        return (
+                                                            <span className={`inline-block mb-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide text-white shadow-sm ${isDischargeCard ? 'bg-gradient-to-r from-fuchsia-500 to-purple-600' : 'bg-gradient-to-r from-teal-500 to-emerald-600'}`}>
+                                                                {isDischargeCard ? 'Discharge Card' : 'Prescription'}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                     <h4 className="text-lg font-bold text-gray-900 flex flex-wrap items-center gap-2">
                                                         {item.patient?.name}
                                                         {item.status === 'dispensed' && (
