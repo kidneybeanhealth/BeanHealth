@@ -1537,19 +1537,21 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                     {/* Patient Details Grid Box - Only on Page 1 */}
                     {pageIndex === 0 && (
                       <div className="border-2 border-black mb-2 text-xs font-bold" style={{ borderCollapse: 'collapse' }}>
-                        {/* Row 1: Name | Age | MR.No  */}
+                        {/* Row 1: NAME | AGE | MR NO — flex-[2]/flex-1/flex-1 so 50% and 75%
+                            vertical dividers align with Row 2 (DOA/DOD/CLAIM/MLC, which has
+                            dividers at 25/50/75%) and Row 3 (CONSULTANTS/ROOM NO at 75%). */}
                         <div className="flex border-b border-black min-h-[24px]">
-                          <div className="w-2/5 flex border-r border-black">
-                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">பெயர் / NAME</div>
-                            <div className="flex-1 py-1 px-1.5 uppercase flex items-center">{patient.name}</div>
+                          <div className="flex-[2] flex border-r border-black min-w-0">
+                            <div className="w-28 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[11px] leading-tight">பெயர் / NAME</div>
+                            <div className="flex-1 py-1 px-1.5 uppercase flex items-center min-w-0">{patient.name}</div>
                           </div>
-                          <div className="w-1/4 flex border-r border-black">
-                            <div className="w-24 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px] leading-tight">வயது-AGE / ஆ/பெ-M/F</div>
-                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase">{patient.age}{patient.gender ? ` / ${patient.gender}` : ''}</div>
+                          <div className="flex-1 flex border-r border-black min-w-0">
+                            <div className="w-20 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px] leading-tight">வயது / AGE / M/F</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase min-w-0">{patient.age}{patient.gender ? ` / ${patient.gender}` : ''}</div>
                           </div>
-                          <div className="flex-1 flex">
+                          <div className="flex-1 flex min-w-0">
                             <div className="w-16 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">MR. NO</div>
-                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase">{patient.mr_number || ''}</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase min-w-0">{patient.mr_number || ''}</div>
                           </div>
                         </div>
                         {/* Row 2: DoA | DoD | Claim | MLC */}
@@ -1607,31 +1609,32 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                             )}
                           </div>
                         </div>
-                        {/* Row 3: Consultants (re-uses `allergy` key in state) + Room No. */}
+                        {/* Row 3: CONSULTANTS | ROOM NO — flex-[3]/flex-1 puts divider at 75%
+                            which aligns with the 75% divider in Row 1 and Row 2. */}
                         <div className="flex border-b border-black min-h-[24px]">
-                          <div className="flex-[4] flex border-r border-black">
-                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">ஆலோசகர்கள் / CONSULTANTS</div>
+                          <div className="flex-[3] flex border-r border-black min-w-0">
+                            <div className="w-28 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px] leading-tight">ஆலோசகர்கள் / CONSULTANTS</div>
                             <input
-                              className="flex-1 py-1 px-1.5 outline-none font-bold bg-transparent uppercase"
+                              className="flex-1 py-1 px-1.5 outline-none font-bold bg-transparent uppercase min-w-0"
                               value={formData.allergy}
                               onChange={e => setFormData({ ...formData, allergy: e.target.value.toUpperCase() })}
                               readOnly={readOnly}
                             />
                           </div>
-                          <div className="flex-1 flex">
-                            <div className="w-20 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">ROOM NO.</div>
+                          <div className="flex-1 flex min-w-0">
+                            <div className="w-16 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">ROOM NO.</div>
                             <input
-                              className="flex-1 py-1 px-1.5 outline-none font-bold bg-transparent uppercase"
+                              className="flex-1 py-1 px-1.5 outline-none font-bold bg-transparent uppercase min-w-0"
                               value={formData.roomNo}
                               onChange={e => setFormData({ ...formData, roomNo: e.target.value.toUpperCase() })}
                               readOnly={readOnly}
                             />
                           </div>
                         </div>
-                        {/* Row 6 */}
+                        {/* Row 4: FINAL DIAGNOSIS — full width, label width matches column 1 of Row 1 / Row 3 */}
                         <div className="flex min-h-[48px]">
                           <div className="flex-1 flex relative">
-                            <div className="w-32 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px] leading-tight">இறுதி வியாதிகள் / FINAL DIAGNOSIS</div>
+                            <div className="w-28 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px] leading-tight">இறுதி வியாதிகள் / FINAL DIAGNOSIS</div>
                             <div className="flex-1 relative flex">
                               {readOnly ? (
                                 <div className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-start content-start">
@@ -2254,95 +2257,83 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Salt and Fluid Intake - Parallel Layout */}
-                          <div className="border-t border-black pt-2 mt-1 mb-2">
+                          {/* Specified / Monitored + Review block — two-column layout
+                              Left: SALT / FLUID / DISCHARGE WT / REVIEW ON   Right: SPECIALISTS / TESTS */}
+                          <div className={`border-t border-black pt-2 mt-1 ${scale.mb}`}>
                             <div className="flex justify-between items-baseline mb-1.5">
                               <p className="font-bold underline italic text-sm">TO BE SPECIFIED / MONITORED:</p>
                               <span className="font-bold text-sm">VEG ONLY DIET</span>
                             </div>
-                            <div className="flex gap-6 text-sm font-bold flex-wrap">
-                              <div className="flex gap-1 items-baseline">
-                                <span className="shrink-0 uppercase">SALT (உப்பு):</span>
-                                <input
-                                  className="w-20 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
-                                  value={formData.saltIntake}
-                                  onChange={e => setFormData({ ...formData, saltIntake: e.target.value.toUpperCase() })}
-                                  placeholder="____"
-                                  readOnly={readOnly}
-                                />
-                                <span className="shrink-0 uppercase">GM/DAY</span>
-                              </div>
-                              <div className="flex gap-1 items-baseline">
-                                <span className="shrink-0 uppercase">FLUID (நீர்):</span>
-                                <input
-                                  className="w-20 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
-                                  value={formData.fluidIntake}
-                                  onChange={e => setFormData({ ...formData, fluidIntake: e.target.value.toUpperCase() })}
-                                  placeholder="____"
-                                  readOnly={readOnly}
-                                />
-                                <span className="shrink-0 uppercase">LIT/DAY</span>
-                              </div>
-                              <div className="flex gap-1 items-baseline">
-                                <span className="shrink-0 uppercase">DISCHARGE WT:</span>
-                                <input
-                                  className="w-20 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
-                                  value={formData.dischargeWeight}
-                                  onChange={e => setFormData({ ...formData, dischargeWeight: e.target.value.toUpperCase() })}
-                                  placeholder="____"
-                                  readOnly={readOnly}
-                                />
-                                <span className="shrink-0 uppercase">KG</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Footer Review Section */}
-                          <div className={`${scale.spacing} ${scale.textSize} font-bold ${scale.mb}`}>
-                            <div className="flex gap-4 items-end">
-                              <div className="shrink-0 whitespace-nowrap uppercase">REVIEW ON :</div>
-                              <div className="flex-1 flex items-center gap-3">
-                                <input
-                                  type="date"
-                                  className="border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent"
-                                  value={formData.reviewDate}
-                                  onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
-                                  readOnly={readOnly}
-                                  min={new Date().toISOString().split('T')[0]}
-                                />
-                                {reviewDaysLabel && (
-                                  <span className="text-sm font-bold whitespace-nowrap border-2 border-black rounded px-2 py-0.5 bg-gray-100 print:bg-gray-100 tracking-wide">
-                                    {reviewDaysLabel}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-4 items-end">
-                              <div className="shrink-0 whitespace-nowrap uppercase">TESTS :</div>
-                              {readOnly ? (
-                                <div className="flex-1 min-w-0 border-b border-gray-300 border-dashed px-1 bg-transparent uppercase leading-tight py-1 whitespace-pre-wrap break-words min-h-[1.5em]">
-                                  {formData.testsToReview}
+                            <div className={`flex gap-6 ${scale.textSize} font-bold`}>
+                              {/* Left column: SALT, FLUID, DISCHARGE WT, REVIEW ON */}
+                              <div className={`flex-1 min-w-0 ${scale.spacing}`}>
+                                <div className="flex gap-2 items-center">
+                                  <span className="shrink-0 uppercase">SALT (உப்பு):</span>
+                                  <input
+                                    className="flex-1 min-w-0 border border-gray-400 outline-none bg-transparent text-center uppercase px-1 leading-tight"
+                                    value={formData.saltIntake}
+                                    onChange={e => setFormData({ ...formData, saltIntake: e.target.value.toUpperCase() })}
+                                    placeholder="____"
+                                    readOnly={readOnly}
+                                  />
+                                  <span className="shrink-0 uppercase">GM/DAY</span>
                                 </div>
-                              ) : (
-                                <textarea
-                                  className="flex-1 min-w-0 border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase resize-none leading-tight py-1"
-                                  value={formData.testsToReview}
-                                  onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })}
-                                  readOnly={readOnly}
-                                  rows={1}
-                                />
-                              )}
-                            </div>
-                            <div className="flex gap-4 items-end">
-                              <div className="shrink-0 whitespace-nowrap uppercase">மருத்துவர் / SPECIALISTS :</div>
+                                <div className="flex gap-2 items-center">
+                                  <span className="shrink-0 uppercase">FLUID (நீர்):</span>
+                                  <input
+                                    className="flex-1 min-w-0 border border-gray-400 outline-none bg-transparent text-center uppercase px-1 leading-tight"
+                                    value={formData.fluidIntake}
+                                    onChange={e => setFormData({ ...formData, fluidIntake: e.target.value.toUpperCase() })}
+                                    placeholder="____"
+                                    readOnly={readOnly}
+                                  />
+                                  <span className="shrink-0 uppercase">LIT/DAY</span>
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                  <span className="shrink-0 uppercase">DISCHARGE WT:</span>
+                                  <input
+                                    className="flex-1 min-w-0 border border-gray-400 outline-none bg-transparent text-center uppercase px-1 leading-tight"
+                                    value={formData.dischargeWeight}
+                                    onChange={e => setFormData({ ...formData, dischargeWeight: e.target.value.toUpperCase() })}
+                                    placeholder="____"
+                                    readOnly={readOnly}
+                                  />
+                                  <span className="shrink-0 uppercase">KG</span>
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                  <div className="shrink-0 whitespace-nowrap uppercase">REVIEW ON :</div>
+                                  <div className="flex-1 flex items-center gap-2 min-w-0">
+                                    <input
+                                      type="date"
+                                      className="border border-gray-400 outline-none px-1 cursor-pointer bg-transparent min-w-0 leading-tight"
+                                      value={formData.reviewDate}
+                                      onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
+                                      readOnly={readOnly}
+                                      min={new Date().toISOString().split('T')[0]}
+                                    />
+                                    {reviewDaysLabel && (
+                                      <span className="text-[11px] font-bold whitespace-nowrap border-2 border-black rounded px-1.5 py-0 bg-gray-100 print:bg-gray-100 tracking-wide">
+                                        {reviewDaysLabel}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              {/* Right column: SPECIALISTS, TESTS */}
+                              <div className={`flex-1 min-w-0 ${scale.spacing}`}>
+                                <div className="flex gap-3 items-end">
+                                  <div className="shrink-0 uppercase leading-tight flex flex-col">
+                                    <span>SPECIALISTS :</span>
+                                    <span className="text-[10px] font-normal">மருத்துவர்</span>
+                                  </div>
                               <div className="relative flex-1 min-w-0">
                                 {readOnly ? (
-                                  <div className="w-full border-b border-gray-300 border-dashed px-1 bg-transparent uppercase leading-tight py-1 whitespace-pre-wrap break-words min-h-[1.5em]">
+                                  <div className="w-full border border-gray-400 px-1 bg-transparent uppercase leading-tight py-1 whitespace-pre-wrap break-words min-h-[1.5em]">
                                     {formData.specialistToReview}
                                   </div>
                                 ) : (
                                   <textarea
-                                    className="w-full border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase resize-none leading-tight py-1"
+                                    className="w-full border border-gray-400 outline-none px-1 bg-transparent uppercase resize-none leading-tight py-1"
                                     value={formData.specialistToReview}
                                     onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value.toUpperCase() })}
                                     onFocus={() => { if (!readOnly) { setShowSpecialistDropdown(true); setHighlightedDropdownIndex(-1); } }}
@@ -2427,6 +2418,24 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                 )}
                               </div>
                             </div>
+                                <div className="flex gap-2 items-start">
+                                  <div className="shrink-0 whitespace-nowrap uppercase pt-1">TESTS :</div>
+                                  {readOnly ? (
+                                    <div className="flex-1 min-w-0 border border-gray-400 px-1.5 py-1 bg-transparent uppercase leading-tight whitespace-pre-wrap break-words min-h-[3.5em]">
+                                      {formData.testsToReview}
+                                    </div>
+                                  ) : (
+                                    <textarea
+                                      className="flex-1 min-w-0 border border-gray-400 outline-none px-1.5 py-1 bg-transparent uppercase resize-none leading-tight min-h-[3.5em]"
+                                      value={formData.testsToReview}
+                                      onChange={e => !readOnly && setFormData({ ...formData, testsToReview: e.target.value.toUpperCase() })}
+                                      readOnly={readOnly}
+                                      rows={3}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
 
                           {/* Bottom Row: Notes on Left, Signature on Right */}
@@ -2450,12 +2459,12 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                       <span>/ NOTES:</span>
                                     </div>
                                     {readOnly ? (
-                                      <div className={`flex-1 border border-gray-300 border-dashed bg-transparent px-1 py-0.5 ${fontSizeClass} uppercase whitespace-pre-wrap break-words min-h-[56px]`}>
+                                      <div className={`flex-1 border border-gray-400 bg-transparent px-1 py-0.5 ${fontSizeClass} uppercase whitespace-pre-wrap break-words min-h-[56px]`}>
                                         {formData.doctorNotes}
                                       </div>
                                     ) : (
                                       <textarea
-                                        className={`flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 ${fontSizeClass} resize-none uppercase overflow-y-auto break-all min-h-[56px]`}
+                                        className={`flex-1 border border-gray-400 outline-none bg-transparent px-1 py-0.5 ${fontSizeClass} resize-none uppercase overflow-y-auto break-all min-h-[56px]`}
                                         value={formData.doctorNotes}
                                         onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value.toUpperCase() })}
                                         readOnly={readOnly}
