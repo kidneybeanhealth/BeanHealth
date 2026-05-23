@@ -127,6 +127,8 @@ const DOSE_OPTIONS = [
 
 const FOOD_TIMING_OPTIONS = ['nil', 'A/F', 'B/F', 'E/S', 'S/C B/F'];
 
+const ROW_PREVIEW_COLORS = ['#1d4ed8', '#e11d48', '#7e22ce', '#d97706', '#059669'];
+
 interface DuplicateMedicationEntry {
   rowNumber: number;
   dosage: string;
@@ -1348,7 +1350,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             ref={componentRef}
             className="print-content bg-white shadow-sm p-4 max-w-[210mm] text-black w-full origin-top-left"
             style={{
-              fontFamily: '"Times New Roman", Times, serif',
+              fontFamily: 'Tahoma, Geneva, sans-serif',
               minWidth: '210mm',
               transform: `scale(${layoutState.scale})`,
               marginLeft: layoutState.marginLeft,
@@ -1499,22 +1501,23 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                     {/* Patient Details Grid Box - Only on Page 1 — compact 4-row layout */}
                     {pageIndex === 0 && (
                       <div className="border-2 border-black mb-2 text-xs font-bold" style={{ borderCollapse: 'collapse' }}>
-                        {/* Row 1: NAME | AGE | MR NO */}
+                        {/* Row 1: NAME | AGE | MR NO — unified flex/label widths so vertical dividers
+                            align with Row 2 (FATHER/HUSBAND | PLACE | DATE) */}
                         <div className="flex border-b border-black min-h-[24px]">
-                          <div className="flex-[2] flex border-r border-black">
-                            <div className="w-24 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center">பெயர் / NAME</div>
-                            <div className="flex-1 py-1 px-1.5 uppercase flex items-center">{patient.name}</div>
+                          <div className="flex-[2] flex border-r border-black min-w-0">
+                            <div className="w-28 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[11px] leading-tight">பெயர் / NAME</div>
+                            <div className="flex-1 py-1 px-1.5 uppercase flex items-center min-w-0">{patient.name}</div>
                           </div>
-                          <div className="flex-1 flex border-r border-black">
+                          <div className="flex-1 flex border-r border-black min-w-0">
                             <div className="w-20 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px] leading-tight">வயது / AGE / M/F</div>
-                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase">{patient.age}{patient.gender ? ` / ${patient.gender}` : ''}</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase min-w-0">{patient.age}{patient.gender ? ` / ${patient.gender}` : ''}</div>
                           </div>
-                          <div className="flex-1 flex">
+                          <div className="flex-1 flex min-w-0">
                             <div className="w-16 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">MR. NO</div>
-                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase">{patient.mr_number || ''}</div>
+                            <div className="flex-1 py-1 px-1.5 flex items-center uppercase min-w-0">{patient.mr_number || ''}</div>
                           </div>
                         </div>
-                        {/* Row 2: FATHER/HUSBAND | PLACE | DATE */}
+                        {/* Row 2: FATHER/HUSBAND | PLACE | DATE — same widths as Row 1 */}
                         <div className="flex border-b border-black min-h-[24px]">
                           <div className="flex-[2] flex border-r border-black min-w-0">
                             <div className="w-28 py-1 px-1.5 text-[10px] border-r border-black bg-gray-50 print:bg-white flex items-center leading-tight">தகப்பன்/கணவன் FATHER/HUSBAND</div>
@@ -1524,8 +1527,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                               onChange={e => setFormData({ ...formData, fatherName: e.target.value })}
                             />
                           </div>
-                          <div className="flex-[1.5] flex border-r border-black min-w-0">
-                            <div className="w-14 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">PLACE</div>
+                          <div className="flex-1 flex border-r border-black min-w-0">
+                            <div className="w-20 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">PLACE</div>
                             <input
                               className="flex-1 py-1 px-1.5 outline-none font-normal bg-transparent min-w-0"
                               value={formData.place}
@@ -1533,14 +1536,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             />
                           </div>
                           <div className="flex-1 flex min-w-0">
-                            <div className="w-12 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">DATE</div>
+                            <div className="w-16 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[10px]">DATE</div>
                             <div className="flex-1 py-1 px-1.5 flex items-center min-w-0">{(readOnly && existingData?.created_at) ? new Date(existingData.created_at).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')}</div>
                           </div>
                         </div>
-                        {/* Row 3: ALLERGY */}
+                        {/* Row 3: ALLERGY — label width matches column 1 of rows above */}
                         <div className="flex border-b border-black min-h-[24px]">
                           <div className="flex-1 flex">
-                            <div className="w-24 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[11px] leading-tight">ALLERGY</div>
+                            <div className="w-28 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[11px] leading-tight">ALLERGY</div>
                             <input
                               className="flex-1 py-1 px-1.5 outline-none font-bold text-red-600 bg-transparent uppercase"
                               value={formData.allergy}
@@ -1548,13 +1551,13 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             />
                           </div>
                         </div>
-                        {/* Row 4: DIAGNOSIS */}
+                        {/* Row 4: DIAGNOSIS — label width matches column 1 of rows above */}
                         <div className="flex min-h-[48px]">
                           <div className="flex-1 flex relative">
-                            <div className="w-24 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[11px] leading-tight">வியாதிகள் / DIAGNOSIS</div>
+                            <div className="w-28 py-1 px-1.5 border-r border-black bg-gray-50 print:bg-white flex items-center text-[11px] leading-tight">வியாதிகள் / DIAGNOSIS</div>
                             <div className="flex-1 relative flex">
                               {readOnly ? (
-                                <div className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-start content-start">
+                                <div className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-start content-start" style={{ fontFamily: 'Tahoma, Geneva, sans-serif' }}>
                                   {formData.diagnosis
                                     ? formData.diagnosis.split(',').map(d => d.trim()).filter(Boolean).map((d, i, arr) => (
                                       <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
@@ -1567,6 +1570,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                               ) : (
                                 <div
                                   className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-center content-start cursor-text"
+                                  style={{ fontFamily: 'Tahoma, Geneva, sans-serif' }}
                                   onClick={() => diagnosisInputRef.current?.focus()}
                                 >
                                   {(formData.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean).map((d, i, arr) => (
@@ -1754,18 +1758,20 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                               : FIRST_PAGE_ITEMS + (pageIndex - 1) * SUBSEQUENT_PAGE_ITEMS + localIndex;
 
                             const shouldExpandRow = shouldExpand;
+                            const previewColor = showSendPreview ? ROW_PREVIEW_COLORS[globalIndex % ROW_PREVIEW_COLORS.length] : '';
 
                             return (
                               <div
                                 key={globalIndex}
                                 className={`flex border-b border-black ${shouldExpandRow ? 'flex-1 items-stretch' : 'py-1 min-h-[40px]'} text-xs relative group`}
+                                style={previewColor ? { color: previewColor } : undefined}
                               >
                                 <div className="w-12 border-r border-black py-1 text-center flex items-center justify-center shrink-0">
                                   {globalIndex + 1}
                                 </div>
                                 <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
                                   <textarea
-                                    className="w-full outline-none font-bold uppercase bg-transparent resize-none leading-tight py-1 overflow-hidden word-break overflow-wrap break-words"
+                                    className={"w-full outline-none font-bold uppercase bg-transparent resize-none leading-tight py-1 overflow-hidden word-break overflow-wrap break-words"}
                                     style={{ fontSize: med.name && med.name.length > 20 ? 'clamp(9px, 1.8vw, 12px)' : 'clamp(10px, 2vw, 14px)' }}
                                     placeholder="Type drug name..."
                                     value={med.name}
@@ -1892,7 +1898,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   {/* Frequency - Searchable ComboBox */}
                                   <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
                                     <input
-                                      className="w-full text-center outline-none text-[11px] font-bold uppercase bg-transparent"
+                                      className={"w-full text-center outline-none text-[11px] font-bold uppercase bg-transparent"}
                                       value={med.dose}
                                       onChange={e => {
                                         const val = e.target.value.toUpperCase();
@@ -1933,7 +1939,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent uppercase"
                                         placeholder=""
                                         value={((med as any).morningTime ? `${(med as any).morningTime}${(med as any).morningAmPm ? ' ' + (med as any).morningAmPm : ''}` : '')}
                                         onChange={e => { updateMed(globalIndex, 'morningTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); }}
@@ -1960,7 +1966,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
-                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
+                                        className={"w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"}
                                         placeholder={readOnly ? '' : '0'}
                                         value={readOnly ? (med.morning && med.morning !== '0' ? med.morning : '-') : med.morning}
                                         onChange={e => updateMed(globalIndex, 'morning', e.target.value.toUpperCase())}
@@ -1973,7 +1979,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent uppercase"
                                         placeholder=""
                                         value={((med as any).noonTime ? `${(med as any).noonTime}${(med as any).noonAmPm ? ' ' + (med as any).noonAmPm : ''}` : '')}
                                         onChange={e => { updateMed(globalIndex, 'noonTime', e.target.value.toUpperCase()); setTimeSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); }}
@@ -2000,7 +2006,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
-                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
+                                        className={"w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"}
                                         placeholder={readOnly ? '' : '0'}
                                         value={readOnly ? (med.noon && med.noon !== '0' ? med.noon : '-') : med.noon}
                                         onChange={e => updateMed(globalIndex, 'noon', e.target.value.toUpperCase())}
@@ -2013,7 +2019,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent"
                                         placeholder=""
                                         value={(med.eveningTime ? `${med.eveningTime}${(med as any).eveningAmPm ? ' ' + (med as any).eveningAmPm : ''}` : '')}
                                         onChange={e => { updateMed(globalIndex, 'eveningTime', e.target.value); setTimeSearchQuery(e.target.value); setHighlightedDropdownIndex(-1); }}
@@ -2040,7 +2046,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
-                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
+                                        className={"w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"}
                                         placeholder={readOnly ? '' : '0'}
                                         value={readOnly ? (med.evening && med.evening !== '0' ? med.evening : '-') : med.evening}
                                         onChange={e => updateMed(globalIndex, 'evening', e.target.value.toUpperCase())}
@@ -2053,7 +2059,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
                                       <input
-                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
+                                        className="w-full text-center text-[10px] font-bold outline-none bg-transparent"
                                         placeholder=""
                                         value={(med.nightTime ? `${med.nightTime}${(med as any).nightAmPm ? ' ' + (med as any).nightAmPm : ''}` : '')}
                                         onChange={e => { updateMed(globalIndex, 'nightTime', e.target.value); setTimeSearchQuery(e.target.value); setHighlightedDropdownIndex(-1); }}
@@ -2080,7 +2086,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
                                       <textarea
-                                        className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
+                                        className={"w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"}
                                         placeholder={readOnly ? '' : '0'}
                                         value={readOnly ? (med.night && med.night !== '0' ? med.night : '-') : med.night}
                                         onChange={e => updateMed(globalIndex, 'night', e.target.value.toUpperCase())}
@@ -2092,7 +2098,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   {/* Food Timing - Searchable Combobox */}
                                   <div className="flex-1 flex items-center justify-center relative">
                                     <input
-                                      className="w-full h-full text-center font-bold text-xs outline-none bg-transparent uppercase"
+                                      className={"w-full h-full text-center font-bold text-xs outline-none bg-transparent uppercase"}
                                       value={(med.foodTiming === 'nil' || !med.foodTiming) ? (readOnly ? '-' : '') : med.foodTiming}
                                       onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
                                       onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''), setHighlightedDropdownIndex(-1))}
@@ -2160,10 +2166,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             <div className={`flex gap-6 ${scale.textSize} font-bold`}>
                               {/* Left column: SALT, FLUID, REVIEW ON */}
                               <div className={`flex-1 min-w-0 ${scale.spacing}`}>
-                                <div className="flex gap-1 items-baseline">
+                                <div className="flex gap-2 items-center">
                                   <span className="shrink-0 uppercase">SALT (உப்பு):</span>
                                   <input
-                                    className="flex-1 min-w-0 border-0 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
+                                    className="flex-1 min-w-0 border border-gray-400 outline-none bg-transparent text-center uppercase px-1 leading-tight"
                                     value={formData.saltIntake}
                                     onChange={e => setFormData({ ...formData, saltIntake: e.target.value.toUpperCase() })}
                                     placeholder="____"
@@ -2171,10 +2177,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   />
                                   <span className="shrink-0 uppercase">GM/DAY</span>
                                 </div>
-                                <div className="flex gap-1 items-baseline">
+                                <div className="flex gap-2 items-center">
                                   <span className="shrink-0 uppercase">FLUID (நீர்):</span>
                                   <input
-                                    className="flex-1 min-w-0 border-0 border-b border-gray-300 border-dotted outline-none bg-transparent text-center uppercase"
+                                    className="flex-1 min-w-0 border border-gray-400 outline-none bg-transparent text-center uppercase px-1 leading-tight"
                                     value={formData.fluidIntake}
                                     onChange={e => setFormData({ ...formData, fluidIntake: e.target.value.toUpperCase() })}
                                     placeholder="____"
@@ -2182,12 +2188,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   />
                                   <span className="shrink-0 uppercase">LIT/DAY</span>
                                 </div>
-                                <div className="flex gap-3 items-end">
+                                <div className="flex gap-2 items-center">
                                   <div className="shrink-0 whitespace-nowrap uppercase">REVIEW ON :</div>
                                   <div className="flex-1 flex items-center gap-2 min-w-0">
                                     <input
                                       type="date"
-                                      className="border-0 border-b border-gray-300 border-dashed outline-none px-1 cursor-pointer bg-transparent min-w-0"
+                                      className="border border-gray-400 outline-none px-1 cursor-pointer bg-transparent min-w-0 leading-tight"
                                       value={formData.reviewDate}
                                       onChange={e => !readOnly && setFormData({ ...formData, reviewDate: e.target.value })}
                                       readOnly={readOnly}
@@ -2210,12 +2216,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   </div>
                               <div className="relative flex-1 min-w-0">
                                 {readOnly ? (
-                                  <div className="w-full border-b border-gray-300 border-dashed px-1 bg-transparent uppercase leading-tight py-1 whitespace-pre-wrap break-words min-h-[1.5em]">
+                                  <div className="w-full border border-gray-400 px-1 bg-transparent uppercase leading-tight py-1 whitespace-pre-wrap break-words min-h-[1.5em]">
                                     {formData.specialistToReview}
                                   </div>
                                 ) : (
                                   <textarea
-                                    className="w-full border-b border-gray-300 border-dashed outline-none px-1 bg-transparent uppercase resize-none leading-tight py-1"
+                                    className="w-full border border-gray-400 outline-none px-1 bg-transparent uppercase resize-none leading-tight py-1"
                                     value={formData.specialistToReview}
                                     onChange={e => !readOnly && setFormData({ ...formData, specialistToReview: e.target.value.toUpperCase() })}
                                     onFocus={() => { if (!readOnly) { setShowSpecialistDropdown(true); setHighlightedDropdownIndex(-1); } }}
@@ -2341,12 +2347,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                       <span>/ NOTES:</span>
                                     </div>
                                     {readOnly ? (
-                                      <div className={`flex-1 border border-gray-300 border-dashed bg-transparent px-1 py-0.5 ${fontSizeClass} uppercase whitespace-pre-wrap break-words min-h-[56px]`}>
+                                      <div className={`flex-1 border border-gray-400 bg-transparent px-1 py-0.5 ${fontSizeClass} uppercase whitespace-pre-wrap break-words min-h-[56px]`}>
                                         {formData.doctorNotes}
                                       </div>
                                     ) : (
                                       <textarea
-                                        className={`flex-1 border border-gray-300 border-dashed outline-none bg-transparent px-1 py-0.5 ${fontSizeClass} resize-none uppercase overflow-y-auto break-all min-h-[56px]`}
+                                        className={`flex-1 border border-gray-400 outline-none bg-transparent px-1 py-0.5 ${fontSizeClass} resize-none uppercase overflow-y-auto break-all min-h-[56px]`}
                                         value={formData.doctorNotes}
                                         onChange={e => !readOnly && setFormData({ ...formData, doctorNotes: e.target.value.toUpperCase() })}
                                         readOnly={readOnly}

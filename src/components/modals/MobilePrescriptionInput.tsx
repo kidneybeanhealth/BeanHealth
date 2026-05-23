@@ -1,11 +1,22 @@
 import React from 'react';
 
-/* ── Inject animation keyframes once ───────────────────────────────────────── */
+/* ── Inject animation keyframes ────────────────────────────────────────────── */
+// Always refresh content so edits to these keyframes take effect on HMR/reload
+// instead of being skipped by a stale once-injected <style> element.
 const STYLE_ID = 'mob-rx-animations';
-if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
-    const s = document.createElement('style');
+if (typeof document !== 'undefined') {
+    const s = document.getElementById(STYLE_ID) || document.createElement('style');
     s.id = STYLE_ID;
     s.textContent = `
+        @keyframes rxDosageGlow {
+            0%   { box-shadow: 0 0 7px 3px #ff0000, 0 0 14px 5px rgba(255,0,0,0.25); }
+            16%  { box-shadow: 0 0 7px 3px #ff8c00, 0 0 14px 5px rgba(255,140,0,0.25); }
+            33%  { box-shadow: 0 0 7px 3px #ffe600, 0 0 14px 5px rgba(255,230,0,0.25); }
+            50%  { box-shadow: 0 0 7px 3px #00c853, 0 0 14px 5px rgba(0,200,83,0.25); }
+            66%  { box-shadow: 0 0 7px 3px #0091ea, 0 0 14px 5px rgba(0,145,234,0.25); }
+            83%  { box-shadow: 0 0 7px 3px #aa00ff, 0 0 14px 5px rgba(170,0,255,0.25); }
+            100% { box-shadow: 0 0 7px 3px #ff0000, 0 0 14px 5px rgba(255,0,0,0.25); }
+        }
         @keyframes rxPop {
             0%   { transform: scale(1); }
             35%  { transform: scale(0.86); }
@@ -40,7 +51,7 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
             animation: rxAmPmPop 0.20s cubic-bezier(0.34, 1.56, 0.64, 1) both;
         }
     `;
-    document.head.appendChild(s);
+    if (!s.parentNode) document.head.appendChild(s);
 }
 
 const FREQ_OPTIONS_ROWS = [
@@ -132,11 +143,11 @@ const SlotRow: React.FC<{
         {/* Dose — slim */}
         <input type="text" value={value} onChange={e => !readOnly && onValueChange(e.target.value)} readOnly={readOnly}
             placeholder="–"
-            style={{ flex: 0.55, minWidth: 0, borderRight: '1px solid #e2e8f0', textAlign: 'center', fontSize: '11px', fontWeight: 700, outline: 'none', background: 'transparent', color: '#1f2937', padding: '0 2px' }} />
+            style={{ flex: 0.55, minWidth: 0, borderRight: '1px solid #e2e8f0', textAlign: 'center', fontSize: '11px', fontWeight: 700, outline: 'none', background: 'transparent', color: '#ea580c', padding: '0 2px' }} />
         {/* Time — slim */}
         <input type="text" value={timeValue} onChange={e => !readOnly && onTimeChange(e.target.value)} readOnly={readOnly}
             placeholder="–"
-            style={{ flex: 0.55, minWidth: 0, borderRight: '1px solid #e2e8f0', textAlign: 'center', fontSize: '11px', fontWeight: 700, outline: 'none', background: 'transparent', color: '#374151', padding: '0 2px' }} />
+            style={{ flex: 0.55, minWidth: 0, borderRight: '1px solid #e2e8f0', textAlign: 'center', fontSize: '11px', fontWeight: 700, outline: 'none', background: 'transparent', color: '#ea580c', padding: '0 2px' }} />
         {/* AM/PM — generous space */}
         <div style={{ display: 'flex', flexDirection: 'column', width: '68px', flexShrink: 0, padding: '3px 4px', gap: '2px', background: '#f8fafc' }}>
             <button type="button" onClick={() => !readOnly && onAmPmChange(amPm === 'AM' ? '' : 'AM')}
@@ -285,7 +296,7 @@ const MedCard: React.FC<{
                         onBlur={() => setTimeout(() => setShowDrugDropdown(null), 200)}
                         readOnly={readOnly}
                         placeholder="Type or select drug..."
-                        style={{ width: '100%', padding: '12px 10px', fontSize: '12px', fontWeight: 700, outline: 'none', border: 'none', background: 'transparent', color: '#111827', textTransform: 'uppercase', boxSizing: 'border-box' }} />
+                        style={{ width: '100%', padding: '12px 10px', fontSize: '12px', fontWeight: 700, outline: 'none', border: 'none', background: 'transparent', color: '#ea580c', textTransform: 'uppercase', boxSizing: 'border-box' }} />
                     {showDrugDropdown === index && filteredDrugs.length > 0 && (
                         <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(12px)', border: '1px solid rgba(74,124,47,0.15)', borderRadius: '0 0 12px 12px', boxShadow: '0 12px 32px rgba(0,0,0,0.12)', maxHeight: '160px', overflowY: 'auto' }}>
                             {filteredDrugs.slice(0, 8).map(drug => (
@@ -303,16 +314,19 @@ const MedCard: React.FC<{
                     <div style={{ padding: '3px 0', background: '#fff', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
                         <span style={{ fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#374151' }}>DOSE</span>
                     </div>
-                    <input type="text" value={med.dosage_value || ''}
-                        onChange={e => updateMed(index, 'dosage_value', e.target.value)}
-                        onFocus={() => {
-                            if (!readOnly && Array.isArray(med.availableDosages) && med.availableDosages.length > 0) {
-                                setShowDosageDropdown(true);
-                            }
-                        }}
-                        onBlur={() => setTimeout(() => setShowDosageDropdown(false), 200)}
-                        readOnly={readOnly} placeholder="mg"
-                        style={{ width: '100%', padding: '6px 2px', fontSize: '13px', fontWeight: 700, outline: 'none', border: 'none', background: '#fff', color: '#111827', textAlign: 'center', boxSizing: 'border-box' }} />
+                    {/* Glow wraps the dosage value pill only */}
+                    <div style={{ margin: '4px 6px', borderRadius: '7px', background: '#fff', animation: 'rxDosageGlow 2s linear infinite' }}>
+                        <input type="text" value={med.dosage_value || ''}
+                            onChange={e => updateMed(index, 'dosage_value', e.target.value)}
+                            onFocus={() => {
+                                if (!readOnly && Array.isArray(med.availableDosages) && med.availableDosages.length > 0) {
+                                    setShowDosageDropdown(true);
+                                }
+                            }}
+                            onBlur={() => setTimeout(() => setShowDosageDropdown(false), 200)}
+                            readOnly={readOnly} placeholder="mg"
+                            style={{ width: '100%', padding: '5px 2px', fontSize: '13px', fontWeight: 700, outline: 'none', border: 'none', background: 'transparent', color: '#ea580c', textAlign: 'center', boxSizing: 'border-box', borderRadius: '7px' }} />
+                    </div>
                     {/* Dosage Dropdown */}
                     {showDosageDropdown && Array.isArray(med.availableDosages) && med.availableDosages.length > 0 && (
                         <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 55, background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(74,124,47,0.2)', borderRadius: '0 0 10px 10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: '120px', overflowY: 'auto' }}>
@@ -353,7 +367,7 @@ const MedCard: React.FC<{
                     {sectionHeader('Frequency', '#4a7c2f')}
                     <input type="text" value={med.dose} onChange={e => updateMed(index, 'dose', e.target.value.toUpperCase())} readOnly={readOnly}
                         placeholder="e.g. OD"
-                        style={{ padding: '6px 4px', fontSize: '10px', fontWeight: 700, textAlign: 'center', outline: 'none', border: 'none', borderBottom: '2.5px solid #0f1018', background: 'transparent', color: '#374151' }} />
+                        style={{ padding: '6px 4px', fontSize: '10px', fontWeight: 700, textAlign: 'center', outline: 'none', border: 'none', borderBottom: '2.5px solid #0f1018', background: 'transparent', color: '#ea580c' }} />
                     <div style={{ flex: 1, padding: '5px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                         {FREQ_OPTIONS_ROWS.map((row, ri) => (
                             <div key={ri} style={{ display: 'flex', gap: '2px', flex: 1, marginBottom: ri < FREQ_OPTIONS_ROWS.length - 1 ? '3px' : '0' }}>
@@ -368,7 +382,7 @@ const MedCard: React.FC<{
                     {sectionHeader('Timing', '#3d7a6a')}
                     <input type="text" value={med.foodTiming} onChange={e => updateMed(index, 'foodTiming', e.target.value.toUpperCase())} readOnly={readOnly}
                         placeholder="A/F"
-                        style={{ padding: '6px 4px', fontSize: '10px', fontWeight: 700, textAlign: 'center', outline: 'none', border: 'none', borderBottom: '2.5px solid #0f1018', background: 'transparent', color: '#374151' }} />
+                        style={{ padding: '6px 4px', fontSize: '10px', fontWeight: 700, textAlign: 'center', outline: 'none', border: 'none', borderBottom: '2.5px solid #0f1018', background: 'transparent', color: '#ea580c' }} />
                     <div style={{ flex: 1, padding: '5px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '3px' }}>
                         {TIMING_OPTIONS.map(opt => timingBtn(opt))}
                     </div>
