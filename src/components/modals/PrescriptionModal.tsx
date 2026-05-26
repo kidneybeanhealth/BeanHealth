@@ -93,6 +93,13 @@ interface PrescriptionModalProps {
   footerDoctorText?: string;
   specialistOptions?: string[] | null;
   forceDesktop?: boolean;
+  /**
+   * Force the mobile-input UI on any screen size (used by the enterprise
+   * doctor live-queue prescribe flow so doctors on desktop also see the
+   * mobile prescription form). After Send is clicked, the desktop preview
+   * still overlays as usual for confirmation.
+   */
+  forceMobile?: boolean;
   /** Force Print PDF behaviour even when readOnly=true (e.g. pharmacy view). */
   forcePrint?: boolean;
 }
@@ -236,6 +243,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   footerDoctorText,
   specialistOptions,
   forceDesktop = false,
+  forceMobile = false,
   forcePrint = false,
 }) => {
   // Resolve specialist list: prefer tenant-provided, fall back to KKC defaults
@@ -442,7 +450,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     const handleResize = () => {
       // Logic for mobile view detection
       const totalWidth = window.innerWidth;
-      setIsMobile(!forceDesktop && totalWidth < 768);
+      // forceMobile (set by enterprise doctor live-queue prescribe flow) overrides
+      // the width check so even desktops/tablets render the mobile input form.
+      setIsMobile(forceMobile || (!forceDesktop && totalWidth < 768));
 
       if (containerRef.current) {
         const availableWidth = containerRef.current.clientWidth;
@@ -474,7 +484,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [forceDesktop]);
+  }, [forceDesktop, forceMobile]);
 
   useEffect(() => {
     if (!readOnly) {
