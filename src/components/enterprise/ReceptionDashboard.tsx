@@ -3173,106 +3173,103 @@ const ReceptionDashboard: React.FC = () => {
 
             {callLogTarget && (
                 <div className="fixed inset-0 z-[98] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white flex items-start justify-between gap-3">
-                            <div>
-                                <h3 className="text-lg font-bold flex items-center gap-2">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+                        {/* Header — slim */}
+                        <div className="shrink-0 px-5 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <h3 className="text-base font-bold flex items-center gap-2">
+                                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                     </svg>
-                                    Log Follow-up Call
+                                    <span className="truncate">Log Follow-up Call · {callLogTarget.patientName}</span>
                                 </h3>
-                                <p className="text-green-100 text-sm mt-0.5 font-medium">
-                                    {callLogTarget.patientName}{callLogTarget.mrNumber ? ` · ${callLogTarget.mrNumber}` : ''}
+                                <p className="text-green-100 text-xs mt-0.5 truncate">
+                                    {callLogTarget.mrNumber || '—'}
+                                    {callLogTarget.doctorName && <span className="ml-2">· Dr. {callLogTarget.doctorName}</span>}
+                                    {callLogTarget.reviewDate && (
+                                        <span className="ml-2">· Review: {new Date(callLogTarget.reviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                    )}
                                 </p>
-                                {callLogTarget.doctorName && (
-                                    <p className="text-green-100 text-xs mt-1 font-semibold">Dr. {callLogTarget.doctorName}</p>
-                                )}
                             </div>
-                            <button onClick={closeCallLog} className="p-1.5 rounded-lg text-green-100 hover:text-white hover:bg-green-700/50 transition-colors">
+                            <button onClick={closeCallLog} className="shrink-0 p-1.5 rounded-lg text-green-100 hover:text-white hover:bg-green-700/50 transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmitCallLog} className="p-6 space-y-5">
-                            <div className="flex flex-wrap gap-2 text-xs">
-                                <span className="bg-orange-50 text-orange-700 border border-orange-200 rounded-full px-2.5 py-1 font-semibold">
-                                    Review: {callLogTarget.reviewDate ? new Date(callLogTarget.reviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}
-                                </span>
-                                {callLogTarget.mrNumber && (
-                                    <span className="bg-gray-100 text-gray-600 rounded-full px-2.5 py-1 font-medium">
-                                        MR: {callLogTarget.mrNumber}
-                                    </span>
+                        <form onSubmit={handleSubmitCallLog} className="flex flex-col flex-1 min-h-0">
+                          {/* Two-column body — stacks on small screens */}
+                          <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 md:divide-x divide-gray-100 min-h-0">
+                            {/* Left: form fields */}
+                            <div className="p-5 space-y-4 overflow-y-auto md:max-h-[60vh]">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Call Status <span className="text-red-500">*</span></label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(['picked', 'not_picked'] as CallLogStatus[]).map((status) => (
+                                            <button
+                                                key={status}
+                                                type="button"
+                                                onClick={() => setCallLogStatus(status)}
+                                                className={`px-3 py-2 rounded-lg border-2 font-semibold text-sm transition-all ${callLogStatus === status ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                                            >
+                                                {status === 'picked' ? 'Picked Up' : 'Not Picked'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {callLogStatus === 'picked' ? (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-orange-800 mb-1.5 uppercase tracking-wide">Reschedule Review Date</label>
+                                        <input
+                                            type="date"
+                                            value={callLogRescheduleDate}
+                                            onChange={(e) => setCallLogRescheduleDate(e.target.value)}
+                                            min={toLocalISODate(new Date())}
+                                            className="w-full px-3 py-2 border border-orange-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Schedule Call Back Date</label>
+                                        <input
+                                            type="date"
+                                            value={callLogNextDate}
+                                            onChange={(e) => setCallLogNextDate(e.target.value)}
+                                            min={toLocalISODate(new Date())}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                                        />
+                                    </div>
                                 )}
-                            </div>
 
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2.5">Call Status <span className="text-red-500">*</span></label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {(['picked', 'not_picked'] as CallLogStatus[]).map((status) => (
-                                        <button
-                                            key={status}
-                                            type="button"
-                                            onClick={() => setCallLogStatus(status)}
-                                            className={`px-3 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${callLogStatus === status ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
-                                        >
-                                            {status === 'picked' ? 'Picked Up' : 'Not Picked'}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {callLogStatus === 'picked' ? (
                                 <div>
-                                    <label className="block text-sm font-semibold text-orange-800 mb-1.5">Reschedule Review Date</label>
-                                    <input
-                                        type="date"
-                                        value={callLogRescheduleDate}
-                                        onChange={(e) => setCallLogRescheduleDate(e.target.value)}
-                                        min={toLocalISODate(new Date())}
-                                        className="w-full px-3.5 py-2.5 border border-orange-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Patient Response / Notes</label>
+                                    <textarea
+                                        value={callLogNotes}
+                                        onChange={(e) => setCallLogNotes(e.target.value)}
+                                        rows={4}
+                                        placeholder={callLogStatus === 'picked' ? 'e.g. Patient confirmed the review date' : 'e.g. Called twice, no answer'}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 resize-none"
                                     />
                                 </div>
-                            ) : (
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Schedule Call Back Date</label>
-                                    <input
-                                        type="date"
-                                        value={callLogNextDate}
-                                        onChange={(e) => setCallLogNextDate(e.target.value)}
-                                        min={toLocalISODate(new Date())}
-                                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
-                                    />
-                                </div>
-                            )}
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Patient Response / Notes</label>
-                                <textarea
-                                    value={callLogNotes}
-                                    onChange={(e) => setCallLogNotes(e.target.value)}
-                                    rows={3}
-                                    placeholder={callLogStatus === 'picked' ? 'e.g. Patient confirmed the review date' : 'e.g. Called twice, no answer'}
-                                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 resize-none"
-                                />
                             </div>
 
-                            <div className="border border-gray-200 rounded-xl overflow-hidden">
-                                <div className="px-3.5 py-2.5 bg-gray-50 border-b border-gray-200">
+                            {/* Right: call history with its own scroll */}
+                            <div className="flex flex-col bg-gray-50/50 min-h-0">
+                                <div className="shrink-0 px-5 py-3 border-b border-gray-100 bg-white">
                                     <p className="text-xs font-bold uppercase tracking-wide text-gray-600">Call History</p>
                                 </div>
-                                <div className="max-h-44 overflow-y-auto divide-y divide-gray-100">
+                                <div className="flex-1 overflow-y-auto divide-y divide-gray-100 md:max-h-[60vh]">
                                     {callHistoryLoading ? (
-                                        <p className="text-sm text-gray-500 px-3.5 py-4">Loading call history...</p>
+                                        <p className="text-sm text-gray-500 px-5 py-4">Loading call history...</p>
                                     ) : callHistory.length === 0 ? (
-                                        <p className="text-sm text-gray-500 px-3.5 py-4">No previous call history.</p>
+                                        <p className="text-sm text-gray-500 px-5 py-4">No previous call history.</p>
                                     ) : (
                                         callHistory.map((entry) => (
-                                            <div key={entry.id} className="px-3.5 py-2.5">
+                                            <div key={entry.id} className="px-5 py-3 hover:bg-white transition-colors">
                                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                                                    <span className="font-semibold text-gray-700">
+                                                    <span className="font-semibold text-gray-800">
                                                         {new Date(entry.called_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </span>
                                                     <span className={`font-bold px-2 py-0.5 rounded-full ${entry.call_status === 'picked' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
@@ -3285,11 +3282,13 @@ const ReceptionDashboard: React.FC = () => {
                                     )}
                                 </div>
                             </div>
+                          </div>
 
-                            <div className="flex gap-3 pt-1">
-                                <button type="button" onClick={closeCallLog} className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
-                                <button type="submit" disabled={callLogSubmitting} className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-md transition-all disabled:opacity-60">{callLogSubmitting ? 'Saving...' : 'Save Call Log'}</button>
-                            </div>
+                          {/* Sticky footer — always visible */}
+                          <div className="shrink-0 flex gap-3 p-4 border-t border-gray-100 bg-white">
+                              <button type="button" onClick={closeCallLog} className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
+                              <button type="submit" disabled={callLogSubmitting} className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-md transition-all disabled:opacity-60">{callLogSubmitting ? 'Saving...' : 'Save Call Log'}</button>
+                          </div>
                         </form>
                     </div>
                 </div>
