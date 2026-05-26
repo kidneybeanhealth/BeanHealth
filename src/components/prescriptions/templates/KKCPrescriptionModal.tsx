@@ -46,6 +46,8 @@ export interface KKCPrescriptionModalProps {
   ) => void;
   readOnly?: boolean;
   forcePrint?: boolean;
+  /** Force mobile-input UI even on desktop/tablet (live-queue prescribe flow). */
+  forceMobile?: boolean;
   existingData?: any;
   clinicLogo?: string;       // Optional override — overrides tenant logo if supplied by caller
   actorAttribution?: {

@@ -43,6 +43,8 @@ export interface PrescriptionModalSelectorProps {
     ) => void;
     readOnly?: boolean;
     forcePrint?: boolean;
+    /** Force mobile-input UI even on desktop/tablet (enterprise doctor prescribe flow). */
+    forceMobile?: boolean;
     existingData?: any;
     clinicLogo?: string;
     actorAttribution?: {

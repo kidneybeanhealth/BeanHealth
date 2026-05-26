@@ -2415,6 +2415,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     onSendToPharmacy={handleSendToPharmacy}
                     clinicLogo={hospitalLogo || undefined}
                     actorAttribution={{ actorType, actorDisplayName }}
+                    forceMobile={true}
                     onPrintOpen={() => {
                         logViewEvent('print.preview.open', {
                             eventCategory: 'print',
@@ -2440,6 +2441,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     onSendToPharmacy={handleSendToPharmacy}
                     clinicLogo={hospitalLogo || undefined}
                     actorAttribution={{ actorType, actorDisplayName }}
+                    forceMobile={true}
                     onPrintOpen={() => {
                         logViewEvent('print.preview.open', {
                             eventCategory: 'print',
@@ -2575,6 +2577,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     onSendToPharmacy={handleResendToPharmacy}
                     clinicLogo={hospitalLogo || undefined}
                     actorAttribution={{ actorType, actorDisplayName }}
+                    forceMobile={true}
                     onPrintOpen={() => {
                         logViewEvent('print.preview.open', {
                             eventCategory: 'print',
@@ -2599,6 +2602,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     onSendToPharmacy={handleSendToPharmacy}
                     clinicLogo={hospitalLogo || undefined}
                     actorAttribution={{ actorType, actorDisplayName }}
+                    forceMobile={true}
                     onPrintOpen={() => {
                         logViewEvent('print.preview.open', {
                             eventCategory: 'print',

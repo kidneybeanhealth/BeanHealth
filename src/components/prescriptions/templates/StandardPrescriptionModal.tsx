@@ -57,6 +57,8 @@ interface StandardPrescriptionModalProps {
   clinicLogo?: string;
   actorAttribution?: { actorType: 'chief' | 'assistant'; actorDisplayName: string };
   onPrintOpen?: () => void;
+  /** Force mobile-input UI even on desktop/tablet (live-queue prescribe flow). */
+  forceMobile?: boolean;
   tenant: HospitalProfile | null;
 }
 
@@ -102,7 +104,7 @@ const blankMed = (): Medication => ({
 const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
   doctor, patient, onClose, onSendToPharmacy,
   readOnly = false, existingData, clinicLogo,
-  actorAttribution, onPrintOpen, tenant,
+  actorAttribution, onPrintOpen, forceMobile = false, tenant,
 }) => {
   /* ── derived ── */
   const resolvedLogo    = clinicLogo || tenant?.avatar_url || undefined;
@@ -155,12 +157,14 @@ const StandardPrescriptionModal: React.FC<StandardPrescriptionModalProps> = ({
   const containerRef  = useRef<HTMLDivElement>(null);
   const [layoutState, setLayoutState] = useState({ scale: 1, marginLeft: '0px' });
 
-  /* ── mobile detection ── */
+  /* ── mobile detection ── forceMobile overrides the width check for the
+       enterprise doctor live-queue prescribe flow so desktops/tablets also
+       render the mobile input. */
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => setIsMobile(forceMobile || window.innerWidth < 768);
     check(); window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
-  }, []);
+  }, [forceMobile]);
 
   /* ── layout scaling ── */
   useEffect(() => {
