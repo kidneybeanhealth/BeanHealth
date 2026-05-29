@@ -2492,6 +2492,19 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             Cancel
           </button>
           <div className="flex flex-1 sm:flex-none gap-3 order-1 sm:order-2">
+            {/* In read-only viewers (e.g. Visit History at reception, pharmacy view),
+                expose an explicit Download PDF action alongside Print so users can
+                save the file directly without going through the browser print dialog. */}
+            {readOnly && forcePrint && (
+              <button
+                onClick={handleDownloadPdf}
+                className="flex-1 sm:flex-none px-4 sm:px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 whitespace-nowrap"
+                title="Save a copy as PDF"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <span>Download PDF</span>
+              </button>
+            )}
             <button
               onClick={(readOnly && !forcePrint) ? handleDownloadPdf : handlePrint}
               className="flex-1 sm:flex-none px-4 sm:px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 whitespace-nowrap"
