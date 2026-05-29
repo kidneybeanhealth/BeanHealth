@@ -50,7 +50,7 @@ export interface DoctorReview {
 export interface ReceptionPastRecordPatient {
     id: string;
     name: string;
-    age: number;
+    age: number | string | null;
     gender?: string | null;
     phone?: string | null;
     mr_number?: string | null;
@@ -102,7 +102,7 @@ export interface AdmittedPatientRecord {
     patient: {
         id: string;
         name: string;
-        age: number;
+        age: number | string | null;
         token_number?: string | null;
         gender?: string | null;
         phone?: string | null;

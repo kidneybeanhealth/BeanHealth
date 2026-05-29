@@ -39,7 +39,7 @@ interface QueueItem {
     patient: {
         id?: string;
         name: string;
-        age: number;
+        age: number | string | null;
         token_number: string;
         mr_number?: string;
         beanhealth_id?: string;
@@ -56,7 +56,7 @@ interface QueueItem {
 interface MrPatient {
     id: string;
     name: string;
-    age: number;
+    age: number | string | null;
     mr_number: string | null;
     phone: string | null;
     place: string | null;
@@ -1331,7 +1331,7 @@ const ReceptionDashboard: React.FC = () => {
                     .insert({
                         hospital_id: profile.id,
                         name: walkInForm.name,
-                        age: parseInt(walkInForm.age, 10),
+                        age: walkInForm.age.trim() || null,
                         gender: walkInForm.gender || null,
                         token_number: null,
                         mr_number: normalizedMrNumber,
@@ -1501,7 +1501,7 @@ const ReceptionDashboard: React.FC = () => {
                     .insert({
                         hospital_id: profile.id,
                         name: walkInForm.name,
-                        age: parseInt(walkInForm.age, 10),
+                        age: walkInForm.age.trim() || null,
                         gender: walkInForm.gender || null,
                         token_number: globalToken, // Use calculated global token
                         mr_number: normalizedMrNumber,
@@ -1732,7 +1732,7 @@ const ReceptionDashboard: React.FC = () => {
                 .from('hospital_patients')
                 .update({
                     name: editForm.name.trim(),
-                    age: parseInt(editForm.age, 10) || null,
+                    age: editForm.age.trim() || null,
                     token_number: newToken,
                     gender: editForm.gender || null,
                     father_husband_name: editForm.fatherHusbandName.trim() || null,
@@ -2455,7 +2455,8 @@ const ReceptionDashboard: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Age</label>
-                                    <input type="number" value={editForm.age} onChange={e => setEditForm(f => ({ ...f, age: e.target.value }))}
+                                    <input type="text" value={editForm.age} onChange={e => setEditForm(f => ({ ...f, age: e.target.value }))}
+                                        placeholder="e.g. 65 or 7 months"
                                         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
                                 </div>
                                 <div>
@@ -2611,7 +2612,7 @@ const ReceptionDashboard: React.FC = () => {
                                         <span>Date of Birth</span>
                                         {walkInForm.age && (
                                             <span className="text-blue-600 normal-case font-normal">
-                                                Age: {walkInForm.age} {parseInt(walkInForm.age, 10) === 1 ? 'year' : 'years'}
+                                                Age: {walkInForm.age}
                                             </span>
                                         )}
                                     </label>
@@ -2626,13 +2627,24 @@ const ReceptionDashboard: React.FC = () => {
                                             if (dob) {
                                                 const birth = new Date(dob);
                                                 const today = new Date();
-                                                let years = today.getFullYear() - birth.getFullYear();
-                                                const m = today.getMonth() - birth.getMonth();
-                                                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-                                                    years--;
-                                                }
-                                                if (years >= 0 && years < 150) {
-                                                    computedAge = String(years);
+                                                // Total months difference (years × 12 + months) with day-rollover correction.
+                                                let totalMonths =
+                                                    (today.getFullYear() - birth.getFullYear()) * 12 +
+                                                    (today.getMonth() - birth.getMonth());
+                                                if (today.getDate() < birth.getDate()) totalMonths--;
+
+                                                if (totalMonths < 0 || totalMonths > 1800) {
+                                                    // Out of plausible range — leave age blank.
+                                                    computedAge = '';
+                                                } else if (totalMonths < 1) {
+                                                    // Less than a month → show days.
+                                                    const days = Math.max(0, Math.floor((today.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24)));
+                                                    computedAge = `${days} day${days === 1 ? '' : 's'}`;
+                                                } else if (totalMonths < 12) {
+                                                    computedAge = `${totalMonths} month${totalMonths === 1 ? '' : 's'}`;
+                                                } else {
+                                                    const years = Math.floor(totalMonths / 12);
+                                                    computedAge = `${years} year${years === 1 ? '' : 's'}`;
                                                 }
                                             }
                                             setWalkInForm({ ...walkInForm, dob, age: computedAge });

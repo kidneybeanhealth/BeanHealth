@@ -674,7 +674,13 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                                     </span>
                                                 </div>
                                                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
-                                                    <span>{patient.age || '—'} yrs</span>
+                                                    <span>{(() => {
+                                                        const a = patient.age;
+                                                        if (a === null || a === undefined || a === '') return '—';
+                                                        const s = String(a);
+                                                        // If the typed age already has a unit ("7 months"), pass through.
+                                                        return /[a-zA-Z]/.test(s) ? s : `${s} yrs`;
+                                                    })()}</span>
                                                     <span>{patient.phone || 'No phone'}</span>
                                                     <span>MR: {patient.mr_number || '—'}</span>
                                                     <span>

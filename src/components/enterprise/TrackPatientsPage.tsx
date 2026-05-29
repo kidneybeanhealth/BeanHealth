@@ -25,7 +25,7 @@ interface ReviewRow {
         name: string;
         mr_number?: string;
         phone?: string;
-        age?: number;
+        age?: number | string | null;
         father_husband_name?: string;
         place?: string;
         token_number?: string;
@@ -1037,7 +1037,11 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                                                     <span className="text-gray-400 font-bold">{idx + 1}</span>
                                                     <div className="min-w-0">
                                                         <p className="font-semibold text-gray-900 truncate">{row.patient?.name || 'Unknown'}</p>
-                                                        {row.patient?.age && <p className="text-xs text-gray-500">{row.patient.age} yrs</p>}
+                                                        {row.patient?.age != null && row.patient.age !== '' && (
+                                                            <p className="text-xs text-gray-500">
+                                                                {/[a-zA-Z]/.test(String(row.patient.age)) ? String(row.patient.age) : `${row.patient.age} yrs`}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <span className="text-gray-700 text-xs truncate">{row.patient?.mr_number || '--'}</span>
                                                     <span className="text-gray-700 text-xs truncate font-mono">{row.patient?.phone || '--'}</span>
