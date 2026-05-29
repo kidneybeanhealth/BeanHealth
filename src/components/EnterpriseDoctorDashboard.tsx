@@ -1892,7 +1892,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                         )}
                                                         <div className="mt-2 flex flex-wrap items-center gap-2">
                                                             <span className="inline-flex items-center px-2 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">
-                                                                {item.patient.age} yrs
+                                                                {/[a-zA-Z]/.test(String(item.patient.age ?? '')) ? String(item.patient.age) : `${item.patient.age} yrs`}
                                                             </span>
                                                             {(() => {
                                                                 const metrics = queueMetricsByPatientId[item.patient_id];
@@ -2284,7 +2284,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                                     <p className="font-semibold text-gray-900 text-sm truncate">{patient.name}</p>
                                                                     {/* Mobile-only sub-details */}
                                                                     <p className="text-xs text-gray-500 md:hidden">
-                                                                        {patient.age} yrs • {patient.phone || 'No phone'}
+                                                                        {/[a-zA-Z]/.test(String(patient.age ?? '')) ? String(patient.age) : `${patient.age} yrs`} • {patient.phone || 'No phone'}
                                                                     </p>
                                                                 </div>
                                                             </div>

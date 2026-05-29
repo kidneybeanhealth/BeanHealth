@@ -1477,7 +1477,7 @@ const ReceptionDashboard: React.FC = () => {
             if (patientId) {
                 const patientPayload: any = {
                     name: walkInForm.name,
-                    age: parseInt(walkInForm.age, 10),
+                    age: walkInForm.age.trim() || null,
                     gender: walkInForm.gender || null,
                     mr_number: normalizedMrNumber,
                     father_husband_name: walkInForm.fatherHusbandName || null,

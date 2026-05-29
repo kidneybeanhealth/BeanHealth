@@ -292,7 +292,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
             const insertResult = await (supabase.from('hospital_patients') as any).insert({
                 hospital_id: hospitalId,
                 name: newPatientForm.name.trim(),
-                age: newPatientForm.age ? parseInt(newPatientForm.age, 10) : null,
+                age: newPatientForm.age?.trim() || null,
                 gender: newPatientForm.gender || null,
                 father_husband_name: newPatientForm.fatherHusbandName.trim() || null,
                 place: newPatientForm.place.trim() || null,

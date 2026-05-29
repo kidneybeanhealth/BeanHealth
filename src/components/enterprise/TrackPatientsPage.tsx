@@ -821,7 +821,7 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                 .insert({
                     hospital_id: profile.id,
                     name,
-                    age: addPatientForm.age ? parseInt(addPatientForm.age, 10) : null,
+                    age: addPatientForm.age?.trim() || null,
                     gender: addPatientForm.gender || null,
                     mr_number: mrNumber,
                     father_husband_name: addPatientForm.fatherHusbandName.trim() || null,
