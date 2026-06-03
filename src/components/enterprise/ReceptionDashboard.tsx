@@ -742,12 +742,19 @@ const ReceptionDashboard: React.FC = () => {
                 ? callLogRescheduleDate
                 : callLogNextDate;
 
-            const { data: existingReview, error: existingError } = await (supabase as any)
+            // Supabase quirk: .eq(col, null) sends `col=eq.null` which Postgres tries
+            // to coerce to the column type (UUID here) and rejects with
+            // "invalid input syntax for type uuid: 'null'". Use .is(col, null) instead.
+            let reviewLookup = (supabase as any)
                 .from('hospital_patient_reviews')
                 .select('id, patient_id')
                 .eq('hospital_id', profile.id)
-                .eq('patient_id', callLogTarget.patientId)
-                .eq('doctor_id', callLogTarget.doctorId || null)  // NEW: Filter by doctor_id
+                .eq('patient_id', callLogTarget.patientId);
+            reviewLookup = callLogTarget.doctorId
+                ? reviewLookup.eq('doctor_id', callLogTarget.doctorId)
+                : reviewLookup.is('doctor_id', null);
+
+            const { data: existingReview, error: existingError } = await reviewLookup
                 .in('status', ['pending', 'rescheduled'])
                 .order('next_review_date', { ascending: false })
                 .limit(1)
