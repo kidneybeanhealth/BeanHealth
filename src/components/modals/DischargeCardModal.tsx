@@ -1857,6 +1857,14 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                   {globalIndex + 1}
                                 </div>
                                 <div className={`flex-1 border-r border-black px-1.5 relative min-w-0 flex items-center`} ref={el => { dropdownRefs.current[globalIndex] = el; }}>
+                                  {readOnly ? (
+                                    <div
+                                      className="w-full font-bold uppercase leading-tight py-1 whitespace-pre-wrap break-words"
+                                      style={{ fontSize: med.name && med.name.length > 20 ? 'clamp(9px, 1.8vw, 12px)' : 'clamp(10px, 2vw, 14px)' }}
+                                    >
+                                      {med.name}
+                                    </div>
+                                  ) : (
                                   <textarea
                                     className="w-full outline-none font-bold uppercase bg-transparent resize-none leading-tight py-1 overflow-hidden word-break overflow-wrap break-words"
                                     style={{ fontSize: med.name && med.name.length > 20 ? 'clamp(9px, 1.8vw, 12px)' : 'clamp(10px, 2vw, 14px)' }}
@@ -1893,6 +1901,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                     )}
                                     readOnly={readOnly}
                                   />
+                                  )}
                                   {!readOnly && showDrugDropdown === globalIndex && filteredDrugs.length > 0 && (
                                     <div ref={dropdownListRef} className="absolute left-0 top-full z-[100] w-[400px] bg-white border-2 border-black shadow-xl max-h-64 overflow-y-auto print:hidden">
                                       {filteredDrugs.map((drug, dIdx) => (
@@ -1939,6 +1948,11 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                 </div>
                                 {/* DOSAGE (e.g. 500mg, 10ml) - Searchable ComboBox */}
                                 <div className="w-16 border-r border-black flex items-center justify-center shrink-0 relative">
+                                  {readOnly ? (
+                                    <div className="w-full text-center py-1 px-1 font-bold text-[13px] uppercase leading-tight">
+                                      {med.dosage_value || ''}
+                                    </div>
+                                  ) : (
                                   <input
                                     className="w-full h-full outline-none text-center bg-transparent py-1 px-1 font-bold text-[13px] uppercase"
                                     placeholder="MG"
@@ -1951,6 +1965,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                     onBlur={() => setTimeout(() => setShowDosageDropdown(null), 150)}
                                     readOnly={readOnly}
                                   />
+                                  )}
                                   {!readOnly && showDosageDropdown === globalIndex && med.availableDosages && med.availableDosages.length > 0 && (
                                     <div className="absolute left-0 top-full mt-1 z-50 w-20 bg-white border border-gray-200 rounded-lg shadow-xl max-h-32 overflow-y-auto print:hidden">
                                       {med.availableDosages.map((opt: string, dIdx: number) => (
@@ -1974,6 +1989,9 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                 <div className="w-[398px] flex shrink-0 items-stretch">
                                   {/* Quantity */}
                                   <div className="w-16 border-r border-black px-0.5 flex items-center justify-center shrink-0">
+                                    {readOnly ? (
+                                      <div className="w-full text-center text-xs font-bold uppercase leading-tight">{med.number}</div>
+                                    ) : (
                                     <input
                                       className="w-full text-center outline-none text-xs bg-transparent font-bold uppercase"
                                       placeholder={readOnly ? '' : '1'}
@@ -1981,9 +1999,13 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                       onChange={e => updateMed(globalIndex, 'number', e.target.value.toUpperCase())}
                                       readOnly={readOnly}
                                     />
+                                    )}
                                   </div>
                                   {/* Frequency - Searchable ComboBox */}
                                   <div className="w-10 border-r border-black px-0.5 flex items-center justify-center shrink-0 relative">
+                                    {readOnly ? (
+                                      <div className="w-full text-center text-[11px] font-bold uppercase leading-tight">{med.dose}</div>
+                                    ) : (
                                     <input
                                       className="w-full text-center outline-none text-[11px] font-bold uppercase bg-transparent"
                                       value={med.dose}
@@ -2009,6 +2031,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                       readOnly={readOnly}
                                       placeholder="--"
                                     />
+                                    )}
                                     {!readOnly && showDoseDropdown === globalIndex && (() => {
                                       const filtered = DOSE_OPTIONS.filter(opt => !doseSearchQuery || opt.toUpperCase().includes(doseSearchQuery));
                                       return filtered.length > 0 && (
@@ -2025,6 +2048,11 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                   {/* M dosage container - Split: Top time, Bottom value */}
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                      {readOnly ? (
+                                        <div className="w-full text-center text-[10px] font-bold uppercase text-gray-600 leading-tight">
+                                          {(med as any).morningTime ? `${(med as any).morningTime}${(med as any).morningAmPm ? ' ' + (med as any).morningAmPm : ''}` : ''}
+                                        </div>
+                                      ) : (
                                       <input
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
                                         placeholder=""
@@ -2038,6 +2066,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                         }}
                                         readOnly={readOnly}
                                       />
+                                      )}
                                       {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'morningTime' && (() => {
                                         const filtered = MORNING_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                         return filtered.length > 0 && (
@@ -2052,19 +2081,30 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                       })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                      {readOnly ? (
+                                        <div className="w-full text-center text-xs font-bold leading-tight uppercase">
+                                          {med.morning && med.morning !== '0' ? med.morning : '-'}
+                                        </div>
+                                      ) : (
                                       <textarea
                                         className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
                                         placeholder={readOnly ? '' : '0'}
-                                        value={readOnly ? (med.morning && med.morning !== '0' ? med.morning : '-') : med.morning}
+                                        value={med.morning}
                                         onChange={e => updateMed(globalIndex, 'morning', e.target.value.toUpperCase())}
                                         readOnly={readOnly}
                                         rows={1}
                                       />
+                                      )}
                                     </div>
                                   </div>
                                   {/* N dosage container - Split: Top time, Bottom value */}
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                      {readOnly ? (
+                                        <div className="w-full text-center text-[10px] font-bold uppercase text-gray-600 leading-tight">
+                                          {(med as any).noonTime ? `${(med as any).noonTime}${(med as any).noonAmPm ? ' ' + (med as any).noonAmPm : ''}` : ''}
+                                        </div>
+                                      ) : (
                                       <input
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600 uppercase"
                                         placeholder=""
@@ -2078,6 +2118,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                         }}
                                         readOnly={readOnly}
                                       />
+                                      )}
                                       {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'noonTime' && (() => {
                                         const filtered = NOON_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                         return filtered.length > 0 && (
@@ -2092,19 +2133,30 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                       })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                      {readOnly ? (
+                                        <div className="w-full text-center text-xs font-bold leading-tight uppercase">
+                                          {med.noon && med.noon !== '0' ? med.noon : '-'}
+                                        </div>
+                                      ) : (
                                       <textarea
                                         className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
                                         placeholder={readOnly ? '' : '0'}
-                                        value={readOnly ? (med.noon && med.noon !== '0' ? med.noon : '-') : med.noon}
+                                        value={med.noon}
                                         onChange={e => updateMed(globalIndex, 'noon', e.target.value.toUpperCase())}
                                         readOnly={readOnly}
                                         rows={1}
                                       />
+                                      )}
                                     </div>
                                   </div>
                                   {/* evening dosage container */}
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                      {readOnly ? (
+                                        <div className="w-full text-center text-[10px] font-bold uppercase text-gray-600 leading-tight">
+                                          {med.eveningTime ? `${med.eveningTime}${(med as any).eveningAmPm ? ' ' + (med as any).eveningAmPm : ''}` : ''}
+                                        </div>
+                                      ) : (
                                       <input
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
@@ -2118,6 +2170,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                         }}
                                         readOnly={readOnly}
                                       />
+                                      )}
                                       {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'eveningTime' && (() => {
                                         const filtered = EVENING_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                         return filtered.length > 0 && (
@@ -2132,19 +2185,30 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                       })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                      {readOnly ? (
+                                        <div className="w-full text-center text-xs font-bold leading-tight uppercase">
+                                          {med.evening && med.evening !== '0' ? med.evening : '-'}
+                                        </div>
+                                      ) : (
                                       <textarea
                                         className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
                                         placeholder={readOnly ? '' : '0'}
-                                        value={readOnly ? (med.evening && med.evening !== '0' ? med.evening : '-') : med.evening}
+                                        value={med.evening}
                                         onChange={e => updateMed(globalIndex, 'evening', e.target.value.toUpperCase())}
                                         readOnly={readOnly}
                                         rows={1}
                                       />
+                                      )}
                                     </div>
                                   </div>
                                   {/* night dosage container */}
                                   <div className="w-14 border-r border-black flex flex-col shrink-0 relative">
                                     <div className="flex-1 flex items-center justify-center border-b border-gray-300 min-h-[16px] relative">
+                                      {readOnly ? (
+                                        <div className="w-full text-center text-[10px] font-bold uppercase text-gray-600 leading-tight">
+                                          {med.nightTime ? `${med.nightTime}${(med as any).nightAmPm ? ' ' + (med as any).nightAmPm : ''}` : ''}
+                                        </div>
+                                      ) : (
                                       <input
                                         className="w-full text-center text-[10px] font-bold outline-none bg-transparent text-gray-600"
                                         placeholder=""
@@ -2158,6 +2222,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                         }}
                                         readOnly={readOnly}
                                       />
+                                      )}
                                       {!readOnly && showTimeDropdown?.index === globalIndex && showTimeDropdown?.field === 'nightTime' && (() => {
                                         const filtered = NIGHT_TIMES.filter(t => !timeSearchQuery || t.toLowerCase().includes(timeSearchQuery.toLowerCase()));
                                         return filtered.length > 0 && (
@@ -2172,21 +2237,32 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                       })()}
                                     </div>
                                     <div className="flex-1 flex items-center justify-center min-h-[18px]">
+                                      {readOnly ? (
+                                        <div className="w-full text-center text-xs font-bold leading-tight uppercase">
+                                          {med.night && med.night !== '0' ? med.night : '-'}
+                                        </div>
+                                      ) : (
                                       <textarea
                                         className="w-full text-center text-xs font-bold outline-none bg-transparent resize-none leading-tight uppercase"
                                         placeholder={readOnly ? '' : '0'}
-                                        value={readOnly ? (med.night && med.night !== '0' ? med.night : '-') : med.night}
+                                        value={med.night}
                                         onChange={e => updateMed(globalIndex, 'night', e.target.value.toUpperCase())}
                                         readOnly={readOnly}
                                         rows={1}
                                       />
+                                      )}
                                     </div>
                                   </div>
                                   {/* Food Timing - Searchable Combobox */}
                                   <div className="flex-1 flex items-center justify-center relative">
+                                    {readOnly ? (
+                                      <div className="w-full text-center font-bold text-xs uppercase leading-tight">
+                                        {(med.foodTiming === 'nil' || !med.foodTiming) ? '-' : med.foodTiming}
+                                      </div>
+                                    ) : (
                                     <input
                                       className="w-full h-full text-center font-bold text-xs outline-none bg-transparent uppercase"
-                                      value={(med.foodTiming === 'nil' || !med.foodTiming) ? (readOnly ? '-' : '') : med.foodTiming}
+                                      value={(med.foodTiming === 'nil' || !med.foodTiming) ? '' : med.foodTiming}
                                       onChange={e => { updateMed(globalIndex, 'foodTiming', e.target.value.toUpperCase()); setFoodTimingSearchQuery(e.target.value.toUpperCase()); setHighlightedDropdownIndex(-1); !readOnly && setShowFoodTimingDropdown(globalIndex); }}
                                       onFocus={() => !readOnly && (setShowFoodTimingDropdown(globalIndex), setFoodTimingSearchQuery(''), setHighlightedDropdownIndex(-1))}
                                       onBlur={() => setTimeout(() => setShowFoodTimingDropdown(null), 150)}
@@ -2203,6 +2279,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                       readOnly={readOnly}
                                       placeholder=""
                                     />
+                                    )}
                                     {!readOnly && showFoodTimingDropdown === globalIndex && (() => {
                                       const filtered = FOOD_TIMING_OPTIONS.filter(opt => !foodTimingSearchQuery || opt.toUpperCase().includes(foodTimingSearchQuery));
                                       return filtered.length > 0 && (
@@ -2279,6 +2356,11 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                               <div className={`flex-1 min-w-0 ${scale.spacing}`}>
                                 <div className="flex gap-2 items-center">
                                   <span className="shrink-0 uppercase">SALT (உப்பு):</span>
+                                  {readOnly ? (
+                                    <div className="flex-1 min-w-0 inline-flex items-center justify-center border border-gray-400 bg-transparent text-center uppercase px-1 py-0.5 leading-none min-h-[24px]">
+                                      <span className="leading-none">{formData.saltIntake || ''}</span>
+                                    </div>
+                                  ) : (
                                   <input
                                     className="flex-1 min-w-0 border border-gray-400 outline-none bg-transparent text-center uppercase px-1 leading-tight"
                                     value={formData.saltIntake}
@@ -2286,10 +2368,16 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                     placeholder="____"
                                     readOnly={readOnly}
                                   />
+                                  )}
                                   <span className="shrink-0 uppercase">GM/DAY</span>
                                 </div>
                                 <div className="flex gap-2 items-center">
                                   <span className="shrink-0 uppercase">FLUID (நீர்):</span>
+                                  {readOnly ? (
+                                    <div className="flex-1 min-w-0 inline-flex items-center justify-center border border-gray-400 bg-transparent text-center uppercase px-1 py-0.5 leading-none min-h-[24px]">
+                                      <span className="leading-none">{formData.fluidIntake || ''}</span>
+                                    </div>
+                                  ) : (
                                   <input
                                     className="flex-1 min-w-0 border border-gray-400 outline-none bg-transparent text-center uppercase px-1 leading-tight"
                                     value={formData.fluidIntake}
@@ -2297,10 +2385,16 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                     placeholder="____"
                                     readOnly={readOnly}
                                   />
+                                  )}
                                   <span className="shrink-0 uppercase">LIT/DAY</span>
                                 </div>
                                 <div className="flex gap-2 items-center">
                                   <span className="shrink-0 uppercase">DISCHARGE WT:</span>
+                                  {readOnly ? (
+                                    <div className="flex-1 min-w-0 inline-flex items-center justify-center border border-gray-400 bg-transparent text-center uppercase px-1 py-0.5 leading-none min-h-[24px]">
+                                      <span className="leading-none">{formData.dischargeWeight || ''}</span>
+                                    </div>
+                                  ) : (
                                   <input
                                     className="flex-1 min-w-0 border border-gray-400 outline-none bg-transparent text-center uppercase px-1 leading-tight"
                                     value={formData.dischargeWeight}
@@ -2308,11 +2402,21 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                     placeholder="____"
                                     readOnly={readOnly}
                                   />
+                                  )}
                                   <span className="shrink-0 uppercase">KG</span>
                                 </div>
                                 <div className="flex gap-2 items-center">
                                   <div className="shrink-0 whitespace-nowrap uppercase">REVIEW ON :</div>
                                   <div className="flex-1 flex items-center gap-2 min-w-0">
+                                    {readOnly ? (
+                                      <div className="inline-flex items-center border border-gray-400 px-2 py-0.5 bg-transparent min-w-0 leading-none min-h-[24px]">
+                                        <span className="leading-none">
+                                          {formData.reviewDate
+                                            ? new Date(formData.reviewDate).toLocaleDateString('en-GB')
+                                            : ''}
+                                        </span>
+                                      </div>
+                                    ) : (
                                     <input
                                       type="date"
                                       className="border border-gray-400 outline-none px-1 cursor-pointer bg-transparent min-w-0 leading-tight"
@@ -2321,6 +2425,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                       readOnly={readOnly}
                                       min={new Date().toISOString().split('T')[0]}
                                     />
+                                    )}
                                     {reviewDaysLabel && (
                                       <span className="text-[11px] font-bold whitespace-nowrap border-2 border-black rounded px-1.5 py-0 bg-gray-100 print:bg-gray-100 tracking-wide">
                                         {reviewDaysLabel}
