@@ -1387,7 +1387,8 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
 
           <div
             ref={componentRef}
-            className="print-content bg-white shadow-sm p-4 max-w-[210mm] text-black w-full origin-top-left"
+            translate="no"
+            className="notranslate print-content bg-white shadow-sm p-4 max-w-[210mm] text-black w-full origin-top-left"
             style={{
               fontFamily: '"Times New Roman", Times, serif',
               minWidth: '210mm',
