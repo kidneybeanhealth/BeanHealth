@@ -690,38 +690,38 @@ const EnterpriseDashboardMain: React.FC = () => {
             </div>
 
             {isLoadingDoctors ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
                     {[1, 2, 3, 4].map(i => (
                         <div key={i} className="h-[300px] bg-white/50 rounded-3xl animate-pulse border border-white/20 shadow-sm"></div>
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
                     {doctors.map((doctor) => (
                         <button
                             key={doctor.id}
                             onClick={() => handleDoctorClick(doctor)}
-                            className="group relative flex flex-col items-center p-8 bg-white/80 backdrop-blur-sm rounded-[2rem] border border-white/60 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-500 ease-out text-center focus:outline-none focus:ring-4 focus:ring-primary-500/20"
+                            className="group relative flex flex-col items-center p-4 sm:p-6 md:p-8 bg-white/80 backdrop-blur-sm rounded-[1.5rem] sm:rounded-[2rem] border border-white/60 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-500 ease-out text-center focus:outline-none focus:ring-4 focus:ring-primary-500/20"
                         >
-                            <div className="w-24 h-24 mb-6 relative">
+                            <div className="w-16 sm:w-20 md:w-24 h-16 sm:h-20 md:h-24 mb-3 sm:mb-4 md:mb-6 relative flex-shrink-0">
                                 <div className="absolute inset-0 bg-gradient-to-tr from-primary-100 to-primary-50 rounded-full scale-90 group-hover:scale-110 transition-transform duration-500 ease-out opacity-60" />
-                                <div className="relative w-full h-full rounded-full overflow-hidden border-[4px] border-white shadow-sm flex items-center justify-center bg-gray-50 text-2xl font-bold text-gray-900 group-hover:border-primary-50 transition-colors duration-300">
+                                <div className="relative w-full h-full rounded-full overflow-hidden border-[3px] sm:border-[4px] border-white shadow-sm flex items-center justify-center bg-gray-50 text-2xl font-bold text-gray-900 group-hover:border-primary-50 transition-colors duration-300">
                                     {doctor.avatar_url ? (
                                         <img src={doctor.avatar_url} alt={doctor.name} className="w-full h-full object-cover" />
                                     ) : (
-                                        <span className="text-3xl text-gray-800">
+                                        <span className="text-xl sm:text-2xl md:text-3xl text-gray-800">
                                             {getDoctorInitials(doctor.name)}
                                         </span>
                                     )}
                                 </div>
                             </div>
 
-                            <h3 className="text-lg font-bold text-gray-900 mb-1 tracking-tight group-hover:text-primary-700 transition-colors">{formatDoctorName(doctor.name)}</h3>
-                            <p className="text-sm font-medium text-gray-500 mb-8 uppercase tracking-wider text-[11px]">{doctor.specialty || 'GENERAL MEDICINE'}</p>
+                            <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 tracking-tight group-hover:text-primary-700 transition-colors line-clamp-2">{formatDoctorName(doctor.name)}</h3>
+                            <p className="text-xs sm:text-sm font-medium text-gray-500 mb-3 sm:mb-4 md:mb-8 uppercase tracking-wider">{doctor.specialty || 'GENERAL MEDICINE'}</p>
 
-                            <div className="mt-auto pointer-events-none">
-                                <span className="inline-flex items-center justify-center px-6 py-2.5 bg-gray-50 text-gray-900 text-sm font-bold rounded-full group-hover:bg-primary-600 group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-primary-600/30">
-                                    Access Dashboard
+                            <div className="mt-auto pointer-events-none w-full">
+                                <span className="inline-flex items-center justify-center px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 bg-gray-50 text-gray-900 text-xs sm:text-sm md:text-sm font-bold rounded-full group-hover:bg-primary-600 group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-primary-600/30 whitespace-nowrap">
+                                    Access
                                 </span>
                             </div>
                         </button>
