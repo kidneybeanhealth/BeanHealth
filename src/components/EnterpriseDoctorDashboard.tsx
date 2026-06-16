@@ -1970,6 +1970,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                         <span className="xs:hidden">Prescribe</span>
                                                     </button>
 
+                                                    {/* TEMPORARILY HIDDEN — Past Rx button. To restore: uncomment this block.
                                                     <button
                                                         onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'past' })}
                                                         className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 rounded-xl hover:bg-indigo-100 border border-indigo-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
@@ -1979,6 +1980,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                         </svg>
                                                         <span>Past Rx</span>
                                                     </button>
+                                                    */}
 
                                                     <button
                                                         onClick={() => setMarkDoneCandidate({ queueId: item.id, patientName: item.patient.name })}
