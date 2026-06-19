@@ -75,7 +75,7 @@ const DoctorLogin: React.FC = () => {
     const [authMode, setAuthMode] = useState<DoctorActorType>('chief');
     const [assistantCode, setAssistantCode] = useState('');
 
-    const [showPassword, setShowPassword] = useState(false);
+    const [showPassword, setShowPassword] = useState(true);
 
     const getLegacySessionKey = () => getLegacyDoctorSessionKey(profile?.id || '');
 
@@ -439,21 +439,21 @@ const DoctorLogin: React.FC = () => {
                                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">
                                         Sign In As
                                     </label>
-                                    <div className="grid grid-cols-2 gap-2 p-1 bg-gray-50 rounded-xl border border-gray-100">
+                                    <div className="flex gap-2 p-1 bg-gray-50 rounded-xl border border-gray-100">
                                         <button
                                             type="button"
                                             onClick={() => {
                                                 setAuthMode('chief');
                                                 setAssistantCode('');
                                             }}
-                                            className={`py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-colors ${authMode === 'chief' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-colors ${authMode === 'chief' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
                                         >
                                             Chief
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setAuthMode('assistant')}
-                                            className={`py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-colors ${authMode === 'assistant' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-colors ${authMode === 'assistant' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
                                         >
                                             Jr.
                                         </button>

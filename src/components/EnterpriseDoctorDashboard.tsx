@@ -173,6 +173,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [queueMetricsByPatientId, setQueueMetricsByPatientId] = useState<Record<string, QueuePatientMetricsSnapshot>>({});
     const [queueMetricsLoading, setQueueMetricsLoading] = useState(false);
     const [expandedQueuePatientIds, setExpandedQueuePatientIds] = useState<Set<string>>(new Set());
+    // Which queue row's collapsed "Actions" menu is currently open (one at a time)
+    const [actionsMenuQueueId, setActionsMenuQueueId] = useState<string | null>(null);
 
     const [viewMode, setViewMode] = useState<'queue' | 'history' | 'ckd_snapshot' | 'past_records' | 'admitted'>('queue');
     const [historyList, setHistoryList] = useState<any[]>([]);
@@ -1939,7 +1941,21 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                 </div>
 
                                                 <div className="w-full min-[500px]:w-auto mt-2 min-[500px]:mt-0">
-                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                                    <button
+                                                        onClick={() => setActionsMenuQueueId(prev => prev === item.id ? null : item.id)}
+                                                        className="w-full min-[500px]:w-auto px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 rounded-xl hover:from-indigo-700 hover:via-violet-700 hover:to-fuchsia-700 shadow-lg shadow-violet-500/30 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                        </svg>
+                                                        <span>Actions</span>
+                                                        <svg className={`w-4 h-4 transition-transform ${actionsMenuQueueId === item.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                        </svg>
+                                                    </button>
+
+                                                    {actionsMenuQueueId === item.id && (
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 animate-fade-in">
                                                     <button
                                                         onClick={() => toggleQueuePatientMetrics(item.patient_id)}
                                                         className="px-4 sm:px-5 py-2.5 text-sm font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-slate-100 border border-slate-200 transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
@@ -1989,6 +2005,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                         Mark Done
                                                     </button>
                                                     </div>
+                                                    )}
                                                 </div>
                                             </div>
 
