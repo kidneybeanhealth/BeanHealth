@@ -1957,13 +1957,12 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                     {actionsMenuQueueId === item.id && (
                                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 animate-fade-in">
                                                     <button
-                                                        onClick={() => toggleQueuePatientMetrics(item.patient_id)}
-                                                        className="px-4 sm:px-5 py-2.5 text-sm font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-slate-100 border border-slate-200 transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                                                        onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'new' })}
+                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
                                                     >
-                                                        <span>Patient Metrics</span>
-                                                        <svg className={`w-4 h-4 transition-transform ${expandedQueuePatientIds.has(item.patient_id) ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                        </svg>
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                        <span className="hidden xs:inline">Prescribe</span>
+                                                        <span className="xs:hidden">Prescribe</span>
                                                     </button>
 
                                                     <button
@@ -1978,12 +1977,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                     </button>
 
                                                     <button
-                                                        onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'new' })}
-                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
+                                                        onClick={() => setMarkDoneCandidate({ queueId: item.id, patientName: item.patient.name })}
+                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors whitespace-nowrap"
                                                     >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                        <span className="hidden xs:inline">Prescribe</span>
-                                                        <span className="xs:hidden">Prescribe</span>
+                                                        Mark Done
                                                     </button>
 
                                                     {/* TEMPORARILY HIDDEN — Past Rx button. To restore: uncomment this block.
@@ -1999,10 +1996,13 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                     */}
 
                                                     <button
-                                                        onClick={() => setMarkDoneCandidate({ queueId: item.id, patientName: item.patient.name })}
-                                                        className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors whitespace-nowrap"
+                                                        onClick={() => toggleQueuePatientMetrics(item.patient_id)}
+                                                        className="px-4 sm:px-5 py-2.5 text-sm font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-slate-100 border border-slate-200 transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
                                                     >
-                                                        Mark Done
+                                                        <span>Patient Metrics</span>
+                                                        <svg className={`w-4 h-4 transition-transform ${expandedQueuePatientIds.has(item.patient_id) ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                        </svg>
                                                     </button>
                                                     </div>
                                                     )}

@@ -13,7 +13,7 @@
  *   4. → drug_review_queue (unknown brands surfaced within 24h)
  */
 
-import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense, lazy } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { runPipeline, CanonicalDrug, PipelineStep } from '../utils/drugNormalizer';
@@ -58,6 +58,17 @@ interface MedItem {
     duration?: string;
     timing?: string;
     instructions?: string;
+}
+
+/** A hospital-wide issued prescription row (joined with patient + doctor) for the Issued Rx browser. */
+interface IssuedRxRow {
+    id: string;
+    created_at: string;
+    medications: MedItem[];
+    notes?: string | null;
+    token_number?: string | null;
+    doctor?: { name: string; specialty: string } | null;
+    patient?: { id: string; name: string; age: number | string | null; mr_number: string | null } | null;
 }
 
 interface PatientLabSnapshot {
@@ -207,6 +218,10 @@ const EnterpriseCKDSnapshotView: React.FC<Props> = ({ doctor }) => {
 
     /* Full prescription modal */
     const [showRxModal, setShowRxModal] = useState(false);
+
+    /* Issued prescriptions browser */
+    const [showIssuedRx, setShowIssuedRx] = useState(false);
+    const [issuedRxToView, setIssuedRxToView] = useState<IssuedRxRow | null>(null);
 
     /* Column collapse */
     const [col1Open, setCol1Open] = useState(true);
@@ -584,6 +599,14 @@ const EnterpriseCKDSnapshotView: React.FC<Props> = ({ doctor }) => {
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>
                         )}
                         {analysingCatalogue ? 'Scanning…' : 'Analyse Catalogue'}
+                    </button>
+                    {/* See Issued Prescriptions */}
+                    <button
+                        onClick={() => setShowIssuedRx(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white border border-indigo-600 hover:bg-indigo-700 shadow-sm shadow-indigo-600/20 transition-all"
+                    >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Issued Prescriptions
                     </button>
                     {/* Review Queue */}
                     <button
@@ -985,6 +1008,41 @@ const EnterpriseCKDSnapshotView: React.FC<Props> = ({ doctor }) => {
                         readOnly={true}
                         forcePrint={true}
                         existingData={selectedRx}
+                    />
+                </Suspense>
+            )}
+
+            {/* Issued Prescriptions browser */}
+            {showIssuedRx && (
+                <IssuedPrescriptionsModal
+                    hospitalId={doctor.hospital_id}
+                    hidden={!!issuedRxToView}
+                    onView={(rx) => setIssuedRxToView(rx)}
+                    onClose={() => setShowIssuedRx(false)}
+                />
+            )}
+
+            {/* Read-only viewer for a selected issued prescription (stacks above the browser) */}
+            {issuedRxToView && issuedRxToView.patient && (
+                <Suspense fallback={null}>
+                    <PrescriptionModalSelector
+                        doctor={{
+                            id: doctor.id,
+                            name: issuedRxToView.doctor?.name || doctor.name,
+                            specialty: issuedRxToView.doctor?.specialty || doctor.specialty,
+                            hospital_id: doctor.hospital_id,
+                        }}
+                        patient={{
+                            id: issuedRxToView.patient.id,
+                            name: issuedRxToView.patient.name,
+                            age: issuedRxToView.patient.age,
+                            mr_number: issuedRxToView.patient.mr_number,
+                            token_number: issuedRxToView.token_number || '',
+                        }}
+                        onClose={() => setIssuedRxToView(null)}
+                        readOnly={true}
+                        forcePrint={true}
+                        existingData={issuedRxToView}
                     />
                 </Suspense>
             )}
@@ -1551,6 +1609,226 @@ const CatalogueResultModal: React.FC<{
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                             Open Review Queue
                         </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* ─── Issued Prescriptions Browser ───────────────────────────────────── */
+
+const toLocalISODate = (d: Date): string => {
+    const off = d.getTimezoneOffset();
+    return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+};
+
+const IssuedPrescriptionsModal: React.FC<{
+    hospitalId: string;
+    hidden?: boolean;
+    onView: (rx: IssuedRxRow) => void;
+    onClose: () => void;
+}> = ({ hospitalId, hidden, onView, onClose }) => {
+    const today = toLocalISODate(new Date());
+    const [mode, setMode] = useState<'date' | 'month' | 'custom'>('month');
+    const [dateVal, setDateVal] = useState(today);
+    const [monthVal, setMonthVal] = useState(today.slice(0, 7));
+    const [fromVal, setFromVal] = useState(today);
+    const [toVal, setToVal] = useState(today);
+    const [drugSearch, setDrugSearch] = useState('');
+    const [debouncedDrug, setDebouncedDrug] = useState('');
+    const [rows, setRows] = useState<IssuedRxRow[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    /* Debounce the drug search */
+    useEffect(() => {
+        const t = window.setTimeout(() => setDebouncedDrug(drugSearch.trim().toLowerCase()), 300);
+        return () => window.clearTimeout(t);
+    }, [drugSearch]);
+
+    /* Active [start, end) window from the chosen filter */
+    const range = useMemo(() => {
+        if (mode === 'date') {
+            if (!dateVal) return null;
+            const start = new Date(`${dateVal}T00:00:00`);
+            const end = new Date(start); end.setDate(end.getDate() + 1);
+            return { start, end };
+        }
+        if (mode === 'month') {
+            const [y, m] = monthVal.split('-').map(Number);
+            if (!y || !m) return null;
+            return { start: new Date(y, m - 1, 1), end: new Date(y, m, 1) };
+        }
+        if (!fromVal || !toVal) return null;
+        const start = new Date(`${fromVal}T00:00:00`);
+        let end = new Date(`${toVal}T00:00:00`); end.setDate(end.getDate() + 1);
+        if (end <= start) end = new Date(start.getTime() + 86400000);
+        return { start, end };
+    }, [mode, dateVal, monthVal, fromVal, toVal]);
+
+    const fetchRows = useCallback(async () => {
+        if (!range) { setRows([]); return; }
+        setLoading(true);
+        try {
+            const PAGE = 1000;
+            const all: IssuedRxRow[] = [];
+            let from = 0;
+            while (true) {
+                const { data, error } = await (supabase.from('hospital_prescriptions') as any)
+                    .select(`id, created_at, medications, notes, token_number,
+                        doctor:hospital_doctors!hospital_prescriptions_doctor_id_fkey(name, specialty),
+                        patient:hospital_patients!hospital_prescriptions_patient_id_fkey(id, name, age, mr_number)`)
+                    .eq('hospital_id', hospitalId)
+                    .gte('created_at', range.start.toISOString())
+                    .lt('created_at', range.end.toISOString())
+                    .order('created_at', { ascending: false })
+                    .range(from, from + PAGE - 1);
+                if (error) throw error;
+                const batch = (data as IssuedRxRow[]) || [];
+                all.push(...batch);
+                if (batch.length < PAGE) break;
+                from += PAGE;
+            }
+            setRows(all);
+        } catch {
+            toast.error('Could not load issued prescriptions');
+        } finally {
+            setLoading(false);
+        }
+    }, [range, hospitalId]);
+
+    useEffect(() => { fetchRows(); }, [fetchRows]);
+
+    /* Drug-name filter, applied client-side within the loaded window */
+    const filtered = useMemo(() => {
+        if (!debouncedDrug) return rows;
+        return rows.filter(r => (r.medications || []).some(m => (m.name || '').toLowerCase().includes(debouncedDrug)));
+    }, [rows, debouncedDrug]);
+
+    const formatDateTime = (iso: string): string => {
+        try {
+            const d = new Date(iso);
+            return `${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+        } catch { return iso; }
+    };
+
+    const inputCls = 'px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg bg-white focus:border-indigo-400 outline-none';
+
+    return (
+        <div className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 ${hidden ? 'hidden' : ''}`}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900">Issued Prescriptions</p>
+                        <p className="text-[11px] text-gray-400">Browse prescriptions issued by the hospital</p>
+                    </div>
+                    <button onClick={onClose} className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                {/* Filters */}
+                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex flex-col gap-3 flex-shrink-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex p-0.5 bg-gray-100 rounded-lg border border-gray-200">
+                            {(['date', 'month', 'custom'] as const).map(m => (
+                                <button
+                                    key={m}
+                                    onClick={() => setMode(m)}
+                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${mode === m ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                                >
+                                    {m === 'date' ? 'By Date' : m === 'month' ? 'By Month' : 'Custom Range'}
+                                </button>
+                            ))}
+                        </div>
+                        {mode === 'date' && (
+                            <input type="date" value={dateVal} max={today} onChange={e => setDateVal(e.target.value)} className={inputCls} />
+                        )}
+                        {mode === 'month' && (
+                            <input type="month" value={monthVal} max={today.slice(0, 7)} onChange={e => setMonthVal(e.target.value)} className={inputCls} />
+                        )}
+                        {mode === 'custom' && (
+                            <div className="flex items-center gap-1.5">
+                                <input type="date" value={fromVal} max={today} onChange={e => setFromVal(e.target.value)} className={inputCls} />
+                                <span className="text-xs text-gray-400 font-medium">to</span>
+                                <input type="date" value={toVal} max={today} onChange={e => setToVal(e.target.value)} className={inputCls} />
+                            </div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <input
+                            type="text"
+                            value={drugSearch}
+                            onChange={e => setDrugSearch(e.target.value)}
+                            placeholder="Search by drug name (e.g. Lasix, Telma)…"
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:border-indigo-400 outline-none"
+                        />
+                    </div>
+                    <div className="text-[11px] text-gray-400">
+                        {loading
+                            ? 'Loading…'
+                            : `${filtered.length} prescription${filtered.length === 1 ? '' : 's'}${debouncedDrug ? ` containing “${debouncedDrug}”` : ''}`}
+                    </div>
+                </div>
+
+                {/* List */}
+                <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-3">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-16 text-gray-400 text-sm">
+                            <svg className="w-4 h-4 animate-spin mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            Loading prescriptions…
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                            <svg className="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            <p className="text-sm font-medium">No prescriptions found</p>
+                            <p className="text-xs">Adjust the date filter or drug search.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {filtered.map(rx => {
+                                const meds = rx.medications || [];
+                                const matched = debouncedDrug ? meds.filter(m => (m.name || '').toLowerCase().includes(debouncedDrug)) : [];
+                                const chips = matched.length ? matched : meds;
+                                return (
+                                    <button
+                                        key={rx.id}
+                                        onClick={() => onView(rx)}
+                                        className="w-full text-left bg-white border border-gray-200 rounded-xl p-3.5 hover:border-indigo-300 hover:shadow-sm transition-all flex items-start gap-3"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-sm font-bold text-gray-900 truncate">{rx.patient?.name || 'Unknown patient'}</span>
+                                                {rx.patient?.mr_number && <span className="text-[11px] font-mono font-bold text-gray-500">{rx.patient.mr_number}</span>}
+                                                {rx.patient?.age != null && rx.patient.age !== '' && (
+                                                    <span className="text-[11px] text-gray-400">
+                                                        {/[a-zA-Z]/.test(String(rx.patient.age)) ? String(rx.patient.age) : `${rx.patient.age}y`}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-[11px] text-gray-400 mt-0.5">
+                                                {formatDateTime(rx.created_at)}{rx.doctor?.name ? ` · Dr. ${rx.doctor.name}` : ''}
+                                            </div>
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {chips.slice(0, 6).map((m, i) => (
+                                                    <span key={i} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${matched.length ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-600'}`}>
+                                                        {m.name}
+                                                    </span>
+                                                ))}
+                                                {chips.length > 6 && <span className="text-[10px] text-gray-400 px-1 self-center">+{chips.length - 6} more</span>}
+                                                {meds.length === 0 && <span className="text-[10px] text-gray-400">No medications</span>}
+                                            </div>
+                                        </div>
+                                        <svg className="w-4 h-4 text-gray-300 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             </div>
