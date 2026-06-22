@@ -1884,7 +1884,12 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                     <div>
                                                         <h4 className="text-lg font-bold text-gray-900">{item.patient.name}</h4>
                                                         {item.patient.mr_number && (
-                                                            <div className="text-xs font-bold text-gray-700">{item.patient.mr_number}</div>
+                                                            <div
+                                                                className="text-sm font-extrabold text-indigo-700 tracking-wide"
+                                                                style={{ textShadow: '0 0 8px rgba(99,102,241,0.55), 0 0 2px rgba(99,102,241,0.4)' }}
+                                                            >
+                                                                {item.patient.mr_number}
+                                                            </div>
                                                         )}
                                                         {item.preparing_by && (
                                                             <div className="mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
@@ -1983,7 +1988,6 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                         Mark Done
                                                     </button>
 
-                                                    {/* TEMPORARILY HIDDEN — Past Rx button. To restore: uncomment this block.
                                                     <button
                                                         onClick={() => setPrescribeCandidate({ queueItem: item, mode: 'past' })}
                                                         className="px-4 sm:px-5 py-2.5 sm:py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 rounded-xl hover:bg-indigo-100 border border-indigo-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
@@ -1993,7 +1997,6 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                         </svg>
                                                         <span>Past Rx</span>
                                                     </button>
-                                                    */}
 
                                                     <button
                                                         onClick={() => toggleQueuePatientMetrics(item.patient_id)}
