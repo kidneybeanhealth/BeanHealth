@@ -378,143 +378,117 @@ const DoctorLogin: React.FC = () => {
     if (doctorId && showPasswordModal && selectedDoctor) {
         return (
             <div
-                className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6"
+                className="min-h-screen flex flex-col items-center px-4 pt-6 pb-8 sm:pt-10 overflow-y-auto"
                 style={{
                     background: 'linear-gradient(135deg, #f8faf6 0%, #e8f5e0 50%, #f0f7ec 100%)'
                 }}
             >
-                <div className="w-full max-w-lg">
-                    {/* Logo & Branding */}
-                    <div className="flex flex-col items-center justify-center mb-6 sm:mb-12 animate-fade-in w-full text-center">
-                        <div className="w-20 h-20 sm:w-32 sm:h-32 flex-shrink-0 relative transition-transform duration-700 hover:scale-105 mb-4 sm:mb-8">
-                            <img
-                                src="/logo.png"
-                                alt="BeanHealth Logo"
-                                className="w-full h-full object-contain drop-shadow-sm"
-                            />
+                <div className="w-full max-w-sm">
+                    {/* Compact brand row */}
+                    <div className="flex items-center justify-center gap-2.5 mb-3 animate-fade-in">
+                        <img src="/logo.png" alt="BeanHealth Logo" className="w-8 h-8 object-contain shrink-0" />
+                        <div className="flex text-lg font-black tracking-tight leading-none">
+                            <span className="text-[#3d2e2a]">Bean</span>
+                            <span className="text-secondary-500">Health</span>
                         </div>
-
-                        <div className="flex items-center w-full max-w-xs sm:max-w-none">
-                            <div className="flex-1 flex justify-end pr-3 sm:pr-5">
-                                <div className="flex text-2xl sm:text-4xl font-black tracking-tight leading-none">
-                                    <span className="text-[#3d2e2a]">Bean</span>
-                                    <span className="text-secondary-500">Health</span>
-                                </div>
-                            </div>
-                            <div className="h-6 sm:h-10 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
-                            <div className="flex-1 flex justify-start pl-3 sm:pl-5 text-left">
-                                <span className="text-[#3d2e2a] text-xl sm:text-3xl font-black leading-none tracking-tight line-clamp-1">
-                                    {displayName}
-                                </span>
-                            </div>
-                        </div>
+                        <div className="h-5 w-px bg-[#3d2e2a] opacity-20 shrink-0" />
+                        <span className="text-[#3d2e2a] text-base font-black leading-none tracking-tight line-clamp-1">
+                            {displayName}
+                        </span>
                     </div>
 
                     <button
                         onClick={handleCloseModal}
-                        className="flex items-center gap-2 text-gray-400 hover:text-gray-900 mb-4 sm:mb-6 transition-colors group px-4"
+                        className="flex items-center gap-1.5 text-gray-400 hover:text-gray-700 mb-3 transition-colors group"
                     >
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                         <span className="text-sm font-medium">Back to Doctors</span>
                     </button>
 
-                    <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_4px_30px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/50 p-6 sm:p-10">
-                        <div className="text-center mb-6 sm:mb-10">
-                            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-50/50 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                                <svg className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.06)] border border-gray-100/60 p-5">
+                        {/* Compact header — icon + name (max 2 lines) + specialty */}
+                        <div className="flex flex-col items-center text-center mb-4">
+                            <div className="w-11 h-11 bg-indigo-50 rounded-2xl flex items-center justify-center mb-2">
+                                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                             </div>
-                            <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                            <h2 className="text-xl font-black text-gray-900 tracking-tight leading-tight line-clamp-2">
                                 Hello, {formatDoctorName(selectedDoctor.name)}
                             </h2>
-                            <p className="text-gray-400 mt-2 sm:mt-3 font-medium text-xs sm:text-[15px]">{selectedDoctor.specialty}</p>
+                            <p className="text-gray-400 mt-0.5 font-medium text-xs">{selectedDoctor.specialty}</p>
                         </div>
 
-                        <form onSubmit={handlePasswordSubmit} className="space-y-4 sm:space-y-6">
+                        <form onSubmit={handlePasswordSubmit} className="space-y-2.5">
+                            {/* Compact Chief / Jr. switch */}
                             {paAuthEnabled && (
-                                <div className="space-y-2 sm:space-y-3">
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">
-                                        Sign In As
-                                    </label>
-                                    <div className="flex gap-2 p-1 bg-gray-50 rounded-xl border border-gray-100">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setAuthMode('chief');
-                                                setAssistantCode('');
-                                            }}
-                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-colors ${authMode === 'chief' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
-                                        >
-                                            Chief
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setAuthMode('assistant')}
-                                            className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-colors ${authMode === 'assistant' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
-                                        >
-                                            Jr.
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {paAuthEnabled && authMode === 'assistant' && (
-                                <div>
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 sm:mb-3 ml-1">
-                                        Assistant Code
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={assistantCode}
-                                        onChange={(e) => setAssistantCode(e.target.value.toUpperCase())}
-                                        className="w-full px-4 py-2.5 sm:py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:bg-white focus:border-primary-500 focus:ring-0 outline-none transition-all text-center text-base sm:text-lg font-bold tracking-wider"
-                                        placeholder="Jr. CODE"
-                                        autoComplete="off"
-                                    />
-                                </div>
-                            )}
-
-                            <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 sm:mb-3 ml-1">
-                                    {paAuthEnabled ? (authMode === 'chief' ? 'Chief Passcode' : 'Jr. Passcode') : 'Enter Your Passcode'}
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full px-4 py-3 sm:py-4 bg-gray-50 border-2 border-gray-100 rounded-xl focus:bg-white focus:border-primary-500 focus:ring-0 outline-none transition-all text-center text-xl sm:text-2xl font-bold tracking-[0.3em] placeholder:text-gray-200 placeholder:tracking-[0.3em]"
-                                        placeholder="••••••"
-                                        autoFocus
-                                    />
+                                <div className="flex gap-1 p-1 bg-gray-50 rounded-xl border border-gray-100">
                                     <button
                                         type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-2"
+                                        onClick={() => {
+                                            setAuthMode('chief');
+                                            setAssistantCode('');
+                                        }}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${authMode === 'chief' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
                                     >
-                                        {showPassword ? (
-                                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                                            </svg>
-                                        ) : (
-                                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268-2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                        )}
+                                        Chief
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAuthMode('assistant')}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${authMode === 'assistant' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                                    >
+                                        Jr.
                                     </button>
                                 </div>
+                            )}
+
+                            {/* Jr. code — compact */}
+                            {paAuthEnabled && authMode === 'assistant' && (
+                                <input
+                                    type="text"
+                                    value={assistantCode}
+                                    onChange={(e) => setAssistantCode(e.target.value.toUpperCase())}
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary-500 focus:ring-0 outline-none transition-all text-center text-base font-bold tracking-wider placeholder:text-gray-300 placeholder:font-semibold placeholder:tracking-normal"
+                                    placeholder="Jr. Code"
+                                    autoComplete="off"
+                                />
+                            )}
+
+                            {/* Passcode — compact */}
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full pl-4 pr-11 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary-500 focus:ring-0 outline-none transition-all text-center text-lg font-bold tracking-[0.25em] placeholder:text-gray-300 placeholder:text-sm placeholder:font-semibold placeholder:tracking-normal"
+                                    placeholder={paAuthEnabled ? (authMode === 'chief' ? 'Chief Passcode' : 'Jr. Passcode') : 'Enter Passcode'}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1.5"
+                                >
+                                    {showPassword ? (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268-2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    )}
+                                </button>
                             </div>
 
-
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2.5 pt-1">
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
-                                    className="px-4 py-3 sm:py-3.5 text-gray-500 bg-gray-50 rounded-xl hover:bg-gray-100 text-sm sm:text-base font-bold transition-all active:scale-[0.98]"
+                                    className="px-4 py-2.5 text-gray-500 bg-gray-50 rounded-xl hover:bg-gray-100 text-sm font-bold transition-all active:scale-[0.98]"
                                     disabled={isSubmitting}
                                 >
                                     Cancel
@@ -522,7 +496,7 @@ const DoctorLogin: React.FC = () => {
                                 <button
                                     type="submit"
                                     disabled={!password || isSubmitting || (paAuthEnabled && authMode === 'assistant' && !assistantCode.trim())}
-                                    className="px-4 py-3 sm:py-3.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 text-sm sm:text-base font-bold transition-all shadow-lg shadow-primary-600/20 disabled:opacity-50 active:scale-[0.98]"
+                                    className="px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 text-sm font-bold transition-all shadow-lg shadow-primary-600/20 disabled:opacity-50 active:scale-[0.98]"
                                 >
                                     {isSubmitting ? 'Checking...' : 'Unlock'}
                                 </button>

@@ -177,7 +177,12 @@ const MedCard: React.FC<{
     setShowDrugDropdown: (n: number | null) => void;
     handleSelectDrug: (index: number, drug: any) => void;
     showRemove: boolean;
-}> = ({ med, index, updateMed, removeRow, readOnly, filteredDrugs, setDrugSearchQuery, showDrugDropdown, setShowDrugDropdown, handleSelectDrug, showRemove }) => {
+    onComplete: (index: number) => void;
+    registerDrugInput: (index: number, el: HTMLInputElement | null) => void;
+    isLast: boolean;
+    moveMed: (index: number, direction: -1 | 1) => void;
+    total: number;
+}> = ({ med, index, updateMed, removeRow, readOnly, filteredDrugs, setDrugSearchQuery, showDrugDropdown, setShowDrugDropdown, handleSelectDrug, showRemove, onComplete, registerDrugInput, isLast, moveMed, total }) => {
 
     const [showConfirmRemove, setShowConfirmRemove] = React.useState(false);
     const [showDosageDropdown, setShowDosageDropdown] = React.useState(false);
@@ -250,6 +255,16 @@ const MedCard: React.FC<{
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
                 <span style={{ width: '20px', height: '20px', background: '#f3f4f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900, color: '#4a7c2f', flexShrink: 0, border: '1.5px solid #d1d5db' }}>{index + 1}</span>
                 <span style={{ flex: 1, fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Medication</span>
+                {total > 1 && !readOnly && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <button type="button" aria-label="Move up" disabled={index === 0}
+                            onClick={() => moveMed(index, -1)}
+                            style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 900, border: '1px solid #e5e7eb', background: index === 0 ? '#f9fafb' : '#fff', color: index === 0 ? '#d1d5db' : '#374151', cursor: index === 0 ? 'not-allowed' : 'pointer', padding: 0 }}>↑</button>
+                        <button type="button" aria-label="Move down" disabled={index === total - 1}
+                            onClick={() => moveMed(index, 1)}
+                            style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 900, border: '1px solid #e5e7eb', background: index === total - 1 ? '#f9fafb' : '#fff', color: index === total - 1 ? '#d1d5db' : '#374151', cursor: index === total - 1 ? 'not-allowed' : 'pointer', padding: 0 }}>↓</button>
+                    </div>
+                )}
                 {showRemove && !readOnly && (
                     <button onClick={() => setShowConfirmRemove(true)} style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>✕</button>
                 )}
@@ -276,7 +291,7 @@ const MedCard: React.FC<{
             <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6' }}>
                 <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input type="text" value={med.name}
-                        ref={drugInputRef}
+                        ref={el => { drugInputRef.current = el; registerDrugInput(index, el); }}
                         onChange={e => {
                             const input = e.target;
                             const cursorPos = input.selectionStart;
@@ -412,6 +427,27 @@ const MedCard: React.FC<{
                 </div>
 
             </div>
+
+            {/* Done — Next drug bar */}
+            {!readOnly && (
+                <button
+                    type="button"
+                    disabled={!med.name || !med.name.trim()}
+                    onClick={() => onComplete(index)}
+                    style={{
+                        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        padding: '9px 0', border: 'none', borderTop: '1px solid #f3f4f6', cursor: (!med.name || !med.name.trim()) ? 'not-allowed' : 'pointer',
+                        background: (!med.name || !med.name.trim()) ? '#f3f4f6' : '#ecfdf5',
+                        color: (!med.name || !med.name.trim()) ? '#9ca3af' : '#15803d',
+                        fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em',
+                    }}>
+                    <span style={{
+                        width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: (!med.name || !med.name.trim()) ? '#d1d5db' : '#16a34a', color: '#fff', fontSize: '10px', fontWeight: 900,
+                    }}>✓</span>
+                    {isLast ? 'Done — Add next drug' : 'Done — Next drug'}
+                </button>
+            )}
         </div>
     );
 };
@@ -427,6 +463,7 @@ interface MobilePrescriptionInputProps {
     updateMed: (index: number, field: string, value: string) => void;
     addRow: () => void;
     removeRow: (index: number) => void;
+    moveMed: (index: number, direction: -1 | 1) => void;
     patient: any;
     readOnly: boolean;
     drugSearchQuery: string;
@@ -447,13 +484,35 @@ interface MobilePrescriptionInputProps {
 }
 
 const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
-    formData, setFormData, medications, updateMed, addRow, removeRow, patient, readOnly,
+    formData, setFormData, medications, updateMed, addRow, removeRow, moveMed, patient, readOnly,
     drugSearchQuery, setDrugSearchQuery, filteredDrugs, handleSelectDrug, showDrugDropdown, setShowDrugDropdown,
     onClose, onPrint, onSend,
     savedDiagnoses, diagnosisSearchQuery, setDiagnosisSearchQuery, showDiagnosisDropdown, setShowDiagnosisDropdown,
     SPECIALIST_OPTIONS
 }) => {
     const [showSpecialistDropdown, setShowSpecialistDropdown] = React.useState(false);
+
+    // Refs to each drug-name input so "Done — Next drug" can jump focus across cards
+    const drugInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+
+    const focusDrugInput = (i: number) => {
+        const el = drugInputRefs.current[i];
+        if (!el) return;
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    const handleCompleteDrug = (index: number) => {
+        if (index < medications.length - 1) {
+            // Next card already exists — jump to it
+            focusDrugInput(index + 1);
+        } else {
+            // Last card — add a fresh one, then jump to it once rendered
+            const newIndex = medications.length;
+            addRow();
+            setTimeout(() => focusDrugInput(newIndex), 130);
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[60] flex flex-col bg-gray-50 overflow-hidden">
@@ -543,7 +602,12 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                         <MedCard key={idx} med={med as Medication} index={idx} updateMed={updateMed} removeRow={removeRow} readOnly={readOnly}
                             filteredDrugs={filteredDrugs} setDrugSearchQuery={setDrugSearchQuery}
                             showDrugDropdown={showDrugDropdown} setShowDrugDropdown={setShowDrugDropdown}
-                            handleSelectDrug={handleSelectDrug} showRemove={medications.length > 1} />
+                            handleSelectDrug={handleSelectDrug} showRemove={medications.length > 1}
+                            onComplete={handleCompleteDrug}
+                            registerDrugInput={(i, el) => { drugInputRefs.current[i] = el; }}
+                            isLast={idx === medications.length - 1}
+                            moveMed={moveMed}
+                            total={medications.length} />
                     ))}
                     {!readOnly && (
                         <button onClick={addRow} className="w-full py-3 bg-white border-2 border-dashed border-gray-300 text-gray-500 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
