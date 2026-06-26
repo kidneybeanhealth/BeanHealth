@@ -309,6 +309,8 @@ const ReceptionDashboard: React.FC = () => {
 
     // Queue doctor filter
     const [queueDoctorFilter, setQueueDoctorFilter] = useState<string>('all');
+    // History Log type filter: all / outpatient (normal completed) / admitted
+    const [historyTypeFilter, setHistoryTypeFilter] = useState<'all' | 'outpatient' | 'admitted'>('all');
 
     // Edit queue item state
     const [editQueueItem, setEditQueueItem] = useState<any | null>(null);
@@ -1980,6 +1982,14 @@ const ReceptionDashboard: React.FC = () => {
                     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                         <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">Completed</p>
                         <p className="text-4xl font-bold text-green-600">{queue.filter(q => q.status === 'completed').length}</p>
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                Outpatient {queue.filter(q => q.status === 'completed' && q.admission_status !== 'admitted').length}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-100">
+                                Admitted {queue.filter(q => q.status === 'completed' && q.admission_status === 'admitted').length}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -2038,6 +2048,28 @@ const ReceptionDashboard: React.FC = () => {
                                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${queueDoctorFilter === doc.id ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-700'}`}
                                 >
                                     {formatDoctorName(doc.name)}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* History Log type filter — outpatient vs admitted */}
+                    {activeTab === 'patients' && (
+                        <div className="px-6 py-3 border-b border-gray-100 flex items-center gap-2 flex-wrap bg-gray-50/60">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide mr-1">Type:</span>
+                            {([
+                                { key: 'all', label: 'All' },
+                                { key: 'outpatient', label: 'Outpatient' },
+                                { key: 'admitted', label: 'Admitted' },
+                            ] as const).map(opt => (
+                                <button
+                                    key={opt.key}
+                                    onClick={() => setHistoryTypeFilter(opt.key)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${historyTypeFilter === opt.key
+                                        ? (opt.key === 'admitted' ? 'bg-rose-600 text-white' : 'bg-indigo-600 text-white')
+                                        : 'bg-white border border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-700'}`}
+                                >
+                                    {opt.label}
                                 </button>
                             ))}
                         </div>
@@ -2356,12 +2388,20 @@ const ReceptionDashboard: React.FC = () => {
                             {queue
                                 .filter(item => activeTab === 'queue' ? (item.status === 'pending' || item.status === 'in_progress') : (item.status === 'completed' || item.status === 'cancelled'))
                                 .filter(item => queueDoctorFilter === 'all' || item.doctor_id === queueDoctorFilter)
+                                .filter(item => activeTab !== 'patients' || historyTypeFilter === 'all'
+                                    || (historyTypeFilter === 'admitted' ? item.admission_status === 'admitted' : item.admission_status !== 'admitted'))
                                 .map((item) => (
                                     <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
                                         <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
-                                            <div className="w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2 shrink-0">
-                                                {item.token_number || item.patient?.token_number || 'N/A'}
-                                            </div>
+                                            {item.admission_status === 'admitted' ? (
+                                                <div className="w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex flex-col items-center justify-center font-black text-[10px] leading-tight bg-rose-50 text-rose-700 border border-rose-200 shadow-sm px-1 shrink-0 uppercase tracking-wide text-center">
+                                                    Admitted
+                                                </div>
+                                            ) : (
+                                                <div className="w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2 shrink-0">
+                                                    {item.token_number || item.patient?.token_number || 'N/A'}
+                                                </div>
+                                            )}
                                             <div className="min-w-0">
                                                 <h4 className="font-bold text-gray-900 truncate pr-2">{item.patient?.name}</h4>
                                                 {item.preparing_by && (

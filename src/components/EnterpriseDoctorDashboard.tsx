@@ -2180,7 +2180,11 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                         })()}
                                                     </div>
                                                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                        <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 text-xs">#{item.patient?.token_number}</span>
+                                                        {item.admission_status === 'admitted' ? (
+                                                            <span className="font-bold bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded text-xs border border-rose-200 uppercase tracking-wide">Admitted</span>
+                                                        ) : (
+                                                            <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 text-xs">#{item.patient?.token_number}</span>
+                                                        )}
                                                         <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                                         <span>{new Date(item.updated_at || item.created_at).toLocaleTimeString()}</span>
                                                         {(() => {

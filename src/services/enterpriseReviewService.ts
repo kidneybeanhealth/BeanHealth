@@ -1106,6 +1106,26 @@ export async function admitPatientDirectly(
 
     const nowIso = new Date().toISOString();
 
+    // Guard: don't create a second admission row if the patient is already admitted.
+    // Prevents duplicate admitted-section rows and duplicate History Log entries.
+    const existing = await withTimeout(
+        ((supabase.from('hospital_queues' as any) as any)
+            .select('id')
+            .eq('hospital_id', hospitalId)
+            .eq('patient_id', patientId)
+            .eq('admission_status', 'admitted')
+            .limit(1)) as any,
+        8000,
+        'Timed out checking admission status'
+    ) as SupabaseResult<any[]>;
+    if (existing.error) {
+        const msg = String(existing.error.message || '').toLowerCase();
+        // Older DBs without admission_status: fall through and insert.
+        if (!msg.includes('admission_status')) throw existing.error;
+    } else if (Array.isArray(existing.data) && existing.data.length > 0) {
+        throw new Error('Patient is already admitted');
+    }
+
     const insertResult = await withTimeout(
         ((supabase.from('hospital_queues' as any) as any).insert({
             hospital_id: hospitalId,
@@ -1202,8 +1222,18 @@ export async function fetchAdmittedPatients(
     const queueResult = await withTimeout(query as any, 10000, 'Timed out loading admitted patients') as SupabaseResult<any[]>;
     if (queueResult.error) throw queueResult.error;
 
-    const queueRows = Array.isArray(queueResult.data) ? queueResult.data : [];
-    if (queueRows.length === 0) return [];
+    const rawQueueRows = Array.isArray(queueResult.data) ? queueResult.data : [];
+    if (rawQueueRows.length === 0) return [];
+
+    // Dedupe by patient: a patient admitted more than once should appear only
+    // once. Rows are ordered by admitted_at desc, so the first seen is the latest.
+    const seenPatients = new Set<string>();
+    const queueRows = rawQueueRows.filter((r: any) => {
+        if (!r.patient_id) return true;
+        if (seenPatients.has(r.patient_id)) return false;
+        seenPatients.add(r.patient_id);
+        return true;
+    });
 
     const patientIds = Array.from(new Set(queueRows.map(r => r.patient_id).filter(Boolean))) as string[];
     const doctorIds = Array.from(new Set(queueRows.map(r => r.doctor_id).filter(Boolean))) as string[];
