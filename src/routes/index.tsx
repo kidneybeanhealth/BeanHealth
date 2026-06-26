@@ -9,7 +9,7 @@ import Login from '../components/auth/Login';
 import EnterpriseLogin from '../components/auth/EnterpriseLogin';
 import AdminLogin from '../components/auth/AdminLogin';
 import ProfileSetup from '../components/auth/ProfileSetup';
-import LandingPage from '../components/landing/LandingPage';
+import LandingPage from '../components/landing/BeanHealthLanding';
 
 // Dashboard Components - LAZY LOADED for faster initial load
 const PatientDashboard = React.lazy(() => import('../components/PatientDashboard'));
