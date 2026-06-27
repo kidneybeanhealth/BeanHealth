@@ -192,7 +192,7 @@ export const teamMembers: {
   {
     name: "Harish S",
     role: "Founder & CEO",
-    image: "https://customer-assets.emergentagent.com/job_med-dashboard-demo/artifacts/y5nca439_image.png",
+    image: "/harish-profile.png",
     description:
       "Building the future of chronic disease care through connected healthtech, decision layers, and scalable infrastructure.",
     skills: ["Biosensor & device integration", "Data analytics pipelines", "Clinical decision layers", "Scalable infrastructure"],
@@ -202,7 +202,7 @@ export const teamMembers: {
   {
     name: "Bonthu Jnani Venkata Ratna Kumar",
     role: "Full Stack Developer",
-    image: "https://www.beanhealth.in/jnani-profile.png",
+    image: "/jnani-profile.png",
     description: "Building robust backend systems and intuitive user interfaces for seamless patient care experiences.",
     skills: ["React", "Node.js", "MongoDB"],
     linkedin: "https://www.linkedin.com/in/bonthu-jnani-venkata-ratna-kumar-314874165/",
@@ -210,7 +210,7 @@ export const teamMembers: {
   {
     name: "Saran Kathiravan",
     role: "Mobile & IoT Developer",
-    image: "https://www.beanhealth.in/saran-profile.png",
+    image: "/saran-profile.png",
     description: "Developing mobile applications and device integrations for rapid health monitoring and follow-up workflows.",
     skills: ["Flutter", "IoT", "BLE"],
     linkedin: "https://www.linkedin.com/in/saran-kathiravan17/",
