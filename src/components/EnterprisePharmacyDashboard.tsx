@@ -951,10 +951,17 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                     >
                                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
                                             <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
-                                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-sm flex-shrink-0
-                                                    ${item.status === 'pending' ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
-                                                    {item.token_number || item.patient?.token_number}
-                                                </div>
+                                                {(() => {
+                                                    const meta = (item as any).metadata || {};
+                                                    const notesStr = (item as any).notes || '';
+                                                    const isDischargeCard = meta.documentType === 'discharge_card' || notesStr.startsWith('DocType: discharge_card');
+                                                    return (
+                                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-sm flex-shrink-0
+                                                            ${isDischargeCard ? 'bg-fuchsia-50 text-fuchsia-600' : item.status === 'pending' ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
+                                                            {isDischargeCard ? 'DC' : (item.token_number || item.patient?.token_number)}
+                                                        </div>
+                                                    );
+                                                })()}
                                                 <div className="flex-1">
                                                     {(() => {
                                                         const meta = (item as any).metadata || {};
