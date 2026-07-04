@@ -81,6 +81,11 @@ const DuePatientRow: React.FC<{ due: ReceptionActivityDue; note?: string }> = ({
                 {due.doctorName}
             </span>
         )}
+        {due.lastVisitAt && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                Last visit {fmtIsoDM(due.lastVisitAt)}
+            </span>
+        )}
         {note && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
                 {note}

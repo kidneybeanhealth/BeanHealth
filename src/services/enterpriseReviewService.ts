@@ -1645,6 +1645,8 @@ export interface ReceptionActivityDue {
     /** a follow-up call linked to this review was made (last 14 days before due) */
     wasCalled: boolean;
     latestCallStatus: string | null;
+    /** the visit that assigned this review date (its source prescription's date) */
+    lastVisitAt: string | null;
 }
 
 export interface ReceptionActivityData {
@@ -1730,7 +1732,7 @@ export async function fetchReceptionActivity(params: {
     const reviewsRes = await withTimeout(
         (supabase
             .from('hospital_patient_reviews' as any) as any)
-            .select('id, patient_id, doctor_id, status, next_review_date, completed_at')
+            .select('id, patient_id, doctor_id, status, next_review_date, completed_at, source_prescription_id')
             .eq('hospital_id', hospitalId)
             .gte('next_review_date', startDate)
             .lte('next_review_date', endDate)
@@ -1743,6 +1745,26 @@ export async function fetchReceptionActivity(params: {
         if (!msg.includes('hospital_patient_reviews')) throw reviewsRes.error;
     } else {
         reviewRows = reviewsRes.data || [];
+    }
+
+    // 2a) Source prescriptions — the visit that assigned each review date
+    // ("last visited"). Fetched by id since it can predate the viewed window.
+    const sourceRxDateById = new Map<string, string>();
+    const sourceRxIds = Array.from(new Set(
+        reviewRows.map((r) => r.source_prescription_id).filter(Boolean)
+    )) as string[];
+    for (const chunk of chunkArray(sourceRxIds, 100)) {
+        if (chunk.length === 0) continue;
+        const res = await withTimeout(
+            (supabase
+                .from('hospital_prescriptions' as any) as any)
+                .select('id, created_at')
+                .in('id', chunk) as any,
+            10000,
+            'Timed out while loading review source visits'
+        ) as SupabaseResult<any[]>;
+        if (res.error) break;
+        (res.data || []).forEach((p: any) => sourceRxDateById.set(p.id, p.created_at));
     }
 
     // 2b) Calls linked to the due cohort's reviews. Calls for a due date can
@@ -1918,6 +1940,9 @@ export async function fetchReceptionActivity(params: {
 
         const reviewCalls = reviewCallsByReviewId.get(r.id) || [];
         const wasCalled = reviewCalls.length > 0;
+        const lastVisitAt = r.source_prescription_id
+            ? (sourceRxDateById.get(r.source_prescription_id) || null)
+            : null;
 
         return {
             patientId: r.patient_id,
@@ -1934,6 +1959,7 @@ export async function fetchReceptionActivity(params: {
             attendedDate,
             wasCalled,
             latestCallStatus: reviewCalls[0]?.call_status || latestCallStatusByPatient.get(r.patient_id) || null,
+            lastVisitAt,
         };
     });
 
