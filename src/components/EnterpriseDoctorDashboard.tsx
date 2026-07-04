@@ -1103,12 +1103,14 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     ) => {
         if (!doctor.hospital_id) return;
         try {
-            // Find the most recent pending/rescheduled review for this patient
+            // Find the most recent pending/rescheduled review for this patient with THIS doctor.
+            // Per-doctor scoping — patient-only matching can repoint the wrong doctor's review.
             const { data: existing } = await (supabase as any)
                 .from('hospital_patient_reviews')
                 .select('id')
                 .eq('hospital_id', doctor.hospital_id)
                 .eq('patient_id', patientId)
+                .eq('doctor_id', doctor.id)
                 .in('status', ['pending', 'rescheduled'])
                 .order('next_review_date', { ascending: false })
                 .limit(1)

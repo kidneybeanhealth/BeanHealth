@@ -22,6 +22,14 @@ import {
 } from '../../services/enterpriseReviewService';
 import AdmittedPatientsPanel from './AdmittedPatientsPanel';
 
+// Past Records report views — lazy (only loaded when the chip is opened)
+const WeeklyOverdueReportPanel = lazy(() =>
+    import('./ReceptionActivityPanels').then(m => ({ default: m.WeeklyOverdueReportPanel }))
+);
+const ReceptionCalendarPanel = lazy(() =>
+    import('./ReceptionActivityPanels').then(m => ({ default: m.ReceptionCalendarPanel }))
+);
+
 interface DoctorProfile {
     id: string;
     name: string;
@@ -110,14 +118,19 @@ const toLocalISODate = (date: Date): string => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
-const getReviewFilterLabel = (filterKey: ReceptionReviewFilter): string => {
+/** Past Records view — review filters plus the two report views */
+type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar';
+
+const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'all') return 'All';
     if (filterKey === 'due_today') return 'Due Today';
     if (filterKey === 'due_tomorrow') return 'Due Tomorrow';
     if (filterKey === 'upcoming') return 'Upcoming';
-    if (filterKey === 'overdue') return 'Over Due';
+    if (filterKey === 'overdue') return 'Missed Followup';
     if (filterKey === 'followup_needed') return 'Followup Needed';
     if (filterKey === 'review_completed') return 'Review Completed';
+    if (filterKey === 'weekly_report') return 'Overdue Weekly Report';
+    if (filterKey === 'calendar') return 'Calendar';
     return 'Not Completed';
 };
 
@@ -321,8 +334,11 @@ const ReceptionDashboard: React.FC = () => {
     // Patient Database State (Past Records tab)
     const [pastRecords, setPastRecords] = useState<ReceptionPastRecordPatient[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [reviewFilter, setReviewFilter] = useState<ReceptionReviewFilter>('all');
+    const [reviewFilter, setReviewFilter] = useState<PastRecordsView>('all');
     const [reviewDateFilter, setReviewDateFilter] = useState('');
+    // Report views replace the patient list; list fetches fall back to 'all'
+    const isPanelView = reviewFilter === 'weekly_report' || reviewFilter === 'calendar';
+    const activeListFilter: ReceptionReviewFilter = isPanelView ? 'all' : (reviewFilter as ReceptionReviewFilter);
     const [pastRecordsPage, setPastRecordsPage] = useState(0);
     const [hasMorePastRecords, setHasMorePastRecords] = useState(true);
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
@@ -401,7 +417,7 @@ const ReceptionDashboard: React.FC = () => {
     const handleLoadMorePastRecords = () => {
         fetchPastRecords(true, pastRecordsPage + 1, true, {
             searchValue: searchQuery,
-            reviewFilterValue: reviewFilter,
+            reviewFilterValue: activeListFilter,
             reviewDateValue: reviewDateFilter,
         });
     };
@@ -413,14 +429,14 @@ const ReceptionDashboard: React.FC = () => {
         setHasMorePastRecords(true);
         await fetchPastRecords(false, 0, false, {
             searchValue: searchQuery,
-            reviewFilterValue: reviewFilter,
+            reviewFilterValue: activeListFilter,
             reviewDateValue: reviewDateFilter,
         });
     };
 
     const handlePrintPastRecordsList = () => {
-        if (!['due_today', 'due_tomorrow', 'upcoming', 'overdue'].includes(reviewFilter)) {
-            toast.error('Print List is available for Due Today, Due Tomorrow, Upcoming, or Over Due');
+        if (!['due_today', 'due_tomorrow', 'overdue'].includes(reviewFilter)) {
+            toast.error('Print List is available for Due Today, Due Tomorrow, or Missed Followup');
             return;
         }
 
@@ -723,7 +739,7 @@ const ReceptionDashboard: React.FC = () => {
             closeStopFollowupModal();
             fetchPastRecords(true, 0, false, {
                 searchValue: searchQuery,
-                reviewFilterValue: reviewFilter,
+                reviewFilterValue: activeListFilter,
                 reviewDateValue: reviewDateFilter,
             });
         } catch (error) {
@@ -821,7 +837,7 @@ const ReceptionDashboard: React.FC = () => {
             closeCallLog();
             await fetchPastRecords(false, 0, false, {
                 searchValue: searchQuery,
-                reviewFilterValue: reviewFilter,
+                reviewFilterValue: activeListFilter,
                 reviewDateValue: reviewDateFilter,
             });
         } catch (error: any) {
@@ -880,19 +896,19 @@ const ReceptionDashboard: React.FC = () => {
     }, [profile?.id, fetchDoctors, fetchQueue, fetchReviewAlertCount]);
 
     useEffect(() => {
-        if (activeTab !== 'past_records') return;
+        if (activeTab !== 'past_records' || isPanelView) return;
         setPastRecords([]);
         setPastRecordsPage(0);
         setHasMorePastRecords(true);
         fetchPastRecords(false, 0, false, {
             searchValue: searchQuery,
-            reviewFilterValue: reviewFilter,
+            reviewFilterValue: activeListFilter,
             reviewDateValue: reviewDateFilter,
         });
     }, [activeTab, reviewFilter, reviewDateFilter, fetchPastRecords]);
 
     useEffect(() => {
-        if (activeTab !== 'past_records') return;
+        if (activeTab !== 'past_records' || isPanelView) return;
 
         const debounce = setTimeout(() => {
             setPastRecords([]);
@@ -901,7 +917,7 @@ const ReceptionDashboard: React.FC = () => {
             // Background fetch keeps typing smooth and avoids input focus disruption.
             fetchPastRecords(true, 0, false, {
                 searchValue: searchQuery,
-                reviewFilterValue: reviewFilter,
+                reviewFilterValue: activeListFilter,
                 reviewDateValue: reviewDateFilter,
             });
         }, 350);
@@ -1372,7 +1388,7 @@ const ReceptionDashboard: React.FC = () => {
                 setActiveTab('past_records');
                 await fetchPastRecords(false, 0, false, {
                     searchValue: searchQuery,
-                    reviewFilterValue: reviewFilter,
+                    reviewFilterValue: activeListFilter,
                     reviewDateValue: reviewDateFilter,
                 });
                 await fetchReviewAlertCount();
@@ -2096,14 +2112,14 @@ const ReceptionDashboard: React.FC = () => {
                                         <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                         <h3 className="text-sm font-bold text-gray-800">Patient Database</h3>
                                     </div>
-                                    {pastRecordsTotal > 0 && (
+                                    {pastRecordsTotal > 0 && !isPanelView && (
                                         <span className="text-xs text-gray-500 font-medium bg-white px-3 py-1 rounded-full border border-gray-200">
                                             {pastRecords.length} of {pastRecordsTotal} patients
                                         </span>
                                     )}
                                 </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                    {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'followup_needed', 'not_completed', 'review_completed'] as ReceptionReviewFilter[]).map((filterKey) => (
+                                    {(['all', 'due_today', 'due_tomorrow', 'overdue', 'weekly_report', 'review_completed', 'calendar'] as PastRecordsView[]).map((filterKey) => (
                                         <button
                                             key={filterKey}
                                             type="button"
@@ -2118,7 +2134,7 @@ const ReceptionDashboard: React.FC = () => {
                                         </button>
                                     ))}
 
-                                        {(['due_today', 'due_tomorrow', 'upcoming', 'overdue'] as ReceptionReviewFilter[]).includes(reviewFilter) && (
+                                        {(['due_today', 'due_tomorrow', 'overdue'] as PastRecordsView[]).includes(reviewFilter) && (
                                             <button
                                                 type="button"
                                                 onClick={handlePrintPastRecordsList}
@@ -2142,25 +2158,30 @@ const ReceptionDashboard: React.FC = () => {
                                             </svg>
                                             New Registration
                                         </button>
-                                        <label className="text-xs font-semibold text-gray-500">Review Date</label>
-                                        <input
-                                            type="date"
-                                            value={reviewDateFilter}
-                                            onChange={(e) => setReviewDateFilter(e.target.value)}
-                                            className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                                        />
-                                        {reviewDateFilter && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setReviewDateFilter('')}
-                                                className="px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
-                                            >
-                                                Clear
-                                            </button>
+                                        {!isPanelView && (
+                                            <>
+                                                <label className="text-xs font-semibold text-gray-500">Review Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={reviewDateFilter}
+                                                    onChange={(e) => setReviewDateFilter(e.target.value)}
+                                                    className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                                />
+                                                {reviewDateFilter && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setReviewDateFilter('')}
+                                                        className="px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                                                    >
+                                                        Clear
+                                                    </button>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>
 
+                                {!isPanelView && (
                                 <form onSubmit={handleSearchPastRecords} className="relative w-full max-w-md">
                                     <input
                                         type="text"
@@ -2173,8 +2194,17 @@ const ReceptionDashboard: React.FC = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
                                 </form>
+                                )}
                             </div>
-                            {pastRecords.length === 0 ? (
+                            {reviewFilter === 'weekly_report' ? (
+                                <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading report…</div>}>
+                                    <WeeklyOverdueReportPanel hospitalId={profile?.id || ''} />
+                                </Suspense>
+                            ) : reviewFilter === 'calendar' ? (
+                                <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading calendar…</div>}>
+                                    <ReceptionCalendarPanel hospitalId={profile?.id || ''} />
+                                </Suspense>
+                            ) : pastRecords.length === 0 ? (
                                 <div className="p-20 text-center">
                                     <svg className="w-16 h-16 text-gray-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -2221,6 +2251,12 @@ const ReceptionDashboard: React.FC = () => {
                                                                             {patient.doctorReviews.map((dr) => (
                                                                                 <span key={dr.doctorId} className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1 whitespace-nowrap">
                                                                                     {dr.doctorName ? `${dr.doctorName} - ` : ''}{dr.reviewDate ? new Date(dr.reviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '--'}
+                                                                                    {dr.reviewSetAt && (
+                                                                                        <span className="ml-1.5 text-[10px] font-medium text-gray-400">
+                                                                                            · set {new Date(dr.reviewSetAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                                                                            {dr.reviewSource === 'discharge_card' ? ' (discharge)' : dr.reviewSource === 'reception' ? ' (reception)' : ''}
+                                                                                        </span>
+                                                                                    )}
                                                                                 </span>
                                                                             ))}
                                                                         </div>
@@ -2257,10 +2293,15 @@ const ReceptionDashboard: React.FC = () => {
                                                                     </div>
                                                                 )}
 
-                                                                <div className="flex items-center gap-2 pt-0.5">
+                                                                <div className="flex items-center gap-2 pt-0.5 flex-wrap">
                                                                     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${getReviewBadgeClass(patient.reviewCategory)}`}>
                                                                         {getReviewFilterLabel(patient.reviewCategory)}
                                                                     </span>
+                                                                    {patient.cameEarly && (
+                                                                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                                                                            Came Early
+                                                                        </span>
+                                                                    )}
                                                                     <span className="text-[11px] text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded-full border border-orange-100">
                                                                         Visits: {patient.prescriptions?.length || 0}
                                                                     </span>

@@ -45,6 +45,10 @@ export interface DoctorReview {
     reviewCreatedAt: string | null;
     latestFollowupStatus: string | null;
     reviewCategory: ReceptionReviewFilter;
+    /** When this review cycle was set (timestamp of the visit that created it) */
+    reviewSetAt: string | null;
+    /** What set it: a prescription, a discharge card, or a reception-side entry */
+    reviewSource: 'prescription' | 'discharge_card' | 'reception' | null;
 }
 
 export interface ReceptionPastRecordPatient {
@@ -65,6 +69,8 @@ export interface ReceptionPastRecordPatient {
     created_at?: string;
     latestReviewDate: string | null;
     reviewCategory: ReceptionReviewFilter;
+    /** Latest review was completed by a visit BEFORE its due date */
+    cameEarly?: boolean;
     lastVisitAt: string | null;
     prescriptions: ReceptionVisitRecord[];
     callHistory: ReceptionCallHistoryEntry[];
@@ -134,6 +140,7 @@ type ReviewRow = {
     doctor_id?: string | null;
     status?: string | null;
     next_review_date?: string | null;
+    source_prescription_id?: string | null;
     completed_at?: string | null;
     created_at?: string | null;
     updated_at?: string | null;
@@ -165,7 +172,9 @@ const deriveReviewCategory = (
     latestReviewCompletedAt: string | null,
     latestReviewUpdatedAt: string | null,
     latestReviewCreatedAt: string | null,
-    latestFollowupStatus: string | null
+    latestFollowupStatus: string | null,
+    latestFollowupAt: string | null = null,
+    lastVisitAt: string | null = null
 ): ReceptionReviewFilter => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -173,7 +182,17 @@ const deriveReviewCategory = (
     tomorrow.setDate(today.getDate() + 1);
 
     if (latestFollowupStatus === 'not_picked') {
-        return 'followup_needed';
+        // A not-picked call only needs chasing while the review is still open
+        // AND the patient hasn't visited since the call. A visit after the
+        // call (early or otherwise) resolves the chase.
+        const reviewIsActive = latestReviewStatus === 'pending' || latestReviewStatus === 'rescheduled';
+        const visitedAfterCall = Boolean(
+            latestFollowupAt && lastVisitAt &&
+            new Date(lastVisitAt).getTime() > new Date(latestFollowupAt).getTime()
+        );
+        if (reviewIsActive && !visitedAfterCall) {
+            return 'followup_needed';
+        }
     }
 
     if (latestReviewStatus === 'completed') {
@@ -183,6 +202,15 @@ const deriveReviewCategory = (
             const ageDays = Math.floor((today.getTime() - completedAt.getTime()) / (24 * 60 * 60 * 1000));
             if (ageDays >= 0 && ageDays < 2) {
                 return 'review_completed';
+            }
+        }
+        // Early completion: the visit satisfied a future due date — never let
+        // that date resurface in due_today/due_tomorrow/upcoming buckets.
+        if (completionReference && latestReviewDate) {
+            const completedDay = startOfDay(completionReference);
+            const dueDay = startOfDay(latestReviewDate);
+            if (completedDay.getTime() < dueDay.getTime()) {
+                return 'not_completed';
             }
         }
     }
@@ -262,7 +290,9 @@ const pickPrimaryReview = (patientReviews: ReviewRow[]): ReviewRow | null => {
 const groupReviewsByDoctor = (
     patientReviews: ReviewRow[],
     doctorNamesMap: Map<string, { name: string; specialty: string }>,
-    followupsByDoctor: Map<string, string | null>
+    followupsByDoctor: Map<string | null, { status: string | null; calledAt: string | null }>,
+    lastVisitAt: string | null = null,
+    rxInfoById: Map<string, { createdAt: string; documentType: string | null }> = new Map()
 ): DoctorReview[] => {
     if (!patientReviews.length) return [];
 
@@ -283,7 +313,8 @@ const groupReviewsByDoctor = (
         if (primaryReview) {
             const doctorInfo = doctorId ? doctorNamesMap.get(doctorId) : null;
             const reviewDate = normalizeDateOnly(primaryReview.next_review_date || null);
-            const latestFollowupStatus = doctorId ? followupsByDoctor.get(doctorId) || null : null;
+            const followupInfo = doctorId ? followupsByDoctor.get(doctorId) || null : null;
+            const latestFollowupStatus = followupInfo?.status || null;
 
             const reviewCategory = deriveReviewCategory(
                 reviewDate,
@@ -291,8 +322,19 @@ const groupReviewsByDoctor = (
                 primaryReview.completed_at || null,
                 primaryReview.updated_at || null,
                 primaryReview.created_at || null,
-                latestFollowupStatus
+                latestFollowupStatus,
+                followupInfo?.calledAt || null,
+                lastVisitAt
             );
+
+            // Origin: which visit set this review cycle (for the "set on" label)
+            const sourceRx = primaryReview.source_prescription_id
+                ? rxInfoById.get(primaryReview.source_prescription_id) || null
+                : null;
+            const reviewSetAt = sourceRx?.createdAt || primaryReview.updated_at || primaryReview.created_at || null;
+            const reviewSource: DoctorReview['reviewSource'] = sourceRx
+                ? (sourceRx.documentType === 'discharge_card' ? 'discharge_card' : 'prescription')
+                : (primaryReview.source_prescription_id ? 'prescription' : 'reception');
 
             doctorReviews.push({
                 doctorId: doctorId || null,
@@ -305,6 +347,8 @@ const groupReviewsByDoctor = (
                 reviewCreatedAt: primaryReview.created_at || null,
                 latestFollowupStatus,
                 reviewCategory,
+                reviewSetAt,
+                reviewSource,
             });
         }
     }
@@ -484,13 +528,15 @@ export async function fetchReceptionPastRecords(
     }
 
     const latestFollowupStatusByPatient = new Map<string, string | null>();
-    const latestFollowupStatusByDoctorPerPatient = new Map<string, Map<string | null, string | null>>();
+    const latestFollowupAtByPatient = new Map<string, string | null>();
+    const latestFollowupStatusByDoctorPerPatient = new Map<string, Map<string | null, { status: string | null; calledAt: string | null }>>();
     const followupsByPatient = new Map<string, ReceptionCallHistoryEntry[]>();
-    
+
     for (const followup of followups) {
         // Latest followup status per patient (backward compatibility)
         if (!latestFollowupStatusByPatient.has(followup.patient_id)) {
             latestFollowupStatusByPatient.set(followup.patient_id, followup.call_status || null);
+            latestFollowupAtByPatient.set(followup.patient_id, followup.called_at || null);
         }
 
         // Latest followup status per doctor per patient (multi-doctor support)
@@ -500,7 +546,7 @@ export async function fetchReceptionPastRecords(
         const doctorMap = latestFollowupStatusByDoctorPerPatient.get(followup.patient_id)!;
         const doctorId = followup.doctor_id || null;
         if (!doctorMap.has(doctorId)) {
-            doctorMap.set(doctorId, followup.call_status || null);
+            doctorMap.set(doctorId, { status: followup.call_status || null, calledAt: followup.called_at || null });
         }
 
         if (!followupsByPatient.has(followup.patient_id)) {
@@ -540,9 +586,26 @@ export async function fetchReceptionPastRecords(
 
             // NEW: Get doctor-grouped reviews for multi-doctor support
             const followupsByDoctorMap = latestFollowupStatusByDoctorPerPatient.get(p.id) || new Map();
+            // Prescription lookup for review-origin labels ("set on" + document type).
+            // Legacy discharge cards carried a notes marker instead of metadata.
+            const rxInfoById = new Map<string, { createdAt: string; documentType: string | null }>();
+            for (const rx of visitHistory) {
+                const metaType = (rx.metadata as any)?.documentType || null;
+                const notesType = typeof rx.notes === 'string' && rx.notes.startsWith('DocType: discharge_card')
+                    ? 'discharge_card'
+                    : null;
+                rxInfoById.set(rx.id, { createdAt: rx.created_at, documentType: metaType || notesType });
+            }
+
             const doctorReviews = (isDeceased || isFollowupStopped)
                 ? []
-                : groupReviewsByDoctor(reviewsByPatient.get(p.id) || [], doctorNamesMap, followupsByDoctorMap);
+                : groupReviewsByDoctor(
+                    reviewsByPatient.get(p.id) || [],
+                    doctorNamesMap,
+                    followupsByDoctorMap,
+                    latestPrescription?.created_at || null,
+                    rxInfoById
+                );
 
             // Review rows are the operational source of truth (call logs/reschedules/completions);
             // prescription date is used as a fallback when no review row exists.
@@ -560,8 +623,18 @@ export async function fetchReceptionPastRecords(
                     latestReview?.completed_at || null,
                     latestReview?.updated_at || null,
                     latestReview?.created_at || null,
-                    latestFollowupStatusByPatient.get(p.id) || null
+                    latestFollowupStatusByPatient.get(p.id) || null,
+                    latestFollowupAtByPatient.get(p.id) || null,
+                    latestPrescription?.created_at || null
                 );
+
+            const completedLocalDate = toLocalDateOnly(latestReview?.completed_at || null);
+            const cameEarly = Boolean(
+                latestReview?.status === 'completed' &&
+                completedLocalDate &&
+                reviewDateFromReview &&
+                completedLocalDate < reviewDateFromReview
+            );
 
             return {
                 ...p,
@@ -572,6 +645,7 @@ export async function fetchReceptionPastRecords(
                 followupStopReason: p.followup_stop_reason || null,
                 latestReviewDate,
                 reviewCategory,
+                cameEarly,
                 lastVisitAt: latestPrescription?.created_at || p.created_at || null,
                 prescriptions: visitHistory,
                 callHistory: (followupsByPatient.get(p.id) || []).slice(0, 3),
@@ -579,8 +653,13 @@ export async function fetchReceptionPastRecords(
             } as ReceptionPastRecordPatient;
         })
         .filter((patient) => {
-            if (reviewFilter !== 'all' && patient.reviewCategory !== reviewFilter) {
-                return false;
+            if (reviewFilter !== 'all') {
+                // 'overdue' chip is surfaced as "Missed Followup" — it consolidates
+                // date-overdue patients and not-picked-call (followup_needed) patients.
+                const matchesFilter = reviewFilter === 'overdue'
+                    ? (patient.reviewCategory === 'overdue' || patient.reviewCategory === 'followup_needed')
+                    : patient.reviewCategory === reviewFilter;
+                if (!matchesFilter) return false;
             }
 
             if (reviewDate && patient.latestReviewDate !== reviewDate) {
@@ -637,12 +716,15 @@ export async function syncReviewFromPrescription(
         return;
     }
 
+    // Scoped per doctor — the active-review uniqueness rule is per (patient, doctor),
+    // and matching by patient alone can update the wrong doctor's review.
     const activeReviewResult = await withTimeout(
         (supabase
             .from('hospital_patient_reviews' as any)
             .select('id')
             .eq('hospital_id', hospitalId)
             .eq('patient_id', patientId)
+            .eq('doctor_id', doctorId)
             .in('status', ['pending', 'rescheduled'])
             .order('next_review_date', { ascending: false })
             .limit(1)
@@ -1508,4 +1590,352 @@ export function filterPatientsByDoctor(
         const doctorReview = getDoctorSpecificReview(p, doctorId);
         return doctorReview !== null;
     });
+}
+
+/* ───────────────────────── Reception activity reports ─────────────────────────
+ * Shared data source for the Past Records "Overdue Weekly Report" and
+ * "Calendar" views. One ranged fetch returns visits, calls, and due reviews
+ * with patient/doctor names resolved; the panels aggregate client-side.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export interface ReceptionActivityVisit {
+    queueId: string;
+    patientId: string;
+    patientName: string;
+    mrNumber: string | null;
+    tokenNumber: string | null;
+    doctorId: string | null;
+    doctorName: string | null;
+    status: string;
+    admissionStatus: string | null;
+    createdAt: string;
+    /** Patient record created within the fetched range → brand-new registration */
+    isNewPatient: boolean;
+}
+
+export interface ReceptionActivityCall {
+    id: string;
+    patientId: string;
+    patientName: string;
+    mrNumber: string | null;
+    calledAt: string;
+    callStatus: string | null;
+    patientResponse: string | null;
+    /** attended flag on the call, or a queue visit after the call within range */
+    visitedAfter: boolean;
+}
+
+export interface ReceptionActivityDue {
+    patientId: string;
+    patientName: string;
+    mrNumber: string | null;
+    phone: string | null;
+    doctorId: string | null;
+    doctorName: string | null;
+    reviewDate: string;
+    reviewStatus: string | null;
+    /** the patient showed up for this review (early, on time, or late) */
+    came: boolean;
+    /** showed up BEFORE the due date (completion or a visit up to 7 days prior) */
+    cameEarly: boolean;
+    /** showed up AFTER the due date */
+    cameLate: boolean;
+    /** local date (YYYY-MM-DD) the patient actually attended, when known */
+    attendedDate: string | null;
+    /** a follow-up call linked to this review was made (last 14 days before due) */
+    wasCalled: boolean;
+    latestCallStatus: string | null;
+}
+
+export interface ReceptionActivityData {
+    visits: ReceptionActivityVisit[];
+    calls: ReceptionActivityCall[];
+    dues: ReceptionActivityDue[];
+    doctors: { id: string; name: string }[];
+}
+
+/** Local-timezone YYYY-MM-DD for a timestamptz ISO string (avoids UTC day drift). */
+const toLocalDateOnly = (iso: string | null | undefined): string | null => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+export async function fetchReceptionActivity(params: {
+    hospitalId: string;
+    startDate: string; // YYYY-MM-DD inclusive
+    endDate: string;   // YYYY-MM-DD inclusive
+}): Promise<ReceptionActivityData> {
+    const { hospitalId, startDate, endDate } = params;
+    if (!hospitalId || !startDate || !endDate) {
+        return { visits: [], calls: [], dues: [], doctors: [] };
+    }
+
+    const startIso = new Date(`${startDate}T00:00:00`).toISOString();
+    const endExclusive = new Date(`${endDate}T00:00:00`);
+    endExclusive.setDate(endExclusive.getDate() + 1);
+    const endIso = endExclusive.toISOString();
+
+    // Visits are fetched 7 days before the window so a due date early in the
+    // week can still see the patient's early visit; week stats stay window-scoped.
+    const inferenceStart = new Date(`${startDate}T00:00:00`);
+    inferenceStart.setDate(inferenceStart.getDate() - 7);
+    const inferenceStartIso = inferenceStart.toISOString();
+
+    // 1) Queue visits in range (paginated; admission_status guarded for older DBs)
+    const PAGE = 1000;
+    const fetchQueues = async (withAdmission: boolean): Promise<any[]> => {
+        const cols = withAdmission
+            ? 'id, patient_id, doctor_id, status, admission_status, created_at, token_number'
+            : 'id, patient_id, doctor_id, status, created_at, token_number';
+        const rows: any[] = [];
+        let from = 0;
+        while (true) {
+            const res = await withTimeout(
+                (supabase
+                    .from('hospital_queues' as any) as any)
+                    .select(cols)
+                    .eq('hospital_id', hospitalId)
+                    .gte('created_at', inferenceStartIso)
+                    .lt('created_at', endIso)
+                    .order('created_at', { ascending: true })
+                    .range(from, from + PAGE - 1) as any,
+                12000,
+                'Timed out while loading visit activity'
+            ) as SupabaseResult<any[]>;
+            if (res.error) throw res.error;
+            const batch = res.data || [];
+            rows.push(...batch);
+            if (batch.length < PAGE) break;
+            from += PAGE;
+        }
+        return rows;
+    };
+
+    let queueRows: any[] = [];
+    try {
+        queueRows = await fetchQueues(true);
+    } catch (err: any) {
+        if (String(err?.message || '').toLowerCase().includes('admission_status')) {
+            queueRows = await fetchQueues(false);
+        } else {
+            throw err;
+        }
+    }
+
+    // 2) Reviews due in range (cancelled excluded — admissions/stop-followup cancel reviews)
+    let reviewRows: any[] = [];
+    const reviewsRes = await withTimeout(
+        (supabase
+            .from('hospital_patient_reviews' as any) as any)
+            .select('id, patient_id, doctor_id, status, next_review_date, completed_at')
+            .eq('hospital_id', hospitalId)
+            .gte('next_review_date', startDate)
+            .lte('next_review_date', endDate)
+            .neq('status', 'cancelled') as any,
+        10000,
+        'Timed out while loading due reviews'
+    ) as SupabaseResult<any[]>;
+    if (reviewsRes.error) {
+        const msg = String(reviewsRes.error.message || '').toLowerCase();
+        if (!msg.includes('hospital_patient_reviews')) throw reviewsRes.error;
+    } else {
+        reviewRows = reviewsRes.data || [];
+    }
+
+    // 2b) Calls linked to the due cohort's reviews. Calls for a due date can
+    // precede the viewed window (e.g. Monday reviews called the previous week),
+    // so link by review_id with a 14-day look-back instead of the week window.
+    const reviewCallsByReviewId = new Map<string, any[]>();
+    if (reviewRows.length > 0) {
+        const lookback = new Date(`${startDate}T00:00:00`);
+        lookback.setDate(lookback.getDate() - 14);
+        const lookbackIso = lookback.toISOString();
+        for (const chunk of chunkArray(reviewRows.map((r) => r.id), 100)) {
+            if (chunk.length === 0) continue;
+            const res = await withTimeout(
+                (supabase
+                    .from('hospital_patient_followups' as any) as any)
+                    .select('review_id, call_status, called_at')
+                    .in('review_id', chunk)
+                    .gte('called_at', lookbackIso)
+                    .order('called_at', { ascending: false }) as any,
+                10000,
+                'Timed out while loading review call links'
+            ) as SupabaseResult<any[]>;
+            if (res.error) {
+                const msg = String(res.error.message || '').toLowerCase();
+                if (!msg.includes('hospital_patient_followups')) throw res.error;
+                break;
+            }
+            for (const row of (res.data || [])) {
+                if (!reviewCallsByReviewId.has(row.review_id)) reviewCallsByReviewId.set(row.review_id, []);
+                reviewCallsByReviewId.get(row.review_id)!.push(row);
+            }
+        }
+    }
+
+    // 3) Follow-up calls made in range
+    let callRows: any[] = [];
+    const callsRes = await withTimeout(
+        (supabase
+            .from('hospital_patient_followups' as any) as any)
+            .select('id, patient_id, called_at, call_status, patient_response, attended')
+            .eq('hospital_id', hospitalId)
+            .gte('called_at', startIso)
+            .lt('called_at', endIso)
+            .order('called_at', { ascending: false }) as any,
+        10000,
+        'Timed out while loading call activity'
+    ) as SupabaseResult<any[]>;
+    if (callsRes.error) {
+        const msg = String(callsRes.error.message || '').toLowerCase();
+        if (!msg.includes('hospital_patient_followups') && !msg.includes('attended')) throw callsRes.error;
+    } else {
+        callRows = callsRes.data || [];
+    }
+
+    // 4) Patient details (chunked lookup)
+    const patientIds = Array.from(new Set([
+        ...queueRows.map((r) => r.patient_id),
+        ...reviewRows.map((r) => r.patient_id),
+        ...callRows.map((r) => r.patient_id),
+    ].filter(Boolean))) as string[];
+
+    const patientMap = new Map<string, any>();
+    for (const chunk of chunkArray(patientIds, 100)) {
+        if (chunk.length === 0) continue;
+        const res = await withTimeout(
+            (supabase
+                .from('hospital_patients' as any) as any)
+                .select('id, name, mr_number, phone, created_at')
+                .in('id', chunk) as any,
+            10000,
+            'Timed out while loading patient details'
+        ) as SupabaseResult<any[]>;
+        if (res.error) throw res.error;
+        (res.data || []).forEach((p: any) => patientMap.set(p.id, p));
+    }
+
+    // 5) Doctors (small)
+    const doctorsRes = await withTimeout(
+        (supabase
+            .from('hospital_doctors' as any) as any)
+            .select('id, name')
+            .eq('hospital_id', hospitalId) as any,
+        8000,
+        'Timed out while loading doctors'
+    ) as SupabaseResult<any[]>;
+    const doctors = (doctorsRes.error ? [] : (doctorsRes.data || []))
+        .map((d: any) => ({ id: d.id as string, name: (d.name || '') as string }));
+    const doctorNameById = new Map(doctors.map((d) => [d.id, d.name]));
+
+    // 6) Assemble
+    const visitsByPatient = new Map<string, any[]>();
+    for (const q of queueRows) {
+        if (!q.patient_id) continue;
+        if (!visitsByPatient.has(q.patient_id)) visitsByPatient.set(q.patient_id, []);
+        visitsByPatient.get(q.patient_id)!.push(q);
+    }
+
+    const rangeStartTime = new Date(startIso).getTime();
+
+    // Rows before the window exist only for early-visit inference — the
+    // returned visit stats stay scoped to the requested range.
+    const windowQueueRows = queueRows.filter((q) => new Date(q.created_at).getTime() >= rangeStartTime);
+
+    const visits: ReceptionActivityVisit[] = windowQueueRows.map((q) => {
+        const p = patientMap.get(q.patient_id) || {};
+        const registeredAt = p.created_at ? new Date(p.created_at).getTime() : 0;
+        return {
+            queueId: q.id,
+            patientId: q.patient_id,
+            patientName: p.name || 'Unknown',
+            mrNumber: p.mr_number || null,
+            tokenNumber: q.token_number || null,
+            doctorId: q.doctor_id || null,
+            doctorName: q.doctor_id ? (doctorNameById.get(q.doctor_id) || null) : null,
+            status: q.status || 'pending',
+            admissionStatus: q.admission_status || null,
+            createdAt: q.created_at,
+            isNewPatient: registeredAt >= rangeStartTime,
+        };
+    });
+
+    const calls: ReceptionActivityCall[] = callRows.map((c) => {
+        const p = patientMap.get(c.patient_id) || {};
+        const calledAtTime = new Date(c.called_at).getTime();
+        const visitedAfter = c.attended === true || (visitsByPatient.get(c.patient_id) || [])
+            .some((q) => new Date(q.created_at).getTime() > calledAtTime);
+        return {
+            id: c.id,
+            patientId: c.patient_id,
+            patientName: p.name || 'Unknown',
+            mrNumber: p.mr_number || null,
+            calledAt: c.called_at,
+            callStatus: c.call_status || null,
+            patientResponse: c.patient_response || null,
+            visitedAfter,
+        };
+    });
+
+    // callRows are ordered newest-first, so the first status seen per patient is the latest
+    const latestCallStatusByPatient = new Map<string, string | null>();
+    for (const c of callRows) {
+        if (!latestCallStatusByPatient.has(c.patient_id)) {
+            latestCallStatusByPatient.set(c.patient_id, c.call_status || null);
+        }
+    }
+
+    const shiftDateStr = (dateStr: string, days: number): string => {
+        const d = new Date(`${dateStr}T00:00:00`);
+        d.setDate(d.getDate() + days);
+        const padN = (n: number) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${padN(d.getMonth() + 1)}-${padN(d.getDate())}`;
+    };
+
+    const dues: ReceptionActivityDue[] = reviewRows.map((r) => {
+        const p = patientMap.get(r.patient_id) || {};
+        const reviewDate = normalizeDateOnly(r.next_review_date) || '';
+        const completedDate = toLocalDateOnly(r.completed_at);
+
+        const visitDates = (visitsByPatient.get(r.patient_id) || [])
+            .map((q) => toLocalDateOnly(q.created_at) || '')
+            .filter(Boolean)
+            .sort();
+        const onOrAfterDate = visitDates.find((d) => d >= reviewDate) || null;
+        // Early-visit inference: any visit up to 7 days before the due date
+        const earlyWindowStart = shiftDateStr(reviewDate, -7);
+        const earlyVisitDate = [...visitDates].reverse().find((d) => d < reviewDate && d >= earlyWindowStart) || null;
+
+        // Attendance date: completion timestamp wins; else visit on/after due; else the early visit
+        const attendedDate = (r.status === 'completed' ? completedDate : null) || onOrAfterDate || earlyVisitDate;
+        const came = r.status === 'completed' || Boolean(attendedDate);
+        const cameEarly = Boolean(attendedDate && attendedDate < reviewDate);
+        const cameLate = Boolean(attendedDate && attendedDate > reviewDate);
+
+        const reviewCalls = reviewCallsByReviewId.get(r.id) || [];
+        const wasCalled = reviewCalls.length > 0;
+
+        return {
+            patientId: r.patient_id,
+            patientName: p.name || 'Unknown',
+            mrNumber: p.mr_number || null,
+            phone: p.phone || null,
+            doctorId: r.doctor_id || null,
+            doctorName: r.doctor_id ? (doctorNameById.get(r.doctor_id) || null) : null,
+            reviewDate,
+            reviewStatus: r.status || null,
+            came,
+            cameEarly,
+            cameLate,
+            attendedDate,
+            wasCalled,
+            latestCallStatus: reviewCalls[0]?.call_status || latestCallStatusByPatient.get(r.patient_id) || null,
+        };
+    });
+
+    return { visits, calls, dues, doctors };
 }
