@@ -134,6 +134,25 @@ const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     return 'Not Completed';
 };
 
+// Numeric value of a queue token, ignoring any letter prefix (e.g. "D5" → 5).
+// Tokenless rows sort to the end regardless of direction.
+const tokenNumericValue = (item: any): number => {
+    const raw = String(item?.token_number || item?.patient?.token_number || '').replace(/\D/g, '');
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) ? n : NaN;
+};
+
+const compareQueueTokens = (a: any, b: any, dir: 'asc' | 'desc'): number => {
+    const na = tokenNumericValue(a);
+    const nb = tokenNumericValue(b);
+    const aMissing = Number.isNaN(na);
+    const bMissing = Number.isNaN(nb);
+    if (aMissing && bMissing) return 0;
+    if (aMissing) return 1;   // no token → always last
+    if (bMissing) return -1;
+    return dir === 'asc' ? na - nb : nb - na;
+};
+
 const getReviewBadgeClass = (category: ReceptionReviewFilter): string => {
     if (category === 'due_today') return 'bg-orange-50 text-orange-700';
     if (category === 'due_tomorrow') return 'bg-sky-50 text-sky-700';
@@ -322,6 +341,8 @@ const ReceptionDashboard: React.FC = () => {
 
     // Queue doctor filter
     const [queueDoctorFilter, setQueueDoctorFilter] = useState<string>('all');
+    // Live queue token sort direction (icon-toggled)
+    const [queueSortDir, setQueueSortDir] = useState<'asc' | 'desc'>('asc');
     // History Log type filter: all / outpatient (normal completed) / admitted
     const [historyTypeFilter, setHistoryTypeFilter] = useState<'all' | 'outpatient' | 'admitted'>('all');
 
@@ -2045,6 +2066,24 @@ const ReceptionDashboard: React.FC = () => {
                                 Admitted Patients
                             </button>
                         </div>
+
+                        {(activeTab === 'queue' || activeTab === 'patients') && (
+                            <button
+                                type="button"
+                                onClick={() => setQueueSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+                                title={`Token order: ${queueSortDir === 'asc' ? 'ascending (1 → 9)' : 'descending (9 → 1)'} — click to switch`}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-gray-600 bg-white border border-gray-200 hover:border-indigo-300 hover:text-indigo-700 transition-colors whitespace-nowrap"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {queueSortDir === 'asc' ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9M3 12h5m4 8V8m0 0l-4 4m4-4l4 4" />
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9M3 12h5m4 0V4m0 16l-4-4m4 4l4-4" />
+                                    )}
+                                </svg>
+                                Token {queueSortDir === 'asc' ? 'Asc' : 'Desc'}
+                            </button>
+                        )}
                     </div>
 
                     {/* Doctor filter — only shown on Live Queue / History Log tabs */}
@@ -2431,6 +2470,8 @@ const ReceptionDashboard: React.FC = () => {
                                 .filter(item => queueDoctorFilter === 'all' || item.doctor_id === queueDoctorFilter)
                                 .filter(item => activeTab !== 'patients' || historyTypeFilter === 'all'
                                     || (historyTypeFilter === 'admitted' ? item.admission_status === 'admitted' : item.admission_status !== 'admitted'))
+                                .slice()
+                                .sort((a, b) => compareQueueTokens(a, b, queueSortDir))
                                 .map((item) => (
                                     <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
                                         <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
