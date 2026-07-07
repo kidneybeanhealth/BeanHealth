@@ -545,11 +545,16 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                                 <textarea
                                     value={formData.diagnosis}
                                     onChange={e => {
-                                        const val = e.target.value.toUpperCase();
+                                        const el = e.target;
+                                        const caret = el.selectionStart;
+                                        const val = el.value.toUpperCase();
                                         setFormData((prev: any) => ({ ...prev, diagnosis: val }));
                                         const parts = val.split(',');
                                         setDiagnosisSearchQuery(parts[parts.length - 1].trim());
                                         setShowDiagnosisDropdown(true);
+                                        // Uppercasing a controlled value re-assigns .value and snaps the
+                                        // caret to the end. Length is unchanged, so restore the caret.
+                                        requestAnimationFrame(() => { try { el.setSelectionRange(caret, caret); } catch { /* noop */ } });
                                     }}
                                     onFocus={() => { const parts = (formData.diagnosis || '').split(','); setDiagnosisSearchQuery(parts[parts.length - 1].trim()); setShowDiagnosisDropdown(true); }}
                                     onBlur={() => setTimeout(() => setShowDiagnosisDropdown(false), 200)}
@@ -581,7 +586,13 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                         </div>
                         <div>
                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Drug Allergy</label>
-                            <input type="text" value={formData.allergy} onChange={e => setFormData((prev: any) => ({ ...prev, allergy: e.target.value.replace(/\n/g, ' ').toUpperCase() }))}
+                            <input type="text" value={formData.allergy}
+                                onChange={e => {
+                                    const el = e.target;
+                                    const caret = el.selectionStart;
+                                    setFormData((prev: any) => ({ ...prev, allergy: el.value.replace(/\n/g, ' ').toUpperCase() }));
+                                    requestAnimationFrame(() => { try { el.setSelectionRange(caret, caret); } catch { /* noop */ } });
+                                }}
                                 className="w-full mt-1 px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-400 outline-none uppercase font-bold text-gray-900"
                                 placeholder="Nil" readOnly={readOnly} />
                         </div>
@@ -619,7 +630,13 @@ const MobilePrescriptionInput: React.FC<MobilePrescriptionInputProps> = ({
                 {/* Doctor Notes */}
                 <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
                     <h3 className="font-black text-gray-900 text-sm mb-2">Notes</h3>
-                    <textarea value={formData.doctorNotes} onChange={e => setFormData((prev: any) => ({ ...prev, doctorNotes: e.target.value.toUpperCase() }))}
+                    <textarea value={formData.doctorNotes}
+                        onChange={e => {
+                            const el = e.target;
+                            const caret = el.selectionStart;
+                            setFormData((prev: any) => ({ ...prev, doctorNotes: el.value.toUpperCase() }));
+                            requestAnimationFrame(() => { try { el.setSelectionRange(caret, caret); } catch { /* noop */ } });
+                        }}
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-400 outline-none resize-none uppercase"
                         placeholder="ADDITIONAL NOTES FOR THE PATIENT..." readOnly={readOnly} rows={4} />
                 </div>
