@@ -19,7 +19,7 @@ interface VisitJourneyModalProps {
      */
     prescriptions: ReceptionVisitRecord[];
     clinicLogo?: string;
-    /** Optional Edit & Resend handler — only shown for prescriptions (not discharge cards). */
+    /** Optional Edit & Resend handler — shown for prescriptions and discharge cards. */
     onEditResend?: (rx: ReceptionVisitRecord) => void;
     onClose: () => void;
 }
@@ -231,7 +231,7 @@ const VisitJourneyModal: React.FC<VisitJourneyModalProps> = ({
                                                         >
                                                             {ev.type === 'discharge_card' ? 'View Discharge Card' : 'View Rx'}
                                                         </button>
-                                                        {onEditResend && ev.type === 'prescription' && (
+                                                        {onEditResend && (ev.type === 'prescription' || ev.type === 'discharge_card') && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => onEditResend(ev.prescription!)}

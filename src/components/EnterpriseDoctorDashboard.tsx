@@ -163,6 +163,12 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [loading, setLoading] = useState(true);
     const [showRxModal, setShowRxModal] = useState(false);
     const [showDischargeCardModal, setShowDischargeCardModal] = useState(false);
+    // True when the open Rx/discharge modal belongs to an ADMITTED stay.
+    // Admission documents must NOT reuse the queue-visit prescription row
+    // (ON CONFLICT queue_id) — reusing preserves the old created_at, which
+    // hides the document from the pharmacy's today-only list and overwrites
+    // the original consultation prescription.
+    const [admittedRxContext, setAdmittedRxContext] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
     const [selectedQueueId, setSelectedQueueId] = useState<string | null>(null);
     const [medications, setMedications] = useState<Medication[]>([
@@ -1053,6 +1059,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             app_access_enabled: null,
         });
         setSelectedQueueId(ctx.queueId);
+        setAdmittedRxContext(true);
         await setPreparingIndicator(ctx.queueId);
         setAdmittedRefreshToken(t => t + 1);
         setShowRxModal(true);
@@ -1069,10 +1076,42 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             app_access_enabled: null,
         });
         setSelectedQueueId(ctx.queueId);
+        setAdmittedRxContext(true);
         await setPreparingIndicator(ctx.queueId);
         setAdmittedRefreshToken(t => t + 1);
         setShowDischargeCardModal(true);
         logViewEvent('view.patient.open', { patientId: ctx.patientId, queueId: ctx.queueId, type: 'discharge_card' } as any);
+    };
+
+    // Enforce ONE active pharmacy document per (patient, doctor): after a new
+    // send, cancel this doctor's other still-pending documents for the patient
+    // and remove them from the pharmacy queue — the same supersede pattern
+    // Edit & Resend uses. Scoped per doctor so a patient deliberately seeing
+    // two doctors keeps both prescriptions at the pharmacy. Dispensed
+    // documents are never touched.
+    const supersedePreviousPharmacyDocs = async (patientId: string, newPrescriptionId: string) => {
+        try {
+            const { data: stale } = await (supabase as any)
+                .from('hospital_prescriptions')
+                .select('id')
+                .eq('hospital_id', doctor.hospital_id)
+                .eq('doctor_id', doctor.id)
+                .eq('patient_id', patientId)
+                .eq('status', 'pending')
+                .neq('id', newPrescriptionId);
+            const staleIds = ((stale || []) as any[]).map((r) => r.id).filter(Boolean);
+            if (staleIds.length === 0) return;
+            await (supabase as any)
+                .from('hospital_prescriptions')
+                .update({ status: 'cancelled' })
+                .in('id', staleIds);
+            await (supabase as any)
+                .from('hospital_pharmacy_queue')
+                .delete()
+                .in('prescription_id', staleIds);
+        } catch (err) {
+            console.warn('Supersede of previous pharmacy documents failed (non-critical):', err);
+        }
     };
 
     // ... (rest of handlers like handleMedChange, handleSendToPharmacy remain same)
@@ -1170,6 +1209,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         if (!prescribeCandidate) return;
         const { queueItem, mode } = prescribeCandidate;
         setPrescribeCandidate(null);
+        setAdmittedRxContext(false); // normal live-queue visit — keep per-queue idempotency
         await setPreparingIndicator(queueItem.id);
         setSelectedPatient({
             ...queueItem.patient,
@@ -1206,6 +1246,13 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         isSendingToPharmacyRef.current = true;
         const toastId = toast.loading('Sending to pharmacy...');
 
+        // Admission documents (discharge card / in-patient Rx during a stay) must be
+        // NEW rows: the per-queue upsert would overwrite the visit's original
+        // prescription and keep its old created_at, hiding the document from the
+        // pharmacy's today-only list. queue_id stays null (partial unique index
+        // ignores NULLs); the admission queue row is kept in metadata for tracing.
+        const isAdmittedDoc = showDischargeCardModal || admittedRxContext;
+
         try {
             if (paActorAuthEnabled && !actorSession?.sessionToken) {
                 throw new Error('Session expired. Please log in again.');
@@ -1217,7 +1264,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     p_chief_doctor_id: doctor.id,
                     p_session_token: actorSession.sessionToken,
                     p_patient_id: selectedPatient.id,
-                    p_queue_id: selectedQueueId,
+                    p_queue_id: isAdmittedDoc ? null : selectedQueueId,
                     p_token_number: selectedPatient.token_number,
                     p_medications: prescriptionMeds,
                     p_notes: prescriptionNotes,
@@ -1227,7 +1274,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     p_metadata: {
                         actorType,
                         actorDisplayName,
-                        documentType: showDischargeCardModal ? 'discharge_card' : 'prescription'
+                        documentType: showDischargeCardModal ? 'discharge_card' : 'prescription',
+                        ...(isAdmittedDoc ? { admission_queue_id: selectedQueueId } : {})
                     }
                 });
 
@@ -1246,6 +1294,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     reviewContext?.specialistsToReview || null
                 );
 
+                // Newest document supersedes this doctor's older pending ones at pharmacy
+                await supersedePreviousPharmacyDocs(selectedPatient.id, row.saved_prescription_id);
+
                 toast.success('Prescription sent to Pharmacy!', { id: toastId });
                 await clearPreparingIndicator(selectedQueueId);
                 setShowRxModal(false);
@@ -1259,34 +1310,37 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
             let prescriptionId: string | null = null;
 
-            // Idempotency: one prescription per queue visit.
-            const existingByQueue = await supabase
-                .from('hospital_prescriptions' as any)
-                .select('id, status')
-                .eq('queue_id', selectedQueueId)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-            const existingByQueueData = existingByQueue.data as any;
+            // Idempotency: one prescription per queue visit — but NOT for admission
+            // documents, which are always fresh rows (see isAdmittedDoc above).
+            if (!isAdmittedDoc) {
+                const existingByQueue = await supabase
+                    .from('hospital_prescriptions' as any)
+                    .select('id, status')
+                    .eq('queue_id', selectedQueueId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                const existingByQueueData = existingByQueue.data as any;
 
-            if (existingByQueueData?.id) {
-                prescriptionId = existingByQueueData.id;
-            } else {
-                // Fallback if queue_id column is not yet present in DB.
-                if (existingByQueue.error && String(existingByQueue.error.message || '').toLowerCase().includes('queue_id')) {
-                    const legacyMatch = await supabase
-                        .from('hospital_prescriptions' as any)
-                        .select('id')
-                        .eq('doctor_id', doctor.id)
-                        .eq('patient_id', selectedPatient.id)
-                        .eq('token_number', selectedPatient.token_number)
-                        .gte('created_at', getTodayISO())
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                    const legacyMatchData = legacyMatch.data as any;
-                    if (legacyMatchData?.id) {
-                        prescriptionId = legacyMatchData.id;
+                if (existingByQueueData?.id) {
+                    prescriptionId = existingByQueueData.id;
+                } else {
+                    // Fallback if queue_id column is not yet present in DB.
+                    if (existingByQueue.error && String(existingByQueue.error.message || '').toLowerCase().includes('queue_id')) {
+                        const legacyMatch = await supabase
+                            .from('hospital_prescriptions' as any)
+                            .select('id')
+                            .eq('doctor_id', doctor.id)
+                            .eq('patient_id', selectedPatient.id)
+                            .eq('token_number', selectedPatient.token_number)
+                            .gte('created_at', getTodayISO())
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+                        const legacyMatchData = legacyMatch.data as any;
+                        if (legacyMatchData?.id) {
+                            prescriptionId = legacyMatchData.id;
+                        }
                     }
                 }
             }
@@ -1298,7 +1352,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         hospital_id: doctor.hospital_id,
                         doctor_id: doctor.id,
                         patient_id: selectedPatient.id,
-                        queue_id: selectedQueueId,
+                        queue_id: isAdmittedDoc ? null : selectedQueueId,
                         token_number: selectedPatient.token_number,
                         medications: prescriptionMeds,
                         notes: prescriptionNotes,
@@ -1309,7 +1363,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         metadata: {
                             actorType,
                             actorDisplayName,
-                            documentType: showDischargeCardModal ? 'discharge_card' : 'prescription'
+                            documentType: showDischargeCardModal ? 'discharge_card' : 'prescription',
+                            ...(isAdmittedDoc ? { admission_queue_id: selectedQueueId } : {})
                         }
                     } as any)
                     .select('id')
@@ -1425,6 +1480,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 reviewContext?.testsToReview || null,
                 reviewContext?.specialistsToReview || null
             );
+
+            // Newest document supersedes this doctor's older pending ones at pharmacy
+            await supersedePreviousPharmacyDocs(selectedPatient.id, prescriptionId!);
 
             toast.success('Prescription sent to Pharmacy!', { id: toastId });
             await clearPreparingIndicator(selectedQueueId);
@@ -1545,6 +1603,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     token_number: editResendItem.token_number || patient.token_number,
                     status: 'waiting'
                 });
+
+            // Sweep any OTHER still-pending documents by this doctor for the patient
+            // (the block above only cancels the direct ancestor being resent)
+            await supersedePreviousPharmacyDocs(patient.id, prescriptionId);
 
             // Sync review date from this resent prescription
             await upsertReviewFromPrescription(
@@ -1797,6 +1859,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     enableDischargeCard={true}
                     onPrescribe={handlePrescribeAdmitted}
                     onDischargeCard={handleDischargeCardAdmitted}
+                    onEditResend={handleEditResend}
                     actorDisplayName={actorDisplayName}
                     clinicLogo={hospitalLogo || undefined}
                 />
@@ -2592,29 +2655,49 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             )}
 
             {/* Edit & Resend Modal — Editable */}
-            {editResendItem && (
-                <PrescriptionModalSelector
-                    doctor={currentDoctor}
-                    patient={{
-                        ...editResendItem.patient,
-                        token_number: editResendItem.token_number || editResendItem.patient?.token_number
-                    }}
-                    onClose={() => setEditResendItem(null)}
-                    readOnly={false}
-                    existingData={editResendItem}
-                    onSendToPharmacy={handleResendToPharmacy}
-                    clinicLogo={hospitalLogo || undefined}
-                    actorAttribution={{ actorType, actorDisplayName }}
-                    forceMobile={true}
-                    onPrintOpen={() => {
-                        logViewEvent('print.preview.open', {
-                            eventCategory: 'print',
-                            patientId: editResendItem.patient_id || null,
-                            prescriptionId: editResendItem.id || null,
-                        });
-                    }}
-                />
-            )}
+            {editResendItem && (() => {
+                const notesStr = String(editResendItem?.notes || '');
+                const isDischargeResend = (editResendItem as any)?.metadata?.documentType === 'discharge_card'
+                    || notesStr.startsWith('DocType: discharge_card');
+                const editResendPatient = {
+                    ...editResendItem.patient,
+                    token_number: editResendItem.token_number || editResendItem.patient?.token_number
+                };
+                const onPrintOpen = () => {
+                    logViewEvent('print.preview.open', {
+                        eventCategory: 'print',
+                        patientId: editResendItem.patient_id || null,
+                        prescriptionId: editResendItem.id || null,
+                    });
+                };
+                return isDischargeResend ? (
+                    <DischargeCardModal
+                        doctor={currentDoctor}
+                        patient={editResendPatient}
+                        onClose={() => setEditResendItem(null)}
+                        readOnly={false}
+                        existingData={editResendItem}
+                        onSendToPharmacy={handleResendToPharmacy}
+                        clinicLogo={hospitalLogo || undefined}
+                        actorAttribution={{ actorType, actorDisplayName }}
+                        forceMobile={true}
+                        onPrintOpen={onPrintOpen}
+                    />
+                ) : (
+                    <PrescriptionModalSelector
+                        doctor={currentDoctor}
+                        patient={editResendPatient}
+                        onClose={() => setEditResendItem(null)}
+                        readOnly={false}
+                        existingData={editResendItem}
+                        onSendToPharmacy={handleResendToPharmacy}
+                        clinicLogo={hospitalLogo || undefined}
+                        actorAttribution={{ actorType, actorDisplayName }}
+                        forceMobile={true}
+                        onPrintOpen={onPrintOpen}
+                    />
+                );
+            })()}
 
             {/* Past Rx Queue Modal — pre-filled from history, sends as new queue prescription */}
             {pastRxQueueItem && selectedPatient && (

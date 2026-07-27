@@ -62,6 +62,8 @@ interface AdmittedPatientsPanelProps {
     onPrescribe?: (ctx: AdmittedPrescribeContext) => void;
     /** Invoked when user clicks Discharge Card for an admitted patient. */
     onDischargeCard?: (ctx: AdmittedPrescribeContext) => void;
+    /** Invoked from Visit History "Edit & Resend" (doctor dashboard only). */
+    onEditResend?: (rx: any) => void;
     /** Display name of the currently logged-in actor (doctor or Jr.) — shown on "preparing" badge. */
     actorDisplayName?: string;
     /** Hospital logo URL passed from the parent so View Rx uses the same logo as the live queue. */
@@ -89,6 +91,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     enableMarkDeceased = false,
     onPrescribe,
     onDischargeCard,
+    onEditResend,
     actorDisplayName,
     clinicLogo: clinicLogoProp,
 }) => {
@@ -620,6 +623,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                         prescriptions={journeyPatient.prescriptions || []}
                         clinicLogo={clinicLogoProp || hospitalLogo || undefined}
                         onClose={() => setJourneyPatient(null)}
+                        onEditResend={onEditResend ? (rx) => { onEditResend(rx); setJourneyPatient(null); } : undefined}
                     />
                 </Suspense>
             )}
