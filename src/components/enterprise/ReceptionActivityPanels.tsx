@@ -103,10 +103,24 @@ const DuePatientRow: React.FC<{ due: ReceptionActivityDue; note?: string }> = ({
 const fmtIsoDM = (iso: string | null): string =>
     iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '';
 
+/** Narrow hospital-wide activity to a single doctor (doctor dashboard views). */
+const scopeActivityToDoctor = (
+    data: ReceptionActivityData,
+    doctorId?: string | null
+): ReceptionActivityData => {
+    if (!doctorId) return data;
+    return {
+        ...data,
+        visits: data.visits.filter(v => v.doctorId === doctorId),
+        dues: data.dues.filter(d => d.doctorId === doctorId),
+        calls: data.calls.filter(c => c.doctorId === doctorId),
+    };
+};
+
 /* ═══════════════════════════════════════════════════════════════════
  * 1) Weekly Overdue Report
  * ═══════════════════════════════════════════════════════════════════ */
-export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string }> = ({ hospitalId }) => {
+export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?: string | null }> = ({ hospitalId, doctorId }) => {
     const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
     const [data, setData] = useState<ReceptionActivityData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -126,14 +140,14 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string }> = ({ hos
                 startDate: dateKey(weekStart),
                 endDate: dateKey(weekEnd),
             });
-            setData(result);
+            setData(scopeActivityToDoctor(result, doctorId));
         } catch (err) {
             console.error('Weekly report load failed:', err);
             toast.error('Failed to load weekly report');
         } finally {
             setLoading(false);
         }
-    }, [hospitalId, weekStart, weekEnd]);
+    }, [hospitalId, weekStart, weekEnd, doctorId]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -358,7 +372,7 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string }> = ({ hos
 /* ═══════════════════════════════════════════════════════════════════
  * 2) Calendar — per-day activity drilldown
  * ═══════════════════════════════════════════════════════════════════ */
-export const ReceptionCalendarPanel: React.FC<{ hospitalId: string }> = ({ hospitalId }) => {
+export const ReceptionCalendarPanel: React.FC<{ hospitalId: string; doctorId?: string | null }> = ({ hospitalId, doctorId }) => {
     const [monthAnchor, setMonthAnchor] = useState<Date>(() => {
         const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d;
     });
@@ -380,14 +394,14 @@ export const ReceptionCalendarPanel: React.FC<{ hospitalId: string }> = ({ hospi
                 startDate: dateKey(monthAnchor),
                 endDate: dateKey(monthEnd),
             });
-            setData(result);
+            setData(scopeActivityToDoctor(result, doctorId));
         } catch (err) {
             console.error('Calendar load failed:', err);
             toast.error('Failed to load calendar data');
         } finally {
             setLoading(false);
         }
-    }, [hospitalId, monthAnchor, monthEnd]);
+    }, [hospitalId, monthAnchor, monthEnd, doctorId]);
 
     useEffect(() => { load(); }, [load]);
 

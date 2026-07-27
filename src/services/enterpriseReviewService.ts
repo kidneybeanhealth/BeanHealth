@@ -1618,6 +1618,7 @@ export interface ReceptionActivityCall {
     patientId: string;
     patientName: string;
     mrNumber: string | null;
+    doctorId: string | null;
     calledAt: string;
     callStatus: string | null;
     patientResponse: string | null;
@@ -1804,7 +1805,7 @@ export async function fetchReceptionActivity(params: {
     const callsRes = await withTimeout(
         (supabase
             .from('hospital_patient_followups' as any) as any)
-            .select('id, patient_id, called_at, call_status, patient_response, attended')
+            .select('id, patient_id, doctor_id, called_at, call_status, patient_response, attended')
             .eq('hospital_id', hospitalId)
             .gte('called_at', startIso)
             .lt('called_at', endIso)
@@ -1896,6 +1897,7 @@ export async function fetchReceptionActivity(params: {
             patientId: c.patient_id,
             patientName: p.name || 'Unknown',
             mrNumber: p.mr_number || null,
+            doctorId: c.doctor_id || null,
             calledAt: c.called_at,
             callStatus: c.call_status || null,
             patientResponse: c.patient_response || null,

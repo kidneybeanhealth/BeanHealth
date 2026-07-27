@@ -1645,9 +1645,148 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     // Past Rx for queue item state
     const [pastRxQueueItem, setPastRxQueueItem] = useState<any>(null);
 
+    // ── Dialysis Rx: standalone prescription for dialysis patients ──────────
+    // Dialysis patients are not part of the OP live queue — they get dialysis,
+    // then a prescription. Same Rx template and pharmacy routing as the queue,
+    // but the document is a standalone row (queue_id = null) tagged
+    // metadata.visitType = 'dialysis' so it can be reported on separately.
+    const [showDialysisPicker, setShowDialysisPicker] = useState(false);
+    const [dialysisSearch, setDialysisSearch] = useState('');
+    const [dialysisResults, setDialysisResults] = useState<any[]>([]);
+    const [dialysisSearching, setDialysisSearching] = useState(false);
+    const [dialysisSearched, setDialysisSearched] = useState(false);
+    const [dialysisPatient, setDialysisPatient] = useState<any>(null);
+
+    const resetDialysisPicker = () => {
+        setShowDialysisPicker(false);
+        setDialysisSearch('');
+        setDialysisResults([]);
+        setDialysisSearched(false);
+    };
+
+    // Search registered patients by name or MR number (registration stays with reception)
+    const runDialysisSearch = useCallback(async (term: string) => {
+        const q = term.trim();
+        if (!q) { setDialysisResults([]); setDialysisSearched(false); return; }
+        setDialysisSearching(true);
+        try {
+            const escaped = q.replace(/[%_]/g, (m) => `\\${m}`);
+            const { data, error } = await supabase
+                .from('hospital_patients' as any)
+                .select('id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, token_number')
+                .eq('hospital_id', doctor.hospital_id)
+                .or(`name.ilike.%${escaped}%,mr_number.ilike.%${escaped}%`)
+                .order('name', { ascending: true })
+                .limit(25);
+            if (error) throw error;
+            setDialysisResults((data as any[]) || []);
+        } catch (err) {
+            console.error('Dialysis patient search failed:', err);
+            toast.error('Could not search patients');
+            setDialysisResults([]);
+        } finally {
+            setDialysisSearching(false);
+            setDialysisSearched(true);
+        }
+    }, [doctor.hospital_id]);
+
+    // Debounced search while the picker is open
+    useEffect(() => {
+        if (!showDialysisPicker) return;
+        const t = setTimeout(() => { runDialysisSearch(dialysisSearch); }, 350);
+        return () => clearTimeout(t);
+    }, [dialysisSearch, showDialysisPicker, runDialysisSearch]);
+
+    const handleSendDialysisToPharmacy = async (
+        prescriptionMeds: any[],
+        prescriptionNotes: string,
+        reviewContext?: { nextReviewDate: string | null; testsToReview: string; specialistsToReview: string }
+    ) => {
+        if (!dialysisPatient) return;
+        if (isSendingToPharmacyRef.current) return;
+        isSendingToPharmacyRef.current = true;
+        const toastId = toast.loading('Sending dialysis prescription...');
+        const patient = dialysisPatient;
+
+        try {
+            // Standalone document — never tied to an OP queue row
+            const baseRow: any = {
+                hospital_id: doctor.hospital_id,
+                doctor_id: doctor.id,
+                patient_id: patient.id,
+                queue_id: null,
+                token_number: patient.token_number || null,
+                medications: prescriptionMeds,
+                notes: prescriptionNotes,
+                status: 'pending',
+                metadata: {
+                    actorType,
+                    actorDisplayName,
+                    documentType: 'prescription',
+                    visitType: 'dialysis',
+                },
+            };
+
+            let insertResult = await supabase
+                .from('hospital_prescriptions' as any)
+                .insert({
+                    ...baseRow,
+                    next_review_date: reviewContext?.nextReviewDate || null,
+                    tests_to_review: reviewContext?.testsToReview || null,
+                    specialists_to_review: reviewContext?.specialistsToReview || null,
+                } as any)
+                .select('id')
+                .single();
+
+            // Fallback for DBs missing the newer review columns
+            if (insertResult.error) {
+                insertResult = await supabase
+                    .from('hospital_prescriptions' as any)
+                    .insert(baseRow)
+                    .select('id')
+                    .single();
+            }
+            if (insertResult.error) throw insertResult.error;
+
+            const prescriptionId = (insertResult.data as any)?.id;
+            if (!prescriptionId) throw new Error('Prescription ID missing after save');
+
+            // Route to pharmacy exactly like a live-queue prescription
+            await (supabase as any)
+                .from('hospital_pharmacy_queue')
+                .insert({
+                    hospital_id: doctor.hospital_id,
+                    prescription_id: prescriptionId,
+                    patient_name: patient.name,
+                    token_number: patient.token_number || null,
+                    status: 'waiting',
+                });
+
+            await upsertReviewFromPrescription(
+                patient.id,
+                prescriptionId,
+                reviewContext?.nextReviewDate || null,
+                reviewContext?.testsToReview || null,
+                reviewContext?.specialistsToReview || null
+            );
+
+            await supersedePreviousPharmacyDocs(patient.id, prescriptionId);
+
+            toast.success('Dialysis prescription sent to Pharmacy!', { id: toastId });
+            setDialysisPatient(null);
+            if (viewMode === 'history') fetchHistory(true);
+            else if (viewMode === 'past_records') fetchPastRecords(true);
+        } catch (error: any) {
+            console.error('Dialysis send error:', error);
+            toast.error(`Failed to send: ${error.message || 'Unknown error'}`, { id: toastId });
+        } finally {
+            isSendingToPharmacyRef.current = false;
+        }
+    };
+
     // Fix 3 & 5: Track whether any prescription modal is open.
     // Used to (a) block queue button clicks and (b) suppress background refetches.
-    const isAnyModalOpen = showRxModal || showDischargeCardModal || !!pastRxQueueItem || prescriptionPickerItems.length > 0 || !!editResendItem || !!selectedHistoryItem || !!prescribeCandidate;
+    const isAnyModalOpen = showRxModal || showDischargeCardModal || !!pastRxQueueItem || prescriptionPickerItems.length > 0 || !!editResendItem || !!selectedHistoryItem || !!prescribeCandidate || !!dialysisPatient || showDialysisPicker;
 
     // Fix 5: Keep the ref in sync so interval/realtime closures see the latest value
     useEffect(() => { isModalOpenRef.current = isAnyModalOpen; }, [isAnyModalOpen]);
@@ -1737,6 +1876,17 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                 </div>
                             )}
                         </div>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto flex-shrink-0">
+                        <button
+                            onClick={() => setShowDialysisPicker(true)}
+                            className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-cyan-600 text-white rounded-xl border border-cyan-600 hover:bg-cyan-700 transition-all shadow-sm shadow-cyan-600/25 text-xs sm:text-sm font-bold whitespace-nowrap w-full sm:w-auto"
+                            title="Send a prescription for a dialysis patient (not in the OP queue)"
+                        >
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3c3.2 3.4 5 6.1 5 8.4A5 5 0 017 11.4C7 9.1 8.8 6.4 12 3z" />
+                            </svg>
+                            <span className="uppercase tracking-wide">Dialysis Rx</span>
+                        </button>
                         <button
                             onClick={() => setViewMode('ckd_snapshot')}
                             className="relative group overflow-hidden rounded-xl w-full sm:w-auto flex-shrink-0"
@@ -1758,6 +1908,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                 <span className="uppercase tracking-wide">BeanHealth AI</span>
                             </div>
                         </button>
+                        </div>
                     </div>
 
                     {/* Row 2: Tabs + Settings + Reload */}
@@ -2698,6 +2849,103 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     />
                 );
             })()}
+
+            {/* Dialysis patient picker — search registered patients (registration stays at reception) */}
+            {showDialysisPicker && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={e => { if (e.target === e.currentTarget) resetDialysisPicker(); }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-cyan-600 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3c3.2 3.4 5 6.1 5 8.4A5 5 0 017 11.4C7 9.1 8.8 6.4 12 3z" />
+                                </svg>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-gray-900">Dialysis Prescription</p>
+                                <p className="text-[11px] text-gray-400">Search the patient, then prescribe as usual</p>
+                            </div>
+                            <button onClick={resetDialysisPicker} className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60">
+                            <div className="relative">
+                                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    value={dialysisSearch}
+                                    onChange={e => setDialysisSearch(e.target.value)}
+                                    placeholder="Search by name or MR number…"
+                                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-3 py-3">
+                            {dialysisSearching ? (
+                                <p className="text-center text-sm text-gray-400 py-10">Searching…</p>
+                            ) : !dialysisSearch.trim() ? (
+                                <p className="text-center text-sm text-gray-400 py-10">Type a name or MR number to begin.</p>
+                            ) : dialysisResults.length === 0 && dialysisSearched ? (
+                                <div className="text-center py-8 px-4">
+                                    <p className="text-sm font-semibold text-gray-700">No patient found</p>
+                                    <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                                        This patient isn’t registered yet. Ask reception to add them via
+                                        <span className="font-bold text-gray-700"> Past Records → New Registration</span>,
+                                        then search again here.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5">
+                                    {dialysisResults.map((p: any) => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => { setDialysisPatient(p); resetDialysisPicker(); }}
+                                            className="w-full text-left px-3.5 py-2.5 rounded-xl border border-gray-200 hover:border-cyan-300 hover:bg-cyan-50/40 transition-all"
+                                        >
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-sm font-bold text-gray-900">{p.name}</span>
+                                                {p.mr_number && <span className="text-[11px] font-mono font-bold text-gray-500">{p.mr_number}</span>}
+                                                {p.age != null && p.age !== '' && (
+                                                    <span className="text-[11px] text-gray-400">
+                                                        {/[a-zA-Z]/.test(String(p.age)) ? String(p.age) : `${p.age} yrs`}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {p.father_husband_name && (
+                                                <p className="text-[11px] text-gray-500 mt-0.5">{p.gender === 'F' ? 'W/o' : 'S/o'} {p.father_husband_name}</p>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Dialysis prescription modal — same template/routing as the live queue */}
+            {dialysisPatient && (
+                <PrescriptionModalSelector
+                    doctor={currentDoctor}
+                    patient={dialysisPatient}
+                    onClose={() => setDialysisPatient(null)}
+                    readOnly={false}
+                    onSendToPharmacy={handleSendDialysisToPharmacy}
+                    clinicLogo={hospitalLogo || undefined}
+                    actorAttribution={{ actorType, actorDisplayName }}
+                    forceMobile={true}
+                    onPrintOpen={() => {
+                        logViewEvent('print.preview.open', {
+                            eventCategory: 'print',
+                            patientId: dialysisPatient.id,
+                            type: 'dialysis',
+                        } as any);
+                    }}
+                />
+            )}
 
             {/* Past Rx Queue Modal — pre-filled from history, sends as new queue prescription */}
             {pastRxQueueItem && selectedPatient && (
