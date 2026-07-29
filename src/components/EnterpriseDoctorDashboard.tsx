@@ -1657,11 +1657,75 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [dialysisSearched, setDialysisSearched] = useState(false);
     const [dialysisPatient, setDialysisPatient] = useState<any>(null);
 
+    // Inline registration inside the Dialysis picker (saves a trip to reception)
+    const emptyDialysisForm = { name: '', dob: '', age: '', gender: '', mrNumber: 'KNH/', fatherHusbandName: '', place: '', phone: '' };
+    const [dialysisRegMode, setDialysisRegMode] = useState(false);
+    const [dialysisForm, setDialysisForm] = useState({ ...emptyDialysisForm });
+    const [dialysisSaving, setDialysisSaving] = useState(false);
+
     const resetDialysisPicker = () => {
         setShowDialysisPicker(false);
         setDialysisSearch('');
         setDialysisResults([]);
         setDialysisSearched(false);
+        setDialysisRegMode(false);
+        setDialysisForm({ ...emptyDialysisForm });
+    };
+
+    /**
+     * Register a new patient from the Dialysis flow. Mirrors reception's
+     * Past-Records registration: no token (outside the OP queue) and a
+     * duplicate-MR guard so the same patient can't be created twice.
+     */
+    const handleRegisterDialysisPatient = async () => {
+        const name = dialysisForm.name.trim();
+        const trimmedMr = dialysisForm.mrNumber.trim();
+        const mrNumber = (trimmedMr && trimmedMr.toUpperCase() !== 'KNH/') ? trimmedMr : '';
+        if (!name || !mrNumber) {
+            toast.error('Name and MR number are required');
+            return;
+        }
+        setDialysisSaving(true);
+        try {
+            const { data: duplicate, error: dupErr } = await (supabase as any)
+                .from('hospital_patients')
+                .select('id, name')
+                .eq('hospital_id', doctor.hospital_id)
+                .eq('mr_number', mrNumber)
+                .maybeSingle();
+            if (dupErr) throw dupErr;
+            if (duplicate?.id) {
+                toast.error(`MR number already exists (${duplicate.name}) — search for them instead`);
+                setDialysisSaving(false);
+                return;
+            }
+
+            const { data: created, error: insertErr } = await (supabase as any)
+                .from('hospital_patients')
+                .insert({
+                    hospital_id: doctor.hospital_id,
+                    name,
+                    age: dialysisForm.age.trim() || null,
+                    gender: dialysisForm.gender || null,
+                    token_number: null, // dialysis patients never enter the OP queue
+                    mr_number: mrNumber,
+                    father_husband_name: dialysisForm.fatherHusbandName.trim() || null,
+                    place: dialysisForm.place.trim() || null,
+                    phone: dialysisForm.phone.trim() || null,
+                })
+                .select('id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, token_number')
+                .single();
+            if (insertErr) throw insertErr;
+
+            toast.success(`${created.name} registered`);
+            setDialysisPatient(created);   // straight into the prescription
+            resetDialysisPicker();
+        } catch (err: any) {
+            console.error('Dialysis registration failed:', err);
+            toast.error(err?.message || 'Could not register patient');
+        } finally {
+            setDialysisSaving(false);
+        }
     };
 
     // Search registered patients by name or MR number (registration stays with reception)
@@ -1715,7 +1779,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 doctor_id: doctor.id,
                 patient_id: patient.id,
                 queue_id: null,
-                token_number: patient.token_number || null,
+                // No OP token — dialysis patients are outside the live queue, and
+                // reusing their stored token would collide with today's OP tokens.
+                token_number: null,
                 medications: prescriptionMeds,
                 notes: prescriptionNotes,
                 status: 'pending',
@@ -1758,7 +1824,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     hospital_id: doctor.hospital_id,
                     prescription_id: prescriptionId,
                     patient_name: patient.name,
-                    token_number: patient.token_number || null,
+                    token_number: null, // dialysis has no OP token — shown as "DIA" at pharmacy
                     status: 'waiting',
                 });
 
@@ -2850,7 +2916,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 );
             })()}
 
-            {/* Dialysis patient picker — search registered patients (registration stays at reception) */}
+            {/* Dialysis patient picker — search registered patients, or register a new one inline */}
             {showDialysisPicker && (
                 <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={e => { if (e.target === e.currentTarget) resetDialysisPicker(); }}>
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
@@ -2861,14 +2927,136 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                 </svg>
                             </div>
                             <div className="min-w-0">
-                                <p className="text-sm font-bold text-gray-900">Dialysis Prescription</p>
-                                <p className="text-[11px] text-gray-400">Search the patient, then prescribe as usual</p>
+                                <p className="text-sm font-bold text-gray-900">{dialysisRegMode ? 'Register Dialysis Patient' : 'Dialysis Prescription'}</p>
+                                <p className="text-[11px] text-gray-400">{dialysisRegMode ? 'New patient — no OP token is created' : 'Search the patient, then prescribe as usual'}</p>
                             </div>
                             <button onClick={resetDialysisPicker} className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
 
+                        {dialysisRegMode ? (
+                            <>
+                                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="sm:col-span-2">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Patient Name <span className="text-rose-500">*</span></label>
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                value={dialysisForm.name}
+                                                onChange={e => setDialysisForm(f => ({ ...f, name: e.target.value.toUpperCase() }))}
+                                                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none"
+                                            />
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">MR Number <span className="text-rose-500">*</span></label>
+                                            <input
+                                                type="text"
+                                                value={dialysisForm.mrNumber}
+                                                onChange={e => setDialysisForm(f => ({ ...f, mrNumber: e.target.value.toUpperCase() }))}
+                                                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none font-mono"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Date of Birth</label>
+                                            <input
+                                                type="date"
+                                                value={dialysisForm.dob}
+                                                onChange={e => {
+                                                    const dob = e.target.value;
+                                                    let computedAge = '';
+                                                    if (dob) {
+                                                        const birth = new Date(dob);
+                                                        const today = new Date();
+                                                        let totalMonths = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
+                                                        if (today.getDate() < birth.getDate()) totalMonths--;
+                                                        if (totalMonths < 0 || totalMonths > 1800) computedAge = '';
+                                                        else if (totalMonths < 1) {
+                                                            const days = Math.max(0, Math.floor((today.getTime() - birth.getTime()) / 86400000));
+                                                            computedAge = `${days} day${days === 1 ? '' : 's'}`;
+                                                        } else if (totalMonths < 12) computedAge = `${totalMonths} month${totalMonths === 1 ? '' : 's'}`;
+                                                        else {
+                                                            const years = Math.floor(totalMonths / 12);
+                                                            computedAge = `${years} year${years === 1 ? '' : 's'}`;
+                                                        }
+                                                    }
+                                                    setDialysisForm(f => ({ ...f, dob, age: computedAge }));
+                                                }}
+                                                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Age</label>
+                                            <input
+                                                type="text"
+                                                value={dialysisForm.age}
+                                                onChange={e => setDialysisForm(f => ({ ...f, age: e.target.value }))}
+                                                placeholder="e.g. 54 years"
+                                                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Gender</label>
+                                            <select
+                                                value={dialysisForm.gender}
+                                                onChange={e => setDialysisForm(f => ({ ...f, gender: e.target.value }))}
+                                                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none bg-white"
+                                            >
+                                                <option value="">Select</option>
+                                                <option value="M">Male</option>
+                                                <option value="F">Female</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Phone</label>
+                                            <input
+                                                type="tel"
+                                                value={dialysisForm.phone}
+                                                onChange={e => setDialysisForm(f => ({ ...f, phone: e.target.value }))}
+                                                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">S/o · W/o</label>
+                                            <input
+                                                type="text"
+                                                value={dialysisForm.fatherHusbandName}
+                                                onChange={e => setDialysisForm(f => ({ ...f, fatherHusbandName: e.target.value.toUpperCase() }))}
+                                                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Place</label>
+                                            <input
+                                                type="text"
+                                                value={dialysisForm.place}
+                                                onChange={e => setDialysisForm(f => ({ ...f, place: e.target.value.toUpperCase() }))}
+                                                className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60 flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDialysisRegMode(false)}
+                                        className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                                    >
+                                        Back to search
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleRegisterDialysisPatient}
+                                        disabled={dialysisSaving}
+                                        className="ml-auto px-5 py-2 text-sm font-bold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 disabled:opacity-50"
+                                    >
+                                        {dialysisSaving ? 'Saving…' : 'Register & Prescribe'}
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                        <>
                         <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60">
                             <div className="relative">
                                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -2891,11 +3079,26 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             ) : dialysisResults.length === 0 && dialysisSearched ? (
                                 <div className="text-center py-8 px-4">
                                     <p className="text-sm font-semibold text-gray-700">No patient found</p>
-                                    <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                                        This patient isn’t registered yet. Ask reception to add them via
-                                        <span className="font-bold text-gray-700"> Past Records → New Registration</span>,
-                                        then search again here.
+                                    <p className="text-xs text-gray-500 mt-2 mb-4 leading-relaxed">
+                                        Not registered yet? Add them here — no need to go to reception.
                                     </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const q = dialysisSearch.trim();
+                                            const looksLikeMr = /\d/.test(q) && q.includes('/');
+                                            setDialysisForm({
+                                                ...emptyDialysisForm,
+                                                name: looksLikeMr ? '' : q.toUpperCase(),
+                                                mrNumber: looksLikeMr ? q.toUpperCase() : 'KNH/',
+                                            });
+                                            setDialysisRegMode(true);
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                                        Register New Patient
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="space-y-1.5">
@@ -2922,6 +3125,28 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                 </div>
                             )}
                         </div>
+                        {/* Always available — the searched patient may exist under a different spelling */}
+                        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const q = dialysisSearch.trim();
+                                    const looksLikeMr = /\d/.test(q) && q.includes('/');
+                                    setDialysisForm({
+                                        ...emptyDialysisForm,
+                                        name: looksLikeMr ? '' : q.toUpperCase(),
+                                        mrNumber: looksLikeMr ? q.toUpperCase() : 'KNH/',
+                                    });
+                                    setDialysisRegMode(true);
+                                }}
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-700 hover:text-cyan-800"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                                Register new patient
+                            </button>
+                        </div>
+                        </>
+                        )}
                     </div>
                 </div>
             )}
@@ -2930,7 +3155,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             {dialysisPatient && (
                 <PrescriptionModalSelector
                     doctor={currentDoctor}
-                    patient={dialysisPatient}
+                    // Blank the token — a dialysis visit has no OP token, and the
+                    // patient's stored one belongs to an earlier queue visit.
+                    patient={{ ...dialysisPatient, token_number: '' }}
                     onClose={() => setDialysisPatient(null)}
                     readOnly={false}
                     onSendToPharmacy={handleSendDialysisToPharmacy}

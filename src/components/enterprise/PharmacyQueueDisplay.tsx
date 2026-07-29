@@ -78,7 +78,11 @@ const PharmacyQueueDisplay: React.FC = () => {
             if (newCalling && calledKey !== lastCalledKeyRef.current) {
                 console.log('[QueueDisplay] New patient calling:', newCalling.token_number);
                 lastCalledKeyRef.current = calledKey;
-                voiceService.announceTokenFormatted(newCalling.token_number);
+                // Tokenless entries (dialysis) have nothing to announce — the
+                // pharmacist calls them by name from the screen instead.
+                if (newCalling.token_number) {
+                    voiceService.announceTokenFormatted(newCalling.token_number);
+                }
             }
 
             setCurrentPatient(newCalling);
@@ -273,7 +277,7 @@ const PharmacyQueueDisplay: React.FC = () => {
                                 </div>
                                 <div className="mb-10">
                                     <p className="text-[12rem] leading-none font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 tracking-tight animate-pulse">
-                                        {currentPatient.token_number.replace(/^[A-Za-z-]+/, '')}
+                                        {(currentPatient.token_number || '').replace(/^[A-Za-z-]+/, '') || '—'}
                                     </p>
                                 </div>
                                 <div className="w-full border-t border-gray-100 pt-8 space-y-6">
@@ -328,7 +332,7 @@ const PharmacyQueueDisplay: React.FC = () => {
                                             {index + 1}
                                         </div>
                                         <div className={`w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl ${index === 0 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'bg-gray-100 text-gray-600'}`}>
-                                            {item.token_number.replace(/^[A-Za-z-]+/, '')}
+                                            {(item.token_number || '').replace(/^[A-Za-z-]+/, '') || '—'}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className={`font-bold truncate ${index === 0 ? 'text-gray-900 text-lg' : 'text-gray-600'}`}>

@@ -955,10 +955,13 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                                     const meta = (item as any).metadata || {};
                                                     const notesStr = (item as any).notes || '';
                                                     const isDischargeCard = meta.documentType === 'discharge_card' || notesStr.startsWith('DocType: discharge_card');
+                                                    const isDialysis = meta.visitType === 'dialysis';
                                                     return (
-                                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl shadow-sm flex-shrink-0
-                                                            ${isDischargeCard ? 'bg-fuchsia-50 text-fuchsia-600' : item.status === 'pending' ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
-                                                            {isDischargeCard ? 'DC' : (item.token_number || item.patient?.token_number)}
+                                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold shadow-sm flex-shrink-0
+                                                            ${isDischargeCard ? 'text-lg sm:text-xl bg-fuchsia-50 text-fuchsia-600'
+                                                                : isDialysis ? 'text-sm sm:text-base bg-cyan-50 text-cyan-700'
+                                                                : item.status === 'pending' ? 'text-lg sm:text-xl bg-blue-50 text-blue-600' : 'text-lg sm:text-xl bg-gray-200 text-gray-600'}`}>
+                                                            {isDischargeCard ? 'DC' : isDialysis ? 'DIA' : (item.token_number || item.patient?.token_number)}
                                                         </div>
                                                     );
                                                 })()}
@@ -967,9 +970,13 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                                         const meta = (item as any).metadata || {};
                                                         const notesStr = (item as any).notes || '';
                                                         const isDischargeCard = meta.documentType === 'discharge_card' || notesStr.startsWith('DocType: discharge_card');
+                                                        const isDialysis = meta.visitType === 'dialysis';
                                                         return (
-                                                            <span className={`inline-block mb-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide text-white shadow-sm ${isDischargeCard ? 'bg-gradient-to-r from-fuchsia-500 to-purple-600' : 'bg-gradient-to-r from-teal-500 to-emerald-600'}`}>
-                                                                {isDischargeCard ? 'Discharge Card' : 'Prescription'}
+                                                            <span className={`inline-block mb-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide text-white shadow-sm ${
+                                                                isDischargeCard ? 'bg-gradient-to-r from-fuchsia-500 to-purple-600'
+                                                                    : isDialysis ? 'bg-gradient-to-r from-cyan-500 to-sky-600'
+                                                                    : 'bg-gradient-to-r from-teal-500 to-emerald-600'}`}>
+                                                                {isDischargeCard ? 'Discharge Card' : isDialysis ? 'Dialysis' : 'Prescription'}
                                                             </span>
                                                         );
                                                     })()}

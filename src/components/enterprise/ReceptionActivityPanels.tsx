@@ -92,7 +92,6 @@ const DuePatientRow: React.FC<{ due: ReceptionActivityDue; note?: string }> = ({
             </span>
         )}
         <div className="ml-auto flex items-center gap-2">
-            {due.phone && <span className="text-[11px] text-gray-500 font-medium">{due.phone}</span>}
             {due.latestCallStatus
                 ? <CallStatusChip status={due.latestCallStatus} />
                 : <span className="text-[10px] font-bold text-gray-400 uppercase">Not called</span>}
@@ -102,6 +101,14 @@ const DuePatientRow: React.FC<{ due: ReceptionActivityDue; note?: string }> = ({
 
 const fmtIsoDM = (iso: string | null): string =>
     iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '';
+
+const escapeHtml = (value: string): string =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 
 /** Narrow hospital-wide activity to a single doctor (doctor dashboard views). */
 const scopeActivityToDoctor = (
@@ -215,6 +222,102 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
         return next;
     });
 
+    /** Print every missed follow-up for the week, grouped day-wise (call list for reception). */
+    const handlePrintMissed = () => {
+        if (!summary || summary.missedTotal === 0) {
+            toast.error('No missed follow-ups to print');
+            return;
+        }
+        const printWindow = window.open('', '_blank', 'width=1200,height=800');
+        if (!printWindow) {
+            toast.error('Pop-up blocked. Please allow pop-ups to print the list.');
+            return;
+        }
+
+        const generatedAt = new Date().toLocaleString('en-IN', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: true,
+        });
+
+        let counter = 0;
+        const sectionsHtml = Array.from(missedByDay.entries()).map(([day, patients]) => {
+            const rows = patients.map((p) => {
+                counter += 1;
+                const callLabel = p.wasCalled
+                    ? (CALL_STATUS_LABELS[p.latestCallStatus || ''] || p.latestCallStatus || 'Called')
+                    : 'Not called';
+                return `
+                    <tr>
+                        <td>${counter}</td>
+                        <td>${escapeHtml(p.patientName || '--')}</td>
+                        <td>${escapeHtml(p.mrNumber || '--')}</td>
+                        <td>${escapeHtml(p.doctorName || '--')}</td>
+                        <td>${p.lastVisitAt ? new Date(p.lastVisitAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}</td>
+                        <td>${escapeHtml(callLabel)}</td>
+                        <td class="tick"></td>
+                    </tr>`;
+            }).join('');
+            return `
+                <h2 class="day">${fmtDayLong(day)} <span class="count">${patients.length} missed</span></h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:34px">#</th><th>Name</th><th>MR ID</th><th>Doctor</th>
+                            <th>Last Visit</th><th>Call Status</th><th style="width:90px">Called ✓</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        }).join('');
+
+        const html = `
+            <!doctype html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>Missed Follow-ups</title>
+                <style>
+                    * { box-sizing: border-box; }
+                    body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 24px; color: #1f2937; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+                    .title { font-size: 20px; font-weight: 700; margin: 0; }
+                    .meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
+                    .pill { display: inline-block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; margin-left: 8px; }
+                    .day { font-size: 13px; font-weight: 700; margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 2px solid #e5e7eb; }
+                    .day .count { font-size: 11px; font-weight: 700; color: #b91c1c; margin-left: 8px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+                    thead th { text-align: left; font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; padding: 7px 8px; }
+                    tbody td { border: 1px solid #e5e7eb; padding: 7px 8px; font-size: 12px; vertical-align: top; }
+                    tbody tr:nth-child(even) { background: #fcfcfd; }
+                    .tick { background: #fff; }
+                    .footer { margin-top: 16px; font-size: 11px; color: #6b7280; }
+                    @media print {
+                        body { margin: 10mm; }
+                        .day { page-break-after: avoid; }
+                        table { page-break-inside: auto; }
+                        tr { page-break-inside: avoid; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <h1 class="title">Missed Follow-ups — Call List</h1>
+                        <p class="meta">Week: ${fmtDM(weekStart)} – ${fmtDM(weekEnd)}</p>
+                        <p class="meta">Generated: ${generatedAt}</p>
+                    </div>
+                    <div><span class="pill">Total missed: ${summary.missedTotal}</span></div>
+                </div>
+                ${sectionsHtml}
+                <p class="footer">Patients who were due for review this week and have not visited. "Called ✓" column is for marking calls made from this sheet.</p>
+                <script>window.onload = function () { window.print(); };<\/script>
+            </body>
+            </html>`;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
+    };
+
     return (
         <div className="p-4 sm:p-6 space-y-5">
             {/* Week navigation */}
@@ -315,13 +418,25 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
                         <div className="flex items-center justify-between">
                             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Missed follow-ups — day wise</h4>
                             {missedByDay.size > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setExpandedDays(expandedDays.size === missedByDay.size ? new Set() : new Set(missedByDay.keys()))}
-                                    className="text-[11px] font-bold text-orange-600 hover:text-orange-700"
-                                >
-                                    {expandedDays.size === missedByDay.size ? 'Collapse all' : 'Expand all'}
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={handlePrintMissed}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                        Print all {summary.missedTotal} missed
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setExpandedDays(expandedDays.size === missedByDay.size ? new Set() : new Set(missedByDay.keys()))}
+                                        className="text-[11px] font-bold text-orange-600 hover:text-orange-700"
+                                    >
+                                        {expandedDays.size === missedByDay.size ? 'Collapse all' : 'Expand all'}
+                                    </button>
+                                </div>
                             )}
                         </div>
 
