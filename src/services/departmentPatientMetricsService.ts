@@ -41,12 +41,121 @@ export interface QueuePatientMetricsTimelineDay {
   saltIntake: string;
   urineOutput: string;
   hasAnyData: boolean;
+  /** Raw numerics for charting (null when not recorded that day). */
+  raw?: {
+    systole: number | null;
+    diastole: number | null;
+    glucose: number | null;
+    weight: number | null;
+    fluidMl: number | null;
+    saltGm: number | null;
+    urineMl: number | null;
+  };
 }
+
+/** Values a doctor/assistant can record for a patient on a given date. */
+export interface QueueMetricsEntryInput {
+  hospitalId: string;
+  patientId: string;
+  /** YYYY-MM-DD — defaults to today on the caller side. */
+  recordedDate: string;
+  systole?: number | null;
+  diastole?: number | null;
+  glucose?: number | null;
+  glucoseType?: 'fasting' | 'post_meal' | 'random' | null;
+  weight?: number | null;
+  fluidMl?: number | null;
+  saltGm?: number | null;
+  urineMl?: number | null;
+}
+
+/**
+ * Save clinician-entered metrics for a patient.
+ *
+ * Vitals and intakes are upserted per (patient_id, recorded_date) — re-saving
+ * the same day corrects that day's row rather than duplicating it. Urine output
+ * is append-only by design (multiple voids per day), so a positive value adds a
+ * new row. Fields left blank are ignored, never written as null over existing data.
+ */
+export async function saveQueuePatientMetrics(input: QueueMetricsEntryInput): Promise<void> {
+  const { hospitalId, patientId, recordedDate } = input;
+  if (!hospitalId || !patientId || !recordedDate) {
+    throw new Error('Missing hospital, patient, or date');
+  }
+
+  const has = (v: number | null | undefined) => v !== null && v !== undefined && !Number.isNaN(v);
+
+  const vitalsPatch: Record<string, any> = {};
+  if (has(input.systole)) vitalsPatch.bp_systole = input.systole;
+  if (has(input.diastole)) vitalsPatch.bp_diastole = input.diastole;
+  if (has(input.glucose)) {
+    vitalsPatch.blood_glucose = input.glucose;
+    vitalsPatch.blood_glucose_type = input.glucoseType || 'random';
+  }
+  if (has(input.weight)) vitalsPatch.weight = input.weight;
+
+  const intakePatch: Record<string, any> = {};
+  if (has(input.fluidMl)) intakePatch.fluid_intake_ml = input.fluidMl;
+  if (has(input.saltGm)) intakePatch.salt_intake_gm = input.saltGm;
+
+  if (Object.keys(vitalsPatch).length > 0) {
+    const res = await withTimeout(
+      ((supabase.from('hospital_patient_vitals' as any) as any).upsert({
+        patient_id: patientId,
+        hospital_id: hospitalId,
+        recorded_date: recordedDate,
+        ...vitalsPatch,
+        source: 'opd',
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'patient_id,recorded_date,source' })) as any,
+      10000,
+      'Timed out while saving vitals'
+    ) as { error: any };
+    if (res.error) throw res.error;
+  }
+
+  if (Object.keys(intakePatch).length > 0) {
+    const res = await withTimeout(
+      ((supabase.from('hospital_patient_intakes' as any) as any).upsert({
+        patient_id: patientId,
+        hospital_id: hospitalId,
+        recorded_date: recordedDate,
+        ...intakePatch,
+        source: 'opd',
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'patient_id,recorded_date,source' })) as any,
+      10000,
+      'Timed out while saving intake'
+    ) as { error: any };
+    if (res.error) throw res.error;
+  }
+
+  // amount_ml has a > 0 check constraint, so only insert real values
+  if (has(input.urineMl) && (input.urineMl as number) > 0) {
+    const res = await withTimeout(
+      ((supabase.from('hospital_patient_urine_outputs' as any) as any).insert({
+        patient_id: patientId,
+        hospital_id: hospitalId,
+        amount_ml: Math.round(input.urineMl as number),
+        source: 'opd',
+        recorded_at: new Date(`${recordedDate}T${new Date().toTimeString().slice(0, 8)}`).toISOString(),
+      })) as any,
+      10000,
+      'Timed out while saving urine output'
+    ) as { error: any };
+    if (res.error) throw res.error;
+  }
+}
+
+/** Which origin(s) of metrics to include. OPD = clinician-recorded in the queue. */
+export type MetricsSource = 'opd' | 'patient_app';
 
 interface FetchDepartmentQueueMetricsParams {
   hospitalId: string;
   patientIds: string[];
   doctorSpecialty: string | null;
+  /** Defaults to OPD-only — the doctor's queue shows what was measured here. */
+  sources?: MetricsSource[];
 }
 
 interface MetricsProfileInfo {
@@ -170,7 +279,8 @@ const createEmptySnapshot = (
 
 const fetchNephrologyMetrics = async (
   hospitalId: string,
-  patientIds: string[]
+  patientIds: string[],
+  sourceFilter: MetricsSource[] = ['opd']
 ): Promise<Record<string, QueuePatientMetricsSnapshot>> => {
   const today = toLocalISODate(new Date());
   const todayBounds = getDayBounds(today);
@@ -191,8 +301,9 @@ const fetchNephrologyMetrics = async (
       executeWithTimeout<any>(
         supabase
           .from('hospital_patient_vitals' as any)
-          .select('patient_id, recorded_date, bp_systole, bp_diastole, blood_glucose, blood_glucose_type, weight, updated_at')
+          .select('patient_id, recorded_date, bp_systole, bp_diastole, blood_glucose, blood_glucose_type, weight, updated_at, source')
           .eq('hospital_id', hospitalId)
+          .in('source', sourceFilter)
           .lte('recorded_date', today)
           .in('patient_id', chunk),
         'Timed out while loading queue vitals'
@@ -200,8 +311,9 @@ const fetchNephrologyMetrics = async (
       executeWithTimeout<any>(
         supabase
           .from('hospital_patient_intakes' as any)
-          .select('patient_id, recorded_date, salt_intake_gm, fluid_intake_ml, updated_at')
+          .select('patient_id, recorded_date, salt_intake_gm, fluid_intake_ml, updated_at, source')
           .eq('hospital_id', hospitalId)
+          .in('source', sourceFilter)
           .lte('recorded_date', today)
           .in('patient_id', chunk),
         'Timed out while loading queue intake data'
@@ -209,8 +321,9 @@ const fetchNephrologyMetrics = async (
       executeWithTimeout<any>(
         supabase
           .from('hospital_patient_urine_outputs' as any)
-          .select('patient_id, amount_ml, recorded_at')
+          .select('patient_id, amount_ml, recorded_at, source')
           .eq('hospital_id', hospitalId)
+          .in('source', sourceFilter)
           .lte('recorded_at', todayBounds.end)
           .in('patient_id', chunk),
         'Timed out while loading queue urine data'
@@ -338,6 +451,9 @@ const fetchNephrologyMetrics = async (
       const hasAnyData = [bloodPressure, bloodGlucose, weight, fluidIntake, saltIntake, urineOutput]
         .some(value => value !== '--');
 
+      const num = (v: any): number | null =>
+        v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v);
+
       return {
         date,
         bloodPressure,
@@ -348,6 +464,15 @@ const fetchNephrologyMetrics = async (
         saltIntake,
         urineOutput,
         hasAnyData,
+        raw: {
+          systole: num(dailyVitals?.bp_systole),
+          diastole: num(dailyVitals?.bp_diastole),
+          glucose: num(dailyVitals?.blood_glucose),
+          weight: num(dailyVitals?.weight),
+          fluidMl: num(dailyIntake?.fluid_intake_ml),
+          saltGm: num(dailyIntake?.salt_intake_gm),
+          urineMl: dailyUrine ? num(dailyUrine.totalMl) : null,
+        },
       };
     });
 
@@ -388,14 +513,15 @@ const fetchNephrologyMetrics = async (
 export const fetchDepartmentQueueMetrics = async (
   params: FetchDepartmentQueueMetricsParams
 ): Promise<Record<string, QueuePatientMetricsSnapshot>> => {
-  const { hospitalId, patientIds, doctorSpecialty } = params;
+  const { hospitalId, patientIds, doctorSpecialty, sources } = params;
+  const sourceFilter: MetricsSource[] = sources && sources.length > 0 ? sources : ['opd'];
   const uniquePatientIds = Array.from(new Set(patientIds.filter(Boolean)));
   if (!hospitalId || uniquePatientIds.length === 0) return {};
 
   const profile = resolveDepartmentMetricsProfile(doctorSpecialty);
 
   if (profile.key === 'nephrology') {
-    return fetchNephrologyMetrics(hospitalId, uniquePatientIds);
+    return fetchNephrologyMetrics(hospitalId, uniquePatientIds, sourceFilter);
   }
 
   return uniquePatientIds.reduce<Record<string, QueuePatientMetricsSnapshot>>((acc, patientId) => {

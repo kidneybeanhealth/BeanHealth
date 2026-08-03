@@ -259,9 +259,12 @@ export class PatientAppService {
             blood_glucose: vitals.blood_glucose,
             blood_glucose_type: vitals.blood_glucose_type,
             weight: vitals.weight,
+            // Explicit source keeps patient-submitted readings separate from
+            // clinician-recorded (OPD) values, which share these tables.
+            source: 'patient_app',
             updated_at: new Date().toISOString(),
           } as any,
-          { onConflict: 'patient_id,recorded_date' }
+          { onConflict: 'patient_id,recorded_date,source' }
         );
 
       if (error) throw error;
@@ -385,9 +388,12 @@ export class PatientAppService {
             recorded_date: intakes.recorded_date,
             salt_intake_gm: intakes.salt_intake_gm,
             fluid_intake_ml: intakes.fluid_intake_ml,
+            // Explicit source keeps patient-submitted readings separate from
+            // clinician-recorded (OPD) values, which share these tables.
+            source: 'patient_app',
             updated_at: new Date().toISOString(),
           } as any,
-          { onConflict: 'patient_id,recorded_date' }
+          { onConflict: 'patient_id,recorded_date,source' }
         );
 
       if (error) throw error;

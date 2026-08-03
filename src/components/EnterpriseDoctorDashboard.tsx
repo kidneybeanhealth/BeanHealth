@@ -17,6 +17,7 @@ import {
     type ReceptionReviewFilter,
 } from '../services/enterpriseReviewService';
 import AdmittedPatientsPanel, { type AdmittedPrescribeContext } from './enterprise/AdmittedPatientsPanel';
+import QueuePatientMetricsPanel from './enterprise/QueuePatientMetricsPanel';
 import { LogoIcon } from './icons/LogoIcon';
 import DoctorSettingsModal from './modals/DoctorSettingsModal';
 import { type DoctorActorSession } from '../utils/doctorActorSession';
@@ -107,19 +108,6 @@ const formatPastDate = (value?: string | null): string => {
     return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-const formatMetricsTimestamp = (value?: string | null): string => {
-    if (!value) return 'No updates yet';
-    return `Updated ${new Date(value).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
-};
-
-const formatMetricsDate = (value: string): string => {
-    return new Date(`${value}T00:00:00`).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-    });
-};
-
 const escapeHtml = (value: string): string =>
     value
         .replace(/&/g, '&amp;')
@@ -177,6 +165,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [notes, setNotes] = useState('');
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
     const [queueMetricsByPatientId, setQueueMetricsByPatientId] = useState<Record<string, QueuePatientMetricsSnapshot>>({});
+    // Bumped after a clinician saves metrics, to re-pull the queue snapshot
+    const [queueMetricsRefreshToken, setQueueMetricsRefreshToken] = useState(0);
+    // Which metric origin the queue panel shows — OPD by default
+    const [queueMetricsSource, setQueueMetricsSource] = useState<'opd' | 'patient_app'>('opd');
     const [queueMetricsLoading, setQueueMetricsLoading] = useState(false);
     const [expandedQueuePatientIds, setExpandedQueuePatientIds] = useState<Set<string>>(new Set());
     // Which queue row's collapsed "Actions" menu is currently open (one at a time)
@@ -733,6 +725,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     hospitalId: doctor.hospital_id,
                     patientIds: queuePatientIds,
                     doctorSpecialty: currentDoctor.specialty || null,
+                    sources: [queueMetricsSource],
                 });
                 if (isActive) {
                     setQueueMetricsByPatientId(metrics);
@@ -749,7 +742,12 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         return () => {
             isActive = false;
         };
-    }, [viewMode, queue, doctor.hospital_id, currentDoctor.specialty]);
+    }, [viewMode, queue, doctor.hospital_id, currentDoctor.specialty, queueMetricsRefreshToken, queueMetricsSource]);
+
+    /** Re-pull queue metrics after a clinician records new values. */
+    const refreshQueueMetrics = useCallback(() => {
+        setQueueMetricsRefreshToken(t => t + 1);
+    }, []);
 
     // Realtime subscription for queue updates with error handling
     useEffect(() => {
@@ -2296,129 +2294,20 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
                                             {expandedQueuePatientIds.has(item.patient_id) && (
                                                 <div className="mt-4 bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-2xl p-4 sm:p-5 animate-fade-in">
-                                                    {(() => {
-                                                        const metrics = queueMetricsByPatientId[item.patient_id];
-                                                        if (!metrics) {
-                                                            return (
-                                                                <div className="text-sm text-slate-600 font-medium">
-                                                                    Patient metrics are syncing. Please wait a moment.
-                                                                </div>
-                                                            );
-                                                        }
-
-                                                        if (item.patient.app_access_enabled === false) {
-                                                            return (
-                                                                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-700 text-sm font-medium">
-                                                                    Patient App access is currently disabled for this patient. Enable app access to view submitted vitals and consumption data.
-                                                                </div>
-                                                            );
-                                                        }
-
-                                                        if (!metrics.profileConfigured) {
-                                                            return (
-                                                                <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-violet-700 text-sm font-medium">
-                                                                    This department does not have a configured queue metrics profile yet. Nephrology is isolated and active; other departments can be added with their own adapter.
-                                                                </div>
-                                                            );
-                                                        }
-
-                                                        if (metrics.sections.length === 0) {
-                                                            return (
-                                                                <div className="text-sm text-slate-600 font-medium">
-                                                                    No metrics captured for today.
-                                                                </div>
-                                                            );
-                                                        }
-
-                                                        return (
-                                                            <>
-                                                                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                                                                    <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
-                                                                        {metrics.profileLabel}
-                                                                    </div>
-                                                                    <div className="text-xs font-medium text-slate-500">{formatMetricsTimestamp(metrics.lastUpdatedAt)}</div>
-                                                                </div>
-                                                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                                                                    {metrics.sections.map(section => (
-                                                                        <div key={section.key} className="rounded-xl border border-slate-200 bg-white p-3.5">
-                                                                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{section.title}</div>
-                                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                                                {section.cards.map(card => (
-                                                                                    <div key={card.key} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
-                                                                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{card.label}</div>
-                                                                                        <div className={`mt-1 text-base font-bold ${card.value === '--' ? 'text-slate-400' : 'text-slate-900'}`}>
-                                                                                            {card.value}
-                                                                                            {card.unit && <span className="ml-1 text-xs font-semibold text-slate-500">{card.unit}</span>}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-
-                                                                <div className="mt-4 rounded-xl border border-slate-200 bg-white overflow-hidden">
-                                                                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-                                                                        <div>
-                                                                            <div className="text-xs font-bold uppercase tracking-wide text-slate-500">Date-wise Patient App Metrics</div>
-                                                                            <div className="text-sm font-semibold text-slate-800 mt-0.5">
-                                                                                {`${formatMetricsDate(metrics.timelineEndDate)} to ${formatMetricsDate(metrics.timelineStartDate)} (latest to oldest)`}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-lg px-2.5 py-1">
-                                                                            {metrics.timelineDays.length} days
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="overflow-x-auto">
-                                                                        <div className="min-w-[860px]">
-                                                                            <div className="grid grid-cols-[130px_120px_170px_90px_110px_100px_110px] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 bg-slate-50/70">
-                                                                                <span>Date</span>
-                                                                                <span>BP</span>
-                                                                                <span>Glucose</span>
-                                                                                <span>Weight</span>
-                                                                                <span>Fluid</span>
-                                                                                <span>Salt</span>
-                                                                                <span>Urine</span>
-                                                                            </div>
-                                                                            <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
-                                                                                {metrics.timelineDays.map(day => (
-                                                                                    <div
-                                                                                        key={day.date}
-                                                                                        className={`grid grid-cols-[130px_120px_170px_90px_110px_100px_110px] px-4 py-2.5 text-sm ${day.hasAnyData ? 'bg-white' : 'bg-slate-50/40'}`}
-                                                                                    >
-                                                                                        <div className="font-semibold text-slate-800">{formatMetricsDate(day.date)}</div>
-                                                                                        <div className={`${day.bloodPressure === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
-                                                                                            {day.bloodPressure === '--' ? '--' : `${day.bloodPressure} mmHg`}
-                                                                                        </div>
-                                                                                        <div className={`${day.bloodGlucose === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
-                                                                                            {day.bloodGlucose === '--'
-                                                                                                ? '--'
-                                                                                                : day.bloodGlucoseType && day.bloodGlucoseType !== '--'
-                                                                                                    ? `${day.bloodGlucose} mg/dL (${day.bloodGlucoseType})`
-                                                                                                    : `${day.bloodGlucose} mg/dL`}
-                                                                                        </div>
-                                                                                        <div className={`${day.weight === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
-                                                                                            {day.weight === '--' ? '--' : `${day.weight} kg`}
-                                                                                        </div>
-                                                                                        <div className={`${day.fluidIntake === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
-                                                                                            {day.fluidIntake === '--' ? '--' : `${day.fluidIntake} ml`}
-                                                                                        </div>
-                                                                                        <div className={`${day.saltIntake === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
-                                                                                            {day.saltIntake === '--' ? '--' : `${day.saltIntake} g`}
-                                                                                        </div>
-                                                                                        <div className={`${day.urineOutput === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}`}>
-                                                                                            {day.urineOutput === '--' ? '--' : `${day.urineOutput} ml`}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </>
-                                                        );
-                                                    })()}
+                                                    {queueMetricsByPatientId[item.patient_id] && !queueMetricsByPatientId[item.patient_id].profileConfigured ? (
+                                                        <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-violet-700 text-sm font-medium">
+                                                            This department does not have a configured queue metrics profile yet. Nephrology is isolated and active; other departments can be added with their own adapter.
+                                                        </div>
+                                                    ) : (
+                                                        <QueuePatientMetricsPanel
+                                                            hospitalId={doctor.hospital_id}
+                                                            patientId={item.patient_id}
+                                                            patientName={item.patient.name}
+                                                            appAccessEnabled={item.patient.app_access_enabled}
+                                                            metrics={queueMetricsByPatientId[item.patient_id]}
+                                                            onSaved={() => refreshQueueMetrics()}
+                                                        />
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

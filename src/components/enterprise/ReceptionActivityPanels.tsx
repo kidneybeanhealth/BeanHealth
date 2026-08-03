@@ -7,13 +7,15 @@
  * Both are powered by fetchReceptionActivity (one ranged fetch of
  * visits / calls / due-reviews with names resolved).
  */
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { toast } from 'react-hot-toast';
 import {
     fetchReceptionActivity,
     ReceptionActivityData,
     ReceptionActivityDue,
 } from '../../services/enterpriseReviewService';
+
+const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 
 /* ─── date helpers (local timezone) ─────────────────────────────── */
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -72,7 +74,11 @@ const PanelSpinner: React.FC<{ text: string }> = ({ text }) => (
     </div>
 );
 
-const DuePatientRow: React.FC<{ due: ReceptionActivityDue; note?: string }> = ({ due, note }) => (
+const DuePatientRow: React.FC<{
+    due: ReceptionActivityDue;
+    note?: string;
+    onViewHistory?: (due: ReceptionActivityDue) => void;
+}> = ({ due, note, onViewHistory }) => (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl">
         <span className="text-sm font-bold text-gray-900">{due.patientName}</span>
         {due.mrNumber && <span className="text-[11px] font-mono font-bold text-gray-500">{due.mrNumber}</span>}
@@ -85,6 +91,19 @@ const DuePatientRow: React.FC<{ due: ReceptionActivityDue; note?: string }> = ({
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                 Last visit {fmtIsoDM(due.lastVisitAt)}
             </span>
+        )}
+        {onViewHistory && (
+            <button
+                type="button"
+                onClick={() => onViewHistory(due)}
+                className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-orange-700 border border-orange-200 hover:bg-orange-50 transition-colors"
+                title="Open this patient's visit history"
+            >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Visit History
+            </button>
         )}
         {note && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
@@ -132,6 +151,8 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
     const [data, setData] = useState<ReceptionActivityData | null>(null);
     const [loading, setLoading] = useState(false);
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+    // Patient whose visit history is open (modal self-fetches the full history)
+    const [journeyPatient, setJourneyPatient] = useState<ReceptionActivityDue | null>(null);
 
     const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
     const todayKey = dateKey(new Date());
@@ -222,12 +243,50 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
         return next;
     });
 
-    /** Print every missed follow-up for the week, grouped day-wise (call list for reception). */
-    const handlePrintMissed = () => {
+    /** Doctors who actually have missed follow-ups this week — drives the print buttons. */
+    const missedDoctors = useMemo(() => {
+        if (!summary) return [] as { id: string; name: string; count: number }[];
+        const map = new Map<string, { id: string; name: string; count: number }>();
+        for (const d of summary.missed) {
+            const id = d.doctorId || '__none__';
+            const name = d.doctorName || 'Unassigned';
+            const existing = map.get(id);
+            if (existing) existing.count += 1;
+            else map.set(id, { id, name, count: 1 });
+        }
+        return Array.from(map.values()).sort((a, b) => b.count - a.count);
+    }, [summary]);
+
+    /**
+     * Print missed follow-ups for the week, grouped day-wise (reception call list).
+     * Pass a doctorId to print just that doctor's patients.
+     */
+    const handlePrintMissed = (filterDoctorId?: string | null) => {
         if (!summary || summary.missedTotal === 0) {
             toast.error('No missed follow-ups to print');
             return;
         }
+
+        // Narrow to one doctor when asked, keeping the day-wise grouping
+        const scopedByDay = new Map<string, ReceptionActivityDue[]>();
+        let scopedTotal = 0;
+        for (const [day, patients] of missedByDay.entries()) {
+            const rows = filterDoctorId
+                ? patients.filter(p => (p.doctorId || '__none__') === filterDoctorId)
+                : patients;
+            if (rows.length > 0) {
+                scopedByDay.set(day, rows);
+                scopedTotal += rows.length;
+            }
+        }
+        if (scopedTotal === 0) {
+            toast.error('No missed follow-ups for that doctor');
+            return;
+        }
+        const doctorLabel = filterDoctorId
+            ? (missedDoctors.find(d => d.id === filterDoctorId)?.name || 'Doctor')
+            : null;
+
         const printWindow = window.open('', '_blank', 'width=1200,height=800');
         if (!printWindow) {
             toast.error('Pop-up blocked. Please allow pop-ups to print the list.');
@@ -239,21 +298,23 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
             hour: '2-digit', minute: '2-digit', hour12: true,
         });
 
+        const fmtFull = (iso: string | null) => iso
+            ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '--';
+        // Doctor column is redundant once the sheet is scoped to one doctor
+        const showDoctorCol = !filterDoctorId;
+
         let counter = 0;
-        const sectionsHtml = Array.from(missedByDay.entries()).map(([day, patients]) => {
+        const sectionsHtml = Array.from(scopedByDay.entries()).map(([day, patients]) => {
             const rows = patients.map((p) => {
                 counter += 1;
-                const callLabel = p.wasCalled
-                    ? (CALL_STATUS_LABELS[p.latestCallStatus || ''] || p.latestCallStatus || 'Called')
-                    : 'Not called';
                 return `
                     <tr>
                         <td>${counter}</td>
                         <td>${escapeHtml(p.patientName || '--')}</td>
                         <td>${escapeHtml(p.mrNumber || '--')}</td>
-                        <td>${escapeHtml(p.doctorName || '--')}</td>
-                        <td>${p.lastVisitAt ? new Date(p.lastVisitAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}</td>
-                        <td>${escapeHtml(callLabel)}</td>
+                        ${showDoctorCol ? `<td>${escapeHtml(p.doctorName || '--')}</td>` : ''}
+                        <td>${fmtFull(p.lastVisitAt)}</td>
                         <td class="tick"></td>
                     </tr>`;
             }).join('');
@@ -262,8 +323,9 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
                 <table>
                     <thead>
                         <tr>
-                            <th style="width:34px">#</th><th>Name</th><th>MR ID</th><th>Doctor</th>
-                            <th>Last Visit</th><th>Call Status</th><th style="width:90px">Called ✓</th>
+                            <th style="width:34px">#</th><th>Name</th><th>MR ID</th>
+                            ${showDoctorCol ? '<th>Doctor</th>' : ''}
+                            <th>Last Visit</th><th style="width:180px">Remarks</th>
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>
@@ -281,6 +343,7 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
                     body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 24px; color: #1f2937; }
                     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
                     .title { font-size: 20px; font-weight: 700; margin: 0; }
+                    .doctor { font-size: 14px; font-weight: 700; color: #0e7490; margin: 4px 0 0; }
                     .meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
                     .pill { display: inline-block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; margin-left: 8px; }
                     .day { font-size: 13px; font-weight: 700; margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 2px solid #e5e7eb; }
@@ -303,13 +366,14 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
                 <div class="header">
                     <div>
                         <h1 class="title">Missed Follow-ups — Call List</h1>
+                        ${doctorLabel ? `<p class="doctor">${escapeHtml(doctorLabel)}</p>` : ''}
                         <p class="meta">Week: ${fmtDM(weekStart)} – ${fmtDM(weekEnd)}</p>
                         <p class="meta">Generated: ${generatedAt}</p>
                     </div>
-                    <div><span class="pill">Total missed: ${summary.missedTotal}</span></div>
+                    <div><span class="pill">Total missed: ${scopedTotal}</span></div>
                 </div>
                 ${sectionsHtml}
-                <p class="footer">Patients who were due for review this week and have not visited. "Called ✓" column is for marking calls made from this sheet.</p>
+                <p class="footer">Patients who were due for review this week and have not visited. Use the "Remarks" column to note the outcome of each call.</p>
                 <script>window.onload = function () { window.print(); };<\/script>
             </body>
             </html>`;
@@ -418,21 +482,37 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
                         <div className="flex items-center justify-between">
                             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Missed follow-ups — day wise</h4>
                             {missedByDay.size > 0 && (
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={handlePrintMissed}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
-                                    >
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                        </svg>
-                                        Print all {summary.missedTotal} missed
-                                    </button>
+                                <div className="flex items-center gap-2 flex-wrap justify-end">
+                                    {/* One print button per doctor with missed patients (+ All when there's more than one) */}
+                                    {missedDoctors.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handlePrintMissed(null)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                            </svg>
+                                            Print all {summary.missedTotal}
+                                        </button>
+                                    )}
+                                    {missedDoctors.map((d) => (
+                                        <button
+                                            key={d.id}
+                                            type="button"
+                                            onClick={() => handlePrintMissed(missedDoctors.length > 1 ? d.id : null)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-sky-200 bg-white text-sky-700 hover:bg-sky-50 transition-colors"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                            </svg>
+                                            Print {d.name} ({d.count})
+                                        </button>
+                                    ))}
                                     <button
                                         type="button"
                                         onClick={() => setExpandedDays(expandedDays.size === missedByDay.size ? new Set() : new Set(missedByDay.keys()))}
-                                        className="text-[11px] font-bold text-orange-600 hover:text-orange-700"
+                                        className="text-[11px] font-bold text-orange-600 hover:text-orange-700 ml-1"
                                     >
                                         {expandedDays.size === missedByDay.size ? 'Collapse all' : 'Expand all'}
                                     </button>
@@ -470,7 +550,9 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
                                         </button>
                                         {isOpen && (
                                             <div className="px-4 pb-4 space-y-2 bg-gray-50/60 border-t border-gray-100 pt-3">
-                                                {patients.map((p, i) => <DuePatientRow key={`${p.patientId}-${i}`} due={p} />)}
+                                                {patients.map((p, i) => (
+                                                    <DuePatientRow key={`${p.patientId}-${i}`} due={p} onViewHistory={setJourneyPatient} />
+                                                ))}
                                             </div>
                                         )}
                                     </div>
@@ -479,6 +561,21 @@ export const WeeklyOverdueReportPanel: React.FC<{ hospitalId: string; doctorId?:
                         )}
                     </div>
                 </>
+            )}
+
+            {journeyPatient && (
+                <Suspense fallback={null}>
+                    <VisitJourneyModal
+                        hospitalId={hospitalId}
+                        patient={{
+                            id: journeyPatient.patientId,
+                            name: journeyPatient.patientName,
+                            mr_number: journeyPatient.mrNumber,
+                        }}
+                        prescriptions={[]}
+                        onClose={() => setJourneyPatient(null)}
+                    />
+                </Suspense>
             )}
         </div>
     );
