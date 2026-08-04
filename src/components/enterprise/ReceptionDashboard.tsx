@@ -134,10 +134,21 @@ const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     return 'Not Completed';
 };
 
+/**
+ * The token actually issued to THIS queue row — never the patient's stored one.
+ *
+ * hospital_patients.token_number holds the token from the patient's most recent
+ * registration. Falling back to it makes a row created without a token (a direct
+ * admission, which inserts no token_number) look like it owns a token from an
+ * earlier visit. That stale value was inflating the next-token calculation and
+ * skipping whole ranges of the day's sequence (e.g. 31 → 60).
+ */
+const queueRowToken = (item: any): string => String(item?.token_number ?? '').trim();
+
 // Numeric value of a queue token, ignoring any letter prefix (e.g. "D5" → 5).
 // Tokenless rows sort to the end regardless of direction.
 const tokenNumericValue = (item: any): number => {
-    const raw = String(item?.token_number || item?.patient?.token_number || '').replace(/\D/g, '');
+    const raw = queueRowToken(item).replace(/\D/g, '');
     const n = parseInt(raw, 10);
     return Number.isFinite(n) ? n : NaN;
 };
@@ -325,8 +336,8 @@ const ReceptionDashboard: React.FC = () => {
 
             // Sort by token_number descending (highest token first)
             const sortedQueue = (data as any || []).sort((a: any, b: any) => {
-                const tokenA = parseInt(a.token_number || a.patient?.token_number || '0', 10);
-                const tokenB = parseInt(b.token_number || b.patient?.token_number || '0', 10);
+                const tokenA = parseInt(queueRowToken(a) || '0', 10);
+                const tokenB = parseInt(queueRowToken(b) || '0', 10);
                 return tokenB - tokenA; // Descending: 9, 8, 7, 6...
             });
 
@@ -1051,7 +1062,7 @@ const ReceptionDashboard: React.FC = () => {
 
         // Extract numeric tokens, filtering out non-numeric ones
         const numericTokens = queue
-            .map(item => parseInt(item.token_number || item.patient?.token_number || '0', 10))
+            .map(item => parseInt(queueRowToken(item) || '0', 10))
             .filter(num => !isNaN(num) && num > 0);
 
         if (numericTokens.length === 0) return "1";
@@ -1424,7 +1435,7 @@ const ReceptionDashboard: React.FC = () => {
             // 1. UNIQUE TOKEN CHECK (For today)
             // Check against local queue state which contains all today's patients
             const isTokenTaken = queue.some(item =>
-                (item.token_number || item.patient?.token_number) === manualToken &&
+                queueRowToken(item) === manualToken &&
                 item.status !== 'cancelled'
             );
 
@@ -1724,7 +1735,7 @@ const ReceptionDashboard: React.FC = () => {
         const toastId = toast.loading('Printing token...');
         try {
             const tokenData = createTokenData({
-                tokenNumber: queueItem.token_number || queueItem.patient?.token_number || String(queueItem.queue_number),
+                tokenNumber: queueRowToken(queueItem) || String(queueItem.queue_number),
                 patientName: queueItem.patient?.name || 'Unknown',
                 mrNumber: queueItem.patient.mr_number || undefined,
                 doctorName: queueItem.doctor?.name || '',
@@ -1750,7 +1761,7 @@ const ReceptionDashboard: React.FC = () => {
         setEditForm({
             name: item.patient?.name || '',
             age: String(item.patient?.age || ''),
-            tokenNumber: String(item.token_number || item.patient?.token_number || ''),
+            tokenNumber: queueRowToken(item),
             doctorId: item.doctor_id || '',
             gender: item.patient?.gender || '',
             fatherHusbandName: item.patient?.father_husband_name || '',
@@ -1765,7 +1776,7 @@ const ReceptionDashboard: React.FC = () => {
         const newToken = editForm.tokenNumber.trim();
         // Check token uniqueness (excluding current patient)
         const tokenConflict = queue.find(q =>
-            String(q.token_number || q.patient?.token_number) === newToken &&
+            queueRowToken(q) === newToken &&
             q.id !== editQueueItem.id
         );
         if (tokenConflict) {
@@ -2481,7 +2492,7 @@ const ReceptionDashboard: React.FC = () => {
                                                 </div>
                                             ) : (
                                                 <div className="w-14 h-12 sm:w-16 sm:h-12 rounded-xl flex items-center justify-center font-black text-base bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm px-2 shrink-0">
-                                                    {item.token_number || item.patient?.token_number || 'N/A'}
+                                                    {queueRowToken(item) || 'N/A'}
                                                 </div>
                                             )}
                                             <div className="min-w-0">
