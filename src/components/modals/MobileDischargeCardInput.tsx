@@ -166,7 +166,9 @@ const MedCard: React.FC<{
     setShowDrugDropdown: (n: number | null) => void;
     handleSelectDrug: (index: number, drug: any) => void;
     showRemove: boolean;
-}> = ({ med, index, updateMed, removeRow, readOnly, filteredDrugs, setDrugSearchQuery, showDrugDropdown, setShowDrugDropdown, handleSelectDrug, showRemove }) => {
+    moveMed: (index: number, direction: -1 | 1) => void;
+    total: number;
+}> = ({ med, index, updateMed, removeRow, readOnly, filteredDrugs, setDrugSearchQuery, showDrugDropdown, setShowDrugDropdown, handleSelectDrug, showRemove, moveMed, total }) => {
 
     const [showConfirmRemove, setShowConfirmRemove] = React.useState(false);
     const [showDosageDropdown, setShowDosageDropdown] = React.useState(false);
@@ -240,7 +242,19 @@ const MedCard: React.FC<{
                 <span style={{ width: '20px', height: '20px', background: '#f3f4f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900, color: '#4a7c2f', flexShrink: 0, border: '1.5px solid #d1d5db' }}>{index + 1}</span>
                 <span style={{ flex: 1, fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Medication</span>
                 {showRemove && !readOnly && (
+                    <>
+                    {total > 1 && !readOnly && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
+                            <button type="button" aria-label="Move up" disabled={index === 0}
+                                onClick={() => moveMed(index, -1)}
+                                style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 900, border: '1px solid #e5e7eb', background: index === 0 ? '#f9fafb' : '#fff', color: index === 0 ? '#d1d5db' : '#374151', cursor: index === 0 ? 'not-allowed' : 'pointer', padding: 0 }}>↑</button>
+                            <button type="button" aria-label="Move down" disabled={index === total - 1}
+                                onClick={() => moveMed(index, 1)}
+                                style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 900, border: '1px solid #e5e7eb', background: index === total - 1 ? '#f9fafb' : '#fff', color: index === total - 1 ? '#d1d5db' : '#374151', cursor: index === total - 1 ? 'not-allowed' : 'pointer', padding: 0 }}>↓</button>
+                        </div>
+                    )}
                     <button onClick={() => setShowConfirmRemove(true)} style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>✕</button>
+                    </>
                 )}
                 {/* Confirm remove popup */}
                 {showConfirmRemove && (
@@ -417,6 +431,7 @@ interface MobileDischargeCardInputProps {
     updateMed: (index: number, field: string, value: string) => void;
     addRow: () => void;
     removeRow: (index: number) => void;
+    moveMed: (index: number, direction: -1 | 1) => void;
     patient: any;
     readOnly: boolean;
     drugSearchQuery: string;
@@ -437,7 +452,7 @@ interface MobileDischargeCardInputProps {
 }
 
 const MobileDischargeCardInput: React.FC<MobileDischargeCardInputProps> = ({
-    formData, setFormData, medications, updateMed, addRow, removeRow, patient, readOnly,
+    formData, setFormData, medications, updateMed, addRow, removeRow, moveMed, patient, readOnly,
     drugSearchQuery, setDrugSearchQuery, filteredDrugs, handleSelectDrug, showDrugDropdown, setShowDrugDropdown,
     onClose, onPrint, onSend,
     savedDiagnoses, diagnosisSearchQuery, setDiagnosisSearchQuery, showDiagnosisDropdown, setShowDiagnosisDropdown,
@@ -588,7 +603,8 @@ const MobileDischargeCardInput: React.FC<MobileDischargeCardInputProps> = ({
                         <MedCard key={idx} med={med as Medication} index={idx} updateMed={updateMed} removeRow={removeRow} readOnly={readOnly}
                             filteredDrugs={filteredDrugs} setDrugSearchQuery={setDrugSearchQuery}
                             showDrugDropdown={showDrugDropdown} setShowDrugDropdown={setShowDrugDropdown}
-                            handleSelectDrug={handleSelectDrug} showRemove={medications.length > 1} />
+                            handleSelectDrug={handleSelectDrug} showRemove={medications.length > 1}
+                            moveMed={moveMed} total={medications.length} />
                     ))}
                     {!readOnly && (
                         <button onClick={addRow} className="w-full py-3 bg-white border-2 border-dashed border-gray-300 text-gray-500 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">

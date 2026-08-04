@@ -941,6 +941,17 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
     setMedications(newMeds);
   };
 
+  // Reorder a medication up (-1) or down (+1) within the list
+  const moveMed = (index: number, direction: -1 | 1) => {
+    if (readOnly) return;
+    const target = index + direction;
+    if (target < 0 || target >= medications.length) return;
+    const newMeds = [...medications];
+    const [m] = newMeds.splice(index, 1);
+    newMeds.splice(target, 0, m);
+    setMedications(newMeds);
+  };
+
   const updateMed = (index: number, field: string, value: any) => {
     if (readOnly) return;
     const newMeds = [...medications];
@@ -1331,6 +1342,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
           updateMed={updateMed}
           addRow={addRow}
           removeRow={removeRow}
+          moveMed={moveMed}
           formData={formData}
           setFormData={setFormData}
           onClose={() => setShowConfirmCloseModal(true)}
@@ -1921,6 +1933,15 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                   )}
                                   {/* Row Controls (Hidden in Print) */}
                                   <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white gap-1">
+                                    {/* Reorder buttons */}
+                                    {!readOnly && medications.length > 1 && (
+                                      <>
+                                        <button onClick={() => moveMed(globalIndex, -1)} disabled={globalIndex === 0}
+                                          className={`font-bold px-1 ${globalIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-800'}`} title="Move up">↑</button>
+                                        <button onClick={() => moveMed(globalIndex, 1)} disabled={globalIndex === medications.length - 1}
+                                          className={`font-bold px-1 ${globalIndex === medications.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-800'}`} title="Move down">↓</button>
+                                      </>
+                                    )}
                                     {/* Add row button - only on last medication */}
                                     {!readOnly && globalIndex === medications.length - 1 && (
                                       <button onClick={addRow} className="text-emerald-500 hover:text-emerald-700 font-bold text-lg px-1" title="Add medication">+</button>
