@@ -181,10 +181,16 @@ const deriveReviewCategory = (
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
-    if (latestFollowupStatus === 'not_picked') {
-        // A not-picked call only needs chasing while the review is still open
-        // AND the patient hasn't visited since the call. A visit after the
-        // call (early or otherwise) resolves the chase.
+    // An unanswered call flags a patient as needing chasing — but ONLY once their
+    // review date has actually passed (or was never set). A patient due today or
+    // tomorrow has missed nothing yet: the reminder call simply didn't connect, and
+    // they must stay in their Due Today / Due Tomorrow list so reception still
+    // calls them. The unanswered status is surfaced on the row either way.
+    const dueDay = latestReviewDate ? startOfDay(latestReviewDate) : null;
+    const isPastDue = !dueDay || dueDay.getTime() < today.getTime();
+
+    if (latestFollowupStatus === 'not_picked' && isPastDue) {
+        // Still open, and no visit since the call — a visit resolves the chase.
         const reviewIsActive = latestReviewStatus === 'pending' || latestReviewStatus === 'rescheduled';
         const visitedAfterCall = Boolean(
             latestFollowupAt && lastVisitAt &&
@@ -363,6 +369,110 @@ const groupReviewsByDoctor = (
     return doctorReviews;
 };
 
+/** Local-timezone YYYY-MM-DD (the app treats "today" as local midnight). */
+const localDateKey = (offsetDays = 0): string => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const ACTIVE_REVIEW_STATUSES = ['pending', 'rescheduled'];
+
+/**
+ * Patient IDs that could belong to a review-driven filter, found by querying the
+ * reviews table directly.
+ *
+ * Why not just fetch every patient and categorise client-side: an unranged
+ * Supabase query is capped at 1000 rows server-side, so on a hospital with
+ * thousands of patients the older ones were never fetched and silently vanished
+ * from Due Today / Due Tomorrow / Missed Followup. Filtering at the review level
+ * instead bounds the work by how many reviews are actually due — which stays
+ * small no matter how large the patient database grows.
+ *
+ * Returns null when the filter isn't review-date driven (caller keeps the
+ * existing paginated path).
+ */
+const fetchFilterCandidatePatientIds = async (
+    hospitalId: string,
+    reviewFilter: ReceptionReviewFilter,
+    reviewDate: string
+): Promise<Set<string> | null> => {
+    const isCandidateDriven = Boolean(reviewDate)
+        || ['due_today', 'due_tomorrow', 'upcoming', 'overdue', 'followup_needed', 'review_completed'].includes(reviewFilter);
+    if (!isCandidateDriven) return null;
+
+    const ids = new Set<string>();
+    const PAGE = 1000;
+
+    /** Page through a review query, collecting patient_ids. */
+    const collect = async (build: (q: any) => any) => {
+        let from = 0;
+        while (true) {
+            let q = (supabase.from('hospital_patient_reviews' as any) as any)
+                .select('patient_id')
+                .eq('hospital_id', hospitalId);
+            q = build(q).range(from, from + PAGE - 1);
+            const res = await withTimeout(q as any, 10000, 'Timed out while resolving filter candidates') as SupabaseResult<any[]>;
+            if (res.error) {
+                const msg = String(res.error.message || '').toLowerCase();
+                if (msg.includes('hospital_patient_reviews')) return; // table missing on older DBs
+                throw res.error;
+            }
+            const rows = res.data || [];
+            rows.forEach(r => r.patient_id && ids.add(r.patient_id));
+            if (rows.length < PAGE) break;
+            from += PAGE;
+        }
+    };
+
+    const today = localDateKey(0);
+    const tomorrow = localDateKey(1);
+
+    if (reviewDate) {
+        await collect(q => q.eq('next_review_date', reviewDate));
+    } else if (reviewFilter === 'due_today') {
+        await collect(q => q.eq('next_review_date', today).in('status', ACTIVE_REVIEW_STATUSES));
+    } else if (reviewFilter === 'due_tomorrow') {
+        await collect(q => q.eq('next_review_date', tomorrow).in('status', ACTIVE_REVIEW_STATUSES));
+    } else if (reviewFilter === 'upcoming') {
+        await collect(q => q.gt('next_review_date', today).in('status', ACTIVE_REVIEW_STATUSES));
+    } else if (reviewFilter === 'review_completed') {
+        // Completed within the last 2 days — matches deriveReviewCategory's window
+        const since = localDateKey(-2);
+        await collect(q => q.eq('status', 'completed').gte('completed_at', `${since}T00:00:00`));
+    } else if (reviewFilter === 'overdue' || reviewFilter === 'followup_needed') {
+        // The "Missed Followup" chip covers overdue reviews AND patients whose last
+        // call went unanswered — the latter can carry any review date, so both
+        // sets are gathered and the derivation decides the final category.
+        await collect(q => q.lt('next_review_date', today).in('status', ACTIVE_REVIEW_STATUSES));
+
+        let from = 0;
+        while (true) {
+            const res = await withTimeout(
+                ((supabase.from('hospital_patient_followups' as any) as any)
+                    .select('patient_id')
+                    .eq('hospital_id', hospitalId)
+                    .eq('call_status', 'not_picked')
+                    .range(from, from + PAGE - 1)) as any,
+                10000,
+                'Timed out while resolving follow-up candidates'
+            ) as SupabaseResult<any[]>;
+            if (res.error) {
+                const msg = String(res.error.message || '').toLowerCase();
+                if (msg.includes('hospital_patient_followups')) break;
+                throw res.error;
+            }
+            const rows = res.data || [];
+            rows.forEach(r => r.patient_id && ids.add(r.patient_id));
+            if (rows.length < PAGE) break;
+            from += PAGE;
+        }
+    }
+
+    return ids;
+};
+
 export async function fetchReceptionPastRecords(
     params: FetchReceptionPastRecordsParams
 ): Promise<ReceptionPastRecordsResult> {
@@ -379,7 +489,16 @@ export async function fetchReceptionPastRecords(
     const to = from + pageSize - 1;
     const needsDerivedFiltering = reviewFilter !== 'all' || Boolean(reviewDate);
 
-    const buildPatientsQuery = (includeDeceasedFields: boolean): any => {
+    // Review-driven filters resolve their candidates from the reviews table first,
+    // so the patient fetch is bounded by how many reviews are due rather than by
+    // the size of the patient database (which would silently hit the 1000-row cap).
+    const candidateIds = await fetchFilterCandidatePatientIds(hospitalId, reviewFilter, reviewDate);
+    if (candidateIds && candidateIds.size === 0) {
+        return { patients: [], totalCount: 0, hasMore: false };
+    }
+    const candidateList = candidateIds ? Array.from(candidateIds) : null;
+
+    const buildPatientsQuery = (includeDeceasedFields: boolean, idChunk?: string[]): any => {
         const selectClause = includeDeceasedFields
             ? 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, is_deceased, deceased_at, continuity_status, followup_stopped_at, followup_stop_reason, created_at'
             : 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at';
@@ -390,7 +509,9 @@ export async function fetchReceptionPastRecords(
             .eq('hospital_id', hospitalId)
             .order('created_at', { ascending: false });
 
-        if (!needsDerivedFiltering) {
+        if (idChunk) {
+            query = query.in('id', idChunk);
+        } else if (!needsDerivedFiltering) {
             query = query.range(from, to);
         }
 
@@ -403,11 +524,28 @@ export async function fetchReceptionPastRecords(
         return query;
     };
 
-    let patientsResult = await withTimeout(
-        buildPatientsQuery(true),
-        10000,
-        'Timed out while loading patient records'
-    ) as SupabaseResult<any[]>;
+    /** Fetch the candidate patients in chunks so the IN() list never oversizes the URL. */
+    const fetchCandidatePatients = async (includeDeceasedFields: boolean): Promise<SupabaseResult<any[]>> => {
+        const rows: any[] = [];
+        for (const chunk of chunkArray(candidateList as string[], 100)) {
+            const res = await withTimeout(
+                buildPatientsQuery(includeDeceasedFields, chunk),
+                10000,
+                'Timed out while loading patient records'
+            ) as SupabaseResult<any[]>;
+            if (res.error) return res;
+            rows.push(...(res.data || []));
+        }
+        return { data: rows, error: null, count: rows.length };
+    };
+
+    let patientsResult = candidateList
+        ? await fetchCandidatePatients(true)
+        : await withTimeout(
+            buildPatientsQuery(true),
+            10000,
+            'Timed out while loading patient records'
+        ) as SupabaseResult<any[]>;
 
     if (patientsResult.error) {
         const message = String(patientsResult.error.message || '').toLowerCase();
@@ -418,11 +556,13 @@ export async function fetchReceptionPastRecords(
             message.includes('followup_stopped_at') ||
             message.includes('followup_stop_reason');
         if (missingLifecycleColumns) {
-            patientsResult = await withTimeout(
-                buildPatientsQuery(false),
-                10000,
-                'Timed out while loading patient records'
-            ) as SupabaseResult<any[]>;
+            patientsResult = candidateList
+                ? await fetchCandidatePatients(false)
+                : await withTimeout(
+                    buildPatientsQuery(false),
+                    10000,
+                    'Timed out while loading patient records'
+                ) as SupabaseResult<any[]>;
         }
     }
 
