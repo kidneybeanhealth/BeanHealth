@@ -5,7 +5,8 @@
  * assistant) can now record metrics directly before prescribing, and review the
  * history either as a table or as a chart.
  *
- *   • Record  — BP / glucose / weight / fluid / salt / urine for a chosen date
+ *   • Record  — BP, glucose, weight, HR, SpO2, temperature (°F/°C),
+ *               fluid, salt and urine for a chosen date
  *   • Latest  — snapshot cards from the metrics profile
  *   • History — date-wise table  ⇄  trend chart (toggle)
  *
@@ -50,7 +51,17 @@ const fmtTimestamp = (value: string | null): string => {
 const emptyForm = {
     date: todayKey(),
     systole: '', diastole: '', glucose: '', glucoseType: 'random',
-    weight: '', fluid: '', salt: '', urine: '',
+    weight: '', heartRate: '', spo2: '', temperature: '', temperatureUnit: 'F',
+    fluid: '', salt: '', urine: '',
+};
+
+/** Clinics work in either scale; the chosen unit is remembered per session. */
+const TEMP_UNIT_KEY = 'bh_opd_temp_unit';
+const initialTempUnit = (): 'F' | 'C' => {
+    try {
+        const v = localStorage.getItem(TEMP_UNIT_KEY);
+        return v === 'C' ? 'C' : 'F';
+    } catch { return 'F'; }
 };
 
 /** Chart series the user can switch between. */
@@ -61,6 +72,9 @@ const CHART_SERIES = [
     ] },
     { key: 'glucose', label: 'Glucose', unit: 'mg/dL', lines: [{ dataKey: 'glucose', name: 'Glucose', color: '#7c3aed' }] },
     { key: 'weight', label: 'Weight', unit: 'kg', lines: [{ dataKey: 'weight', name: 'Weight', color: '#0891b2' }] },
+    { key: 'hr', label: 'Heart Rate', unit: 'bpm', lines: [{ dataKey: 'heartRate', name: 'Heart Rate', color: '#db2777' }] },
+    { key: 'spo2', label: 'SpO\u2082', unit: '%', lines: [{ dataKey: 'spo2', name: 'SpO\u2082', color: '#0d9488' }] },
+    { key: 'temp', label: 'Temperature', unit: '\u00B0F', lines: [{ dataKey: 'temperatureF', name: 'Temperature', color: '#ea580c' }] },
     { key: 'fluid', label: 'Fluid Intake', unit: 'ml', lines: [{ dataKey: 'fluidMl', name: 'Fluid', color: '#2563eb' }] },
     { key: 'salt', label: 'Salt Intake', unit: 'g', lines: [{ dataKey: 'saltGm', name: 'Salt', color: '#d97706' }] },
     { key: 'urine', label: 'Urine Output', unit: 'ml', lines: [{ dataKey: 'urineMl', name: 'Urine', color: '#059669' }] },
@@ -83,7 +97,7 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
     hospitalId, patientId, appAccessEnabled, metrics, onSaved,
     source = 'opd', onSourceChange,
 }) => {
-    const [form, setForm] = useState({ ...emptyForm });
+    const [form, setForm] = useState({ ...emptyForm, temperatureUnit: initialTempUnit() });
     const [saving, setSaving] = useState(false);
     const [historyView, setHistoryView] = useState<'table' | 'graph'>('table');
     const [chartKey, setChartKey] = useState<string>('bp');
@@ -93,6 +107,11 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
     const [confirmEdit, setConfirmEdit] = useState(false);
 
     const set = (k: keyof typeof emptyForm, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+    const setTempUnit = (unit: 'F' | 'C') => {
+        setForm(f => ({ ...f, temperatureUnit: unit }));
+        try { localStorage.setItem(TEMP_UNIT_KEY, unit); } catch { /* non-critical */ }
+    };
 
     /** The already-recorded entry for the date currently chosen in the form. */
     const selectedDayRecord = useMemo(
@@ -116,6 +135,14 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
             diastole: raw?.diastole != null ? String(raw.diastole) : '',
             glucose: raw?.glucose != null ? String(raw.glucose) : '',
             weight: raw?.weight != null ? String(raw.weight) : '',
+            heartRate: raw?.heartRate != null ? String(raw.heartRate) : '',
+            spo2: raw?.spo2 != null ? String(raw.spo2) : '',
+            // raw temperature is normalised to °F — convert back to the chosen unit
+            temperature: raw?.temperatureF != null
+                ? String(f.temperatureUnit === 'C'
+                    ? Number((((raw.temperatureF as number) - 32) * 5 / 9).toFixed(1))
+                    : raw.temperatureF)
+                : '',
             fluid: raw?.fluidMl != null ? String(raw.fluidMl) : '',
             salt: raw?.saltGm != null ? String(raw.saltGm) : '',
             urine: '', // append-only — a value here adds another reading, never replaces
@@ -132,6 +159,9 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
         if (d.bloodPressure !== '--') bits.push(`BP ${d.bloodPressure}`);
         if (d.bloodGlucose !== '--') bits.push(`Glucose ${d.bloodGlucose}`);
         if (d.weight !== '--') bits.push(`Wt ${d.weight} kg`);
+        if (d.heartRate !== '--') bits.push(`HR ${d.heartRate}`);
+        if (d.spo2 !== '--') bits.push(`SpO₂ ${d.spo2}%`);
+        if (d.temperature !== '--') bits.push(`Temp ${d.temperature}`);
         if (d.fluidIntake !== '--') bits.push(`Fluid ${d.fluidIntake} ml`);
         if (d.saltIntake !== '--') bits.push(`Salt ${d.saltIntake} g`);
         if (d.urineOutput !== '--') bits.push(`Urine ${d.urineOutput} ml`);
@@ -151,6 +181,7 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
         const numericFields: [string, string][] = [
             ['BP systolic', form.systole], ['BP diastolic', form.diastole],
             ['Glucose', form.glucose], ['Weight', form.weight],
+            ['Heart rate', form.heartRate], ['SpO2', form.spo2], ['Temperature', form.temperature],
             ['Fluid intake', form.fluid], ['Salt intake', form.salt], ['Urine output', form.urine],
         ];
         for (const [label, raw] of numericFields) {
@@ -176,12 +207,17 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
             glucose: num(form.glucose),
             glucoseType: form.glucoseType as 'fasting' | 'post_meal' | 'random',
             weight: num(form.weight),
+            heartRate: num(form.heartRate),
+            spo2: num(form.spo2),
+            temperature: num(form.temperature),
+            temperatureUnit: form.temperatureUnit as 'F' | 'C',
             fluidMl: num(form.fluid),
             saltGm: num(form.salt),
             urineMl: num(form.urine),
         };
 
         const hasAny = [payload.systole, payload.diastole, payload.glucose, payload.weight,
+            payload.heartRate, payload.spo2, payload.temperature,
             payload.fluidMl, payload.saltGm, payload.urineMl].some(v => v !== null);
         if (!hasAny) {
             toast.error('Enter at least one metric');
@@ -217,6 +253,9 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
             diastole: d.raw?.diastole ?? null,
             glucose: d.raw?.glucose ?? null,
             weight: d.raw?.weight ?? null,
+            heartRate: d.raw?.heartRate ?? null,
+            spo2: d.raw?.spo2 ?? null,
+            temperatureF: d.raw?.temperatureF ?? null,
             fluidMl: d.raw?.fluidMl ?? null,
             saltGm: d.raw?.saltGm ?? null,
             urineMl: d.raw?.urineMl ?? null,
@@ -322,6 +361,36 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
                         <label className={labelCls}>Weight (kg)</label>
                         <input type="number" inputMode="decimal" step="0.1" value={form.weight}
                             onChange={e => set('weight', e.target.value)} placeholder="80.0" className={inputCls} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Heart Rate (bpm)</label>
+                        <input type="number" inputMode="numeric" value={form.heartRate}
+                            onChange={e => set('heartRate', e.target.value)} placeholder="78" className={inputCls} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>SpO&#8322; (%)</label>
+                        <input type="number" inputMode="numeric" value={form.spo2}
+                            onChange={e => set('spo2', e.target.value)} placeholder="98" className={inputCls} />
+                    </div>
+                    <div>
+                        <div className="flex items-center justify-between">
+                            <label className={labelCls}>Temperature</label>
+                            <div className="inline-flex p-0.5 bg-slate-200/70 rounded-md">
+                                {(['F', 'C'] as const).map(u => (
+                                    <button
+                                        key={u}
+                                        type="button"
+                                        onClick={() => setTempUnit(u)}
+                                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${form.temperatureUnit === u ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                                    >
+                                        &deg;{u}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <input type="number" inputMode="decimal" step="0.1" value={form.temperature}
+                            onChange={e => set('temperature', e.target.value)}
+                            placeholder={form.temperatureUnit === 'C' ? '37.0' : '98.6'} className={inputCls} />
                     </div>
                     <div>
                         <label className={labelCls}>Fluid Intake (ml)</label>
@@ -434,15 +503,16 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
 
                     {historyView === 'table' ? (
                         <div className="overflow-x-auto">
-                            <div className="min-w-[860px]">
-                                <div className="grid grid-cols-[130px_120px_170px_90px_110px_100px_110px] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 bg-slate-50/70">
+                            <div className="min-w-[1120px]">
+                                <div className="grid grid-cols-[130px_120px_170px_90px_90px_80px_110px_110px_100px_110px] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 border-b border-slate-100 bg-slate-50/70">
                                     <span>Date</span><span>BP</span><span>Glucose</span><span>Weight</span>
+                                    <span>HR</span><span>SpO&#8322;</span><span>Temp</span>
                                     <span>Fluid</span><span>Salt</span><span>Urine</span>
                                 </div>
                                 <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
                                     {metrics.timelineDays.map(day => (
                                         <div key={day.date}
-                                            className={`grid grid-cols-[130px_120px_170px_90px_110px_100px_110px] px-4 py-2.5 text-sm ${day.hasAnyData ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                            className={`grid grid-cols-[130px_120px_170px_90px_90px_80px_110px_110px_100px_110px] px-4 py-2.5 text-sm ${day.hasAnyData ? 'bg-white' : 'bg-slate-50/40'}`}>
                                             <div className="font-semibold text-slate-800">{fmtDate(day.date)}</div>
                                             <div className={day.bloodPressure === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}>
                                                 {day.bloodPressure === '--' ? '--' : `${day.bloodPressure} mmHg`}
@@ -455,6 +525,15 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
                                             </div>
                                             <div className={day.weight === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}>
                                                 {day.weight === '--' ? '--' : `${day.weight} kg`}
+                                            </div>
+                                            <div className={day.heartRate === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}>
+                                                {day.heartRate === '--' ? '--' : `${day.heartRate} bpm`}
+                                            </div>
+                                            <div className={day.spo2 === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}>
+                                                {day.spo2 === '--' ? '--' : `${day.spo2}%`}
+                                            </div>
+                                            <div className={day.temperature === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}>
+                                                {day.temperature}
                                             </div>
                                             <div className={day.fluidIntake === '--' ? 'text-slate-400' : 'text-slate-700 font-semibold'}>
                                                 {day.fluidIntake === '--' ? '--' : `${day.fluidIntake} ml`}

@@ -37,6 +37,9 @@ export interface QueuePatientMetricsTimelineDay {
   bloodGlucose: string;
   bloodGlucoseType: string;
   weight: string;
+  heartRate: string;
+  spo2: string;
+  temperature: string;
   fluidIntake: string;
   saltIntake: string;
   urineOutput: string;
@@ -47,6 +50,10 @@ export interface QueuePatientMetricsTimelineDay {
     diastole: number | null;
     glucose: number | null;
     weight: number | null;
+    heartRate: number | null;
+    spo2: number | null;
+    /** Always normalised to °F for charting so mixed-unit days plot on one axis. */
+    temperatureF: number | null;
     fluidMl: number | null;
     saltGm: number | null;
     urineMl: number | null;
@@ -64,6 +71,11 @@ export interface QueueMetricsEntryInput {
   glucose?: number | null;
   glucoseType?: 'fasting' | 'post_meal' | 'random' | null;
   weight?: number | null;
+  heartRate?: number | null;
+  spo2?: number | null;
+  temperature?: number | null;
+  /** Unit the temperature was measured in — stored as entered, never converted on write. */
+  temperatureUnit?: 'F' | 'C' | null;
   fluidMl?: number | null;
   saltGm?: number | null;
   urineMl?: number | null;
@@ -93,6 +105,12 @@ export async function saveQueuePatientMetrics(input: QueueMetricsEntryInput): Pr
     vitalsPatch.blood_glucose_type = input.glucoseType || 'random';
   }
   if (has(input.weight)) vitalsPatch.weight = input.weight;
+  if (has(input.heartRate)) vitalsPatch.heart_rate = Math.round(input.heartRate as number);
+  if (has(input.spo2)) vitalsPatch.spo2 = Math.round(input.spo2 as number);
+  if (has(input.temperature)) {
+    vitalsPatch.temperature = input.temperature;
+    vitalsPatch.temperature_unit = input.temperatureUnit || 'F';
+  }
 
   const intakePatch: Record<string, any> = {};
   if (has(input.fluidMl)) intakePatch.fluid_intake_ml = input.fluidMl;
@@ -301,7 +319,7 @@ const fetchNephrologyMetrics = async (
       executeWithTimeout<any>(
         supabase
           .from('hospital_patient_vitals' as any)
-          .select('patient_id, recorded_date, bp_systole, bp_diastole, blood_glucose, blood_glucose_type, weight, updated_at, source')
+          .select('patient_id, recorded_date, bp_systole, bp_diastole, blood_glucose, blood_glucose_type, weight, heart_rate, spo2, temperature, temperature_unit, updated_at, source')
           .eq('hospital_id', hospitalId)
           .in('source', sourceFilter)
           .lte('recorded_date', today)
@@ -398,6 +416,27 @@ const fetchNephrologyMetrics = async (
           unit: vitals?.blood_glucose !== null && vitals?.blood_glucose !== undefined ? summaryGlucoseUnit : undefined,
         },
         { key: 'weight', label: 'Weight', value: formatNumber(vitals?.weight, 1), unit: vitals?.weight !== null && vitals?.weight !== undefined ? 'kg' : undefined },
+        {
+          key: 'heart_rate',
+          label: 'Heart Rate',
+          value: formatNumber((vitals as any)?.heart_rate),
+          unit: (vitals as any)?.heart_rate !== null && (vitals as any)?.heart_rate !== undefined ? 'bpm' : undefined,
+        },
+        {
+          key: 'spo2',
+          label: 'SpO₂',
+          value: formatNumber((vitals as any)?.spo2),
+          unit: (vitals as any)?.spo2 !== null && (vitals as any)?.spo2 !== undefined ? '%' : undefined,
+        },
+        {
+          key: 'temperature',
+          label: 'Temperature',
+          value: formatNumber((vitals as any)?.temperature, 1),
+          // Shown in the unit it was recorded in, so nothing is lost in conversion
+          unit: (vitals as any)?.temperature !== null && (vitals as any)?.temperature !== undefined
+            ? `°${(vitals as any)?.temperature_unit === 'C' ? 'C' : 'F'}`
+            : undefined,
+        },
       ],
     };
 
@@ -444,11 +483,18 @@ const fetchNephrologyMetrics = async (
         : '--';
 
       const weight = formatNumber(dailyVitals?.weight, 1);
+      const heartRate = formatNumber(dailyVitals?.heart_rate);
+      const spo2 = formatNumber(dailyVitals?.spo2);
+      const tempUnit = (dailyVitals as any)?.temperature_unit === 'C' ? 'C' : 'F';
+      const tempRaw = (dailyVitals as any)?.temperature;
+      const temperature = tempRaw === null || tempRaw === undefined
+        ? '--'
+        : `${formatNumber(tempRaw, 1)} °${tempUnit}`;
       const fluidIntake = formatNumber(dailyIntake?.fluid_intake_ml);
       const saltIntake = formatNumber(dailyIntake?.salt_intake_gm, 1);
       const urineOutput = dailyUrine ? formatNumber(dailyUrine.totalMl) : '--';
 
-      const hasAnyData = [bloodPressure, bloodGlucose, weight, fluidIntake, saltIntake, urineOutput]
+      const hasAnyData = [bloodPressure, bloodGlucose, weight, heartRate, spo2, temperature, fluidIntake, saltIntake, urineOutput]
         .some(value => value !== '--');
 
       const num = (v: any): number | null =>
@@ -460,6 +506,9 @@ const fetchNephrologyMetrics = async (
         bloodGlucose,
         bloodGlucoseType,
         weight,
+        heartRate,
+        spo2,
+        temperature,
         fluidIntake,
         saltIntake,
         urineOutput,
@@ -469,6 +518,13 @@ const fetchNephrologyMetrics = async (
           diastole: num(dailyVitals?.bp_diastole),
           glucose: num(dailyVitals?.blood_glucose),
           weight: num(dailyVitals?.weight),
+          heartRate: num(dailyVitals?.heart_rate),
+          spo2: num(dailyVitals?.spo2),
+          temperatureF: (() => {
+            const t = num(tempRaw);
+            if (t === null) return null;
+            return tempUnit === 'C' ? Number(((t * 9) / 5 + 32).toFixed(1)) : t;
+          })(),
           fluidMl: num(dailyIntake?.fluid_intake_ml),
           saltGm: num(dailyIntake?.salt_intake_gm),
           urineMl: dailyUrine ? num(dailyUrine.totalMl) : null,
