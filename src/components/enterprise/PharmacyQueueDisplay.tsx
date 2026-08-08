@@ -16,6 +16,47 @@ interface QueueItem {
     created_at: string;
 }
 
+// Admission documents — discharge cards and in-patient Rx written during a stay — are
+// not OP-queue visits, so they have no token of their own. They are now saved with a
+// null token, but rows written before that fix still carry the patient's token from an
+// earlier visit — and this is the public board that also reads tokens aloud, so a stale
+// number calls whoever holds it today. Resolve the document type from the linked
+// prescription and blank the token.
+//
+// This is a backstop, not the primary fix: the write path in EnterpriseDoctorDashboard
+// (docTokenNumber) is what guarantees the null. Legacy in-patient rows predate the
+// visitType marker and so cannot be caught here — only legacy discharge cards can, via
+// their notes fallback.
+const stripAdmissionDocTokens = async (rows: QueueItem[]): Promise<QueueItem[]> => {
+    const prescriptionIds = Array.from(new Set(rows.map(r => r.prescription_id).filter(Boolean)));
+    if (prescriptionIds.length === 0) return rows;
+
+    const { data, error } = await (supabase
+        .from('hospital_prescriptions' as any) as any)
+        .select('id, metadata, notes')
+        .in('id', prescriptionIds);
+
+    if (error) {
+        // Leave the rows untouched rather than blanking the whole board on a transient
+        // failure. New discharge cards already carry a null token, so this lookup is
+        // only a backstop for legacy rows.
+        console.error('[QueueDisplay] Could not resolve document types:', error);
+        return rows;
+    }
+
+    const admissionDocIds = new Set(
+        (data || [])
+            .filter((p: any) =>
+                p?.metadata?.documentType === 'discharge_card'
+                || String(p?.notes || '').startsWith('DocType: discharge_card')
+                || p?.metadata?.visitType === 'admitted')
+            .map((p: any) => p.id)
+    );
+    if (admissionDocIds.size === 0) return rows;
+
+    return rows.map(r => (admissionDocIds.has(r.prescription_id) ? { ...r, token_number: '' } : r));
+};
+
 const PharmacyQueueDisplay: React.FC = () => {
     const { profile } = useAuth();
     const [currentPatient, setCurrentPatient] = useState<QueueItem | null>(null);
@@ -71,21 +112,7 @@ const PharmacyQueueDisplay: React.FC = () => {
                 console.error('[QueueDisplay] Error fetching calling:', callingError);
             }
 
-            const newCalling = callingData && callingData.length > 0 ? callingData[0] as QueueItem : null;
-
-            // Announce if new patient is being called (use composite key so re-calls trigger audio)
-            const calledKey = `${newCalling?.token_number}|${newCalling?.called_at}`;
-            if (newCalling && calledKey !== lastCalledKeyRef.current) {
-                console.log('[QueueDisplay] New patient calling:', newCalling.token_number);
-                lastCalledKeyRef.current = calledKey;
-                // Tokenless entries (dialysis) have nothing to announce — the
-                // pharmacist calls them by name from the screen instead.
-                if (newCalling.token_number) {
-                    voiceService.announceTokenFormatted(newCalling.token_number);
-                }
-            }
-
-            setCurrentPatient(newCalling);
+            const rawCalling = callingData && callingData.length > 0 ? callingData[0] as QueueItem : null;
 
             // Fetch waiting queue
             const { data: waitingData, error: waitingError } = await (supabase
@@ -101,8 +128,32 @@ const PharmacyQueueDisplay: React.FC = () => {
                 console.error('[QueueDisplay] Error fetching waiting:', waitingError);
             }
 
-            console.log('[QueueDisplay] Fetched:', { calling: newCalling?.token_number || 'none', waiting: waitingData?.length || 0 });
-            setWaitingQueue((waitingData || []) as QueueItem[]);
+            // Resolve document types for both lists in one lookup, before announcing —
+            // a discharge card must never have a token read out.
+            const sanitized = await stripAdmissionDocTokens([
+                ...(rawCalling ? [rawCalling] : []),
+                ...((waitingData || []) as QueueItem[]),
+            ]);
+            const newCalling = rawCalling ? sanitized[0] : null;
+            const newWaiting = rawCalling ? sanitized.slice(1) : sanitized;
+
+            // Announce if new patient is being called (keyed on the row so re-calls trigger
+            // audio, and so tokenless entries can't collide on a shared empty token)
+            const calledKey = `${newCalling?.id}|${newCalling?.called_at}`;
+            if (newCalling && calledKey !== lastCalledKeyRef.current) {
+                console.log('[QueueDisplay] New patient calling:', newCalling.patient_name);
+                lastCalledKeyRef.current = calledKey;
+                // Tokenless entries (dialysis, discharge cards) have nothing to announce —
+                // the pharmacist calls them by name from the screen instead.
+                if (newCalling.token_number) {
+                    voiceService.announceTokenFormatted(newCalling.token_number);
+                }
+            }
+
+            setCurrentPatient(newCalling);
+
+            console.log('[QueueDisplay] Fetched:', { calling: newCalling?.token_number || 'none', waiting: newWaiting.length });
+            setWaitingQueue(newWaiting);
         } catch (error) {
             console.error('[QueueDisplay] Fetch error:', error);
         }

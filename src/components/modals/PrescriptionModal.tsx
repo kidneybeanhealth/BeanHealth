@@ -1383,6 +1383,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
               .justify-end { justify-content: flex-end !important; }
               .grow { flex-grow: 1 !important; }
               .shrink-0 { flex-shrink: 0 !important; }
+              /* Long single diagnoses must break inside their cell rather than
+                 running past the border — flex items need min-width:0 to shrink. */
+              .min-w-0 { min-width: 0 !important; }
+              .max-w-full { max-width: 100% !important; }
+              .break-words { overflow-wrap: break-word !important; word-break: break-word !important; }
+              .flex-wrap { flex-wrap: wrap !important; }
               .w-full { width: 100% !important; }
               .w-28 { width: 112px !important; }
               .w-14 { width: 56px !important; }
@@ -1566,9 +1572,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                 <div className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-start content-start" style={{ fontFamily: 'Tahoma, Geneva, sans-serif' }}>
                                   {formData.diagnosis
                                     ? formData.diagnosis.split(',').map(d => d.trim()).filter(Boolean).map((d, i, arr) => (
-                                      <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
-                                        <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
-                                        <span>{d}{i < arr.length - 1 ? ',' : ''}</span>
+                                      <span key={i} className="inline-flex items-baseline gap-0.5 min-w-0 max-w-full">
+                                        <span className="text-gray-400 font-black shrink-0" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
+                                        <span className="min-w-0 break-words">{d}{i < arr.length - 1 ? ',' : ''}</span>
                                       </span>
                                     ))
                                     : null}
@@ -1580,9 +1586,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                   onClick={() => diagnosisInputRef.current?.focus()}
                                 >
                                   {(formData.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean).map((d, i, arr) => (
-                                    <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
-                                      <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
-                                      <span>{d}</span>
+                                    <span key={i} className="inline-flex items-baseline gap-0.5 min-w-0 max-w-full">
+                                      <span className="text-gray-400 font-black shrink-0" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
+                                      <span className="min-w-0 break-words">{d}</span>
                                       <button
                                         type="button"
                                         tabIndex={-1}

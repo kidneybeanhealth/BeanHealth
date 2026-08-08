@@ -42,6 +42,17 @@ interface Prescription {
     };
 }
 
+// Detect discharge cards by metadata flag OR legacy notes marker fallback.
+const isDischargeCardDoc = (rx: { metadata?: any; notes?: string } | null | undefined) =>
+    rx?.metadata?.documentType === 'discharge_card'
+    || String(rx?.notes || '').startsWith('DocType: discharge_card');
+
+// An in-patient Rx written during a stay is not an OP-queue visit either, so it carries
+// no token — the `|| patient.token_number` fallbacks would otherwise resurrect the
+// patient's token from an earlier visit.
+const isAdmittedRxDoc = (rx: { metadata?: any } | null | undefined) =>
+    rx?.metadata?.visitType === 'admitted';
+
 const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospitalId, onBack }) => {
     const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
     const [loading, setLoading] = useState(true);
@@ -461,7 +472,12 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                         hospital_id: hospitalId,
                         prescription_id: prescription.id,
                         patient_name: prescription.patient?.name || 'Unknown',
-                        token_number: prescription.token_number,
+                        // Never put an admission document's token on the display board — for
+                        // legacy rows it is the patient's token from an earlier OP visit,
+                        // and the board reads it aloud.
+                        token_number: (isDischargeCardDoc(prescription) || isAdmittedRxDoc(prescription))
+                            ? null
+                            : prescription.token_number,
                         status: 'calling',
                         called_at: new Date().toISOString()
                     } as any);
@@ -496,7 +512,9 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                     hospital_id: hospitalId,
                     prescription_id: prescription.id,
                     patient_name: prescription.patient?.name || 'Unknown',
-                    token_number: prescription.token_number,
+                    token_number: (isDischargeCardDoc(prescription) || isAdmittedRxDoc(prescription))
+                        ? null
+                        : prescription.token_number, // see handleCallPatient
                     status: 'waiting'
                 } as any);
 
@@ -956,12 +974,16 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                                     const notesStr = (item as any).notes || '';
                                                     const isDischargeCard = meta.documentType === 'discharge_card' || notesStr.startsWith('DocType: discharge_card');
                                                     const isDialysis = meta.visitType === 'dialysis';
+                                                    // In-patient Rx during a stay: no OP token, so it needs its
+                                                    // own badge or the tile renders empty.
+                                                    const isAdmitted = meta.visitType === 'admitted';
                                                     return (
                                                         <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold shadow-sm flex-shrink-0
                                                             ${isDischargeCard ? 'text-lg sm:text-xl bg-fuchsia-50 text-fuchsia-600'
                                                                 : isDialysis ? 'text-sm sm:text-base bg-cyan-50 text-cyan-700'
+                                                                : isAdmitted ? 'text-lg sm:text-xl bg-amber-50 text-amber-700'
                                                                 : item.status === 'pending' ? 'text-lg sm:text-xl bg-blue-50 text-blue-600' : 'text-lg sm:text-xl bg-gray-200 text-gray-600'}`}>
-                                                            {isDischargeCard ? 'DC' : isDialysis ? 'DIA' : (item.token_number || item.patient?.token_number)}
+                                                            {isDischargeCard ? 'DC' : isDialysis ? 'DIA' : isAdmitted ? 'IP' : (item.token_number || item.patient?.token_number)}
                                                         </div>
                                                     );
                                                 })()}
@@ -971,12 +993,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                                         const notesStr = (item as any).notes || '';
                                                         const isDischargeCard = meta.documentType === 'discharge_card' || notesStr.startsWith('DocType: discharge_card');
                                                         const isDialysis = meta.visitType === 'dialysis';
+                                                        const isAdmitted = meta.visitType === 'admitted';
                                                         return (
                                                             <span className={`inline-block mb-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide text-white shadow-sm ${
                                                                 isDischargeCard ? 'bg-gradient-to-r from-fuchsia-500 to-purple-600'
                                                                     : isDialysis ? 'bg-gradient-to-r from-cyan-500 to-sky-600'
+                                                                    : isAdmitted ? 'bg-gradient-to-r from-amber-500 to-orange-600'
                                                                     : 'bg-gradient-to-r from-teal-500 to-emerald-600'}`}>
-                                                                {isDischargeCard ? 'Discharge Card' : isDialysis ? 'Dialysis' : 'Prescription'}
+                                                                {isDischargeCard ? 'Discharge Card' : isDialysis ? 'Dialysis' : isAdmitted ? 'Admitted' : 'Prescription'}
                                                             </span>
                                                         );
                                                     })()}
@@ -1054,7 +1078,14 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900">Prescription Sheet</h3>
-                                    <p className="text-xs text-gray-600">Token #{selectedPrescription.token_number}</p>
+                                    {/* Admission documents are not OP-queue visits and carry no token */}
+                                    <p className="text-xs text-gray-600">
+                                        {isDischargeCardDoc(selectedPrescription)
+                                            ? 'Discharge Card'
+                                            : isAdmittedRxDoc(selectedPrescription)
+                                            ? 'In-Patient Rx'
+                                            : `Token #${selectedPrescription.token_number || '—'}`}
+                                    </p>
                                 </div>
                             </div>
                             <button
@@ -1075,9 +1106,21 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-3">
                                             <h2 className="text-2xl font-bold text-gray-900">{selectedPrescription.patient?.name}</h2>
-                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
-                                                Token {selectedPrescription.token_number || selectedPrescription.patient?.token_number}
-                                            </span>
+                                            {/* The patient-level fallback must not apply to admission
+                                                documents: it resurrects the token from an earlier OP visit. */}
+                                            {isDischargeCardDoc(selectedPrescription) ? (
+                                                <span className="px-3 py-1 bg-fuchsia-100 text-fuchsia-700 text-xs font-bold rounded-full">
+                                                    Discharge Card
+                                                </span>
+                                            ) : isAdmittedRxDoc(selectedPrescription) ? (
+                                                <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">
+                                                    Admitted
+                                                </span>
+                                            ) : (
+                                                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                                                    Token {selectedPrescription.token_number || selectedPrescription.patient?.token_number}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
                                             <div className="flex items-center gap-2">
@@ -1289,14 +1332,16 @@ const EnterprisePharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ hospita
             {/* Official Print Modal — route to discharge card or prescription based on metadata */}
             {selectedPrescription && showPrintModal && (() => {
                 const meta = (selectedPrescription as any).metadata || {};
-                const notesStr = (selectedPrescription as any).notes || '';
-                // Detect discharge cards by metadata flag OR legacy notes marker fallback
-                const isDischargeCard = meta.documentType === 'discharge_card' || notesStr.startsWith('DocType: discharge_card');
+                const isDischargeCard = isDischargeCardDoc(selectedPrescription);
                 const commonProps = {
                     doctor: selectedPrescription.doctor,
                     patient: {
                         ...selectedPrescription.patient,
-                        token_number: selectedPrescription.token_number || selectedPrescription.patient?.token_number
+                        // Admission documents have no token; the patient-level fallback
+                        // would otherwise supply a stale one from an earlier OP visit.
+                        token_number: (isDischargeCard || isAdmittedRxDoc(selectedPrescription))
+                            ? null
+                            : (selectedPrescription.token_number || selectedPrescription.patient?.token_number)
                     },
                     onClose: () => setShowPrintModal(false),
                     readOnly: true as const,

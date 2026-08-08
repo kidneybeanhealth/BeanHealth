@@ -44,6 +44,20 @@ interface Patient {
     app_access_enabled?: boolean | null;
 }
 
+// Detect discharge cards by metadata flag OR legacy notes marker fallback.
+// A discharge card is not an OP-queue visit, so it carries no token — and the
+// `|| patient.token_number` fallbacks used for prescriptions would otherwise
+// surface the patient's token from an earlier visit.
+const isDischargeCardDoc = (rx: any) =>
+    rx?.metadata?.documentType === 'discharge_card'
+    || String(rx?.notes || '').startsWith('DocType: discharge_card');
+
+// An in-patient Rx written during a stay is not an OP-queue visit either: its token is
+// the admission row's number from an earlier visit (see handlePrescribeAdmitted), so it
+// carries the same stale-token hazard as a discharge card. No legacy notes fallback —
+// the marker only exists on rows written after this fix.
+const isAdmittedRxDoc = (rx: any) => rx?.metadata?.visitType === 'admitted';
+
 interface QueueItem {
     id: string;
     patient_id: string;
@@ -1052,7 +1066,12 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             id: ctx.patient.id,
             name: ctx.patient.name,
             age: ctx.patient.age,
-            token_number: ctx.tokenNumber || '',
+            // An in-patient Rx has no OP token of its own — ctx.tokenNumber is the
+            // admission row's token from an earlier visit. Drop it at the source so it
+            // is neither printed on the paper nor carried to the pharmacy. Safe because
+            // the token_number dedupe lookup in handleSendToPharmacy is skipped for
+            // admission documents. Same treatment as handleDischargeCardAdmitted.
+            token_number: '',
             mr_number: ctx.patient.mr_number || null,
             app_access_enabled: null,
         });
@@ -1069,7 +1088,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             id: ctx.patient.id,
             name: ctx.patient.name,
             age: ctx.patient.age,
-            token_number: ctx.tokenNumber || '',
+            // A discharge card has no OP token of its own — ctx.tokenNumber is the
+            // admission row's token from an earlier visit. Drop it at the source so
+            // nothing downstream can display or announce it.
+            token_number: '',
             mr_number: ctx.patient.mr_number || null,
             app_access_enabled: null,
         });
@@ -1251,6 +1273,18 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         // ignores NULLs); the admission queue row is kept in metadata for tracing.
         const isAdmittedDoc = showDischargeCardModal || admittedRxContext;
 
+        // An in-patient Rx written during a stay — the admitted case that is not a
+        // discharge card. Tagged in metadata so the pharmacy can badge it "IP"; without
+        // a marker a token-less row would render as a bare "—" at the counter.
+        const isAdmittedRx = admittedRxContext && !showDischargeCardModal;
+
+        // Neither a discharge card nor an in-patient Rx is an OP-queue visit, so neither
+        // has a token of its own. Stamping the stored token reuses a number from an
+        // earlier visit, which then collides with today's OP tokens on the pharmacy
+        // display board — and gets announced aloud, pulling the wrong patient to the
+        // counter. Same reasoning as dialysis (see handleSendDialysisToPharmacy).
+        const docTokenNumber = isAdmittedDoc ? null : selectedPatient.token_number;
+
         try {
             if (paActorAuthEnabled && !actorSession?.sessionToken) {
                 throw new Error('Session expired. Please log in again.');
@@ -1263,7 +1297,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     p_session_token: actorSession.sessionToken,
                     p_patient_id: selectedPatient.id,
                     p_queue_id: isAdmittedDoc ? null : selectedQueueId,
-                    p_token_number: selectedPatient.token_number,
+                    p_token_number: docTokenNumber,
                     p_medications: prescriptionMeds,
                     p_notes: prescriptionNotes,
                     p_next_review_date: reviewContext?.nextReviewDate || null,
@@ -1273,6 +1307,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         actorType,
                         actorDisplayName,
                         documentType: showDischargeCardModal ? 'discharge_card' : 'prescription',
+                        ...(isAdmittedRx ? { visitType: 'admitted' } : {}),
                         ...(isAdmittedDoc ? { admission_queue_id: selectedQueueId } : {})
                     }
                 });
@@ -1298,6 +1333,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 toast.success('Prescription sent to Pharmacy!', { id: toastId });
                 await clearPreparingIndicator(selectedQueueId);
                 setShowRxModal(false);
+                // Must be reset here: clearing selectedPatient only unmounts the modal.
+                // A sticky flag would tag the NEXT prescription as a discharge card
+                // (null token + discharge_card metadata) and re-open this modal over it.
+                setShowDischargeCardModal(false);
                 setPastRxQueueItem(null);
                 setSelectedQueueId(null);
                 setSelectedPatient(null);
@@ -1351,7 +1390,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         doctor_id: doctor.id,
                         patient_id: selectedPatient.id,
                         queue_id: isAdmittedDoc ? null : selectedQueueId,
-                        token_number: selectedPatient.token_number,
+                        token_number: docTokenNumber,
                         medications: prescriptionMeds,
                         notes: prescriptionNotes,
                         next_review_date: reviewContext?.nextReviewDate || null,
@@ -1362,6 +1401,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             actorType,
                             actorDisplayName,
                             documentType: showDischargeCardModal ? 'discharge_card' : 'prescription',
+                            ...(isAdmittedRx ? { visitType: 'admitted' } : {}),
                             ...(isAdmittedDoc ? { admission_queue_id: selectedQueueId } : {})
                         }
                     } as any)
@@ -1384,10 +1424,19 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             hospital_id: doctor.hospital_id,
                             doctor_id: doctor.id,
                             patient_id: selectedPatient.id,
-                            token_number: selectedPatient.token_number,
+                            token_number: docTokenNumber,
                             medications: prescriptionMeds,
                             notes: prescriptionNotes,
-                            status: 'pending'
+                            status: 'pending',
+                            // metadata is JSONB and exists on every DB version, so the
+                            // document-type markers survive this degraded path — without
+                            // them a token-less admitted document renders as a bare "—".
+                            metadata: {
+                                actorType,
+                                actorDisplayName,
+                                documentType: showDischargeCardModal ? 'discharge_card' : 'prescription',
+                                ...(isAdmittedRx ? { visitType: 'admitted' } : {})
+                            }
                         } as any)
                         .select('id')
                         .single();
@@ -1448,7 +1497,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     .from('hospital_pharmacy_queue')
                     .update({
                         patient_name: selectedPatient.name,
-                        token_number: selectedPatient.token_number,
+                        token_number: docTokenNumber,
                         status: 'waiting'
                     })
                     .eq('id', existingQueue.data.id);
@@ -1460,7 +1509,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         hospital_id: doctor.hospital_id,
                         prescription_id: prescriptionId,
                         patient_name: selectedPatient.name,
-                        token_number: selectedPatient.token_number,
+                        token_number: docTokenNumber,
                         status: 'waiting'
                     });
                 queueError = insertQueue.error;
@@ -1485,6 +1534,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             toast.success('Prescription sent to Pharmacy!', { id: toastId });
             await clearPreparingIndicator(selectedQueueId);
             setShowRxModal(false);
+            setShowDischargeCardModal(false); // see note in the RPC path above
             setPastRxQueueItem(null);
             setSelectedQueueId(null);
             setSelectedPatient(null);
@@ -1520,6 +1570,19 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         const toastId = toast.loading('Resending prescription...');
         const patient = editResendItem.patient;
 
+        // Admission documents — discharge cards and in-patient Rx — carry no OP token
+        // (see docTokenNumber in handleSendToPharmacy). The `|| patient.token_number`
+        // fallback below would otherwise resurrect the patient's stale token on resend,
+        // including for legacy rows saved before this fix — so resending an old
+        // document also cleans it up.
+        const resendTokenNumber = (isDischargeCardDoc(editResendItem) || isAdmittedRxDoc(editResendItem))
+            ? null
+            : (editResendItem.token_number || patient.token_number);
+
+        // Carry the visit marker across the resend, or the new row loses its "IP"/"DIA"
+        // badge at the pharmacy and shows a token-less "—" instead.
+        const resendVisitType = (editResendItem as any)?.metadata?.visitType;
+
         try {
             // Always insert a new prescription (resend = new row, queue_id = null)
             const insertResult = await supabase
@@ -1529,7 +1592,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     doctor_id: doctor.id,
                     patient_id: patient.id,
                     queue_id: null,
-                    token_number: editResendItem.token_number || patient.token_number,
+                    token_number: resendTokenNumber,
                     medications: prescriptionMeds,
                     notes: prescriptionNotes,
                     next_review_date: reviewContext?.nextReviewDate || null,
@@ -1540,7 +1603,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         actorType,
                         actorDisplayName,
                         resent_from: editResendItem.id,
-                        documentType: (editResendItem as any)?.metadata?.documentType || 'prescription'
+                        documentType: (editResendItem as any)?.metadata?.documentType || 'prescription',
+                        ...(resendVisitType ? { visitType: resendVisitType } : {})
                     }
                 } as any)
                 .select('id')
@@ -1556,7 +1620,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                         hospital_id: doctor.hospital_id,
                         doctor_id: doctor.id,
                         patient_id: patient.id,
-                        token_number: editResendItem.token_number || patient.token_number,
+                        token_number: resendTokenNumber,
                         medications: prescriptionMeds,
                         notes: prescriptionNotes,
                         status: 'pending',
@@ -1564,7 +1628,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             actorType,
                             actorDisplayName,
                             resent_from: editResendItem.id,
-                            documentType: (editResendItem as any)?.metadata?.documentType || 'prescription'
+                            documentType: (editResendItem as any)?.metadata?.documentType || 'prescription',
+                            ...(resendVisitType ? { visitType: resendVisitType } : {})
                         }
                     } as any)
                     .select('id')
@@ -1598,7 +1663,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     hospital_id: doctor.hospital_id,
                     prescription_id: prescriptionId,
                     patient_name: patient.name,
-                    token_number: editResendItem.token_number || patient.token_number,
+                    token_number: resendTokenNumber,
                     status: 'waiting'
                 });
 
@@ -2581,21 +2646,31 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 </div>
             )}
 
-            {/* View Rx Modal — Past Records */}
-            {rxViewPrescription && rxViewPatient && (
-                <PrescriptionModal
-                    doctor={doctor}
-                    patient={{
+            {/* View Rx Modal — Past Records — route to discharge card or prescription based on metadata */}
+            {rxViewPrescription && rxViewPatient && (() => {
+                const isDischargeCard = isDischargeCardDoc(rxViewPrescription);
+                const commonProps = {
+                    doctor,
+                    patient: {
                         ...rxViewPatient,
-                        token_number: rxViewPrescription.token_number || rxViewPatient.token_number,
-                    }}
-                    onClose={() => { setRxViewPrescription(null); setRxViewPatient(null); }}
-                    readOnly={true}
-                    forcePrint={true}
-                    existingData={rxViewPrescription}
-                    clinicLogo={doctor.avatar_url || undefined}
-                />
-            )}
+                        // Admission documents have no OP token; the patient-level fallback
+                        // would otherwise supply a stale one from an earlier visit.
+                        token_number: (isDischargeCard || isAdmittedRxDoc(rxViewPrescription))
+                            ? ''
+                            : (rxViewPrescription.token_number || rxViewPatient.token_number),
+                    },
+                    onClose: () => { setRxViewPrescription(null); setRxViewPatient(null); },
+                    readOnly: true,
+                    forcePrint: true,
+                    existingData: rxViewPrescription,
+                    clinicLogo: doctor.avatar_url || undefined,
+                };
+                return isDischargeCard ? (
+                    <DischargeCardModal {...commonProps} />
+                ) : (
+                    <PrescriptionModal {...commonProps} />
+                );
+            })()}
 
             {/* Prescription Modal - Active */}
             {showRxModal && selectedPatient && (
@@ -2650,29 +2725,39 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 />
             )}
 
-            {/* History Modal - Read Only */}
-            {selectedHistoryItem && (
-                <PrescriptionModalSelector
-                    doctor={currentDoctor}
-                    patient={{
+            {/* History Modal - Read Only — route to discharge card or prescription based on metadata */}
+            {selectedHistoryItem && (() => {
+                const isDischargeCard = isDischargeCardDoc(selectedHistoryItem);
+                const commonProps = {
+                    doctor: currentDoctor,
+                    patient: {
                         ...selectedHistoryItem.patient,
-                        token_number: selectedHistoryItem.token_number || selectedHistoryItem.patient?.token_number
-                    }}
-                    onClose={() => setSelectedHistoryItem(null)}
-                    readOnly={true}
-                    forcePrint={true}
-                    existingData={selectedHistoryItem}
-                    clinicLogo={hospitalLogo || undefined}
-                    onPrintOpen={() => {
+                        // Admission documents have no OP token; the patient-level fallback
+                        // would otherwise supply a stale one from an earlier visit.
+                        token_number: (isDischargeCard || isAdmittedRxDoc(selectedHistoryItem))
+                            ? ''
+                            : (selectedHistoryItem.token_number || selectedHistoryItem.patient?.token_number)
+                    },
+                    onClose: () => setSelectedHistoryItem(null),
+                    readOnly: true,
+                    forcePrint: true,
+                    existingData: selectedHistoryItem,
+                    clinicLogo: hospitalLogo || undefined,
+                    onPrintOpen: () => {
                         logViewEvent('print.preview.open', {
                             eventCategory: 'print',
                             patientId: selectedHistoryItem.patient_id || null,
                             queueId: selectedHistoryItem.queue_id || null,
                             prescriptionId: selectedHistoryItem.id || null,
                         });
-                    }}
-                />
-            )}
+                    },
+                };
+                return isDischargeCard ? (
+                    <DischargeCardModal {...commonProps} />
+                ) : (
+                    <PrescriptionModalSelector {...commonProps} />
+                );
+            })()}
 
             {/* Prescription Picker Modal */}
             {prescriptionPickerItems.length > 0 && (
@@ -2762,12 +2847,14 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
             {/* Edit & Resend Modal — Editable */}
             {editResendItem && (() => {
-                const notesStr = String(editResendItem?.notes || '');
-                const isDischargeResend = (editResendItem as any)?.metadata?.documentType === 'discharge_card'
-                    || notesStr.startsWith('DocType: discharge_card');
+                const isDischargeResend = isDischargeCardDoc(editResendItem);
                 const editResendPatient = {
                     ...editResendItem.patient,
-                    token_number: editResendItem.token_number || editResendItem.patient?.token_number
+                    // Admission documents carry no token; the patient-level fallback would
+                    // otherwise resurrect a stale one from an earlier OP visit.
+                    token_number: (isDischargeResend || isAdmittedRxDoc(editResendItem))
+                        ? ''
+                        : (editResendItem.token_number || editResendItem.patient?.token_number)
                 };
                 const onPrintOpen = () => {
                     logViewEvent('print.preview.open', {

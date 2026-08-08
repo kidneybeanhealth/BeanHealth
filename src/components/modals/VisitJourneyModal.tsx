@@ -269,7 +269,9 @@ const VisitJourneyModal: React.FC<VisitJourneyModalProps> = ({
                             doctor={activeRx.doctor || {}}
                             patient={{
                                 ...patient,
-                                token_number: activeRx.token_number || patient?.token_number,
+                                // A discharge card has no OP token; the patient-level
+                                // fallback would surface one from an earlier visit.
+                                token_number: '',
                             }}
                             onClose={handleCloseRx}
                             readOnly

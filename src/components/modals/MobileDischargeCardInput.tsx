@@ -241,20 +241,23 @@ const MedCard: React.FC<{
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
                 <span style={{ width: '20px', height: '20px', background: '#f3f4f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900, color: '#4a7c2f', flexShrink: 0, border: '1.5px solid #d1d5db' }}>{index + 1}</span>
                 <span style={{ flex: 1, fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Medication</span>
+                {/* Reorder controls stay independent of the remove control so that hiding
+                    one never silently hides the other. `data-med-move` lets moveMed put
+                    focus back on this arrow once the drug lands in its new position. */}
+                {total > 1 && !readOnly && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
+                        <button type="button" aria-label="Move up" disabled={index === 0}
+                            data-med-move="up" data-med-index={index}
+                            onClick={() => moveMed(index, -1)}
+                            style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 900, border: '1px solid #e5e7eb', background: index === 0 ? '#f9fafb' : '#fff', color: index === 0 ? '#d1d5db' : '#374151', cursor: index === 0 ? 'not-allowed' : 'pointer', padding: 0 }}>↑</button>
+                        <button type="button" aria-label="Move down" disabled={index === total - 1}
+                            data-med-move="down" data-med-index={index}
+                            onClick={() => moveMed(index, 1)}
+                            style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 900, border: '1px solid #e5e7eb', background: index === total - 1 ? '#f9fafb' : '#fff', color: index === total - 1 ? '#d1d5db' : '#374151', cursor: index === total - 1 ? 'not-allowed' : 'pointer', padding: 0 }}>↓</button>
+                    </div>
+                )}
                 {showRemove && !readOnly && (
-                    <>
-                    {total > 1 && !readOnly && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
-                            <button type="button" aria-label="Move up" disabled={index === 0}
-                                onClick={() => moveMed(index, -1)}
-                                style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 900, border: '1px solid #e5e7eb', background: index === 0 ? '#f9fafb' : '#fff', color: index === 0 ? '#d1d5db' : '#374151', cursor: index === 0 ? 'not-allowed' : 'pointer', padding: 0 }}>↑</button>
-                            <button type="button" aria-label="Move down" disabled={index === total - 1}
-                                onClick={() => moveMed(index, 1)}
-                                style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 900, border: '1px solid #e5e7eb', background: index === total - 1 ? '#f9fafb' : '#fff', color: index === total - 1 ? '#d1d5db' : '#374151', cursor: index === total - 1 ? 'not-allowed' : 'pointer', padding: 0 }}>↓</button>
-                        </div>
-                    )}
-                    <button onClick={() => setShowConfirmRemove(true)} style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>✕</button>
-                    </>
+                    <button type="button" onClick={() => setShowConfirmRemove(true)} style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>✕</button>
                 )}
                 {/* Confirm remove popup */}
                 {showConfirmRemove && (
@@ -432,6 +435,9 @@ interface MobileDischargeCardInputProps {
     addRow: () => void;
     removeRow: (index: number) => void;
     moveMed: (index: number, direction: -1 | 1) => void;
+    /** Bumped by the parent on every reorder; folded into the MedCard key so cards
+     *  remount and drop card-local overlay state that belonged to the old order. */
+    medOrderVersion: number;
     patient: any;
     readOnly: boolean;
     drugSearchQuery: string;
@@ -452,7 +458,7 @@ interface MobileDischargeCardInputProps {
 }
 
 const MobileDischargeCardInput: React.FC<MobileDischargeCardInputProps> = ({
-    formData, setFormData, medications, updateMed, addRow, removeRow, moveMed, patient, readOnly,
+    formData, setFormData, medications, updateMed, addRow, removeRow, moveMed, medOrderVersion, patient, readOnly,
     drugSearchQuery, setDrugSearchQuery, filteredDrugs, handleSelectDrug, showDrugDropdown, setShowDrugDropdown,
     onClose, onPrint, onSend,
     savedDiagnoses, diagnosisSearchQuery, setDiagnosisSearchQuery, showDiagnosisDropdown, setShowDiagnosisDropdown,
@@ -468,8 +474,9 @@ const MobileDischargeCardInput: React.FC<MobileDischargeCardInputProps> = ({
                 <div className="flex items-start justify-between">
                     <div>
                         <h2 className="font-black text-gray-900 text-base leading-tight">{patient?.name || 'Patient'}</h2>
+                        {/* No OP token here: a discharge card is not an OP-queue visit, and the
+                            patient's stored token is a stale number from an earlier visit. */}
                         <div className="flex items-center gap-2 mt-0.5">
-                            <span className="bg-gray-900 text-white px-2 py-0.5 rounded text-[10px] font-bold">Token {patient?.token_number}</span>
                             <span className="text-sm font-semibold text-gray-600">{patient?.age} yrs</span>
                         </div>
                     </div>
@@ -600,7 +607,7 @@ const MobileDischargeCardInput: React.FC<MobileDischargeCardInputProps> = ({
                         )}
                     </div>
                     {medications.map((med, idx) => (
-                        <MedCard key={idx} med={med as Medication} index={idx} updateMed={updateMed} removeRow={removeRow} readOnly={readOnly}
+                        <MedCard key={`${medOrderVersion}-${idx}`} med={med as Medication} index={idx} updateMed={updateMed} removeRow={removeRow} readOnly={readOnly}
                             filteredDrugs={filteredDrugs} setDrugSearchQuery={setDrugSearchQuery}
                             showDrugDropdown={showDrugDropdown} setShowDrugDropdown={setShowDrugDropdown}
                             handleSelectDrug={handleSelectDrug} showRemove={medications.length > 1}

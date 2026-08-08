@@ -281,6 +281,11 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
     { name: '', dosage_value: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' }
   ]);
 
+  // Bumped on every reorder. Medications have no stable id, so the mobile cards are
+  // keyed by array index; folding this counter into the key remounts them after a
+  // move and drops card-local state that would otherwise belong to another drug.
+  const [medOrderVersion, setMedOrderVersion] = useState(0);
+
   // Time options for timing dropdowns (removed internal constant, uses outside one)
 
   const prescribedByName = (() => {
@@ -928,6 +933,20 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
   };
 
   // Medicine Handlers
+
+  // Every per-row dropdown in this modal is keyed by the medication's array index,
+  // so any edit that shifts indices must close them first. Otherwise the open list
+  // stays anchored to an index that now holds a different drug, and the next
+  // selection is written into the wrong medication.
+  const closeRowDropdowns = () => {
+    setShowDrugDropdown(null);
+    setShowDosageDropdown(null);
+    setShowDoseDropdown(null);
+    setShowFoodTimingDropdown(null);
+    setShowTimeDropdown(null);
+    setHighlightedDropdownIndex(-1);
+  };
+
   const addRow = () => {
     if (readOnly) return;
     setMedications([...medications, { name: '', dosage_value: '', number: '', dose: '', morning: '', morningTime: '', morningAmPm: '', noon: '', noonTime: '', noonAmPm: '', evening: '', eveningTime: '', eveningAmPm: '', night: '', nightTime: '', nightAmPm: '', foodTiming: '' }]);
@@ -939,6 +958,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
     const newMeds = [...medications];
     newMeds.splice(index, 1);
     setMedications(newMeds);
+    closeRowDropdowns();
   };
 
   // Reorder a medication up (-1) or down (+1) within the list
@@ -950,6 +970,25 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
     const [m] = newMeds.splice(index, 1);
     newMeds.splice(target, 0, m);
     setMedications(newMeds);
+
+    // The row controls sit inside the drug-name cell, so the outside-click handler
+    // treats a reorder click as "inside" and leaves the drug dropdown open on the
+    // row that just changed contents. Close it explicitly.
+    closeRowDropdowns();
+
+    // Remount the mobile medication cards so their card-local overlays (confirm
+    // remove, dosage list) can't stay open over a row that now holds another drug.
+    setMedOrderVersion(v => v + 1);
+
+    // Move focus onto the same arrow in the medication's new position. Without this
+    // the pointer/focus stays on the old index, so clicking again would swap the
+    // displaced neighbour back and undo the move instead of continuing it.
+    requestAnimationFrame(() => {
+      const dir = direction === -1 ? 'up' : 'down';
+      document
+        .querySelector<HTMLButtonElement>(`button[data-med-move="${dir}"][data-med-index="${target}"]`)
+        ?.focus();
+    });
   };
 
   const updateMed = (index: number, field: string, value: any) => {
@@ -1251,7 +1290,6 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
           <p className="text-sm font-bold text-blue-900">
             Sending for: {patient?.name || 'Unknown'}
             {patient?.mr_number && <span className="ml-1">(MR: {patient.mr_number})</span>}
-            {patient?.token_number && <span className="ml-1">| Token: {patient.token_number}</span>}
           </p>
         </div>
 
@@ -1343,6 +1381,7 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
           addRow={addRow}
           removeRow={removeRow}
           moveMed={moveMed}
+          medOrderVersion={medOrderVersion}
           formData={formData}
           setFormData={setFormData}
           onClose={() => setShowConfirmCloseModal(true)}
@@ -1412,6 +1451,12 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
               .justify-end { justify-content: flex-end !important; }
               .grow { flex-grow: 1 !important; }
               .shrink-0 { flex-shrink: 0 !important; }
+              /* Long single diagnoses must break inside their cell rather than
+                 running past the border — flex items need min-width:0 to shrink. */
+              .min-w-0 { min-width: 0 !important; }
+              .max-w-full { max-width: 100% !important; }
+              .break-words { overflow-wrap: break-word !important; word-break: break-word !important; }
+              .flex-wrap { flex-wrap: wrap !important; }
               .w-full { width: 100% !important; }
               .w-28 { width: 112px !important; }
               .w-14 { width: 56px !important; }
@@ -1646,9 +1691,9 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                 <div className="flex-1 py-1 px-1.5 font-bold w-full bg-transparent leading-tight uppercase break-words min-h-[1.5em] flex flex-wrap gap-x-2 gap-y-0.5 items-start content-start">
                                   {formData.diagnosis
                                     ? formData.diagnosis.split(',').map(d => d.trim()).filter(Boolean).map((d, i, arr) => (
-                                      <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
-                                        <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
-                                        <span>{d}{i < arr.length - 1 ? ',' : ''}</span>
+                                      <span key={i} className="inline-flex items-baseline gap-0.5 min-w-0 max-w-full">
+                                        <span className="text-gray-400 font-black shrink-0" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
+                                        <span className="min-w-0 break-words">{d}{i < arr.length - 1 ? ',' : ''}</span>
                                       </span>
                                     ))
                                     : null}
@@ -1659,9 +1704,9 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                   onClick={() => diagnosisInputRef.current?.focus()}
                                 >
                                   {(formData.diagnosis || '').split(',').map(d => d.trim()).filter(Boolean).map((d, i, arr) => (
-                                    <span key={i} className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
-                                      <span className="text-gray-400 font-black" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
-                                      <span>{d}</span>
+                                    <span key={i} className="inline-flex items-baseline gap-0.5 min-w-0 max-w-full">
+                                      <span className="text-gray-400 font-black shrink-0" style={{ fontSize: '0.65em' }}>{i + 1}.</span>
+                                      <span className="min-w-0 break-words">{d}</span>
                                       <button
                                         type="button"
                                         tabIndex={-1}
@@ -1932,22 +1977,28 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                                     </div>
                                   )}
                                   {/* Row Controls (Hidden in Print) */}
-                                  <div className="absolute right-0 top-0 h-full hidden group-hover:flex items-center pr-1 print:hidden bg-white gap-1">
+                                  {/* Kept mounted but transparent and click-through until the row is
+                                      hovered or holds focus: `display: none` would make the arrows
+                                      unfocusable, and moveMed needs to focus the arrow in the row's
+                                      new position so repeated presses keep moving the same drug. */}
+                                  <div className="absolute right-0 top-0 h-full flex items-center pr-1 print:hidden bg-white gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto">
                                     {/* Reorder buttons */}
                                     {!readOnly && medications.length > 1 && (
                                       <>
-                                        <button onClick={() => moveMed(globalIndex, -1)} disabled={globalIndex === 0}
+                                        <button type="button" tabIndex={-1} data-med-move="up" data-med-index={globalIndex}
+                                          onClick={() => moveMed(globalIndex, -1)} disabled={globalIndex === 0}
                                           className={`font-bold px-1 ${globalIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-800'}`} title="Move up">↑</button>
-                                        <button onClick={() => moveMed(globalIndex, 1)} disabled={globalIndex === medications.length - 1}
+                                        <button type="button" tabIndex={-1} data-med-move="down" data-med-index={globalIndex}
+                                          onClick={() => moveMed(globalIndex, 1)} disabled={globalIndex === medications.length - 1}
                                           className={`font-bold px-1 ${globalIndex === medications.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-800'}`} title="Move down">↓</button>
                                       </>
                                     )}
                                     {/* Add row button - only on last medication */}
                                     {!readOnly && globalIndex === medications.length - 1 && (
-                                      <button onClick={addRow} className="text-emerald-500 hover:text-emerald-700 font-bold text-lg px-1" title="Add medication">+</button>
+                                      <button type="button" tabIndex={-1} onClick={addRow} className="text-emerald-500 hover:text-emerald-700 font-bold text-lg px-1" title="Add medication">+</button>
                                     )}
-                                    {medications.length > 1 && (
-                                      <button onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1" title="Remove">×</button>
+                                    {!readOnly && medications.length > 1 && (
+                                      <button type="button" tabIndex={-1} onClick={() => removeRow(globalIndex)} className="text-red-500 hover:text-red-700 font-bold px-1" title="Remove">×</button>
                                     )}
                                   </div>
                                 </div>
@@ -2661,7 +2712,6 @@ const DischargeCardModal: React.FC<DischargeCardModalProps> = ({
                 <p className="text-xs font-bold text-blue-900 text-center">
                   Sending for: {patient?.name || 'Unknown'}
                   {patient?.mr_number && <span className="ml-1">(MR: {patient.mr_number})</span>}
-                  {patient?.token_number && <span className="ml-1">| Token: {patient.token_number}</span>}
                 </p>
               </div>
             )}
