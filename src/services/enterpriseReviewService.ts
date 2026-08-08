@@ -104,6 +104,12 @@ export interface AdmittedPatientRecord {
     doctorName: string | null;
     doctorSpecialty: string | null;
     tokenNumber: string | null;
+    /** When the underlying queue row was created — decides whether it can go back
+     *  to the live queue, which only shows rows created today. */
+    createdAt: string | null;
+    /** The token issued to THIS queue row (null for direct admissions).
+     *  Never the patient's stored token — that one belongs to an earlier visit. */
+    queueTokenNumber: string | null;
     preparingBy: string | null;
     patient: {
         id: string;
@@ -1126,6 +1132,143 @@ export async function dischargePatient(
     }
 }
 
+// ── Return an admission to the live queue ───────────────────────────
+
+/** Local YYYY-MM-DD — the live queue works in clinic-local days, not UTC. */
+const localDayKey = (value: string | Date): string => {
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+export interface AdmissionReturnEligibility {
+    allowed: boolean;
+    /** Why it can't go back — shown as the disabled button's tooltip. */
+    reason: string | null;
+}
+
+/**
+ * Can this admission be put back into the live queue?
+ *
+ * Only same-day admissions that *came from* a live queue qualify. Two hard
+ * constraints drive this, and both must hold or the row would disappear from
+ * every view at once:
+ *
+ *   1. The live queue reads `doctor_id = <me>` — a direct admission from
+ *      Reception has no doctor_id, so there is no queue for it to return to.
+ *   2. The live queue reads `created_at >= today` — restoring a row created on
+ *      an earlier day would leave it `pending` but invisible: gone from the
+ *      queue (too old), gone from History (not completed), and gone from
+ *      Admitted (no admission_status). A silent orphan.
+ *
+ * Shared by the UI (to gate the button) and the service (to gate the write) so
+ * the rule cannot drift between them.
+ */
+export function getAdmissionReturnEligibility(record: {
+    admissionStatus?: string | null;
+    doctorId?: string | null;
+    admittedAt?: string | null;
+    createdAt?: string | null;
+}): AdmissionReturnEligibility {
+    const today = localDayKey(new Date());
+
+    if ((record.admissionStatus || 'admitted') !== 'admitted') {
+        return { allowed: false, reason: 'This admission is already closed.' };
+    }
+    if (!record.doctorId) {
+        return {
+            allowed: false,
+            reason: 'Added straight to Admitted without a doctor queue — there is no live queue to return to. Register the patient at Reception instead.',
+        };
+    }
+    if (!record.admittedAt || localDayKey(record.admittedAt) !== today) {
+        return {
+            allowed: false,
+            reason: 'Only patients admitted today can be returned to the live queue.',
+        };
+    }
+    if (!record.createdAt || localDayKey(record.createdAt) !== today) {
+        return {
+            allowed: false,
+            reason: "This visit was registered on an earlier day, so it cannot re-enter today's queue.",
+        };
+    }
+    return { allowed: true, reason: null };
+}
+
+interface ReturnAdmissionToQueueParams {
+    queueId: string;
+    hospitalId: string;
+}
+
+/**
+ * Undo an admission and put the patient back in the live queue.
+ *
+ * For the common case where a patient is admitted from the queue and then asks
+ * to come back another day: the admission stamps are cleared and `status` goes
+ * back to 'pending', so the row re-appears in the doctor's queue holding the
+ * same token it already had.
+ *
+ * Eligibility is re-checked against the stored row rather than trusted from the
+ * caller — the panel may have been open for a while, and another device could
+ * have discharged the patient in the meantime.
+ */
+export async function returnAdmissionToQueue(
+    params: ReturnAdmissionToQueueParams
+): Promise<void> {
+    const { queueId, hospitalId } = params;
+    if (!queueId || !hospitalId) {
+        throw new Error('Missing queue or hospital identifier');
+    }
+
+    const rowResult = await withTimeout(
+        ((supabase.from('hospital_queues' as any) as any)
+            .select('id, doctor_id, created_at, admission_status, admitted_at')
+            .eq('id', queueId)
+            .eq('hospital_id', hospitalId)
+            .maybeSingle()) as any,
+        8000,
+        'Timed out while checking the admission'
+    ) as SupabaseResult<any>;
+
+    if (rowResult.error) throw rowResult.error;
+    if (!rowResult.data) throw new Error('This admission no longer exists');
+
+    const eligibility = getAdmissionReturnEligibility({
+        admissionStatus: rowResult.data.admission_status,
+        doctorId: rowResult.data.doctor_id,
+        admittedAt: rowResult.data.admitted_at,
+        createdAt: rowResult.data.created_at,
+    });
+    if (!eligibility.allowed) {
+        throw new Error(eligibility.reason || 'This admission cannot be returned to the queue');
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const updateResult = await withTimeout(
+        ((supabase.from('hospital_queues' as any) as any)
+            .update({
+                status: 'pending',
+                admission_status: null,
+                admitted_at: null,
+                discharged_at: null,
+                // A stale "preparing" badge would follow the row back into the
+                // queue and read as someone actively working on it.
+                preparing_by: null,
+                updated_at: nowIso,
+            })
+            .eq('id', queueId)
+            .eq('hospital_id', hospitalId)
+            .eq('admission_status', 'admitted')) as any,
+        10000,
+        'Timed out while returning patient to the queue'
+    ) as SupabaseResult;
+
+    if (updateResult.error) throw updateResult.error;
+}
+
 interface MarkPatientDeceasedParams {
     queueId: string;
     hospitalId: string;
@@ -1432,7 +1575,7 @@ export async function fetchAdmittedPatients(
     if (!hospitalId) return [];
 
     let query = (supabase.from('hospital_queues' as any) as any)
-        .select('id, patient_id, doctor_id, queue_number, admission_status, admitted_at, discharged_at, preparing_by')
+        .select('id, patient_id, doctor_id, queue_number, token_number, created_at, admission_status, admitted_at, discharged_at, preparing_by')
         .eq('hospital_id', hospitalId)
         .eq('admission_status', 'admitted')
         .order('admitted_at', { ascending: false, nullsFirst: false });
@@ -1561,6 +1704,8 @@ export async function fetchAdmittedPatients(
             doctorName: doc?.name || null,
             doctorSpecialty: doc?.specialty || null,
             tokenNumber: patient.token_number || null,
+            createdAt: row.created_at || null,
+            queueTokenNumber: row.token_number || null,
             preparingBy: row.preparing_by || null,
             patient: {
                 id: patient.id,

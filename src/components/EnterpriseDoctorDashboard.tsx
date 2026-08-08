@@ -2140,6 +2140,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     onPrescribe={handlePrescribeAdmitted}
                     onDischargeCard={handleDischargeCardAdmitted}
                     onEditResend={handleEditResend}
+                    onReturnedToQueue={() => fetchQueue(true)}
                     actorDisplayName={actorDisplayName}
                     clinicLogo={hospitalLogo || undefined}
                 />

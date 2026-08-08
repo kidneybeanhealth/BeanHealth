@@ -21,6 +21,7 @@ import {
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
 import AdmittedPatientsPanel from './AdmittedPatientsPanel';
+import PastRecordsMetricsSection, { resolvePatientDoctorSpecialty } from './PastRecordsMetricsSection';
 
 // Past Records report views — lazy (only loaded when the chip is opened)
 const WeeklyOverdueReportPanel = lazy(() =>
@@ -2150,6 +2151,7 @@ const ReceptionDashboard: React.FC = () => {
                                     hospitalId={profile.id}
                                     enablePrescribe={false}
                                     enableMarkDeceased={true}
+                                    onReturnedToQueue={() => fetchQueue(true)}
                                 />
                             )}
                         </div>
@@ -2451,6 +2453,15 @@ const ReceptionDashboard: React.FC = () => {
                                                                 </div>
                                                             </div>
                                                         </div>
+
+                                                        <PastRecordsMetricsSection
+                                                            hospitalId={profile.id}
+                                                            patientId={patient.id}
+                                                            patientName={patient.name}
+                                                            appAccessEnabled={patient.app_access_enabled}
+                                                            doctorSpecialty={resolvePatientDoctorSpecialty(patient)}
+                                                            accent="orange"
+                                                        />
                                                     </div>
                                                 </div>
                                             );

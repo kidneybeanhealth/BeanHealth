@@ -10,6 +10,8 @@
  *   - Search by name / MR / phone
  *   - View past prescriptions (opens modal via onViewPrescription)
  *   - Prescribe (doctor dashboard only — opens prescribe flow via onPrescribe)
+ *   - Return to Queue (undo a same-day admission — patient goes back to the
+ *     live queue with their original token)
  *   - Discharge (ends admission, row drops out of this list but
  *     remains in Past Records)
  */
@@ -23,6 +25,8 @@ import {
     markPatientDeceased,
     admitPatientDirectly,
     fetchPatientPendingReviews,
+    returnAdmissionToQueue,
+    getAdmissionReturnEligibility,
     type AdmittedPatientRecord,
     type PendingReviewInfo,
 } from '../../services/enterpriseReviewService';
@@ -64,6 +68,8 @@ interface AdmittedPatientsPanelProps {
     onDischargeCard?: (ctx: AdmittedPrescribeContext) => void;
     /** Invoked from Visit History "Edit & Resend" (doctor dashboard only). */
     onEditResend?: (rx: any) => void;
+    /** Fired after an admission is undone so the parent can refresh its live queue. */
+    onReturnedToQueue?: () => void;
     /** Display name of the currently logged-in actor (doctor or Jr.) — shown on "preparing" badge. */
     actorDisplayName?: string;
     /** Hospital logo URL passed from the parent so View Rx uses the same logo as the live queue. */
@@ -92,6 +98,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     onPrescribe,
     onDischargeCard,
     onEditResend,
+    onReturnedToQueue,
     actorDisplayName,
     clinicLogo: clinicLogoProp,
 }) => {
@@ -104,6 +111,8 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     const [dischargeReviewDate, setDischargeReviewDate] = useState('');
     const [dischargeConfirmReady, setDischargeConfirmReady] = useState(false);
     const [deceasedCandidate, setDeceasedCandidate] = useState<AdmittedPatientRecord | null>(null);
+    const [returnCandidate, setReturnCandidate] = useState<AdmittedPatientRecord | null>(null);
+    const [returning, setReturning] = useState(false);
     const [journeyPatient, setJourneyPatient] = useState<AdmittedPatientRecord | null>(null);
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
 
@@ -216,6 +225,25 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
         } catch (err) {
             console.error('[AdmittedPatientsPanel] discharge failed', err);
             toast.error('Could not discharge patient', { id: toastId });
+        }
+    };
+
+    const handleConfirmReturn = async () => {
+        if (!returnCandidate || returning) return;
+        const { queueId, patient } = returnCandidate;
+        setReturning(true);
+        const toastId = toast.loading('Returning patient to the queue…');
+        try {
+            await returnAdmissionToQueue({ queueId, hospitalId });
+            toast.success(`${patient.name} is back in the live queue`, { id: toastId });
+            setReturnCandidate(null);
+            loadRecords();
+            onReturnedToQueue?.();
+        } catch (err: any) {
+            console.error('[AdmittedPatientsPanel] return to queue failed', err);
+            toast.error(err?.message || 'Could not return patient to the queue', { id: toastId });
+        } finally {
+            setReturning(false);
         }
     };
 
@@ -403,6 +431,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                     {records.map(record => {
                         const p = record.patient;
                         const relationLabel = p.gender === 'Female' ? 'W/o' : 'S/o';
+                        const returnEligibility = getAdmissionReturnEligibility(record);
                         return (
                             <div key={record.queueId} className="px-4 sm:px-6 py-4 hover:bg-gray-50/60 transition-colors">
                                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
@@ -456,6 +485,22 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                                 Discharge Card
                                             </button>
                                         )}
+                                        {/* Undo a same-day admission — for the patient who
+                                            agrees to be admitted and then asks to come back
+                                            another day. Disabled (with the reason) rather than
+                                            hidden, so it is clear why it is unavailable. */}
+                                        <button
+                                            onClick={() => { if (returnEligibility.allowed) setReturnCandidate(record); }}
+                                            disabled={!returnEligibility.allowed}
+                                            title={returnEligibility.reason || 'Send this patient back to the live queue'}
+                                            className={`px-3 py-2 text-xs sm:text-sm font-semibold border rounded-lg transition-colors ${
+                                                returnEligibility.allowed
+                                                    ? 'text-sky-700 bg-sky-50 hover:bg-sky-100 border-sky-200'
+                                                    : 'text-gray-400 bg-gray-50 border-gray-200 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            Return to Queue
+                                        </button>
                                         <button
                                             onClick={() => openDischargeFlow(record)}
                                             className="px-3 py-2 text-xs sm:text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm"
@@ -598,6 +643,69 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                 </div>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Return to queue confirm — single step; the action is reversible
+                (the patient can simply be admitted again from the queue). */}
+            {returnCandidate && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100">
+                            <h3 className="text-base font-bold text-gray-900">Return patient to the live queue?</h3>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                {returnCandidate.patient.name} · MR {returnCandidate.patient.mr_number || 'N/A'}
+                            </p>
+                        </div>
+                        <div className="px-5 py-5 space-y-3">
+                            <p className="text-sm text-gray-700">
+                                The admission will be undone and {returnCandidate.patient.name} will go back into
+                                {returnCandidate.doctorName ? ` ${returnCandidate.doctorName}'s` : ' the'} live queue
+                                {returnCandidate.queueTokenNumber
+                                    ? <> holding token <span className="font-mono font-bold text-gray-900">{returnCandidate.queueTokenNumber}</span></>
+                                    : ' in their original position'}.
+                            </p>
+                            <div className="bg-sky-50 border border-sky-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
+                                <svg className="w-4 h-4 text-sky-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p className="text-xs text-sky-800 leading-relaxed">
+                                    No new token is issued and nothing is deleted. They can be admitted again from the
+                                    queue at any time.
+                                </p>
+                            </div>
+                            {(returnCandidate.prescriptions?.length || 0) > 0 && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
+                                    <svg className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <p className="text-xs text-amber-800 leading-relaxed">
+                                        <span className="font-bold">
+                                            {returnCandidate.prescriptions.length} document
+                                            {returnCandidate.prescriptions.length === 1 ? ' was' : 's were'} already issued
+                                        </span>{' '}
+                                        during this admission. They stay on the patient's record and are not withdrawn.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
+                            <button
+                                onClick={() => setReturnCandidate(null)}
+                                disabled={returning}
+                                className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmReturn}
+                                disabled={returning}
+                                className="px-5 py-2 text-sm font-bold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {returning ? 'Returning…' : 'Yes, Return to Queue'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

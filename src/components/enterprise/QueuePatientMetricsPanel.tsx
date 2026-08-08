@@ -269,9 +269,44 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
     const inputCls = 'w-full px-2.5 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none';
     const labelCls = 'text-[10px] font-bold text-slate-500 uppercase tracking-wide';
 
+    /** Entry always lands on the OPD timeline, so the toggle has to live outside
+     *  the history block — otherwise a source with no rows hides the only way
+     *  back to OPD. */
+    const sourceToggle = onSourceChange ? (
+        <div className="inline-flex p-0.5 bg-slate-200/70 rounded-lg">
+            {([['opd', 'OPD'], ['patient_app', 'Patient App']] as const).map(([key, label]) => (
+                <button
+                    key={key}
+                    type="button"
+                    onClick={() => onSourceChange(key)}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${source === key ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                >
+                    {label}
+                </button>
+            ))}
+        </div>
+    ) : null;
+
     return (
         <div className="space-y-4">
+            {sourceToggle && (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Showing</p>
+                    {sourceToggle}
+                </div>
+            )}
+
             {/* ── Record metrics ─────────────────────────────────────── */}
+            {source !== 'opd' ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Patient App readings</p>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        These were submitted by the patient and are read-only here. Switch to
+                        <span className="font-semibold text-slate-700"> OPD </span>
+                        to record or correct clinic-measured values.
+                    </p>
+                </div>
+            ) : (
             <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
@@ -425,6 +460,7 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
                 </>
                 )}
             </div>
+            )}
 
             {/* ── Latest snapshot ────────────────────────────────────── */}
             {metrics && metrics.sections.length > 0 && (
@@ -469,20 +505,6 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            {onSourceChange && (
-                                <div className="inline-flex p-0.5 bg-slate-200/70 rounded-lg">
-                                    {([['opd', 'OPD'], ['patient_app', 'Patient App']] as const).map(([key, label]) => (
-                                        <button
-                                            key={key}
-                                            type="button"
-                                            onClick={() => onSourceChange(key)}
-                                            className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${source === key ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                                        >
-                                            {label}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
                             <span className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-lg px-2.5 py-1">
                                 {metrics.timelineDays.length} days
                             </span>
@@ -586,6 +608,15 @@ const QueuePatientMetricsPanel: React.FC<Props> = ({
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* Nothing on this timeline yet — say so rather than render a blank panel */}
+            {(!metrics || metrics.timelineDays.length === 0) && (
+                <p className="text-sm text-slate-400 text-center py-8 rounded-xl border border-dashed border-slate-200 bg-white">
+                    {source === 'opd'
+                        ? 'No metrics recorded in the clinic for this patient yet.'
+                        : 'This patient has not submitted any readings from the Patient App.'}
+                </p>
             )}
 
             {/* Informational only — entry above always works, app access just affects patient-submitted data */}

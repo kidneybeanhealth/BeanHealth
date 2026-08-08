@@ -9,6 +9,8 @@ import {
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
 
+import PastRecordsMetricsSection from './PastRecordsMetricsSection';
+
 const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 
 // Past Records report views — lazy (only loaded when the chip is opened)
@@ -858,6 +860,15 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                             )}
                                         </div>
                                     </div>
+
+                                    <PastRecordsMetricsSection
+                                        hospitalId={doctor.hospital_id}
+                                        patientId={patient.id}
+                                        patientName={patient.name}
+                                        appAccessEnabled={patient.app_access_enabled}
+                                        doctorSpecialty={doctor.specialty || null}
+                                        accent="orange"
+                                    />
                                 </div>
                             );
                         })}
