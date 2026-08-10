@@ -9,7 +9,11 @@ import {
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
 
-import PastRecordsMetricsSection from './PastRecordsMetricsSection';
+import PastRecordsPatientCard, {
+    getReviewFilterLabel,
+    formatPastDate,
+    type PastRecordsView,
+} from './PastRecordsPatientCard';
 
 const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 
@@ -67,37 +71,6 @@ const toLocalISODate = (date: Date): string => {
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
-};
-
-/** Past Records view — review filters plus the two report views */
-type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar';
-
-const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
-    if (filterKey === 'all') return 'All';
-    if (filterKey === 'due_today') return 'Due Today';
-    if (filterKey === 'due_tomorrow') return 'Due Tomorrow';
-    if (filterKey === 'upcoming') return 'Upcoming';
-    if (filterKey === 'overdue') return 'Missed Followup';
-    if (filterKey === 'followup_needed') return 'Followup Needed';
-    if (filterKey === 'review_completed') return 'Review Completed';
-    if (filterKey === 'weekly_report') return 'Overdue Weekly Report';
-    if (filterKey === 'calendar') return 'Calendar';
-    return 'Not Completed';
-};
-
-const getReviewBadgeClass = (category: ReceptionReviewFilter): string => {
-    if (category === 'due_today') return 'bg-orange-50 text-orange-700';
-    if (category === 'due_tomorrow') return 'bg-sky-50 text-sky-700';
-    if (category === 'upcoming') return 'bg-emerald-50 text-emerald-700';
-    if (category === 'overdue') return 'bg-rose-50 text-rose-700';
-    if (category === 'followup_needed') return 'bg-amber-50 text-amber-700';
-    if (category === 'not_completed') return 'bg-red-50 text-red-700';
-    return 'bg-gray-100 text-gray-600';
-};
-
-const formatPastDate = (value?: string | null): string => {
-    if (!value) return '--';
-    return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 const escapeHtml = (value: string): string =>
@@ -667,211 +640,24 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-100">
-                        {pastRecords.map((patient, index) => {
-                            const initialName = (patient.name || '').replace(/^(MR\.|MRS\.|MS\.|DR\.)\s*/i, '').trim();
-                            const initial = initialName.charAt(0)?.toUpperCase() || '?';
-                            const isExpanded = expandedCallHistoryPatientIds.has(patient.id);
-                            const isFollowupStopped = patient.continuityStatus === 'transferred_out' || locallyStoppedFollowupIds.has(patient.id);
-                            const stopReasonText = patient.followupStopReason || stopFollowupOverrides[patient.id]?.followupStopReason || '';
-                            const stopDateText = patient.followupStoppedAt || stopFollowupOverrides[patient.id]?.followupStoppedAt || null;
-                            const visibleCallHistory = patient.callHistory || [];
-                            
-                            // NEW: Get this doctor's specific review date (not all doctors)
-                            const doctorReview = patient.doctorReviews?.find(dr => dr.doctorId === doctor.id);
-                            const displayReviewDate = doctorReview?.reviewDate || patient.latestReviewDate;
-                            return (
-                                <div key={patient.id} className="p-4 sm:p-5 md:p-6 hover:bg-gray-50/60 transition-colors">
-                                    <div className="flex flex-col lg:flex-row gap-4 lg:items-start lg:justify-between">
-                                        <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
-                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 text-xs font-bold text-orange-700 shadow-sm">
-                                                {index + 1}
-                                            </div>
-                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
-                                                {initial}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">{patient.name}</p>
-                                                    {patient.isDeceased && (
-                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200">
-                                                            Patient Deceased
-                                                        </span>
-                                                    )}
-                                                    {isFollowupStopped && (
-                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-50 text-amber-700 border-amber-200">
-                                                            Follow-up Stopped
-                                                        </span>
-                                                    )}
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getReviewBadgeClass(patient.reviewCategory)}`}>
-                                                        {getReviewFilterLabel(patient.reviewCategory)}
-                                                    </span>
-                                                    {patient.cameEarly && (
-                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-sky-50 text-sky-700 border-sky-200">
-                                                            Came Early
-                                                        </span>
-                                                    )}
-                                                    {doctorReview?.reviewSetAt && (
-                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-white text-gray-400 border-gray-200">
-                                                            set {new Date(doctorReview.reviewSetAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                                                            {doctorReview.reviewSource === 'discharge_card' ? ' (discharge)' : doctorReview.reviewSource === 'reception' ? ' (reception)' : ''}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
-                                                    <span>{(() => {
-                                                        const a = patient.age;
-                                                        if (a === null || a === undefined || a === '') return '—';
-                                                        const s = String(a);
-                                                        // If the typed age already has a unit ("7 months"), pass through.
-                                                        return /[a-zA-Z]/.test(s) ? s : `${s} yrs`;
-                                                    })()}</span>
-                                                    <span>{patient.phone || 'No phone'}</span>
-                                                    <span>MR: {patient.mr_number || '—'}</span>
-                                                    <span>
-                                                        {patient.isDeceased
-                                                            ? `Deceased: ${formatPastDate(patient.deceasedAt)}`
-                                                            : `Review: ${formatPastDate(displayReviewDate)}`}
-                                                    </span>
-                                                    <span>Last visit: {formatPastDate(patient.lastVisitAt)}</span>
-                                                </div>
-                                                {patient.isDeceased && (
-                                                    <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
-                                                        Patient is deceased{patient.deceasedAt ? ` on ${formatPastDate(patient.deceasedAt)}` : ''}. Upcoming reviews have been cancelled.
-                                                    </div>
-                                                )}
-                                                {!patient.isDeceased && isFollowupStopped && (
-                                                    <div className="mt-2 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5 text-xs text-amber-900">
-                                                        <div className="font-bold text-amber-800">Follow-up stopped{stopDateText ? ` on ${formatPastDate(stopDateText)}` : ''}</div>
-                                                        <div className="mt-1 font-semibold text-amber-700">Active upcoming reviews were cancelled.</div>
-                                                        {stopReasonText && (
-                                                            <div className="mt-2 rounded-md border border-amber-200 bg-white/70 px-2 py-1.5 text-[11px] leading-relaxed text-amber-900">
-                                                                <span className="font-bold text-amber-800">Reason:</span> {stopReasonText}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                <div className="mt-2 flex flex-wrap items-center gap-2">
-                                                    {patient.beanhealth_id && (
-                                                        <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
-                                                            {patient.beanhealth_id}
-                                                        </span>
-                                                    )}
-                                                    <span className="text-xs text-gray-400">{patient.prescriptions?.length || 0} visit(s)</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleTogglePatientAppAccess(patient)}
-                                                disabled={updatingAccessPatientIds.has(patient.id)}
-                                                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors disabled:opacity-60 ${patient.app_access_enabled
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                                                    }`}
-                                            >
-                                                {updatingAccessPatientIds.has(patient.id)
-                                                    ? 'Updating...'
-                                                    : `Patient App: ${patient.app_access_enabled ? 'ON' : 'OFF'}`}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => openCallLog(patient)}
-                                                className="px-3 py-2 rounded-xl text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition-colors"
-                                            >
-                                                Call Log
-                                            </button>
-                                            {!patient.isDeceased && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        if (!isFollowupStopped) handleStopFollowup(patient);
-                                                    }}
-                                                    disabled={isFollowupStopped}
-                                                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${
-                                                        isFollowupStopped
-                                                            ? 'bg-amber-100 text-amber-700 border-amber-200 cursor-not-allowed'
-                                                            : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                                                    }`}
-                                                >
-                                                    {isFollowupStopped ? 'Follow-up Stopped' : 'Stop Follow-up'}
-                                                </button>
-                                            )}
-                                            <button
-                                                type="button"
-                                                onClick={() => setJourneyPatient(patient)}
-                                                className="px-3 py-2 rounded-xl text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition-colors"
-                                            >
-                                                Visit History
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 mt-4">
-                                        <div className="space-y-2">
-                                            <div className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Visits</p>
-                                                    <p className="text-sm font-semibold text-gray-800 mt-0.5">
-                                                        {patient.prescriptions?.length || 0} prescription{(patient.prescriptions?.length || 0) === 1 ? '' : 's'}
-                                                    </p>
-                                                    <p className="text-xs text-gray-400 mt-0.5">Open Visit History for timeline</p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setJourneyPatient(patient)}
-                                                    className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg border border-orange-200 text-orange-700 hover:bg-orange-50 transition-colors"
-                                                >
-                                                    Open
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-gray-50 rounded-2xl border border-gray-100 p-3 sm:p-4">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Call History</p>
-                                                {visibleCallHistory.length > 2 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => togglePatientCallHistory(patient.id)}
-                                                        className="text-[10px] font-semibold text-orange-600 hover:text-orange-700"
-                                                    >
-                                                        {isExpanded ? 'Collapse' : `Show ${visibleCallHistory.length - 2} more`}
-                                                    </button>
-                                                )}
-                                            </div>
-                                            {visibleCallHistory.length === 0 ? (
-                                                <p className="text-xs text-gray-400">No call log yet</p>
-                                            ) : (
-                                                <div className="space-y-2">
-                                                    {(isExpanded ? visibleCallHistory : visibleCallHistory.slice(0, 2)).map((entry) => (
-                                                        <div key={entry.id} className="bg-white rounded-xl border border-gray-100 p-2.5 text-xs">
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <span className="font-semibold text-gray-800">{new Date(entry.called_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
-                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${entry.call_status === 'picked' ? 'bg-emerald-50 text-emerald-700' : entry.call_status === 'busy' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
-                                                                    {entry.call_status || '--'}
-                                                                </span>
-                                                            </div>
-                                                            <p className="mt-1 text-gray-500 line-clamp-2">{entry.patient_response || 'No response recorded'}</p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <PastRecordsMetricsSection
-                                        hospitalId={doctor.hospital_id}
-                                        patientId={patient.id}
-                                        patientName={patient.name}
-                                        appAccessEnabled={patient.app_access_enabled}
-                                        doctorSpecialty={doctor.specialty || null}
-                                        accent="orange"
-                                    />
-                                </div>
-                            );
-                        })}
+                        {pastRecords.map((patient, index) => (
+                            <PastRecordsPatientCard
+                                key={patient.id}
+                                patient={patient}
+                                index={index}
+                                hospitalId={doctor.hospital_id}
+                                metricsDoctorSpecialty={doctor.specialty || null}
+                                onToggleAppAccess={handleTogglePatientAppAccess}
+                                onVisitHistory={setJourneyPatient}
+                                onStopFollowup={handleStopFollowup}
+                                onCallLog={openCallLog}
+                                isAppAccessUpdating={updatingAccessPatientIds.has(patient.id)}
+                                isCallHistoryExpanded={expandedCallHistoryPatientIds.has(patient.id)}
+                                onToggleCallHistory={togglePatientCallHistory}
+                                locallyStoppedFollowupIds={locallyStoppedFollowupIds}
+                                stopFollowupOverrides={stopFollowupOverrides}
+                            />
+                        ))}
                     </div>
                 )}
 
