@@ -1134,6 +1134,26 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         }
     };
 
+    /**
+     * Report a failed pharmacy-queue sync instead of swallowing it.
+     *
+     * The prescription row is already saved by the time these writes run, so
+     * throwing would show "Failed to send" for a document that does exist and
+     * tempt a re-send (which creates a duplicate). But staying silent is worse:
+     * the doctor sees "sent to Pharmacy!" while the row never reaches the
+     * counter and the patient is never called. So: keep the save, and say
+     * plainly that the pharmacy leg did not go through.
+     */
+    const reportPharmacySyncFailure = (error: any, what: string) => {
+        if (!error) return false;
+        console.error(`[Pharmacy sync] ${what} failed:`, error);
+        toast.error(
+            `Saved, but it did not reach the Pharmacy queue: ${error?.message || 'unknown error'}. Use Edit & Resend to retry.`,
+            { duration: 8000 }
+        );
+        return true;
+    };
+
     // ... (rest of handlers like handleMedChange, handleSendToPharmacy remain same)
     const handleAddMedication = () => {
         setMedications([...medications, { name: '', dosage: '', frequency: '', duration: '', instruction: '' }]);
@@ -1515,9 +1535,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 queueError = insertQueue.error;
             }
 
-            if (queueError) {
-                console.error('Pharmacy Queue sync failed:', queueError);
-            }
+            reportPharmacySyncFailure(queueError, 'prescription queue sync');
 
             // Sync review date from this prescription (normal path)
             await upsertReviewFromPrescription(
@@ -1657,7 +1675,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             }
 
             // Add to pharmacy queue
-            await (supabase as any)
+            const resendQueueResult = await (supabase as any)
                 .from('hospital_pharmacy_queue')
                 .insert({
                     hospital_id: doctor.hospital_id,
@@ -1666,6 +1684,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     token_number: resendTokenNumber,
                     status: 'waiting'
                 });
+            reportPharmacySyncFailure(resendQueueResult?.error, 'resend queue sync');
 
             // Sweep any OTHER still-pending documents by this doctor for the patient
             // (the block above only cancels the direct ancestor being resent)
@@ -1881,7 +1900,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             if (!prescriptionId) throw new Error('Prescription ID missing after save');
 
             // Route to pharmacy exactly like a live-queue prescription
-            await (supabase as any)
+            const dialysisQueueResult = await (supabase as any)
                 .from('hospital_pharmacy_queue')
                 .insert({
                     hospital_id: doctor.hospital_id,
@@ -1890,6 +1909,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     token_number: null, // dialysis has no OP token — shown as "DIA" at pharmacy
                     status: 'waiting',
                 });
+            reportPharmacySyncFailure(dialysisQueueResult?.error, 'dialysis queue sync');
 
             await upsertReviewFromPrescription(
                 patient.id,
