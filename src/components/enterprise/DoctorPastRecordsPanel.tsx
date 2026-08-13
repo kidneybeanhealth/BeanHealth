@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, lazy, Suspense } from 'react';
+import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import {
@@ -65,6 +65,8 @@ interface StopFollowupOverride {
 }
 
 const PAST_RECORDS_PER_PAGE = 50;
+/** Print pulls the whole filtered set in one go, independent of what's on screen. */
+const PAST_RECORDS_PRINT_LIMIT = 5000;
 
 const toLocalISODate = (date: Date): string => {
     const yyyy = date.getFullYear();
@@ -103,11 +105,35 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
     const [callLogNotes, setCallLogNotes] = useState('');
     const [callLogNextDate, setCallLogNextDate] = useState('');
     const [callLogRescheduleDate, setCallLogRescheduleDate] = useState('');
+    /** Set when the stored review date changed after this call-log modal opened. */
+    const [callLogConflict, setCallLogConflict] = useState<{ storedDate: string; typedDate: string } | null>(null);
+    /** null = not asked yet · 'keep' = leave the newer date · 'override' = write the typed one.
+     *  A ref, not state: the banner's buttons are type="submit", so onClick and the form
+     *  submit run inside the same React event — a queued setState would still read null
+     *  in the handler and re-open this prompt forever. Refs apply synchronously. */
+    const callLogDateDecisionRef = useRef<null | 'keep' | 'override'>(null);
     const [locallyStoppedFollowupIds, setLocallyStoppedFollowupIds] = useState<Set<string>>(new Set());
     const [stopFollowupOverrides, setStopFollowupOverrides] = useState<Record<string, StopFollowupOverride>>({});
     const [updatingAccessPatientIds, setUpdatingAccessPatientIds] = useState<Set<string>>(new Set());
     const [hospitalLogo, setHospitalLogo] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    /** When the visible list was last pulled — the call round works off this list,
+     *  so its age has to be on screen rather than assumed. */
+    const [pastRecordsLoadedAt, setPastRecordsLoadedAt] = useState<Date | null>(null);
+
+    /**
+     * The one rule that decides whether a patient belongs on THIS doctor's list.
+     * Used by both the on-screen list and Print List — a printed sheet that
+     * disagrees with the screen is how a patient gets missed.
+     */
+    const belongsToThisDoctor = useCallback((patient: ReceptionPastRecordPatient, filter: ReceptionReviewFilter) => {
+        const myReview = patient.doctorReviews?.find(dr => dr.doctorId === doctor.id);
+        if (!myReview) return false;
+        if (filter === 'all') return true;
+        return filter === 'overdue'
+            ? (myReview.reviewCategory === 'overdue' || myReview.reviewCategory === 'followup_needed')
+            : myReview.reviewCategory === filter;
+    }, [doctor.id]);
 
     const fetchPastRecords = useCallback(async (isBackground = false, page = 0, append = false) => {
         if (!doctor.hospital_id) return;
@@ -126,13 +152,16 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
 
             setPastRecordsTotal(result.totalCount);
             setHasMorePastRecords(result.hasMore);
+            if (!append) setPastRecordsLoadedAt(new Date());
             
-            // Filter to show only this doctor's reviews
-            const filteredPatients = result.patients.filter((patient) => {
-                // NEW: Check if this doctor has a review for this patient
-                const hasThisDoctor = patient.doctorReviews?.some(dr => dr.doctorId === doctor.id);
-                return hasThisDoctor;
-            });
+            // Scope to this doctor — and to THIS doctor's bucket for the active chip.
+            //
+            // The service now matches a patient if ANY of their doctors' reviews fits the
+            // filter, because a patient can be due tomorrow for one doctor and overdue for
+            // another. Without the second check below, that would leak the other doctor's
+            // bucket into this one: Dr B would see a patient under "Due Tomorrow" when it
+            // is Dr A they are due with.
+            const filteredPatients = result.patients.filter((patient) => belongsToThisDoctor(patient, activeListFilter));
             
             const mergedPatients = filteredPatients.map((patient) => {
                 const localOverride = stopFollowupOverrides[patient.id];
@@ -154,7 +183,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
             if (!isBackground && !append) setLoading(false);
             if (append) setIsLoadingMorePast(false);
         }
-    }, [doctor.hospital_id, searchQuery, activeListFilter, isPanelView, reviewDateFilter, stopFollowupOverrides]);
+    }, [doctor.hospital_id, searchQuery, activeListFilter, isPanelView, reviewDateFilter, stopFollowupOverrides, belongsToThisDoctor]);
 
     useEffect(() => {
         fetchPastRecords();
@@ -192,13 +221,43 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
         fetchPastRecords(true, pastRecordsPage + 1, true);
     };
 
-    const handlePrintPastRecordsList = () => {
+    const handlePrintPastRecordsList = async () => {
         if (!['due_today', 'due_tomorrow', 'overdue'].includes(reviewFilter)) {
             toast.error('Print List is available for Due Today, Due Tomorrow, or Missed Followup');
             return;
         }
 
-        if (pastRecords.length === 0) {
+        if (!doctor.hospital_id) return;
+
+        // Print the COMPLETE filtered set, never the page on screen — the list
+        // renders PAST_RECORDS_PER_PAGE at a time behind "Load More", so printing
+        // what was loaded silently dropped the overflow under an authoritative-
+        // looking "Total". See the same fix in ReceptionDashboard.
+        const loadingId = toast.loading('Preparing the full list…');
+        let printRecords: ReceptionPastRecordPatient[];
+        try {
+            const full = await fetchReceptionPastRecords({
+                hospitalId: doctor.hospital_id,
+                page: 0,
+                pageSize: PAST_RECORDS_PRINT_LIMIT,
+                searchQuery,
+                reviewFilter: activeListFilter,
+                reviewDate: reviewDateFilter || undefined,
+            });
+            // Same doctor scoping the on-screen list applies — printing the
+            // hospital-wide set here would hand this doctor other doctors' patients.
+            printRecords = full.patients.filter((patient) => belongsToThisDoctor(patient, activeListFilter));
+            if (full.hasMore) {
+                toast.error(`More than ${PAST_RECORDS_PRINT_LIMIT} patients match — printing the first ${PAST_RECORDS_PRINT_LIMIT}.`, { duration: 8000 });
+            }
+        } catch (err) {
+            console.error('[Past Records] print fetch failed', err);
+            toast.error('Could not load the full list — nothing printed', { id: loadingId });
+            return;
+        }
+        toast.dismiss(loadingId);
+
+        if (printRecords.length === 0) {
             toast.error('No patient records to print');
             return;
         }
@@ -218,7 +277,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
             hour12: true,
         });
 
-        const rowsHtml = pastRecords
+        const rowsHtml = printRecords
             .map((patient, index) => {
                 const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
                 return `
@@ -265,7 +324,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     </div>
                     <div>
                         <span class="pill">Filter: ${escapeHtml(getReviewFilterLabel(reviewFilter))}</span>
-                        <span class="pill">Total: ${pastRecords.length}</span>
+                        <span class="pill">Total: ${printRecords.length}</span>
                     </div>
                 </div>
                 <table>
@@ -313,6 +372,8 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
         setCallLogNotes('');
         setCallLogNextDate('');
         setCallLogRescheduleDate('');
+        setCallLogConflict(null);
+        callLogDateDecisionRef.current = null;
 
         try {
             let query = (supabase as any)
@@ -454,7 +515,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
 
             const { data: existingReview, error: existingError } = await (supabase as any)
                 .from('hospital_patient_reviews')
-                .select('id, patient_id')
+                .select('id, patient_id, next_review_date')
                 .eq('hospital_id', doctor.hospital_id)
                 .eq('patient_id', callLogTarget.patientId)
                 .eq('doctor_id', doctor.id)  // Filter by this doctor
@@ -465,13 +526,45 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
 
             if (existingError) throw existingError;
 
-            const reviewPatch = {
+            // Has the review moved since this modal opened?
+            //
+            // Calls are made in the morning and typed up in the evening, so the card
+            // behind this form can be hours old. A doctor who saw the patient in the
+            // meantime has already set a new date, and writing the typed one on top
+            // silently overrules them — which is exactly how KNH/25/028475 lost her
+            // 13 Aug review to a 14 Jul call logged 3h38m after her visit. Ask first.
+            const storedReviewDate = existingReview?.next_review_date || null;
+            const capturedReviewDate = callLogTarget.reviewDate || null;
+            if (
+                effectiveReviewDate
+                && storedReviewDate
+                && storedReviewDate !== capturedReviewDate
+                && callLogDateDecisionRef.current === null
+            ) {
+                setCallLogConflict({ storedDate: storedReviewDate, typedDate: effectiveReviewDate });
+                setCallLogSubmitting(false);
+                return;
+            }
+
+            // Only write next_review_date when the user actually chose one.
+            //
+            // This used to fall back to `callLogTarget.reviewDate` — the date captured
+            // from the CARD when the modal opened. Logging a call with no reschedule
+            // date then wrote that on-screen value straight back into the row, so a
+            // stale list silently overwrote the doctor's newer date. KNH/25/028475 was
+            // prescribed a 13 Aug review at 02:07pm; a call logged afterwards from a
+            // list loaded earlier that day pushed 14 Jul back over it, and she dropped
+            // out of Due Today on 13 Aug entirely. A call log records a CALL — it must
+            // not silently move an appointment nobody asked to move.
+            const reviewPatch: Record<string, any> = {
                 status: callLogStatus === 'picked' ? 'rescheduled' : 'pending',
-                next_review_date: effectiveReviewDate || callLogTarget.reviewDate,
                 cancelled_at: null,
                 completed_at: null,
                 updated_at: new Date().toISOString(),
             };
+            if (effectiveReviewDate && callLogDateDecisionRef.current !== 'keep') {
+                reviewPatch.next_review_date = effectiveReviewDate;
+            }
 
             if (existingReview?.id) {
                 const { error: updateError } = await (supabase as any)
@@ -551,14 +644,41 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                             <h3 className="text-sm font-bold text-gray-800">Patient Database</h3>
                         </div>
                         {pastRecordsTotal > 0 && !isPanelView && (
-                            <span className="text-xs text-gray-500 font-medium bg-white px-3 py-1 rounded-full border border-gray-200">
-                                {pastRecords.length} of {pastRecordsTotal} patients
-                            </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                                {/* Two different scopes: the list is filtered to this doctor's
+                                    patients, while totalCount is hospital-wide. Showing them as
+                                    "38 of 44" read as "6 still to load" when it actually meant
+                                    "6 belong to another doctor". */}
+                                <span className="text-xs text-gray-600 font-semibold bg-white px-3 py-1 rounded-full border border-gray-200">
+                                    {pastRecords.length} your patients
+                                </span>
+                                {pastRecordsTotal > pastRecords.length && (
+                                    <span className="text-xs font-medium text-gray-400 bg-white px-3 py-1 rounded-full border border-gray-200">
+                                        {pastRecordsTotal} in hospital
+                                    </span>
+                                )}
+                                {pastRecordsLoadedAt && (
+                                    <span className="text-xs font-medium text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200">
+                                        as of {pastRecordsLoadedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                    </span>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => fetchPastRecords(false, 0, false)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors"
+                                    title="Re-pull the list — do this right before printing the call sheet"
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Refresh
+                                </button>
+                            </div>
                         )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {(['all', 'due_today', 'due_tomorrow', 'overdue', 'weekly_report', 'review_completed', 'calendar'] as PastRecordsView[]).map((filterKey) => (
+                        {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'calendar'] as PastRecordsView[]).map((filterKey) => (
                             <button
                                 key={filterKey}
                                 type="button"
@@ -750,6 +870,35 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                     </div>
                                 )}
                             </div>
+
+                            {/* The review moved while this form was open — never overwrite
+                                a doctor's newer date without asking. */}
+                            {callLogConflict && (
+                                <div className="mx-4 mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3.5">
+                                    <p className="text-sm font-bold text-amber-900">This patient's review has changed</p>
+                                    <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                        It was moved to <span className="font-bold">{new Date(callLogConflict.storedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span> after
+                                        you opened this call log — most likely the doctor saw them since.
+                                        Saving your date would replace it with <span className="font-bold">{new Date(callLogConflict.typedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>.
+                                    </p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        <button
+                                            type="submit"
+                                            onClick={() => { callLogDateDecisionRef.current = 'keep'; setCallLogConflict(null); }}
+                                            className="px-3 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700"
+                                        >
+                                            Keep {new Date(callLogConflict.storedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} &middot; just log the call
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            onClick={() => { callLogDateDecisionRef.current = 'override'; setCallLogConflict(null); }}
+                                            className="px-3 py-2 rounded-lg text-xs font-bold text-amber-800 bg-white border border-amber-300 hover:bg-amber-100"
+                                        >
+                                            Change it to {new Date(callLogConflict.typedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="flex items-center justify-end gap-3 pt-2">
                                 <button type="button" onClick={closeCallLog} className="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50">

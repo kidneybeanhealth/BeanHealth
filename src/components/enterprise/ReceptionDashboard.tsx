@@ -352,6 +352,9 @@ const ReceptionDashboard: React.FC = () => {
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
     const [pastRecordsTotal, setPastRecordsTotal] = useState(0);
     const [rxHistoryPatient, setRxHistoryPatient] = useState<ReceptionPastRecordPatient | null>(null);
+    /** When the visible list was last pulled — the call round works off this list,
+     *  so its age has to be on screen rather than assumed. */
+    const [pastRecordsLoadedAt, setPastRecordsLoadedAt] = useState<Date | null>(null);
     const [callLogTarget, setCallLogTarget] = useState<CallLogTarget | null>(null);
     const [callLogDoctorSelector, setCallLogDoctorSelector] = useState<{ patientId: string; patient: ReceptionPastRecordPatient } | null>(null);
     const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
@@ -362,6 +365,13 @@ const ReceptionDashboard: React.FC = () => {
     const [callLogNotes, setCallLogNotes] = useState('');
     const [callLogNextDate, setCallLogNextDate] = useState('');
     const [callLogRescheduleDate, setCallLogRescheduleDate] = useState('');
+    /** Set when the stored review date changed after this call-log modal opened. */
+    const [callLogConflict, setCallLogConflict] = useState<{ storedDate: string; typedDate: string } | null>(null);
+    /** null = not asked yet · 'keep' = leave the newer date · 'override' = write the typed one.
+     *  A ref, not state: the banner's buttons are type="submit", so onClick and the form
+     *  submit run inside the same React event — a queued setState would still read null
+     *  in the handler and re-open this prompt forever. Refs apply synchronously. */
+    const callLogDateDecisionRef = useRef<null | 'keep' | 'override'>(null);
     const [stopFollowupTarget, setStopFollowupTarget] = useState<StopFollowupTarget | null>(null);
     const [stopFollowupReason, setStopFollowupReason] = useState('');
     const [stopFollowupSubmitting, setStopFollowupSubmitting] = useState(false);
@@ -369,6 +379,8 @@ const ReceptionDashboard: React.FC = () => {
     const [stopFollowupOverrides, setStopFollowupOverrides] = useState<Record<string, StopFollowupOverride>>({});
     const [updatingAccessPatientIds, setUpdatingAccessPatientIds] = useState<Set<string>>(new Set());
     const PAST_RECORDS_PER_PAGE = 50;
+    /** Print pulls the whole filtered set in one go, independent of what's on screen. */
+    const PAST_RECORDS_PRINT_LIMIT = 5000;
     const isPastRegistration = registrationMode === 'past_record';
 
     const fetchPastRecords = useCallback(async (
@@ -396,6 +408,7 @@ const ReceptionDashboard: React.FC = () => {
 
             setPastRecordsTotal(result.totalCount);
             setHasMorePastRecords(result.hasMore);
+            if (!append) setPastRecordsLoadedAt(new Date());
             const mergedPatients = result.patients.map((patient) => {
                 const localOverride = stopFollowupOverrides[patient.id];
                 if (!localOverride) return patient;
@@ -442,13 +455,44 @@ const ReceptionDashboard: React.FC = () => {
         });
     };
 
-    const handlePrintPastRecordsList = () => {
+    const handlePrintPastRecordsList = async () => {
         if (!['due_today', 'due_tomorrow', 'overdue'].includes(reviewFilter)) {
             toast.error('Print List is available for Due Today, Due Tomorrow, or Missed Followup');
             return;
         }
 
-        if (pastRecords.length === 0) {
+        if (!profile?.id) return;
+
+        // Print the COMPLETE filtered set, never the page on screen.
+        //
+        // The list renders PAST_RECORDS_PER_PAGE at a time behind "Load More", so
+        // printing `pastRecords` silently dropped everyone past that cut — while
+        // stamping a "Total" that read as authoritative. This sheet is what the
+        // 10 AM call round works from; a short list here is a patient nobody rings.
+        const loadingId = toast.loading('Preparing the full list…');
+        let printRecords: ReceptionPastRecordPatient[];
+        try {
+            const full = await fetchReceptionPastRecords({
+                hospitalId: profile.id,
+                page: 0,
+                pageSize: PAST_RECORDS_PRINT_LIMIT,
+                searchQuery,
+                reviewFilter: activeListFilter,
+                reviewDate: reviewDateFilter || undefined,
+            });
+            printRecords = full.patients;
+            if (full.hasMore) {
+                // Should not happen at the print limit, but never print silently short.
+                toast.error(`More than ${PAST_RECORDS_PRINT_LIMIT} patients match — printing the first ${PAST_RECORDS_PRINT_LIMIT}.`, { duration: 8000 });
+            }
+        } catch (err) {
+            console.error('[Past Records] print fetch failed', err);
+            toast.error('Could not load the full list — nothing printed', { id: loadingId });
+            return;
+        }
+        toast.dismiss(loadingId);
+
+        if (printRecords.length === 0) {
             toast.error('No patient records to print');
             return;
         }
@@ -468,7 +512,7 @@ const ReceptionDashboard: React.FC = () => {
             hour12: true,
         });
 
-        const rowsHtml = pastRecords
+        const rowsHtml = printRecords
             .map((patient, index) => {
                 const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
                 return `
@@ -520,7 +564,7 @@ const ReceptionDashboard: React.FC = () => {
                     </div>
                     <div>
                         <span class="pill">Filter: ${escapeHtml(filterLabel)}</span>
-                        <span class="pill">Total: ${pastRecords.length}</span>
+                        <span class="pill">Total: ${printRecords.length}</span>
                     </div>
                 </div>
 
@@ -582,6 +626,8 @@ const ReceptionDashboard: React.FC = () => {
         setCallLogNotes('');
         setCallLogNextDate('');
         setCallLogRescheduleDate('');
+        setCallLogConflict(null);
+        callLogDateDecisionRef.current = null;
 
         try {
             let query = (supabase as any)
@@ -773,7 +819,7 @@ const ReceptionDashboard: React.FC = () => {
             // "invalid input syntax for type uuid: 'null'". Use .is(col, null) instead.
             let reviewLookup = (supabase as any)
                 .from('hospital_patient_reviews')
-                .select('id, patient_id')
+                .select('id, patient_id, next_review_date')
                 .eq('hospital_id', profile.id)
                 .eq('patient_id', callLogTarget.patientId);
             reviewLookup = callLogTarget.doctorId
@@ -788,13 +834,45 @@ const ReceptionDashboard: React.FC = () => {
 
             if (existingError) throw existingError;
 
-            const reviewPatch = {
+            // Has the review moved since this modal opened?
+            //
+            // Calls are made in the morning and typed up in the evening, so the card
+            // behind this form can be hours old. A doctor who saw the patient in the
+            // meantime has already set a new date, and writing the typed one on top
+            // silently overrules them — which is exactly how KNH/25/028475 lost her
+            // 13 Aug review to a 14 Jul call logged 3h38m after her visit. Ask first.
+            const storedReviewDate = existingReview?.next_review_date || null;
+            const capturedReviewDate = callLogTarget.reviewDate || null;
+            if (
+                effectiveReviewDate
+                && storedReviewDate
+                && storedReviewDate !== capturedReviewDate
+                && callLogDateDecisionRef.current === null
+            ) {
+                setCallLogConflict({ storedDate: storedReviewDate, typedDate: effectiveReviewDate });
+                setCallLogSubmitting(false);
+                return;
+            }
+
+            // Only write next_review_date when the user actually chose one.
+            //
+            // This used to fall back to `callLogTarget.reviewDate` — the date captured
+            // from the CARD when the modal opened. Logging a call with no reschedule
+            // date then wrote that on-screen value straight back into the row, so a
+            // stale list silently overwrote the doctor's newer date. KNH/25/028475 was
+            // prescribed a 13 Aug review at 02:07pm; a call logged afterwards from a
+            // list loaded earlier that day pushed 14 Jul back over it, and she dropped
+            // out of Due Today on 13 Aug entirely. A call log records a CALL — it must
+            // not silently move an appointment nobody asked to move.
+            const reviewPatch: Record<string, any> = {
                 status: callLogStatus === 'picked' ? 'rescheduled' : 'pending',
-                next_review_date: effectiveReviewDate || callLogTarget.reviewDate,
                 cancelled_at: null,
                 completed_at: null,
                 updated_at: new Date().toISOString(),
             };
+            if (effectiveReviewDate && callLogDateDecisionRef.current !== 'keep') {
+                reviewPatch.next_review_date = effectiveReviewDate;
+            }
 
             if (existingReview?.id) {
                 const { error: updateError } = await (supabase as any)
@@ -2140,13 +2218,35 @@ const ReceptionDashboard: React.FC = () => {
                                         <h3 className="text-sm font-bold text-gray-800">Patient Database</h3>
                                     </div>
                                     {pastRecordsTotal > 0 && !isPanelView && (
-                                        <span className="text-xs text-gray-500 font-medium bg-white px-3 py-1 rounded-full border border-gray-200">
-                                            {pastRecords.length} of {pastRecordsTotal} patients
-                                        </span>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-xs text-gray-500 font-medium bg-white px-3 py-1 rounded-full border border-gray-200">
+                                                {pastRecords.length} of {pastRecordsTotal} patients
+                                            </span>
+                                            {pastRecordsLoadedAt && (
+                                                <span className="text-xs font-medium text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200">
+                                                    as of {pastRecordsLoadedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                </span>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => fetchPastRecords(false, 0, false, {
+                                                    searchValue: searchQuery,
+                                                    reviewFilterValue: activeListFilter,
+                                                    reviewDateValue: reviewDateFilter,
+                                                })}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors"
+                                                title="Re-pull the list — do this right before printing the call sheet"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                Refresh
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                    {(['all', 'due_today', 'due_tomorrow', 'overdue', 'weekly_report', 'review_completed', 'calendar'] as PastRecordsView[]).map((filterKey) => (
+                                    {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'calendar'] as PastRecordsView[]).map((filterKey) => (
                                         <button
                                             key={filterKey}
                                             type="button"
@@ -3241,6 +3341,35 @@ const ReceptionDashboard: React.FC = () => {
                                 </div>
                             </div>
                           </div>
+
+                          {/* The review moved while this form was open — never overwrite
+                              a doctor's newer date without asking. */}
+                          {callLogConflict && (
+                              <div className="mx-4 mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3.5">
+                                  <p className="text-sm font-bold text-amber-900">This patient's review has changed</p>
+                                  <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                      It was moved to <span className="font-bold">{new Date(callLogConflict.storedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span> after
+                                      you opened this call log — most likely the doctor saw them since.
+                                      Saving your date would replace it with <span className="font-bold">{new Date(callLogConflict.typedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>.
+                                  </p>
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                      <button
+                                          type="submit"
+                                          onClick={() => { callLogDateDecisionRef.current = 'keep'; setCallLogConflict(null); }}
+                                          className="px-3 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700"
+                                      >
+                                          Keep {new Date(callLogConflict.storedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} &middot; just log the call
+                                      </button>
+                                      <button
+                                          type="submit"
+                                          onClick={() => { callLogDateDecisionRef.current = 'override'; setCallLogConflict(null); }}
+                                          className="px-3 py-2 rounded-lg text-xs font-bold text-amber-800 bg-white border border-amber-300 hover:bg-amber-100"
+                                      >
+                                          Change it to {new Date(callLogConflict.typedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                      </button>
+                                  </div>
+                              </div>
+                          )}
 
                           {/* Sticky footer — always visible */}
                           <div className="shrink-0 flex gap-3 p-4 border-t border-gray-100 bg-white">
