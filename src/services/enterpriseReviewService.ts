@@ -383,18 +383,32 @@ const localDateKey = (offsetDays = 0): string => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-const ACTIVE_REVIEW_STATUSES = ['pending', 'rescheduled'];
-
 /**
- * Patient IDs that could belong to a review-driven filter, found by querying the
- * reviews table directly.
+ * Patient IDs that could belong to a review-driven filter.
  *
  * Why not just fetch every patient and categorise client-side: an unranged
  * Supabase query is capped at 1000 rows server-side, so on a hospital with
  * thousands of patients the older ones were never fetched and silently vanished
- * from Due Today / Due Tomorrow / Missed Followup. Filtering at the review level
- * instead bounds the work by how many reviews are actually due — which stays
- * small no matter how large the patient database grows.
+ * from Due Today / Due Tomorrow / Missed Followup. Resolving candidates from the
+ * reviews table instead bounds the work by how many reviews are actually due —
+ * which stays small no matter how large the patient database grows.
+ *
+ * THIS MUST RETURN A SUPERSET. It runs *before* deriveReviewCategory, which is
+ * the only thing entitled to decide a patient's bucket. Every rule applied here
+ * that the derivation does not apply is a patient who silently disappears from
+ * the list while their card still shows the bucket they should be in. Two such
+ * rules already cost us:
+ *
+ *   1. `status IN ('pending','rescheduled')` — the derivation only treats
+ *      'completed' specially; any other status still falls through to the plain
+ *      date comparison. Narrowing here hid those patients.
+ *   2. reviews-only — the derivation falls back to the *prescription's*
+ *      next_review_date when the primary review row carries no date, so a
+ *      patient can legitimately be due on a day with no dated review row.
+ *
+ * So: over-fetch on purpose, and let the derivation reject. A candidate that
+ * turns out not to belong costs one wasted row; a missing candidate costs a
+ * patient nobody calls.
  *
  * Returns null when the filter isn't review-date driven (caller keeps the
  * existing paginated path).
@@ -432,17 +446,50 @@ const fetchFilterCandidatePatientIds = async (
         }
     };
 
+    /**
+     * Page through a prescription query, collecting patient_ids.
+     *
+     * The card falls back to the prescription's next_review_date whenever the
+     * primary review row has none, so a patient can be due on a day that has no
+     * dated review row at all. Only used for exact-date filters — the day's
+     * prescriptions are a small, bounded set, whereas "every prescription dated
+     * before today" would be the entire history of the clinic.
+     */
+    const collectPrescriptions = async (targetDate: string) => {
+        let from = 0;
+        while (true) {
+            const res = await withTimeout(
+                ((supabase.from('hospital_prescriptions' as any) as any)
+                    .select('patient_id')
+                    .eq('hospital_id', hospitalId)
+                    .eq('next_review_date', targetDate)
+                    .range(from, from + PAGE - 1)) as any,
+                10000,
+                'Timed out while resolving prescription-dated candidates'
+            ) as SupabaseResult<any[]>;
+            if (res.error) return; // non-fatal: review-sourced candidates still stand
+            const rows = res.data || [];
+            rows.forEach(r => r.patient_id && ids.add(r.patient_id));
+            if (rows.length < PAGE) break;
+            from += PAGE;
+        }
+    };
+
     const today = localDateKey(0);
     const tomorrow = localDateKey(1);
 
+    // No status narrowing on any date branch — the derivation is the arbiter.
     if (reviewDate) {
         await collect(q => q.eq('next_review_date', reviewDate));
+        await collectPrescriptions(reviewDate);
     } else if (reviewFilter === 'due_today') {
-        await collect(q => q.eq('next_review_date', today).in('status', ACTIVE_REVIEW_STATUSES));
+        await collect(q => q.eq('next_review_date', today));
+        await collectPrescriptions(today);
     } else if (reviewFilter === 'due_tomorrow') {
-        await collect(q => q.eq('next_review_date', tomorrow).in('status', ACTIVE_REVIEW_STATUSES));
+        await collect(q => q.eq('next_review_date', tomorrow));
+        await collectPrescriptions(tomorrow);
     } else if (reviewFilter === 'upcoming') {
-        await collect(q => q.gt('next_review_date', today).in('status', ACTIVE_REVIEW_STATUSES));
+        await collect(q => q.gt('next_review_date', today));
     } else if (reviewFilter === 'review_completed') {
         // Completed within the last 2 days — matches deriveReviewCategory's window
         const since = localDateKey(-2);
@@ -451,7 +498,13 @@ const fetchFilterCandidatePatientIds = async (
         // The "Missed Followup" chip covers overdue reviews AND patients whose last
         // call went unanswered — the latter can carry any review date, so both
         // sets are gathered and the derivation decides the final category.
-        await collect(q => q.lt('next_review_date', today).in('status', ACTIVE_REVIEW_STATUSES));
+        //
+        // Deliberately NOT extended with prescription-dated candidates: "every
+        // prescription dated before today" is the clinic's entire history, and
+        // pulling it would undo the bound this function exists to create. A patient
+        // who is overdue purely via the prescription fallback is reachable through
+        // the Review Date filter, which does query both sources.
+        await collect(q => q.lt('next_review_date', today));
 
         let from = 0;
         while (true) {
@@ -799,17 +852,36 @@ export async function fetchReceptionPastRecords(
             } as ReceptionPastRecordPatient;
         })
         .filter((patient) => {
+            // A patient treated by two doctors has a bucket PER DOCTOR — that is what
+            // doctorReviews carries. `patient.reviewCategory` collapses them into one,
+            // chosen by pickPrimaryReview, which sorts active reviews by updated_at.
+            // So the *most recently touched* review wins, not the most relevant one:
+            // KNH/26/014560 held a pending review for tomorrow under one doctor and a
+            // rescheduled 09-Aug review under the other. Rescheduling the older one
+            // bumped its updated_at, the collapsed category flipped to 'overdue', and a
+            // patient genuinely due tomorrow vanished from Due Tomorrow.
+            //
+            // Match against every doctor's category. A patient can legitimately be due
+            // tomorrow for one doctor and overdue for another, and belongs in both
+            // lists — reception needs to chase the missed one AND expect them tomorrow.
+            const categories = [
+                patient.reviewCategory,
+                ...(patient.doctorReviews || []).map((dr) => dr.reviewCategory),
+            ];
+
             if (reviewFilter !== 'all') {
                 // 'overdue' chip is surfaced as "Missed Followup" — it consolidates
                 // date-overdue patients and not-picked-call (followup_needed) patients.
                 const matchesFilter = reviewFilter === 'overdue'
-                    ? (patient.reviewCategory === 'overdue' || patient.reviewCategory === 'followup_needed')
-                    : patient.reviewCategory === reviewFilter;
+                    ? categories.some((c) => c === 'overdue' || c === 'followup_needed')
+                    : categories.some((c) => c === reviewFilter);
                 if (!matchesFilter) return false;
             }
 
-            if (reviewDate && patient.latestReviewDate !== reviewDate) {
-                return false;
+            if (reviewDate) {
+                const matchesDate = patient.latestReviewDate === reviewDate
+                    || (patient.doctorReviews || []).some((dr) => dr.reviewDate === reviewDate);
+                if (!matchesDate) return false;
             }
 
             return true;
