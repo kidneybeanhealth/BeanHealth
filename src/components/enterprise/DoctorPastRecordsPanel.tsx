@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import {
@@ -9,6 +9,8 @@ import {
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
 
+import AddFollowupModal from './AddFollowupModal';
+import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
     formatPastDate,
@@ -221,6 +223,57 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
         fetchPastRecords(true, pastRecordsPage + 1, true);
     };
 
+
+
+    // ── Missed Followup, grouped by month ────────────────────────────────────
+    // Same as Reception, but scoped through belongsToThisDoctor so the counts are
+    // this doctor's own — a strip showing the hospital total under a doctor-scoped
+    // list would be the "38 of 44" confusion all over again.
+    const [missedAll, setMissedAll] = useState<ReceptionPastRecordPatient[]>([]);
+    const [missedLoading, setMissedLoading] = useState(false);
+    const [missedMonth, setMissedMonth] = useState<string | null>(null);
+
+    const [showAddFollowup, setShowAddFollowup] = useState(false);
+
+    useEffect(() => {
+        if (reviewFilter !== 'overdue' || !doctor.hospital_id) {
+            setMissedAll([]);
+            setMissedMonth(null);
+            return;
+        }
+        let isActive = true;
+        (async () => {
+            setMissedLoading(true);
+            try {
+                const full = await fetchReceptionPastRecords({
+                    hospitalId: doctor.hospital_id,
+                    page: 0,
+                    pageSize: PAST_RECORDS_PRINT_LIMIT,
+                    searchQuery,
+                    reviewFilter: 'overdue',
+                    reviewDate: reviewDateFilter,
+                });
+                if (isActive) {
+                    setMissedAll(full.patients.filter(p => belongsToThisDoctor(p, 'overdue')));
+                }
+            } catch (err) {
+                console.error('[Missed Followup] month breakdown failed', err);
+                if (isActive) setMissedAll([]);
+            } finally {
+                if (isActive) setMissedLoading(false);
+            }
+        })();
+        return () => { isActive = false; };
+    }, [reviewFilter, doctor.hospital_id, searchQuery, reviewDateFilter, belongsToThisDoctor, pastRecordsLoadedAt]);
+
+    const missedMonths = useMemo(() => buildMissedMonths(missedAll), [missedAll]);
+
+    const missedVisibleRecords = useMemo(() => {
+        if (reviewFilter !== 'overdue' || missedMonth === null) return null;
+        return missedAll.filter(p => (missedReviewDate(p) || '').slice(0, 7) === missedMonth);
+    }, [reviewFilter, missedMonth, missedAll]);
+
+
     const handlePrintPastRecordsList = async () => {
         if (!['due_today', 'due_tomorrow', 'overdue'].includes(reviewFilter)) {
             toast.error('Print List is available for Due Today, Due Tomorrow, or Missed Followup');
@@ -247,6 +300,11 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
             // Same doctor scoping the on-screen list applies — printing the
             // hospital-wide set here would hand this doctor other doctors' patients.
             printRecords = full.patients.filter((patient) => belongsToThisDoctor(patient, activeListFilter));
+            if (reviewFilter === 'overdue' && missedMonth) {
+                printRecords = printRecords.filter(
+                    (patient) => (missedReviewDate(patient) || '').slice(0, 7) === missedMonth
+                );
+            }
             if (full.hasMore) {
                 toast.error(`More than ${PAST_RECORDS_PRINT_LIMIT} patients match — printing the first ${PAST_RECORDS_PRINT_LIMIT}.`, { duration: 8000 });
             }
@@ -704,6 +762,17 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                 Print List
                             </button>
                         )}
+                        <button
+                            type="button"
+                            onClick={() => setShowAddFollowup(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                            title="Schedule a review for a patient who is already registered"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Add to Follow-up
+                        </button>
                         {!isPanelView && (
                             <>
                                 <label className="text-xs font-semibold text-gray-500 ml-auto">Review Date</label>
@@ -759,8 +828,18 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                         <p className="text-gray-400 text-sm mt-1">Try a different search term</p>
                     </div>
                 ) : (
+                    <div>
+                    {reviewFilter === 'overdue' && (
+                        <MissedFollowupMonths
+                            months={missedMonths}
+                            selectedMonth={missedMonth}
+                            onSelectMonth={setMissedMonth}
+                            loading={missedLoading}
+                            onPrint={handlePrintPastRecordsList}
+                        />
+                    )}
                     <div className="divide-y divide-gray-100">
-                        {pastRecords.map((patient, index) => (
+                        {(missedVisibleRecords ?? pastRecords).map((patient, index) => (
                             <PastRecordsPatientCard
                                 key={patient.id}
                                 patient={patient}
@@ -779,9 +858,10 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                             />
                         ))}
                     </div>
+                    </div>
                 )}
 
-                {hasMorePastRecords && (
+                {hasMorePastRecords && !missedVisibleRecords && (
                     <div className="p-4 text-center border-t border-gray-100">
                         <button
                             onClick={handleLoadMorePastRecords}
@@ -911,6 +991,15 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                         </form>
                     </div>
                 </div>
+            )}
+
+            {showAddFollowup && (
+                <AddFollowupModal
+                    hospitalId={doctor.hospital_id}
+                    lockedDoctor={{ id: doctor.id, name: doctor.name, specialty: doctor.specialty || null }}
+                    onClose={() => setShowAddFollowup(false)}
+                    onScheduled={() => fetchPastRecords(false, 0, false)}
+                />
             )}
 
             {journeyPatient && (

@@ -112,8 +112,39 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
         patient.followupStoppedAt || stopFollowupOverrides[patient.id]?.followupStoppedAt || null;
 
     const callHistory = patient.callHistory || [];
+    // Why is this patient a missed follow-up?
+    //
+    // "A date went past" is not an answer reception can act on. The useful facts
+    // are: when were they last actually seen and by whom, when was the review that
+    // is now overdue assigned, and when did we last try to reach them. Together
+    // they say whether this is someone who slipped once or someone drifting away.
+    //
+    // Shown whenever ANY of the patient's doctors has an overdue review, not only
+    // under the Missed Followup chip — if a review is overdue you want the reason
+    // wherever you meet the patient.
+    const overdueReview = (patient.doctorReviews || []).find(
+        (dr) => dr.reviewCategory === 'overdue' || dr.reviewCategory === 'followup_needed'
+    ) || null;
+    const latestVisit = patient.prescriptions?.[0] || null;
+    const lastCall = (patient.callHistory || [])[0] || null;
+
     const visibleCallHistory = isCallHistoryExpanded ? callHistory : callHistory.slice(0, 2);
     const hiddenCallCount = Math.max(callHistory.length - 2, 0);
+
+    // Reachability, for the reminder pipeline.
+    //
+    // `phone_e164` is a generated column: a string means dialable, null means the
+    // stored number can't be used. UNDEFINED means the migration hasn't been
+    // applied yet — treating that as "unreachable" would paint every patient in
+    // the clinic with a warning chip, so it stays silent instead.
+    //
+    // Nothing is shown for a reachable patient. This chip exists to surface a gap
+    // that can be closed at the next visit, not to decorate the ones that are fine.
+    const reachabilityKnown = patient.phone_e164 !== undefined;
+    const isUnreachable = reachabilityKnown && !patient.phone_e164;
+    // A patient who will never be messaged doesn't need a chip nagging about it.
+    const showReachabilityChip = isUnreachable && !patient.isDeceased && !isFollowupStopped;
+    const hasRawPhone = Boolean((patient.phone || '').trim());
 
     return (
         <div className="px-4 sm:px-5 py-4">
@@ -209,7 +240,39 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                             <span className="text-[11px] text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded-full border border-orange-100">
                                 Visits: {patient.prescriptions?.length || 0}
                             </span>
+                            {showReachabilityChip && (
+                                <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
+                                    title={
+                                        hasRawPhone
+                                            ? `"${patient.phone}" is not a usable mobile number — this patient cannot be sent reminders.`
+                                            : 'No phone number on file — this patient cannot be sent reminders.'
+                                    }
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18.364 5.636L5.636 18.364M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                                    </svg>
+                                    {hasRawPhone ? 'Phone not usable' : 'No phone'}
+                                </span>
+                            )}
                         </div>
+
+                        {overdueReview && !patient.isDeceased && !isFollowupStopped && (
+                            <div className="rounded-lg border border-rose-200 bg-rose-50/60 px-3 py-2 text-[11px] leading-relaxed text-rose-900">
+                                <span className="font-bold text-rose-800">Why: </span>
+                                Review for <span className="font-bold">{formatPastDate(overdueReview.reviewDate)}</span>
+                                {overdueReview.doctorName ? <> with <span className="font-bold">{overdueReview.doctorName}</span></> : null}
+                                {overdueReview.reviewSetAt ? <>, assigned <span className="font-bold">{formatPastDate(overdueReview.reviewSetAt)}</span></> : null}
+                                {' \u00B7 '}
+                                {latestVisit
+                                    ? <>Last seen <span className="font-bold">{formatPastDate(latestVisit.created_at)}</span>{latestVisit.doctor?.name ? ` by ${latestVisit.doctor.name}` : ''}</>
+                                    : <span className="font-semibold">No recorded visit</span>}
+                                {' \u00B7 '}
+                                {lastCall
+                                    ? <>Last called <span className="font-bold">{formatPastDate(lastCall.called_at)}</span>{lastCall.call_status ? ` (${lastCall.call_status === 'picked' ? 'picked' : 'not picked'})` : ''}</>
+                                    : <span className="font-semibold">Never called</span>}
+                            </div>
+                        )}
                     </div>
 
                     {/* ── Actions + call history ──────────────────────── */}

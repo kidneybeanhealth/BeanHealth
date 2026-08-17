@@ -57,6 +57,12 @@ export interface ReceptionPastRecordPatient {
     age: number | string | null;
     gender?: string | null;
     phone?: string | null;
+    /**
+     * Generated E.164 form of `phone` — null when the stored number can't be
+     * dialled. Undefined (not null) when the migration hasn't been applied, so
+     * callers must distinguish the two before reporting "unreachable".
+     */
+    phone_e164?: string | null;
     mr_number?: string | null;
     beanhealth_id?: string | null;
     father_husband_name?: string | null;
@@ -159,6 +165,67 @@ type FollowupRow = {
     call_status?: string | null;
     called_at?: string | null;
     patient_response?: string | null;
+};
+
+/**
+ * Columns on hospital_patients that only exist once their migration has been
+ * applied. Migrations here are run by hand in the Supabase SQL editor, so a
+ * select naming a column that isn't there yet doesn't degrade — it 400s and
+ * takes the whole Past Records screen with it.
+ */
+export interface OptionalPatientColumns {
+    /** Deceased + follow-up continuity — sql/20260424_*.sql */
+    lifecycle: boolean;
+    /** Generated E.164 phone — sql/20260814_phone_e164.sql */
+    phoneE164: boolean;
+}
+
+const BASE_PATIENT_COLUMNS = [
+    'id', 'name', 'age', 'gender', 'phone', 'mr_number', 'beanhealth_id',
+    'father_husband_name', 'app_access_enabled', 'created_at',
+];
+
+/** Each group is dropped as a unit when its columns turn out to be missing. */
+const OPTIONAL_PATIENT_COLUMN_GROUPS: {
+    key: keyof OptionalPatientColumns;
+    columns: string[];
+}[] = [
+        {
+            key: 'lifecycle',
+            columns: ['is_deceased', 'deceased_at', 'continuity_status', 'followup_stopped_at', 'followup_stop_reason'],
+        },
+        {
+            key: 'phoneE164',
+            columns: ['phone_e164'],
+        },
+    ];
+
+const buildPatientSelect = (cols: OptionalPatientColumns): string => {
+    const selected = [...BASE_PATIENT_COLUMNS];
+    for (const group of OPTIONAL_PATIENT_COLUMN_GROUPS) {
+        if (cols[group.key]) selected.push(...group.columns);
+    }
+    return selected.join(', ');
+};
+
+/**
+ * Given a failed query, drop the ONE still-enabled group the error blames.
+ * Returns null when the error isn't about a missing column, so a genuine
+ * failure (auth, timeout, network) propagates instead of being retried into
+ * a silently emptier result set.
+ */
+const dropMissingColumnGroup = (
+    cols: OptionalPatientColumns,
+    error: any
+): OptionalPatientColumns | null => {
+    const message = String(error?.message || '').toLowerCase();
+    for (const group of OPTIONAL_PATIENT_COLUMN_GROUPS) {
+        if (!cols[group.key]) continue;
+        if (group.columns.some((column) => message.includes(column))) {
+            return { ...cols, [group.key]: false };
+        }
+    }
+    return null;
 };
 
 const normalizeDateOnly = (value?: string | null): string | null => {
@@ -614,10 +681,8 @@ export async function fetchReceptionPastRecords(
     }
     const candidateList = candidateIds ? Array.from(candidateIds) : null;
 
-    const buildPatientsQuery = (includeDeceasedFields: boolean, idChunk?: string[]): any => {
-        const selectClause = includeDeceasedFields
-            ? 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, is_deceased, deceased_at, continuity_status, followup_stopped_at, followup_stop_reason, created_at'
-            : 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at';
+    const buildPatientsQuery = (cols: OptionalPatientColumns, idChunk?: string[]): any => {
+        const selectClause = buildPatientSelect(cols);
 
         let query: any = (supabase
             .from('hospital_patients') as any)
@@ -641,11 +706,11 @@ export async function fetchReceptionPastRecords(
     };
 
     /** Fetch the candidate patients in chunks so the IN() list never oversizes the URL. */
-    const fetchCandidatePatients = async (includeDeceasedFields: boolean): Promise<SupabaseResult<any[]>> => {
+    const fetchCandidatePatients = async (cols: OptionalPatientColumns): Promise<SupabaseResult<any[]>> => {
         const rows: any[] = [];
         for (const chunk of chunkArray(candidateList as string[], 100)) {
             const res = await withTimeout(
-                buildPatientsQuery(includeDeceasedFields, chunk),
+                buildPatientsQuery(cols, chunk),
                 10000,
                 'Timed out while loading patient records'
             ) as SupabaseResult<any[]>;
@@ -655,31 +720,28 @@ export async function fetchReceptionPastRecords(
         return { data: rows, error: null, count: rows.length };
     };
 
-    let patientsResult = candidateList
-        ? await fetchCandidatePatients(true)
-        : await withTimeout(
-            buildPatientsQuery(true),
-            10000,
-            'Timed out while loading patient records'
-        ) as SupabaseResult<any[]>;
+    const runPatientsQuery = (cols: OptionalPatientColumns): Promise<SupabaseResult<any[]>> =>
+        candidateList
+            ? fetchCandidatePatients(cols)
+            : withTimeout(
+                buildPatientsQuery(cols),
+                10000,
+                'Timed out while loading patient records'
+            ) as Promise<SupabaseResult<any[]>>;
 
-    if (patientsResult.error) {
-        const message = String(patientsResult.error.message || '').toLowerCase();
-        const missingLifecycleColumns =
-            message.includes('is_deceased') ||
-            message.includes('deceased_at') ||
-            message.includes('continuity_status') ||
-            message.includes('followup_stopped_at') ||
-            message.includes('followup_stop_reason');
-        if (missingLifecycleColumns) {
-            patientsResult = candidateList
-                ? await fetchCandidatePatients(false)
-                : await withTimeout(
-                    buildPatientsQuery(false),
-                    10000,
-                    'Timed out while loading patient records'
-                ) as SupabaseResult<any[]>;
-        }
+    // Optional column groups are dropped ONE GROUP AT A TIME. Collapsing to a
+    // single "minimal" select instead would mean a site that has the lifecycle
+    // columns but not phone_e164 (i.e. every site until the phone migration is
+    // applied) silently loses deceased/continuity data from Past Records —
+    // a regression that looks like data loss rather than a missing migration.
+    let cols: OptionalPatientColumns = { lifecycle: true, phoneE164: true };
+    let patientsResult = await runPatientsQuery(cols);
+
+    for (let attempt = 0; attempt < OPTIONAL_PATIENT_COLUMN_GROUPS.length && patientsResult.error; attempt++) {
+        const dropped = dropMissingColumnGroup(cols, patientsResult.error);
+        if (!dropped) break;
+        cols = dropped;
+        patientsResult = await runPatientsQuery(cols);
     }
 
     if (patientsResult.error) {
@@ -1076,6 +1138,100 @@ interface UpdatePatientAppAccessParams {
     hospitalId: string;
     patientId: string;
     enabled: boolean;
+}
+
+export interface ScheduleReviewParams {
+    hospitalId: string;
+    patientId: string;
+    /** Required. See the note on unassigned reviews below. */
+    doctorId: string;
+    /** YYYY-MM-DD */
+    reviewDate: string;
+    testsToReview?: string | null;
+    specialistsToReview?: string | null;
+}
+
+/**
+ * Put an existing patient into the follow-up loop without a visit.
+ *
+ * For the patient who needs chasing but isn't being seen today — a lab result to
+ * recheck, someone the doctor wants back, a review that was never set at all.
+ *
+ * doctorId is REQUIRED, deliberately. Reception-created reviews with a null
+ * doctor are the "Unassigned" rows that have caused most of the mess in this
+ * table: they belong to nobody, so no visit ever closes them, they never appear
+ * under a doctor's own list, and they age into false Missed Followups. Every
+ * review created here has an owner.
+ *
+ * Repoints the existing active review rather than inserting a second one.
+ * idx_unique_active_review_per_doctor allows only ONE active review per
+ * (hospital, patient, doctor), and a blind insert throws
+ * "duplicate key value violates idx_unique_active_review_per_doctor" — the same
+ * error that broke prescription sends in June. This mirrors what the DB trigger
+ * does for prescriptions.
+ */
+export async function scheduleReviewForPatient(
+    params: ScheduleReviewParams
+): Promise<{ created: boolean }> {
+    const { hospitalId, patientId, doctorId, reviewDate, testsToReview = null, specialistsToReview = null } = params;
+    if (!hospitalId || !patientId || !doctorId || !reviewDate) {
+        throw new Error('Hospital, patient, doctor and review date are all required');
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const existing = await withTimeout(
+        ((supabase.from('hospital_patient_reviews' as any) as any)
+            .select('id')
+            .eq('hospital_id', hospitalId)
+            .eq('patient_id', patientId)
+            .eq('doctor_id', doctorId)
+            .in('status', ['pending', 'rescheduled'])
+            .order('next_review_date', { ascending: false })
+            .limit(1)
+            .maybeSingle()) as any,
+        10000,
+        'Timed out while checking existing reviews'
+    ) as SupabaseResult<{ id: string } | null>;
+
+    if (existing.error) throw existing.error;
+
+    if (existing.data?.id) {
+        const updateResult = await withTimeout(
+            ((supabase.from('hospital_patient_reviews' as any) as any)
+                .update({
+                    next_review_date: reviewDate,
+                    tests_to_review: testsToReview,
+                    specialists_to_review: specialistsToReview,
+                    status: 'rescheduled',
+                    cancelled_at: null,
+                    completed_at: null,
+                    updated_at: nowIso,
+                })
+                .eq('id', existing.data.id)) as any,
+            10000,
+            'Timed out while updating the review'
+        ) as SupabaseResult;
+        if (updateResult.error) throw updateResult.error;
+        return { created: false };
+    }
+
+    const insertResult = await withTimeout(
+        ((supabase.from('hospital_patient_reviews' as any) as any).insert({
+            hospital_id: hospitalId,
+            patient_id: patientId,
+            doctor_id: doctorId,
+            next_review_date: reviewDate,
+            tests_to_review: testsToReview,
+            specialists_to_review: specialistsToReview,
+            status: 'pending',
+        })) as any,
+        10000,
+        'Timed out while scheduling the review'
+    ) as SupabaseResult;
+
+    if (insertResult.error) throw insertResult.error;
+    return { created: true };
 }
 
 interface StopPatientFollowupParams {
@@ -1591,6 +1747,9 @@ export interface PendingReviewInfo {
     id: string;
     next_review_date: string | null;
     status: string;
+    /** Needed to tell whether a NEW review would clash with this one — the
+     *  active-review uniqueness rule is per (hospital, patient, doctor). */
+    doctor_id?: string | null;
 }
 
 /**
@@ -1678,7 +1837,7 @@ export async function fetchPatientPendingReviews(
     if (!hospitalId || !patientId) return [];
     const result = await withTimeout(
         ((supabase.from('hospital_patient_reviews' as any) as any)
-            .select('id, next_review_date, status')
+            .select('id, next_review_date, status, doctor_id')
             .eq('hospital_id', hospitalId)
             .eq('patient_id', patientId)
             .in('status', ['pending', 'rescheduled'])

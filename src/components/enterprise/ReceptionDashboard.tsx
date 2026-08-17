@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useHospitalName } from '../../hooks/useHospitalName';
@@ -12,6 +12,7 @@ import { getReceiptBytes } from '../../utils/receipts/receiptGeneratorSelector';
 import PrinterPreview from '../PrinterPreview';
 import { useTenant } from '../../contexts/TenantContext';
 import { BeanhealthIdService } from '../../services/beanhealthIdService';
+import { describePhoneInput } from '../../utils/phoneUtils';
 const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 import {
     fetchReceptionPastRecords,
@@ -22,6 +23,8 @@ import {
 } from '../../services/enterpriseReviewService';
 import AdmittedPatientsPanel from './AdmittedPatientsPanel';
 import { resolvePatientDoctorSpecialty } from './PastRecordsMetricsSection';
+import AddFollowupModal from './AddFollowupModal';
+import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
     formatPastDate,
@@ -162,6 +165,35 @@ const escapeHtml = (value: string): string =>
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+
+/**
+ * Inline reachability feedback under the registration phone field.
+ *
+ * Deliberately NOT a validation gate. Reception must always be able to register
+ * a patient — someone standing at the desk with an unusual number is not a
+ * reason to refuse them a token. The number is saved either way; this only makes
+ * the consequence visible at the moment it can still be corrected, rather than
+ * weeks later when a reminder silently isn't sent.
+ */
+const PhoneFieldHint: React.FC<{ value: string }> = ({ value }) => {
+    const verdict = describePhoneInput(value);
+
+    if (verdict.kind === 'valid') {
+        return (
+            <p className="mt-1.5 text-[11px] font-semibold text-emerald-600">
+                Reachable · {verdict.e164}
+            </p>
+        );
+    }
+    if (verdict.kind === 'invalid') {
+        return (
+            <p className="mt-1.5 text-[11px] font-semibold text-amber-600">
+                {verdict.message} Saved either way, but reminders won't reach this patient.
+            </p>
+        );
+    }
+    return null;
+};
 
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -455,6 +487,59 @@ const ReceptionDashboard: React.FC = () => {
         });
     };
 
+
+
+    // ── Missed Followup, grouped by month ────────────────────────────────────
+    // Counts must come from the FULL filtered set: the list pages 50 at a time, so
+    // a strip built from what is on screen would undercount every month past the
+    // first page. Fetched once when the chip opens, then all slicing is local —
+    // picking a month must not cost another round trip.
+    const [missedAll, setMissedAll] = useState<ReceptionPastRecordPatient[]>([]);
+    const [missedLoading, setMissedLoading] = useState(false);
+    const [missedMonth, setMissedMonth] = useState<string | null>(null);
+
+    const [showAddFollowup, setShowAddFollowup] = useState(false);
+
+    useEffect(() => {
+        if (reviewFilter !== 'overdue' || !profile?.id) {
+            setMissedAll([]);
+            setMissedMonth(null);
+            return;
+        }
+        let isActive = true;
+        (async () => {
+            setMissedLoading(true);
+            try {
+                const full = await fetchReceptionPastRecords({
+                    hospitalId: profile.id,
+                    page: 0,
+                    pageSize: PAST_RECORDS_PRINT_LIMIT,
+                    searchQuery,
+                    reviewFilter: 'overdue',
+                    reviewDate: reviewDateFilter || undefined,
+                });
+                if (isActive) setMissedAll(full.patients);
+            } catch (err) {
+                console.error('[Missed Followup] month breakdown failed', err);
+                if (isActive) setMissedAll([]);
+            } finally {
+                if (isActive) setMissedLoading(false);
+            }
+        })();
+        return () => { isActive = false; };
+    }, [reviewFilter, profile?.id, searchQuery, reviewDateFilter, pastRecordsLoadedAt]);
+
+    const missedMonths = useMemo(() => buildMissedMonths(missedAll), [missedAll]);
+
+    /** What the list renders under Missed Followup. A month selection reads from the
+     *  full set, so it is never truncated by the 50-row page. */
+    const missedVisibleRecords = useMemo(() => {
+        if (reviewFilter !== 'overdue') return null;
+        if (missedMonth === null) return null;   // no month picked → normal paged list
+        return missedAll.filter(p => (missedReviewDate(p) || '').slice(0, 7) === missedMonth);
+    }, [reviewFilter, missedMonth, missedAll]);
+
+
     const handlePrintPastRecordsList = async () => {
         if (!['due_today', 'due_tomorrow', 'overdue'].includes(reviewFilter)) {
             toast.error('Print List is available for Due Today, Due Tomorrow, or Missed Followup');
@@ -481,6 +566,13 @@ const ReceptionDashboard: React.FC = () => {
                 reviewDate: reviewDateFilter || undefined,
             });
             printRecords = full.patients;
+            // A month selection is a unit of work — printing "all missed" when the
+            // user is looking at August is not the sheet they asked for.
+            if (reviewFilter === 'overdue' && missedMonth) {
+                printRecords = printRecords.filter(
+                    (patient) => (missedReviewDate(patient) || '').slice(0, 7) === missedMonth
+                );
+            }
             if (full.hasMore) {
                 // Should not happen at the print limit, but never print silently short.
                 toast.error(`More than ${PAST_RECORDS_PRINT_LIMIT} patients match — printing the first ${PAST_RECORDS_PRINT_LIMIT}.`, { duration: 8000 });
@@ -2285,6 +2377,17 @@ const ReceptionDashboard: React.FC = () => {
                                             </svg>
                                             New Registration
                                         </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddFollowup(true)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                            title="Schedule a review for a patient who is already registered"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            Add to Follow-up
+                                        </button>
                                         {!isPanelView && (
                                             <>
                                                 <label className="text-xs font-semibold text-gray-500">Review Date</label>
@@ -2341,8 +2444,17 @@ const ReceptionDashboard: React.FC = () => {
                                 </div>
                             ) : (
                                 <div>
+                                    {reviewFilter === 'overdue' && (
+                                        <MissedFollowupMonths
+                                            months={missedMonths}
+                                            selectedMonth={missedMonth}
+                                            onSelectMonth={setMissedMonth}
+                                            loading={missedLoading}
+                                            onPrint={handlePrintPastRecordsList}
+                                        />
+                                    )}
                                     <div className="divide-y divide-gray-100">
-                                        {pastRecords.map((patient, index) => (
+                                        {(missedVisibleRecords ?? pastRecords).map((patient, index) => (
                                             <PastRecordsPatientCard
                                                 key={patient.id}
                                                 patient={patient}
@@ -2362,7 +2474,7 @@ const ReceptionDashboard: React.FC = () => {
                                             />
                                         ))}
                                     </div>
-                                    {hasMorePastRecords && (
+                                    {hasMorePastRecords && !missedVisibleRecords && (
                                         <div className="p-4 text-center border-t border-gray-100">
                                             <button
                                                 onClick={handleLoadMorePastRecords}
@@ -2529,6 +2641,7 @@ const ReceptionDashboard: React.FC = () => {
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Phone</label>
                                     <input type="text" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
                                         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                                    <PhoneFieldHint value={editForm.phone} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Place</label>
@@ -2774,6 +2887,7 @@ const ReceptionDashboard: React.FC = () => {
                                                         </div>
                                                     )}
                                                 </div>
+                                                <PhoneFieldHint value={walkInForm.phone} />
                                             </div>
                                         )}
                                     </div>
@@ -3214,6 +3328,18 @@ const ReceptionDashboard: React.FC = () => {
                         )}
                     </div>
                 </div>
+            )}
+
+            {showAddFollowup && profile?.id && (
+                <AddFollowupModal
+                    hospitalId={profile.id}
+                    onClose={() => setShowAddFollowup(false)}
+                    onScheduled={() => fetchPastRecords(false, 0, false, {
+                        searchValue: searchQuery,
+                        reviewFilterValue: activeListFilter,
+                        reviewDateValue: reviewDateFilter,
+                    })}
+                />
             )}
 
             {/* Visit History (replaces old Past Prescriptions modal) */}
