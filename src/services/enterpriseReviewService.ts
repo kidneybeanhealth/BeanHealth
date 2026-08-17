@@ -207,24 +207,29 @@ const deriveReviewCategory = (
         }
     }
 
-    if (latestReviewStatus === 'completed') {
+    // A closed review is DONE and must never reach the date comparison below.
+    //
+    // It used to fall through whenever it was closed ON OR AFTER its due date and
+    // more than two days ago: too old for the Review Completed window, and not an
+    // early completion either, so it dropped past both branches and re-emerged as
+    // 'overdue'. That is the whole reason KNH/26/012858 (Divakar, 06 Jul, closed
+    // 13 Jul) and KNH/26/009448 (unassigned, 05 Jun, closed 06 Jun) sat in Missed
+    // Followup while their cards read "Upcoming" — the collapsed patient category
+    // came from their live review, the list matched the dead one.
+    //
+    // 'cancelled' is included for the same reason. Cancelled rows today are
+    // written with next_review_date = NULL so they never reached the comparison,
+    // but that is an accident of the current write paths, not a guarantee.
+    if (latestReviewStatus === 'completed' || latestReviewStatus === 'cancelled') {
         const completionReference = latestReviewCompletedAt || latestReviewCreatedAt || latestReviewUpdatedAt;
-        if (completionReference) {
+        if (latestReviewStatus === 'completed' && completionReference) {
             const completedAt = startOfDay(completionReference);
             const ageDays = Math.floor((today.getTime() - completedAt.getTime()) / (24 * 60 * 60 * 1000));
             if (ageDays >= 0 && ageDays < 2) {
                 return 'review_completed';
             }
         }
-        // Early completion: the visit satisfied a future due date — never let
-        // that date resurface in due_today/due_tomorrow/upcoming buckets.
-        if (completionReference && latestReviewDate) {
-            const completedDay = startOfDay(completionReference);
-            const dueDay = startOfDay(latestReviewDate);
-            if (completedDay.getTime() < dueDay.getTime()) {
-                return 'not_completed';
-            }
-        }
+        return 'not_completed';
     }
 
     if (!latestReviewDate) {
@@ -244,6 +249,33 @@ const deriveReviewCategory = (
 
     if (parsed.getTime() >= today.getTime()) {
         return 'upcoming';
+    }
+
+    // MISSED FOLLOW-UP MEANS "STILL HASN'T COME", NOT "A DATE WENT PAST".
+    //
+    // The clinic runs two doctors — a nephrologist and a urologist — and a patient
+    // who needs both usually finishes both the same day. So a review set by one and
+    // a visit to the other is routine, expected care, not a lapse: the doctor knows.
+    // Reviews are per doctor and a visit closes only the prescribing doctor's, so
+    // without this check the other doctor's review ages into 'overdue' while the
+    // patient is attending perfectly normally. KNH/26/012858 was seen three times
+    // after her 06-Jul urology review and still sat in Missed Followup.
+    //
+    // `lastVisitAt` is the patient's latest prescription under ANY doctor, which is
+    // what makes the cross-referral case work.
+    //
+    // Two rules, both confirmed with the clinic:
+    //   • Attending clears it, however late. Due 10 Jun, walked in 20 Aug → not
+    //     missed. Whether they came late is the Overdue Weekly Report's job; this
+    //     list is who still needs chasing today.
+    //   • No lookback limit the other way. Someone overdue since March and still
+    //     absent stays listed until they attend, or until follow-up is formally
+    //     stopped — which is the deliberate way to remove a patient for good.
+    if (lastVisitAt) {
+        const visitedDay = startOfDay(lastVisitAt);
+        if (visitedDay.getTime() >= parsed.getTime()) {
+            return 'not_completed';
+        }
     }
 
     return 'overdue';
