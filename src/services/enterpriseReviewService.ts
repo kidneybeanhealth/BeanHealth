@@ -180,7 +180,9 @@ const deriveReviewCategory = (
     latestReviewCreatedAt: string | null,
     latestFollowupStatus: string | null,
     latestFollowupAt: string | null = null,
-    lastVisitAt: string | null = null
+    lastVisitAt: string | null = null,
+    /** When this review cycle was ASSIGNED — the visit that set the date. */
+    reviewSetAt: string | null = null
 ): ReceptionReviewFilter => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -254,26 +256,46 @@ const deriveReviewCategory = (
     // MISSED FOLLOW-UP MEANS "STILL HASN'T COME", NOT "A DATE WENT PAST".
     //
     // The clinic runs two doctors — a nephrologist and a urologist — and a patient
-    // who needs both usually finishes both the same day. So a review set by one and
-    // a visit to the other is routine, expected care, not a lapse: the doctor knows.
-    // Reviews are per doctor and a visit closes only the prescribing doctor's, so
-    // without this check the other doctor's review ages into 'overdue' while the
-    // patient is attending perfectly normally. KNH/26/012858 was seen three times
-    // after her 06-Jul urology review and still sat in Missed Followup.
+    // needing both usually finishes both the same day. A review set by one followed
+    // by a visit to the other is routine, expected care that the doctor is fully
+    // aware of. Reviews are per doctor and a visit closes only the prescribing
+    // doctor's, so without this the other doctor's review ages into a false miss.
     //
-    // `lastVisitAt` is the patient's latest prescription under ANY doctor, which is
-    // what makes the cross-referral case work.
+    // THE TEST IS THE VISIT AGAINST WHEN THE REVIEW WAS ASSIGNED — not against its
+    // due date. Comparing to the due date is wrong and was the earlier mistake:
+    //
+    //     10 Jul  sees Divakar     → review assigned for 10 Aug
+    //     05 Aug  sees Prabhakar   → review assigned for 15 Aug
+    //
+    // On 12 Aug the Divakar review has "passed", but the patient was in the clinic
+    // on 5 Aug and the doctor who saw them then set the current plan. The 10 Aug
+    // review was superseded at that visit; it is not a missed follow-up. Comparing
+    // to the due date (5 Aug < 10 Aug) would keep flagging her forever.
+    //
+    // So: any visit AFTER the review was assigned supersedes it. `lastVisitAt` is
+    // the patient's latest prescription under ANY doctor, which is what makes the
+    // cross-referral case work. Equal timestamps mean this review IS the one that
+    // visit created, so the comparison is strict.
     //
     // Two rules, both confirmed with the clinic:
-    //   • Attending clears it, however late. Due 10 Jun, walked in 20 Aug → not
-    //     missed. Whether they came late is the Overdue Weekly Report's job; this
-    //     list is who still needs chasing today.
-    //   • No lookback limit the other way. Someone overdue since March and still
-    //     absent stays listed until they attend, or until follow-up is formally
-    //     stopped — which is the deliberate way to remove a patient for good.
+    //   • Any later visit clears it, however late, and whichever doctor was seen.
+    //     Whether they came late is the Overdue Weekly Report's job; this list is
+    //     who still needs chasing today.
+    //   • No lookback limit the other way. Someone overdue since March who has not
+    //     been seen at all stays listed until they attend, or until follow-up is
+    //     formally stopped — the deliberate way to remove a patient for good.
     if (lastVisitAt) {
-        const visitedDay = startOfDay(lastVisitAt);
-        if (visitedDay.getTime() >= parsed.getTime()) {
+        const visitedAt = new Date(lastVisitAt).getTime();
+
+        // Superseded by a later visit, whoever they saw.
+        const assignedAt = reviewSetAt || latestReviewCreatedAt;
+        if (assignedAt && visitedAt > new Date(assignedAt).getTime()) {
+            return 'not_completed';
+        }
+
+        // Or simply attended on/after the due date — the fallback when we can't
+        // tell when the review was assigned.
+        if (startOfDay(lastVisitAt).getTime() >= parsed.getTime()) {
             return 'not_completed';
         }
     }
@@ -360,6 +382,13 @@ const groupReviewsByDoctor = (
             const followupInfo = doctorId ? followupsByDoctor.get(doctorId) || null : null;
             const latestFollowupStatus = followupInfo?.status || null;
 
+            // Origin: which visit set this review cycle. Drives the "set on" label
+            // AND the superseded test — a later visit than this makes the review stale.
+            const sourceRx = primaryReview.source_prescription_id
+                ? rxInfoById.get(primaryReview.source_prescription_id) || null
+                : null;
+            const reviewSetAt = sourceRx?.createdAt || primaryReview.updated_at || primaryReview.created_at || null;
+
             const reviewCategory = deriveReviewCategory(
                 reviewDate,
                 primaryReview.status || null,
@@ -368,14 +397,10 @@ const groupReviewsByDoctor = (
                 primaryReview.created_at || null,
                 latestFollowupStatus,
                 followupInfo?.calledAt || null,
-                lastVisitAt
+                lastVisitAt,
+                reviewSetAt
             );
 
-            // Origin: which visit set this review cycle (for the "set on" label)
-            const sourceRx = primaryReview.source_prescription_id
-                ? rxInfoById.get(primaryReview.source_prescription_id) || null
-                : null;
-            const reviewSetAt = sourceRx?.createdAt || primaryReview.updated_at || primaryReview.created_at || null;
             const reviewSource: DoctorReview['reviewSource'] = sourceRx
                 ? (sourceRx.documentType === 'discharge_card' ? 'discharge_card' : 'prescription')
                 : (primaryReview.source_prescription_id ? 'prescription' : 'reception');
@@ -856,7 +881,16 @@ export async function fetchReceptionPastRecords(
                     latestReview?.created_at || null,
                     latestFollowupStatusByPatient.get(p.id) || null,
                     latestFollowupAtByPatient.get(p.id) || null,
-                    latestPrescription?.created_at || null
+                    latestPrescription?.created_at || null,
+                    // When the collapsed review was assigned. The source prescription
+                    // is authoritative; the review row's own created_at is stale for a
+                    // repointed row, so it is only the fallback.
+                    (latestReview?.source_prescription_id
+                        ? prescriptionsByPatient.get(p.id)?.find(rx => rx.id === latestReview.source_prescription_id)?.created_at
+                        : null)
+                        || latestReview?.updated_at
+                        || latestReview?.created_at
+                        || null
                 );
 
             const completedLocalDate = toLocalDateOnly(latestReview?.completed_at || null);
