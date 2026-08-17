@@ -12,7 +12,6 @@ import { getReceiptBytes } from '../../utils/receipts/receiptGeneratorSelector';
 import PrinterPreview from '../PrinterPreview';
 import { useTenant } from '../../contexts/TenantContext';
 import { BeanhealthIdService } from '../../services/beanhealthIdService';
-import { describePhoneInput } from '../../utils/phoneUtils';
 const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 import {
     fetchReceptionPastRecords,
@@ -165,35 +164,6 @@ const escapeHtml = (value: string): string =>
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
-
-/**
- * Inline reachability feedback under the registration phone field.
- *
- * Deliberately NOT a validation gate. Reception must always be able to register
- * a patient — someone standing at the desk with an unusual number is not a
- * reason to refuse them a token. The number is saved either way; this only makes
- * the consequence visible at the moment it can still be corrected, rather than
- * weeks later when a reminder silently isn't sent.
- */
-const PhoneFieldHint: React.FC<{ value: string }> = ({ value }) => {
-    const verdict = describePhoneInput(value);
-
-    if (verdict.kind === 'valid') {
-        return (
-            <p className="mt-1.5 text-[11px] font-semibold text-emerald-600">
-                Reachable · {verdict.e164}
-            </p>
-        );
-    }
-    if (verdict.kind === 'invalid') {
-        return (
-            <p className="mt-1.5 text-[11px] font-semibold text-amber-600">
-                {verdict.message} Saved either way, but reminders won't reach this patient.
-            </p>
-        );
-    }
-    return null;
-};
 
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -2641,7 +2611,6 @@ const ReceptionDashboard: React.FC = () => {
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Phone</label>
                                     <input type="text" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
                                         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
-                                    <PhoneFieldHint value={editForm.phone} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Place</label>
@@ -2887,7 +2856,6 @@ const ReceptionDashboard: React.FC = () => {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <PhoneFieldHint value={walkInForm.phone} />
                                             </div>
                                         )}
                                     </div>
