@@ -131,6 +131,20 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
     const visibleCallHistory = isCallHistoryExpanded ? callHistory : callHistory.slice(0, 2);
     const hiddenCallCount = Math.max(callHistory.length - 2, 0);
 
+    // Reachability, for the reminder pipeline.
+    //
+    // `phone_e164` is a generated column: a string means dialable, null means the
+    // stored number can't be used. UNDEFINED means the migration hasn't been
+    // applied yet — treating that as "unreachable" would paint every patient in
+    // the clinic with a warning chip, so it stays silent instead.
+    //
+    // Nothing is shown for a reachable patient. This chip exists to surface a gap
+    // that can be closed at the next visit, not to decorate the ones that are fine.
+    const reachabilityKnown = patient.phone_e164 !== undefined;
+    const isUnreachable = reachabilityKnown && !patient.phone_e164;
+    // A patient who will never be messaged doesn't need a chip nagging about it.
+    const showReachabilityChip = isUnreachable && !patient.isDeceased && !isFollowupStopped;
+    const hasRawPhone = Boolean((patient.phone || '').trim());
 
     return (
         <div className="px-4 sm:px-5 py-4">
@@ -226,6 +240,21 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                             <span className="text-[11px] text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded-full border border-orange-100">
                                 Visits: {patient.prescriptions?.length || 0}
                             </span>
+                            {showReachabilityChip && (
+                                <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
+                                    title={
+                                        hasRawPhone
+                                            ? `"${patient.phone}" is not a usable mobile number — this patient cannot be sent reminders.`
+                                            : 'No phone number on file — this patient cannot be sent reminders.'
+                                    }
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18.364 5.636L5.636 18.364M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                                    </svg>
+                                    {hasRawPhone ? 'Phone not usable' : 'No phone'}
+                                </span>
+                            )}
                         </div>
 
                         {overdueReview && !patient.isDeceased && !isFollowupStopped && (

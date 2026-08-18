@@ -57,6 +57,12 @@ export interface ReceptionPastRecordPatient {
     age: number | string | null;
     gender?: string | null;
     phone?: string | null;
+    /**
+     * Generated E.164 form of `phone` — null when the stored number can't be
+     * dialled. Undefined (not null) when the migration hasn't been applied, so
+     * callers must distinguish the two before reporting "unreachable".
+     */
+    phone_e164?: string | null;
     mr_number?: string | null;
     beanhealth_id?: string | null;
     father_husband_name?: string | null;
@@ -159,6 +165,67 @@ type FollowupRow = {
     call_status?: string | null;
     called_at?: string | null;
     patient_response?: string | null;
+};
+
+/**
+ * Columns on hospital_patients that only exist once their migration has been
+ * applied. Migrations here are run by hand in the Supabase SQL editor, so a
+ * select naming a column that isn't there yet doesn't degrade — it 400s and
+ * takes the whole Past Records screen with it.
+ */
+export interface OptionalPatientColumns {
+    /** Deceased + follow-up continuity — sql/20260424_*.sql */
+    lifecycle: boolean;
+    /** Generated E.164 phone — sql/20260814_phone_e164.sql */
+    phoneE164: boolean;
+}
+
+const BASE_PATIENT_COLUMNS = [
+    'id', 'name', 'age', 'gender', 'phone', 'mr_number', 'beanhealth_id',
+    'father_husband_name', 'app_access_enabled', 'created_at',
+];
+
+/** Each group is dropped as a unit when its columns turn out to be missing. */
+const OPTIONAL_PATIENT_COLUMN_GROUPS: {
+    key: keyof OptionalPatientColumns;
+    columns: string[];
+}[] = [
+        {
+            key: 'lifecycle',
+            columns: ['is_deceased', 'deceased_at', 'continuity_status', 'followup_stopped_at', 'followup_stop_reason'],
+        },
+        {
+            key: 'phoneE164',
+            columns: ['phone_e164'],
+        },
+    ];
+
+const buildPatientSelect = (cols: OptionalPatientColumns): string => {
+    const selected = [...BASE_PATIENT_COLUMNS];
+    for (const group of OPTIONAL_PATIENT_COLUMN_GROUPS) {
+        if (cols[group.key]) selected.push(...group.columns);
+    }
+    return selected.join(', ');
+};
+
+/**
+ * Given a failed query, drop the ONE still-enabled group the error blames.
+ * Returns null when the error isn't about a missing column, so a genuine
+ * failure (auth, timeout, network) propagates instead of being retried into
+ * a silently emptier result set.
+ */
+const dropMissingColumnGroup = (
+    cols: OptionalPatientColumns,
+    error: any
+): OptionalPatientColumns | null => {
+    const message = String(error?.message || '').toLowerCase();
+    for (const group of OPTIONAL_PATIENT_COLUMN_GROUPS) {
+        if (!cols[group.key]) continue;
+        if (group.columns.some((column) => message.includes(column))) {
+            return { ...cols, [group.key]: false };
+        }
+    }
+    return null;
 };
 
 const normalizeDateOnly = (value?: string | null): string | null => {
@@ -614,10 +681,8 @@ export async function fetchReceptionPastRecords(
     }
     const candidateList = candidateIds ? Array.from(candidateIds) : null;
 
-    const buildPatientsQuery = (includeDeceasedFields: boolean, idChunk?: string[]): any => {
-        const selectClause = includeDeceasedFields
-            ? 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, is_deceased, deceased_at, continuity_status, followup_stopped_at, followup_stop_reason, created_at'
-            : 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at';
+    const buildPatientsQuery = (cols: OptionalPatientColumns, idChunk?: string[]): any => {
+        const selectClause = buildPatientSelect(cols);
 
         let query: any = (supabase
             .from('hospital_patients') as any)
@@ -641,11 +706,11 @@ export async function fetchReceptionPastRecords(
     };
 
     /** Fetch the candidate patients in chunks so the IN() list never oversizes the URL. */
-    const fetchCandidatePatients = async (includeDeceasedFields: boolean): Promise<SupabaseResult<any[]>> => {
+    const fetchCandidatePatients = async (cols: OptionalPatientColumns): Promise<SupabaseResult<any[]>> => {
         const rows: any[] = [];
         for (const chunk of chunkArray(candidateList as string[], 100)) {
             const res = await withTimeout(
-                buildPatientsQuery(includeDeceasedFields, chunk),
+                buildPatientsQuery(cols, chunk),
                 10000,
                 'Timed out while loading patient records'
             ) as SupabaseResult<any[]>;
@@ -655,31 +720,28 @@ export async function fetchReceptionPastRecords(
         return { data: rows, error: null, count: rows.length };
     };
 
-    let patientsResult = candidateList
-        ? await fetchCandidatePatients(true)
-        : await withTimeout(
-            buildPatientsQuery(true),
-            10000,
-            'Timed out while loading patient records'
-        ) as SupabaseResult<any[]>;
+    const runPatientsQuery = (cols: OptionalPatientColumns): Promise<SupabaseResult<any[]>> =>
+        candidateList
+            ? fetchCandidatePatients(cols)
+            : withTimeout(
+                buildPatientsQuery(cols),
+                10000,
+                'Timed out while loading patient records'
+            ) as Promise<SupabaseResult<any[]>>;
 
-    if (patientsResult.error) {
-        const message = String(patientsResult.error.message || '').toLowerCase();
-        const missingLifecycleColumns =
-            message.includes('is_deceased') ||
-            message.includes('deceased_at') ||
-            message.includes('continuity_status') ||
-            message.includes('followup_stopped_at') ||
-            message.includes('followup_stop_reason');
-        if (missingLifecycleColumns) {
-            patientsResult = candidateList
-                ? await fetchCandidatePatients(false)
-                : await withTimeout(
-                    buildPatientsQuery(false),
-                    10000,
-                    'Timed out while loading patient records'
-                ) as SupabaseResult<any[]>;
-        }
+    // Optional column groups are dropped ONE GROUP AT A TIME. Collapsing to a
+    // single "minimal" select instead would mean a site that has the lifecycle
+    // columns but not phone_e164 (i.e. every site until the phone migration is
+    // applied) silently loses deceased/continuity data from Past Records —
+    // a regression that looks like data loss rather than a missing migration.
+    let cols: OptionalPatientColumns = { lifecycle: true, phoneE164: true };
+    let patientsResult = await runPatientsQuery(cols);
+
+    for (let attempt = 0; attempt < OPTIONAL_PATIENT_COLUMN_GROUPS.length && patientsResult.error; attempt++) {
+        const dropped = dropMissingColumnGroup(cols, patientsResult.error);
+        if (!dropped) break;
+        cols = dropped;
+        patientsResult = await runPatientsQuery(cols);
     }
 
     if (patientsResult.error) {
