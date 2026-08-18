@@ -77,6 +77,11 @@ export interface PastRecordsPatientCardProps {
     onCallLog: (patient: ReceptionPastRecordPatient) => void;
     /** Reception only — omit to hide the delete action entirely. */
     onDelete?: (patient: ReceptionPastRecordPatient) => void;
+    /** Optional AI voice call. Omit to hide the action entirely (e.g. before the
+     *  Sarvam agent is configured for this hospital). */
+    onVoiceCall?: (patient: ReceptionPastRecordPatient) => void;
+    /** True while a call is being placed for THIS patient. */
+    isVoiceCallPlacing?: boolean;
 
     isAppAccessUpdating: boolean;
     isCallHistoryExpanded: boolean;
@@ -97,6 +102,8 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
     onStopFollowup,
     onCallLog,
     onDelete,
+    onVoiceCall,
+    isVoiceCallPlacing = false,
     isAppAccessUpdating,
     isCallHistoryExpanded,
     onToggleCallHistory,
@@ -311,6 +318,35 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                     {isFollowupStopped ? 'Follow-up Stopped' : 'Stop Follow-up'}
                                 </button>
                             )}
+                            {onVoiceCall && (() => {
+                                // Mirror the Edge Function's refusals so the button
+                                // explains itself instead of failing after a round trip.
+                                const blockedReason = isUnreachable
+                                    ? (hasRawPhone ? 'This number cannot be dialled' : 'No phone number on file')
+                                    : patient.isDeceased
+                                        ? 'Patient is deceased'
+                                        : isFollowupStopped
+                                            ? 'Follow-up has been stopped'
+                                            : null;
+                                return (
+                                    <button
+                                        type="button"
+                                        onClick={() => { if (!blockedReason && !isVoiceCallPlacing) onVoiceCall(patient); }}
+                                        disabled={Boolean(blockedReason) || isVoiceCallPlacing}
+                                        title={blockedReason || 'Have the AI agent call this patient about their review'}
+                                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border transition-colors ${
+                                            blockedReason
+                                                ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                                                : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+                                        }`}
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0-15a3 3 0 013 3v4a3 3 0 11-6 0V6a3 3 0 013-3z" />
+                                        </svg>
+                                        {isVoiceCallPlacing ? 'Calling…' : 'AI Call'}
+                                    </button>
+                                );
+                            })()}
                             <button
                                 type="button"
                                 onClick={() => onCallLog(patient)}

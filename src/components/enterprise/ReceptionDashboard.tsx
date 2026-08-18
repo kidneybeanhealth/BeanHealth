@@ -23,6 +23,7 @@ import {
 } from '../../services/enterpriseReviewService';
 import AdmittedPatientsPanel from './AdmittedPatientsPanel';
 import { resolvePatientDoctorSpecialty } from './PastRecordsMetricsSection';
+import { placeReviewCall, voiceCallsEnabled } from '../../services/voiceCallService';
 import AddFollowupModal from './AddFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
@@ -488,6 +489,11 @@ const ReceptionDashboard: React.FC = () => {
     };
 
 
+    // ── AI voice call ────────────────────────────────────────────────────────
+    // Only starts the call. The outcome arrives on Sarvam's webhook minutes later
+    // and is written into hospital_patient_followups server-side, so it lands in
+    // Call History like any other call. Nothing here touches the review date.
+    const [voiceCallPatientId, setVoiceCallPatientId] = useState<string | null>(null);
 
     // ── Missed Followup, grouped by month ────────────────────────────────────
     // Counts must come from the FULL filtered set: the list pages 50 at a time, so
@@ -539,6 +545,22 @@ const ReceptionDashboard: React.FC = () => {
         return missedAll.filter(p => (missedReviewDate(p) || '').slice(0, 7) === missedMonth);
     }, [reviewFilter, missedMonth, missedAll]);
 
+    const handleVoiceCall = async (patient: ReceptionPastRecordPatient) => {
+        if (voiceCallPatientId) return;
+        setVoiceCallPatientId(patient.id);
+        const toastId = toast.loading(`Calling ${patient.name}…`);
+        try {
+            const result = await placeReviewCall({
+                patientId: patient.id,
+                requestedByName: profile?.name || 'Reception',
+            });
+            toast.success(`Calling ${patient.name} on ${result.dialedNumber}. The outcome will appear in Call History.`, { id: toastId, duration: 7000 });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not place the call', { id: toastId, duration: 7000 });
+        } finally {
+            setVoiceCallPatientId(null);
+        }
+    };
 
     const handlePrintPastRecordsList = async () => {
         if (!['due_today', 'due_tomorrow', 'overdue'].includes(reviewFilter)) {
@@ -2469,6 +2491,8 @@ const ReceptionDashboard: React.FC = () => {
                                                 isAppAccessUpdating={updatingAccessPatientIds.has(patient.id)}
                                                 isCallHistoryExpanded={expandedCallHistoryPatientIds.has(patient.id)}
                                                 onToggleCallHistory={togglePatientCallHistory}
+                                onVoiceCall={voiceCallsEnabled() ? handleVoiceCall : undefined}
+                                isVoiceCallPlacing={voiceCallPatientId === patient.id}
                                                 locallyStoppedFollowupIds={locallyStoppedFollowupIds}
                                                 stopFollowupOverrides={stopFollowupOverrides}
                                             />
