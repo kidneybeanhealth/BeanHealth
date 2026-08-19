@@ -674,15 +674,19 @@ const ReceptionDashboard: React.FC = () => {
             return;
         }
         
-        // Single or no doctor review - use primary doctor
+        // Single or no doctor review — use the primary doctor, and when there is no
+        // review at all fall back to whoever last actually saw the patient. A call
+        // log that reschedules must land on a real doctor: an ownerless review is
+        // one no visit ever closes and no doctor's list ever shows.
         const primaryDoctor = patient.doctorReviews?.[0];
+        const lastTreatingDoctor = patient.prescriptions?.find(rx => rx.doctor?.id)?.doctor;
         setCallLogTarget({
             patientId: patient.id,
             mrNumber: patient.mr_number || null,
             patientName: patient.name,
             reviewDate: primaryDoctor?.reviewDate || patient.latestReviewDate,
-            doctorId: primaryDoctor?.doctorId || null,
-            doctorName: primaryDoctor?.doctorName || null,
+            doctorId: primaryDoctor?.doctorId || lastTreatingDoctor?.id || null,
+            doctorName: primaryDoctor?.doctorName || lastTreatingDoctor?.name || null,
         });
         setCallHistory([]);
         setCallHistoryLoading(true);
@@ -956,7 +960,10 @@ const ReceptionDashboard: React.FC = () => {
                         .insert({
                             hospital_id: profile.id,
                             patient_id: mrPatient.id,
-                            doctor_id: null,
+                            // Never null. An ownerless review is one nothing ever
+                            // closes and no doctor ever sees — reception rescheduling
+                            // a call should keep it with whoever the patient saw.
+                            doctor_id: callLogTarget.doctorId || null,
                             next_review_date: effectiveReviewDate || callLogTarget.reviewDate,
                             status: callLogStatus === 'picked' ? 'rescheduled' : 'pending',
                         });
@@ -1522,7 +1529,10 @@ const ReceptionDashboard: React.FC = () => {
                         .insert({
                             hospital_id: profile.id,
                             patient_id: patientData.id,
-                            doctor_id: null,
+                            // The form already collects a doctor; this insert simply
+                            // ignored it, which is how past registrations became the
+                            // third source of ownerless reviews.
+                            doctor_id: walkInForm.doctorId || null,
                             next_review_date: walkInForm.reviewDate,
                             status: 'pending',
                         });
