@@ -45,7 +45,7 @@ psql "$DATABASE_URL" -f sql/20260817_voice_call_attempts.sql
 
 ### 2. Commit the agent in the Sarvam console
 
-Committed on `app_id: Conversatio-aaae688f-7e96`. **Pin `SARVAM_APP_VERSION=7`.**
+Committed on `app_id: Conversatio-aaae688f-7e96`. **Pin `SARVAM_APP_VERSION=8`.**
 
 Version history, because pinning the wrong one silently changes the call:
 
@@ -55,6 +55,7 @@ Version history, because pinning the wrong one silently changes the call:
 | 5 | Adds the on_end webhook tool and declares `callback_token` |
 | 6 | English-only, inbound-style greeting. **Do not use** — both were mistaken: English-only strands most of a Coimbatore patient list in `LANGUAGE_BARRIER`, and "thank you for calling" is false on an outbound call |
 | **7** | v5 + the `callback_token` guard line + `LANGUAGE_BARRIER`, with v6's language and greeting reverted |
+| **8** | v7 + `call_summary` output variable, wired into the on_end tool payload |
 
 `SARVAM_APP_VERSION` is **required**, not optional. Leaving it unset does not
 track the newest commit — `version_filter` defaults to `specific`, so the API
@@ -130,6 +131,25 @@ Use **your own mobile**, on a test patient whose phone is set to it. Then check:
 - a matching row appears in `hospital_patient_followups`
 - the Call History card on that patient shows `[AI call] …`
 - `next_review_date` is **unchanged**
+
+## There is no transcript, and there will not be one from the agent
+
+Confirmed with Sarvam's agent tooling: the on_end tool can send **declared
+variables only**, and no system variable exposes the conversation. Recording,
+transcript retention and export are platform infrastructure, outside what agent
+authoring can reach. Both are open with Sarvam support.
+
+`call_summary` is the substitute: the agent writes 3-5 factual sentences in
+English at the end of every call — attendance intent, stated reason, anything
+raised about condition or medication, any request — quoting the patient's own
+phrases where they matter. English regardless of call language, so reception
+reads every call the same way.
+
+It is rendered under **"Agent's account of the call"** and that label is load-
+bearing. This is an LLM paraphrase. If a family reports a death, or a patient
+describes a symptom, somebody will act on those words — and they must know they
+are reading the agent's summary rather than a quote. A paraphrase that reads
+like a record is worse than no record.
 
 ## Two outcome paths, and what each carries
 
