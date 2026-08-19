@@ -27,6 +27,7 @@ import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
+    formatDoctorLabel,
     formatPastDate,
     type PastRecordsView,
 } from './PastRecordsPatientCard';
@@ -3510,7 +3511,7 @@ const ReceptionDashboard: React.FC = () => {
                                 >
                                     <div className="flex items-start justify-between">
                                         <div>
-                                            <p className="font-semibold text-gray-900">Dr. {dr.doctorName || 'Unknown'}</p>
+                                            <p className={`font-semibold ${dr.doctorName ? 'text-gray-900' : 'text-amber-700'}`}>{formatDoctorLabel(dr.doctorName)}</p>
                                             {dr.doctorSpecialty && (
                                                 <p className="text-xs text-gray-500 mt-0.5">{dr.doctorSpecialty}</p>
                                             )}

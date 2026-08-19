@@ -2115,7 +2115,7 @@ export function formatDoctorReviewsForDisplay(patientRecord: ReceptionPastRecord
     if (doctorReviews.length === 0) return null;
 
     const formatted = doctorReviews.map((dr) => {
-        const doctorName = dr.doctorName || 'Unknown';
+        const doctorName = dr.doctorName || 'Unassigned';
         const dateStr = dr.reviewDate ? new Date(dr.reviewDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Unscheduled';
         const categoryLabel = getCategoryLabel(dr.reviewCategory);
         return `${doctorName} - ${dateStr} (${categoryLabel})`;

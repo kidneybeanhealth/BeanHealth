@@ -25,6 +25,21 @@ import type {
 /** Past Records view — review filters plus the two report views */
 export type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar';
 
+/**
+ * Render a doctor's name for display.
+ *
+ * Two problems this solves. Names are stored inconsistently — "Dr.A.Prabhakar",
+ * "A. Divakar", "Dr Divakar" — so call sites that blindly prefixed "Dr. "
+ * produced "Dr. Dr.A.Prabhakar". And a review with no doctor rendered as
+ * "Dr. Unknown", which reads like a real clinician nobody can identify rather
+ * than what it is: a row that still needs assigning.
+ */
+export const formatDoctorLabel = (name?: string | null): string => {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return 'Unassigned';
+    return /^dr\b\.?/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
+};
+
 export const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'all') return 'All';
     if (filterKey === 'due_today') return 'Due Today';
@@ -173,7 +188,7 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                             key={dr.doctorId || `${dr.doctorName || 'unassigned'}-${dr.reviewDate || 'none'}`}
                                             className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1 whitespace-nowrap"
                                         >
-                                            {dr.doctorName ? `${dr.doctorName} - ` : ''}{shortDate(dr.reviewDate)}
+                                            {formatDoctorLabel(dr.doctorName)} - {shortDate(dr.reviewDate)}
                                             {dr.reviewSetAt && (
                                                 <span className="ml-1.5 text-[10px] font-medium text-gray-400">
                                                     · set {shortDate(dr.reviewSetAt)}
