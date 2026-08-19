@@ -600,6 +600,46 @@ Use Tailwind `dark:` classes. Theme state comes from `ThemeContext`.
 | 2026-08-13 | **Multi-doctor patients were filed under one bucket.** `deriveReviewCategory` produces a category **per doctor** (`doctorReviews[].reviewCategory`), but the list filter matched only the collapsed `patient.reviewCategory`, which `pickPrimaryReview` picks by sorting active reviews on `updated_at` — i.e. *most recently touched*, not most relevant. KNH/26/014560 held a pending review for tomorrow under one doctor and a 09-Aug review under the other; rescheduling the older one bumped its `updated_at`, the collapsed category flipped to `overdue`, and a patient genuinely due tomorrow disappeared from Due Tomorrow. The filter now matches against **every** doctor's category, so a patient can legitimately appear in both Due Tomorrow and Missed Followup — which is the clinical truth. The doctor panel correspondingly narrowed to *its own* doctor's category (previously "has any review with me"), or the other doctor's bucket would leak in; list and Print List now share one `belongsToThisDoctor` rule, since a printed sheet that disagrees with the screen is how a patient gets missed. Also fixed the doctor-panel count, which read `38 of 44` by pairing a doctor-scoped numerator with a hospital-wide denominator and looked like an unloaded page | `src/services/enterpriseReviewService.ts`, `src/components/enterprise/DoctorPastRecordsPanel.tsx`, `CLAUDE.md` |
 
 
+| 2026-08-19 | **Stop Follow-up became trackable, and follow-ups gained a reason.** A stopped follow-up was a dead end — the status was written but nothing listed it, so nobody could audit who had dropped out or why. Added a `followup_stopped` filter chip backed by `ReceptionReviewFilter`, and a shared `StopFollowupModal` (six presets + free text + notes + confirm step) used by both panels — stopping without a stated reason is how a patient silently disappears. `AddFollowupModal` correspondingly gained a **required reason** and a prefilled editable **age** (it previously took only a date of birth, which reception rarely knows), surfaced on the card as "Follow-up for: …" | `src/components/enterprise/StopFollowupModal.tsx`, `src/components/enterprise/AddFollowupModal.tsx`, `src/components/enterprise/PastRecordsPatientCard.tsx`, `src/services/enterpriseReviewService.ts`, `sql/20260819_followup_reason.sql`, `CLAUDE.md` |
+| 2026-08-19 | **Every review now has an owner, and a visit supersedes what was assigned before it.** KNH/26/017766 and KNH/26/018041 sat in Due Tomorrow while their cards read "Upcoming — 08 Sept": discharged 11:20 with an ownerless 20 Aug review, prescribed 08 Sept at 14:44, and the 20 Aug row survived. **Four paths wrote ownerless reviews** — the discharge modal (omitted `doctor_id`), the reception call log (explicit null), past registration (explicit null *though the form already collects a doctor*), and Track Patients (null when unset). A review with `doctor_id` NULL belongs to nobody: no visit closes it, no doctor's list shows it, and it drifts into false Missed Followups. Three are fixed; **Track Patients Add Patient is still open**. The trigger now closes reviews by **assignment time** (`r.created_at < NEW.created_at`), not by whether their date had passed — that older rule missed exactly this case, a review scheduled earlier the same day for a *future* date. Closed as `completed` when its date had arrived, `cancelled` when it had not. **Consequence:** this also closes the *other* doctor's open review when a patient is seen — intended at KKC (two doctors, same-day cross-referrals, last doctor sets the plan), wrong at a site where departments book months ahead independently. Backfill `20260819_assign_unassigned_reviews.sql` is a **merge**, not an update: `idx_unique_active_review_per_doctor` permits one active review per patient+doctor, so a patient holding both an ownerless row and a live Prabhakar row would violate it — the survivor keeps the **later** date, the other is cancelled (not deleted) so history stays auditable. Dr. Divakar's owned reviews deliberately untouched | `sql/20260819_assign_unassigned_reviews.sql`, `sql/20260819_visit_supersedes_earlier_reviews.sql`, `sql/20260817_close_superseded_reviews.sql`, `src/components/enterprise/AdmittedPatientsPanel.tsx`, `src/components/enterprise/ReceptionDashboard.tsx`, `CLAUDE.md` |
+
+---
+
+## Review Assignment Map — every writer of `hospital_patient_reviews`
+
+A patient's review date and treating doctor can be set from **14 places**. Before
+changing any of them, check this list: several are unscoped and can silently
+repoint a *different* doctor's review.
+
+### Database (2)
+| Mechanism | Date | Doctor |
+|---|---|---|
+| `trg_sync_hospital_review_from_prescription` — AFTER INSERT/UPDATE on `hospital_prescriptions`. **Primary path.** Current definition: `sql/20260819_visit_supersedes_earlier_reviews.sql` (NOT `supabase/migrations/20260213_*`, which would reintroduce the duplicate-key error) | `NEW.next_review_date` | `NEW.doctor_id` |
+| `pharmacy_mark_dispensed()` RPC — completes a review when the Rx is dispensed *on* its review date | closes only | patient-scoped |
+
+### Application (12)
+| Where | Doctor | Notes |
+|---|---|---|
+| `EnterpriseDoctorDashboard.upsertReviewFromPrescription` — 4 call sites (`handleSendToPharmacy` ×2, `handleResendToPharmacy`, `handleSendDialysisToPharmacy`) | logged-in | **Duplicates the DB trigger** — two implementations of one rule, currently in agreement |
+| Pharmacy dispense → `syncReviewFromPrescription()` | `prescription.doctor_id` | |
+| `AddFollowupModal` → `scheduleReviewForPatient()` | required in modal | Repoints the existing active review rather than inserting |
+| Reception call log | existing row; insert falls back to last treating doctor | ⚠️ lookup **not doctor-scoped**, `order(next_review_date desc)` picks the furthest-out review |
+| Doctor panel call log | logged-in | Doctor-scoped |
+| Reception past registration | `walkInForm.doctorId` | |
+| Discharge modal (`AdmittedPatientsPanel`) | `dischargeDoctorId` | Also carries `review_reason` |
+| Track Patients → Add Patient | `addPatientForm.doctorId \|\| null` | ⚠️ **still creates ownerless reviews** |
+| Track Patients → cancel / complete / reschedule | unchanged | |
+| Reception walk-in — auto-complete on early visit | patient-scoped | ⚠️ `order(next_review_date asc)` closes the **earliest** review, any doctor |
+| `stopPatientFollowup` / `markPatientDeceased` / `admitPatientDirectly` | — | Cancel; date → null |
+| Track Patients **bulk re-sync on page load** | patient-scoped | ⚠️ **worst offender**: builds one latest-Rx per *patient*, then stamps that date onto **every** pending review including the other doctor's — automatic, silent, no user action |
+
+**Dead code:** `EnterpriseDoctorDashboard.handleSubmitCallLog` (~L575) is defined but
+never referenced — `DoctorPastRecordsPanel` superseded it. It still carries the
+`next_review_date: effectiveReviewDate || callLogTarget.reviewDate` fallback that
+caused the SANDHANALAKSHMI overwrite, so it must not be revived as-is.
+
+---
+
 ## Known Issues (To Be Fixed)
 
 ### [OPEN] Wrong patient on prescription — mismatched patient identity in PA prescription flow
