@@ -25,6 +25,29 @@ import type {
 /** Past Records view — review filters plus the two report views */
 export type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar';
 
+/** "1m 12s" reads faster than "72" when scanning a column of calls. */
+const formatCallDuration = (seconds?: number | null): string | null => {
+    if (typeof seconds !== 'number' || seconds <= 0) return null;
+    const m = Math.floor(seconds / 60);
+    const sec = seconds % 60;
+    return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+};
+
+const formatCallTimestamp = (value?: string | null): string => {
+    if (!value) return '--';
+    return new Date(value).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
+    });
+};
+
+/** Carrier result, in words reception uses rather than the provider's enum. */
+const VOICE_STATUS_LABEL: Record<string, string> = {
+    connected: 'Answered',
+    no_answer: 'No answer',
+    busy: 'Busy',
+    failed: 'Could not connect',
+};
+
 export const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'all') return 'All';
     if (filterKey === 'due_today') return 'Due Today';
@@ -119,6 +142,10 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
         patient.followupStoppedAt || stopFollowupOverrides[patient.id]?.followupStoppedAt || null;
 
     const callHistory = patient.callHistory || [];
+    const voiceCalls = patient.voiceCalls || [];
+    // Which transcripts are open. Card-local: it is pure display state, and
+    // lifting it would mean every panel threading a Set through for no reason.
+    const [openTranscripts, setOpenTranscripts] = React.useState<Record<string, boolean>>({});
     // Why is this patient a missed follow-up?
     //
     // "A date went past" is not an answer reception can act on. The useful facts
@@ -403,6 +430,94 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                             )}
                         </div>
                     </div>
+
+                        {onVoiceCall && (
+                            <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-3.5">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700 mb-1">AI Call History</p>
+                                {voiceCalls.length === 0 ? (
+                                    <p className="text-xs text-gray-500">No AI calls yet.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {voiceCalls.map((call) => {
+                                            const isOpen = !!openTranscripts[call.id];
+                                            const duration = formatCallDuration(call.durationSeconds);
+                                            // 'placed' means Sarvam accepted the call but no outcome has
+                                            // come back. Showing it as a plain entry would read as "we
+                                            // called and they said nothing" — the opposite of the truth.
+                                            const awaitingOutcome = call.status === 'placing' || call.status === 'placed';
+                                            return (
+                                                <div key={call.id} className="text-xs bg-white border border-violet-100 rounded-lg px-2.5 py-2">
+                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                        <span className="font-semibold text-gray-700">{formatCallTimestamp(call.createdAt)}</span>
+                                                        {awaitingOutcome ? (
+                                                            <span className="font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">Waiting for outcome</span>
+                                                        ) : call.status === 'failed' ? (
+                                                            <span className="font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700">Failed</span>
+                                                        ) : (
+                                                            <span className={`font-bold px-1.5 py-0.5 rounded ${call.sarvamStatus === 'connected' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                {VOICE_STATUS_LABEL[call.sarvamStatus || ''] || 'Completed'}
+                                                            </span>
+                                                        )}
+                                                        {duration && <span className="text-gray-500">{duration}</span>}
+                                                        {call.disposition && (
+                                                            <span className={`font-bold px-1.5 py-0.5 rounded ${call.disposition === 'RED_FLAG_REPORTED' ? 'bg-red-100 text-red-800' : 'bg-violet-100 text-violet-800'}`}>
+                                                                {call.disposition.replace(/_/g, ' ')}
+                                                            </span>
+                                                        )}
+                                                        {call.callbackRequested && (
+                                                            <span className="font-bold px-1.5 py-0.5 rounded bg-sky-50 text-sky-700">Callback asked</span>
+                                                        )}
+                                                    </div>
+
+                                                    {awaitingOutcome && (
+                                                        <p className="mt-1 text-amber-700 leading-relaxed">
+                                                            The call was placed. Nothing has come back yet — it is cleared automatically after 30 minutes.
+                                                        </p>
+                                                    )}
+                                                    {call.status === 'failed' && call.failureReason && (
+                                                        <p className="mt-1 text-red-700 leading-relaxed break-words">{call.failureReason}</p>
+                                                    )}
+                                                    {call.reasonText && (
+                                                        <p className="mt-1 text-gray-700 leading-relaxed">Summary: {call.reasonText}</p>
+                                                    )}
+                                                    {(call.spokeTo || call.preferredDay) && (
+                                                        <p className="mt-1 text-gray-500">
+                                                            {call.spokeTo ? `Spoke to ${call.spokeTo}` : ''}
+                                                            {call.spokeTo && call.preferredDay ? ' · ' : ''}
+                                                            {call.preferredDay ? `Prefers ${call.preferredDay}` : ''}
+                                                        </p>
+                                                    )}
+
+                                                    {call.transcript.length > 0 && (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setOpenTranscripts((prev) => ({ ...prev, [call.id]: !prev[call.id] }))}
+                                                                className="mt-1.5 text-xs font-semibold text-violet-700 hover:text-violet-900"
+                                                            >
+                                                                {isOpen ? 'Hide conversation' : `Show conversation (${call.transcript.length} turns)`}
+                                                            </button>
+                                                            {isOpen && (
+                                                                <div className="mt-1.5 space-y-1 max-h-64 overflow-y-auto rounded-md bg-gray-50 border border-gray-100 p-2">
+                                                                    {call.transcript.map((turn, i) => (
+                                                                        <p key={i} className="leading-relaxed">
+                                                                            <span className={`font-bold ${turn.role === 'agent' ? 'text-violet-700' : 'text-gray-700'}`}>
+                                                                                {turn.role === 'agent' ? 'Agent' : 'Patient'}:
+                                                                            </span>{' '}
+                                                                            <span className="text-gray-700">{turn.text}</span>
+                                                                        </p>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                 </div>
 
                 <PastRecordsMetricsSection

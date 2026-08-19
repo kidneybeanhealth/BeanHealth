@@ -24,6 +24,38 @@ export interface ReceptionVisitRecord {
     };
 }
 
+/**
+ * One AI voice call attempt, flattened for display.
+ *
+ * Kept separate from ReceptionCallHistoryEntry rather than folded into it: a
+ * human call log is a receptionist's own note, while this carries a machine
+ * outcome, a verbatim transcript, and — importantly — a state where the call was
+ * placed but nothing ever came back. Collapsing the two would hide that state,
+ * and "we rang and don't know what happened" is exactly what someone needs to
+ * see before ringing again.
+ */
+export interface VoiceCallHistoryEntry {
+    id: string;
+    createdAt: string;
+    completedAt: string | null;
+    /** placing | placed | completed | failed */
+    status: string;
+    /** Carrier result: connected / no_answer / busy / failed */
+    sarvamStatus: string | null;
+    durationSeconds: number | null;
+    failureReason: string | null;
+    /** The agent's own conclusion, e.g. WILL_ATTEND, PATIENT_DECEASED */
+    disposition: string | null;
+    /** What the patient actually said, in their words */
+    reasonText: string | null;
+    spokeTo: string | null;
+    callbackRequested: boolean;
+    preferredDay: string | null;
+    /** Verbatim turns, agent and patient */
+    transcript: { role: string; text: string }[];
+    requestedByName: string | null;
+}
+
 export interface ReceptionCallHistoryEntry {
     id: string;
     called_at: string;
@@ -80,6 +112,7 @@ export interface ReceptionPastRecordPatient {
     lastVisitAt: string | null;
     prescriptions: ReceptionVisitRecord[];
     callHistory: ReceptionCallHistoryEntry[];
+    voiceCalls: VoiceCallHistoryEntry[];
     /**
      * NEW: Multi-doctor support
      * Array of reviews grouped by doctor when patient has multiple doctors
@@ -763,9 +796,15 @@ export async function fetchReceptionPastRecords(
     const prescriptions: ReceptionVisitRecord[] = [];
     const reviews: ReviewRow[] = [];
     const followups: FollowupRow[] = [];
+    const voiceAttempts: any[] = [];
 
     for (const idChunk of idChunks) {
-        const [prescriptionsChunkResult, reviewsChunkResult, followupsChunkResult] = await Promise.all([
+        const [
+            prescriptionsChunkResult,
+            reviewsChunkResult,
+            followupsChunkResult,
+            voiceChunkResult,
+        ] = await Promise.all([
             withTimeout(
                 (supabase
                     .from('hospital_prescriptions' as any)
@@ -800,7 +839,17 @@ export async function fetchReceptionPastRecords(
                 10000,
                 'Timed out while loading follow-up status'
             ),
-        ]) as [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>, SupabaseResult<FollowupRow[]>];
+            withTimeout(
+                (supabase
+                    .from('hospital_voice_call_attempts' as any)
+                    .select('id, patient_id, status, sarvam_status, duration_seconds, failure_reason, transcript, final_agent_variables, requested_by_name, created_at, completed_at')
+                    .eq('hospital_id', hospitalId)
+                    .in('patient_id', idChunk)
+                    .order('created_at', { ascending: false })) as any,
+                10000,
+                'Timed out while loading AI call history'
+            ),
+        ]) as [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>, SupabaseResult<FollowupRow[]>, SupabaseResult<any[]>];
 
         if (prescriptionsChunkResult.error) {
             throw prescriptionsChunkResult.error;
@@ -819,6 +868,17 @@ export async function fetchReceptionPastRecords(
                 throw followupsChunkResult.error;
             }
         }
+
+        // The voice-call table ships with the Sarvam feature; a hospital running
+        // without it must still see its Past Records, so a missing table is not
+        // an error here.
+        if (voiceChunkResult?.error) {
+            const message = String(voiceChunkResult.error.message || '').toLowerCase();
+            if (!message.includes('hospital_voice_call_attempts')) {
+                throw voiceChunkResult.error;
+            }
+        }
+        voiceAttempts.push(...((voiceChunkResult?.data || []) as any[]));
 
         prescriptions.push(...((prescriptionsChunkResult.data || []) as ReceptionVisitRecord[]));
         reviews.push(...((reviewsChunkResult.data || []) as ReviewRow[]));
@@ -848,6 +908,44 @@ export async function fetchReceptionPastRecords(
     const latestFollowupStatusByPatient = new Map<string, string | null>();
     const latestFollowupAtByPatient = new Map<string, string | null>();
     const latestFollowupStatusByDoctorPerPatient = new Map<string, Map<string | null, { status: string | null; calledAt: string | null }>>();
+    // AI call attempts, newest first. final_agent_variables is the agent's own
+    // output block; reading it here keeps the JSONB shape in one place instead of
+    // spread across every component that wants a disposition.
+    const readVar = (vars: any, key: string): string | null => {
+        const raw = vars && typeof vars === 'object' ? vars[key] : null;
+        return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+    };
+    const voiceCallsByPatient = new Map<string, VoiceCallHistoryEntry[]>();
+    for (const attempt of voiceAttempts) {
+        const vars = attempt.final_agent_variables || null;
+        const rawTranscript = Array.isArray(attempt.transcript) ? attempt.transcript : [];
+        const entry: VoiceCallHistoryEntry = {
+            id: attempt.id,
+            createdAt: attempt.created_at,
+            completedAt: attempt.completed_at || null,
+            status: attempt.status || 'placing',
+            sarvamStatus: attempt.sarvam_status || null,
+            durationSeconds: typeof attempt.duration_seconds === 'number' ? attempt.duration_seconds : null,
+            failureReason: attempt.failure_reason || null,
+            disposition: readVar(vars, 'disposition'),
+            reasonText: readVar(vars, 'reason_text'),
+            spokeTo: readVar(vars, 'spoke_to'),
+            // Lowercase yes/no is the one exception in an otherwise uppercase enum
+            // set, so compare case-insensitively — a future normalisation upstream
+            // must not silently turn every callback request into a no.
+            callbackRequested: (readVar(vars, 'callback_requested') || '').toLowerCase() === 'yes',
+            preferredDay: readVar(vars, 'preferred_day'),
+            transcript: rawTranscript
+                .filter((t: any) => t && typeof t.text === 'string' && t.text.trim())
+                .map((t: any) => ({ role: String(t.role || ''), text: String(t.text).trim() })),
+            requestedByName: attempt.requested_by_name || null,
+        };
+        if (!voiceCallsByPatient.has(attempt.patient_id)) {
+            voiceCallsByPatient.set(attempt.patient_id, []);
+        }
+        voiceCallsByPatient.get(attempt.patient_id)!.push(entry);
+    }
+
     const followupsByPatient = new Map<string, ReceptionCallHistoryEntry[]>();
 
     for (const followup of followups) {
@@ -976,6 +1074,7 @@ export async function fetchReceptionPastRecords(
                 lastVisitAt: latestPrescription?.created_at || p.created_at || null,
                 prescriptions: visitHistory,
                 callHistory: (followupsByPatient.get(p.id) || []).slice(0, 3),
+                voiceCalls: (voiceCallsByPatient.get(p.id) || []).slice(0, 5),
                 doctorReviews,
             } as ReceptionPastRecordPatient;
         })
