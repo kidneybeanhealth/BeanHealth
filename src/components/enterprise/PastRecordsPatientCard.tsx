@@ -146,6 +146,9 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
     // Which transcripts are open. Card-local: it is pure display state, and
     // lifting it would mean every panel threading a Set through for no reason.
     const [openTranscripts, setOpenTranscripts] = React.useState<Record<string, boolean>>({});
+    // Collapsed by default. Most cards have no AI call, and on a Missed Followup
+    // list of 40 an always-open block pushes the patient details off screen.
+    const [isVoiceHistoryOpen, setIsVoiceHistoryOpen] = React.useState(false);
     // Why is this patient a missed follow-up?
     //
     // "A date went past" is not an answer reception can act on. The useful facts
@@ -433,11 +436,27 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
 
                         {onVoiceCall && (
                             <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-3.5">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700 mb-1">AI Call History</p>
-                                {voiceCalls.length === 0 ? (
-                                    <p className="text-xs text-gray-500">No AI calls yet.</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsVoiceHistoryOpen((v) => !v)}
+                                    className="w-full flex items-center justify-between gap-2 text-left"
+                                >
+                                    <span className="text-[11px] font-bold uppercase tracking-wide text-violet-700">
+                                        AI Call History
+                                        {/* The count is the whole point of a collapsed header — it has to
+                                            say whether there is anything inside without being opened. */}
+                                        {voiceCalls.length > 0 && (
+                                            <span className="ml-1.5 font-bold text-violet-900">({voiceCalls.length})</span>
+                                        )}
+                                    </span>
+                                    <span className="text-xs font-semibold text-violet-700">
+                                        {isVoiceHistoryOpen ? 'Hide' : 'Show'}
+                                    </span>
+                                </button>
+                                {!isVoiceHistoryOpen ? null : voiceCalls.length === 0 ? (
+                                    <p className="text-xs text-gray-500 mt-1.5">No AI calls yet.</p>
                                 ) : (
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 mt-2">
                                         {voiceCalls.map((call) => {
                                             const isOpen = !!openTranscripts[call.id];
                                             const duration = formatCallDuration(call.durationSeconds);

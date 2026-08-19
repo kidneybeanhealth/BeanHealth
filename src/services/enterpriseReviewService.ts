@@ -915,9 +915,17 @@ export async function fetchReceptionPastRecords(
     // AI call attempts, newest first. final_agent_variables is the agent's own
     // output block; reading it here keeps the JSONB shape in one place instead of
     // spread across every component that wants a disposition.
+    // The agent fills every declared output variable, using placeholders where it
+    // has nothing — so 'NA' arrives as a value and renders as "Summary: NA" and
+    // "Prefers NA". Those are absences, not answers, and showing them as text
+    // makes a card look populated when nothing was learned.
+    const VOID_VALUES = new Set(['na', 'n/a', 'none', 'null', 'nil', '-', '--', 'unknown', 'not applicable']);
     const readVar = (vars: any, key: string): string | null => {
         const raw = vars && typeof vars === 'object' ? vars[key] : null;
-        return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+        if (typeof raw !== 'string') return null;
+        const trimmed = raw.trim();
+        if (!trimmed || VOID_VALUES.has(trimmed.toLowerCase())) return null;
+        return trimmed;
     };
     const voiceCallsByPatient = new Map<string, VoiceCallHistoryEntry[]>();
     for (const attempt of voiceAttempts) {
