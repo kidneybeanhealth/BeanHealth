@@ -31,6 +31,7 @@ import PastRecordsPatientCard, {
     formatPastDate,
     type PastRecordsView,
 } from './PastRecordsPatientCard';
+import { buildPastRecordsPrintHtml } from './pastRecordsPrint';
 
 // Past Records report views — lazy (only loaded when the chip is opened)
 const WeeklyOverdueReportPanel = lazy(() =>
@@ -159,14 +160,6 @@ const compareQueueTokens = (a: any, b: any, dir: 'asc' | 'desc'): number => {
     if (bMissing) return -1;
     return dir === 'asc' ? na - nb : nb - na;
 };
-
-const escapeHtml = (value: string): string =>
-    value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
 
 const ReceptionDashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -568,98 +561,12 @@ const ReceptionDashboard: React.FC = () => {
             return;
         }
 
-        const generatedAt = new Date().toLocaleString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
+        const html = buildPastRecordsPrintHtml({
+            records: printRecords,
+            orgLabel: displayName || 'Hospital',
+            filterLabel: getReviewFilterLabel(reviewFilter),
+            footerNote: 'Printed from Reception Past Records module.',
         });
-
-        const rowsHtml = printRecords
-            .map((patient, index) => {
-                const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
-                return `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${escapeHtml(patient.name || '--')}</td>
-                        <td>${patient.age ?? '--'}</td>
-                        <td>${relationLabel} ${escapeHtml(patient.father_husband_name || '--')}</td>
-                        <td>${escapeHtml(patient.mr_number || '--')}</td>
-                        <td>${formatPastDate(patient.latestReviewDate)}</td>
-                        <td>${formatPastDate(patient.lastVisitAt)}</td>
-                    </tr>
-                `;
-            })
-            .join('');
-
-        const filterLabel = getReviewFilterLabel(reviewFilter);
-
-        const html = `
-            <!doctype html>
-            <html>
-            <head>
-                <meta charset="utf-8" />
-                <title>Past Records Print List</title>
-                <style>
-                    * { box-sizing: border-box; }
-                    body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 24px; color: #1f2937; }
-                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-                    .title { font-size: 20px; font-weight: 700; margin: 0; }
-                    .meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
-                    .pill { display: inline-block; background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; margin-right: 8px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
-                    thead th { text-align: left; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px; }
-                    tbody td { border: 1px solid #e5e7eb; padding: 10px; font-size: 12px; vertical-align: top; }
-                    tbody tr:nth-child(even) { background: #fcfcfd; }
-                    .footer { margin-top: 14px; font-size: 11px; color: #6b7280; }
-                    @media print {
-                        body { margin: 10mm; }
-                        .no-print { display: none; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <div>
-                        <h1 class="title">Past Records List</h1>
-                        <p class="meta">${escapeHtml(displayName || 'Hospital')}</p>
-                        <p class="meta">Generated: ${generatedAt}</p>
-                    </div>
-                    <div>
-                        <span class="pill">Filter: ${escapeHtml(filterLabel)}</span>
-                        <span class="pill">Total: ${printRecords.length}</span>
-                    </div>
-                </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Age</th>
-                            <th>S/o / W/o</th>
-                            <th>MR ID</th>
-                            <th>Due Date</th>
-                            <th>Last Visit Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rowsHtml}
-                    </tbody>
-                </table>
-
-                <p class="footer">Printed from Reception Past Records module.</p>
-
-                <script>
-                    window.onload = function () {
-                        window.print();
-                    };
-                </script>
-            </body>
-            </html>
-        `;
 
         printWindow.document.open();
         printWindow.document.write(html);

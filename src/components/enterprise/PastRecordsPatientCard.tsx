@@ -65,10 +65,8 @@ export const getReviewBadgeClass = (category: ReceptionReviewFilter): string => 
     return 'bg-gray-100 text-gray-600';
 };
 
-export const formatPastDate = (value?: string | null): string => {
-    if (!value) return '--';
-    return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-};
+// Lives in pastRecordsPrint so the print builder pulls in no React.
+export { formatPastDate } from './pastRecordsPrint';
 
 const shortDate = (value?: string | null): string => {
     if (!value) return '--';
