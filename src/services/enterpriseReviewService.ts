@@ -379,6 +379,19 @@ const groupReviewsByDoctor = (
     const doctorReviews: DoctorReview[] = [];
     for (const [doctorId, reviews] of reviewsByDoctor) {
         const primaryReview = pickPrimaryReview(reviews);
+
+        // A CANCELLED review is not an appointment — it was explicitly called off,
+        // by the visit-supersedes trigger, a stop-follow-up, a deceased mark, or the
+        // 19 Aug backfill collapsing a duplicate. Rendering it alongside the live
+        // appointment is what made cancelled ownerless rows look like unassigned
+        // patients on Due Tomorrow cards. 'completed' still renders: "seen on X" is
+        // real history the caller needs.
+        //
+        // pickPrimaryReview already prefers an active row, so this only ever drops a
+        // doctor whose reviews are ALL cancelled. Patients left with no chip at all
+        // fall through to the card's existing single-date fallback.
+        if (primaryReview && primaryReview.status === 'cancelled') continue;
+
         if (primaryReview) {
             const doctorInfo = doctorId ? doctorNamesMap.get(doctorId) : null;
             const reviewDate = normalizeDateOnly(primaryReview.next_review_date || null);
@@ -390,7 +403,18 @@ const groupReviewsByDoctor = (
             const sourceRx = primaryReview.source_prescription_id
                 ? rxInfoById.get(primaryReview.source_prescription_id) || null
                 : null;
-            const reviewSetAt = sourceRx?.createdAt || primaryReview.updated_at || primaryReview.created_at || null;
+            // When this cycle was actually ASSIGNED. For a prescription-backed review
+            // that is the visit; for a manually-entered one it is when the row was
+            // created. Deliberately NOT updated_at — any later touch rewrites it, so
+            // a review cancelled by the 19 Aug backfill was labelled "set 20 Aug",
+            // making a months-old row look like it had just been created.
+            const reviewSetAt = sourceRx?.createdAt || primaryReview.created_at || primaryReview.updated_at || null;
+
+            // deriveReviewCategory still gets the ORIGINAL expression. Feeding it
+            // created_at would make more reviews look older than the visit and so
+            // supersede more of them — probably correct, but it changes who appears
+            // in Missed Followup, which is a clinical call rather than a display fix.
+            const assignedAtForCategory = sourceRx?.createdAt || primaryReview.updated_at || primaryReview.created_at || null;
 
             const reviewCategory = deriveReviewCategory(
                 reviewDate,
@@ -401,7 +425,7 @@ const groupReviewsByDoctor = (
                 latestFollowupStatus,
                 followupInfo?.calledAt || null,
                 lastVisitAt,
-                reviewSetAt
+                assignedAtForCategory
             );
 
             const reviewSource: DoctorReview['reviewSource'] = sourceRx
