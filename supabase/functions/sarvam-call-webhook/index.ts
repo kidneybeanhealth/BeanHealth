@@ -97,8 +97,22 @@ serve(async (req) => {
         const payload = await req.json().catch(() => null)
         if (!payload) return json({ error: 'Invalid JSON' }, 400)
 
+        // TWO DELIVERY SHAPES, one endpoint.
+        //
+        //  A) The platform's Instant Outbound webhook — status, duration,
+        //     interaction_transcript, final_agent_variables, and our token in the
+        //     query string or webhook_config.metadata.
+        //  B) The agent's own on_end HTTP tool — a flat body of just the output
+        //     variables, with callback_token echoed back from what we sent in.
+        //
+        // Shape B carries no call metadata (the agent does not know how long the
+        // call was or how the carrier classified it), so those fields stay null.
+        // Accepting both means the outcome lands whichever mechanism fires — and
+        // if both fire, the second is rejected as a replay by the single-use rule.
         const token = url.searchParams.get('token')
             || payload?.webhook_config?.metadata?.token
+            || payload?.callback_token
+            || payload?.token
             || null
         if (!token) return json({ error: 'Missing token' }, 401)
 
@@ -124,7 +138,12 @@ serve(async (req) => {
             return json({ error: 'Unrecognised or already-completed attempt' }, 404)
         }
 
-        const sarvamStatus: string | null = payload?.status ?? null
+        // Shape B has no carrier status. But the agent only reaches on_end if the
+        // call actually connected, so treat its absence as 'connected' rather than
+        // letting it fall through to 'not_reachable' and record a call that plainly
+        // happened as unreachable.
+        const sarvamStatus: string | null = payload?.status
+            ?? (payload?.disposition || payload?.callback_token ? 'connected' : null)
         const callStatus = mapCallStatus(sarvamStatus)
         const transcript = payload?.interaction_transcript ?? null
         const nowIso = new Date().toISOString()
@@ -134,7 +153,8 @@ serve(async (req) => {
         // Storing these in JSONB and hoping somebody reads it is how a family who
         // told us the patient had died gets called again next month. The agent's
         // own script calls that "the single most important thing to get right".
-        const finalVars = payload?.final_agent_variables ?? null
+        // Shape A nests the outputs; shape B has them at the top level.
+        const finalVars = payload?.final_agent_variables ?? payload ?? null
         const disposition = readDisposition(finalVars)
         const reasonText = readVar(finalVars, 'reason_text')
 

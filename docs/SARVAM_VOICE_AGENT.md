@@ -70,6 +70,21 @@ when a patient reports a red-flag symptom, so `place-review-call` refuses to dia
 at all when it is unset — a call that goes silent in an emergency is worse than a
 call that never happened.
 
+`SARVAM_SEND_CALLBACK_TOKEN` is **off unless set to `true`**. It adds a tenth
+agent variable, `callback_token`, which the agent's `on_end` tool echoes back so
+the webhook can authenticate an outcome that arrives by that route rather than
+the platform's own callback. Sarvam validates `agent_variables` against the set
+the agent declares and rejects the entire call otherwise:
+
+```
+422 Agent variables '{'callback_token'}' not found in agent variables
+    of app 'Conversatio-aaae688f-7e96'
+```
+
+So it is not a degradation to leave it off — sending it before the variable
+exists stops every call. Declare `callback_token` on the agent, recommit, then
+turn this on.
+
 `SARVAM_CONNECTION_ID` and `SARVAM_AGENT_PHONE_NUMBER` are a **pair** — the number
 only works with the connection it was bought under. Don't mix them if you add more
 connections later.

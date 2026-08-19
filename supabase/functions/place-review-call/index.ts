@@ -177,6 +177,26 @@ serve(async (req) => {
             return Math.max(0, Math.floor((today - due) / 86400000))
         })()
 
+        // Expire attempts that never got an outcome.
+        //
+        // The in-flight uniqueness index is what stops a double-click dialling twice,
+        // but it has no timeout: an attempt whose webhook never arrives pins that
+        // patient at "a call is already in progress" permanently. A call cannot still
+        // be running after 30 minutes, so anything older is stale by definition, and
+        // a patient must never become permanently un-callable because a third party
+        // failed to tell us how a call ended.
+        const STALE_AFTER_MIN = 30
+        await admin
+            .from('hospital_voice_call_attempts')
+            .update({
+                status: 'failed',
+                failure_reason: `No outcome received within ${STALE_AFTER_MIN} minutes — expired automatically`,
+                completed_at: new Date().toISOString(),
+            })
+            .eq('hospital_id', caller.id)
+            .in('status', ['placing', 'placed'])
+            .lt('created_at', new Date(Date.now() - STALE_AFTER_MIN * 60_000).toISOString())
+
         // ── Reserve the attempt BEFORE calling Sarvam ────────────────────────
         // Written first so a webhook that arrives before this function returns
         // still finds its row. The partial unique index on (patient_id) WHERE
@@ -214,6 +234,9 @@ serve(async (req) => {
 
         // org/workspace live in the PATH, not the body — easy to miss because the
         // docs render them as {org_id}/{workspace_id} placeholders.
+        const sendCallbackToken =
+            String(Deno.env.get('SARVAM_SEND_CALLBACK_TOKEN') ?? '').toLowerCase() === 'true'
+
         const endpoint = `https://apps.sarvam.ai/api/outbounds/v1/orgs/${orgId}/workspaces/${workspaceId}/outbounds`
 
         const payload: Record<string, unknown> = {
@@ -241,6 +264,22 @@ serve(async (req) => {
                     hospital_name: hospital?.name ?? '',
                     hospital_address: Deno.env.get('SARVAM_HOSPITAL_ADDRESS') ?? '',
                     front_desk_number: frontDeskNumber,
+                    // Echoed back by the agent's on_end tool so the webhook can
+                    // authenticate the outcome. Never referenced in the script, so it
+                    // is never spoken; it exists only to be handed straight back.
+                    //
+                    // BEHIND A FLAG because Sarvam validates agent_variables against
+                    // the set the agent declares and rejects the whole call otherwise:
+                    //
+                    //   422 Agent variables '{'callback_token'}' not found in agent
+                    //       variables of app 'Conversatio-aaae688f-7e96'
+                    //
+                    // So sending it before the variable is declared in the console
+                    // does not degrade outcome delivery — it stops every call dead.
+                    // Declare it there first, recommit the agent, then set
+                    // SARVAM_SEND_CALLBACK_TOKEN=true. Off by default so the agent
+                    // config, not this code, is what decides.
+                    ...(sendCallbackToken ? { callback_token: webhookToken } : {}),
                 },
                 app_overrides: { initial_language_name: languageName },
             },

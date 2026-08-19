@@ -73,7 +73,11 @@ export async function placeReviewCall(
             const ctx = (error as any)?.context;
             if (ctx && typeof ctx.json === 'function') {
                 const parsed = await ctx.json();
-                detail = parsed?.error || parsed?.detail || '';
+                // `detail` carries the upstream provider's own message and `error` is
+                // our generic wrapper, so detail wins — otherwise a Sarvam rejection
+                // surfaces as "Could not place the call" and the actual reason
+                // (bad version, unknown agent, expired key) is thrown away.
+                detail = [parsed?.error, parsed?.detail].filter(Boolean).join(' — ');
             }
         } catch { /* fall through to the generic message */ }
         throw new Error(detail || error.message || 'Could not place the call');
