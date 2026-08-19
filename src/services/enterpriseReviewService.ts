@@ -51,8 +51,12 @@ export interface VoiceCallHistoryEntry {
     spokeTo: string | null;
     callbackRequested: boolean;
     preferredDay: string | null;
-    /** Verbatim turns, agent and patient */
+    /** Verbatim turns, agent and patient. Empty on the on_end path — Sarvam
+     *  exposes no transcript variable, so the agent cannot send one. */
     transcript: { role: string; text: string }[];
+    /** The agent's own account of the call, written into a declared output
+     *  variable. A paraphrase, not evidence — labelled as such in the UI. */
+    callSummary: string | null;
     requestedByName: string | null;
 }
 
@@ -935,6 +939,7 @@ export async function fetchReceptionPastRecords(
             // must not silently turn every callback request into a no.
             callbackRequested: (readVar(vars, 'callback_requested') || '').toLowerCase() === 'yes',
             preferredDay: readVar(vars, 'preferred_day'),
+            callSummary: readVar(vars, 'call_summary'),
             transcript: rawTranscript
                 .filter((t: any) => t && typeof t.text === 'string' && t.text.trim())
                 .map((t: any) => ({ role: String(t.role || ''), text: String(t.text).trim() })),

@@ -496,6 +496,15 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                                     {call.reasonText && (
                                                         <p className="mt-1 text-gray-700 leading-relaxed">Summary: {call.reasonText}</p>
                                                     )}
+                                                    {call.callSummary && (
+                                                        <div className="mt-1.5 rounded-md bg-gray-50 border border-gray-100 px-2 py-1.5">
+                                                            {/* Labelled explicitly. This is the agent's own account of the
+                                                                call, not a transcript — a paraphrase must never be read as
+                                                                a verbatim record of what a patient said. */}
+                                                            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Agent's account of the call</p>
+                                                            <p className="mt-0.5 text-gray-700 leading-relaxed whitespace-pre-line">{call.callSummary}</p>
+                                                        </div>
+                                                    )}
                                                     {(call.spokeTo || call.preferredDay) && (
                                                         <p className="mt-1 text-gray-500">
                                                             {call.spokeTo ? `Spoke to ${call.spokeTo}` : ''}
