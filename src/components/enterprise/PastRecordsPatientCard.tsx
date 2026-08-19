@@ -66,7 +66,8 @@ export const getReviewBadgeClass = (category: ReceptionReviewFilter): string => 
 };
 
 // Lives in pastRecordsPrint so the print builder pulls in no React.
-export { formatPastDate } from './pastRecordsPrint';
+import { formatPastDate } from './pastRecordsPrint';
+export { formatPastDate };
 
 const shortDate = (value?: string | null): string => {
     if (!value) return '--';
