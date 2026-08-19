@@ -46,8 +46,19 @@ psql "$DATABASE_URL" -f sql/20260817_voice_call_attempts.sql
 ### 2. Commit the agent in the Sarvam console
 
 Done — committed as **`app_version: 3`** on `app_id: Conversatio-aaae688f-7e96`.
-Pin it explicitly (`SARVAM_APP_VERSION=3`) so later edits to the agent cannot
-shift behaviour under production. Leave it unset only while iterating.
+
+`SARVAM_APP_VERSION` is **required**, not optional. Leaving it unset does not
+track the newest commit — `version_filter` defaults to `specific`, so the API
+rejects the call:
+
+```
+422 app_config: app_version is required when version_filter is specific
+```
+
+`place-review-call` therefore refuses with a 503 naming the secret, rather than
+round-tripping an upstream error that names a parameter we never send. After
+editing the agent in the console, commit it and repin this to the new number —
+otherwise production keeps running the old script.
 
 ### 3. Secrets
 

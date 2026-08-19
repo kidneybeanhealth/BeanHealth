@@ -234,6 +234,16 @@ serve(async (req) => {
 
         // org/workspace live in the PATH, not the body — easy to miss because the
         // docs render them as {org_id}/{workspace_id} placeholders.
+        // Refuse here rather than letting Sarvam reject it. The upstream message
+        // ("app_version is required when version_filter is specific") names a
+        // parameter we never send and gives no hint that the fix is one secret.
+        if (!appVersionRaw || !Number.isFinite(Number(appVersionRaw))) {
+            return json({
+                error: 'Voice calling is not configured',
+                detail: 'SARVAM_APP_VERSION is unset. Set it to the agent version committed in the Sarvam console.',
+            }, 503)
+        }
+
         const sendCallbackToken =
             String(Deno.env.get('SARVAM_SEND_CALLBACK_TOKEN') ?? '').toLowerCase() === 'true'
 
@@ -243,10 +253,17 @@ serve(async (req) => {
             app_config: {
                 app_id: Deno.env.get('SARVAM_APP_ID')!,
                 app_type: 'agent',
-                // Null tracks the newest commit (handy while iterating); an explicit
-                // version pins production. Sarvam's guidance is to pin — set
-                // SARVAM_APP_VERSION once the agent is committed.
-                app_version: appVersionRaw ? Number(appVersionRaw) : null,
+                // Always an explicit number. Sending null does NOT mean "use the
+                // newest commit" — version_filter defaults to 'specific', so the
+                // API rejects the call outright:
+                //
+                //   422 app_config: app_version is required when version_filter
+                //       is specific
+                //
+                // Pinning is Sarvam's own guidance for production anyway: without
+                // it, an edit committed in the console changes what patients hear
+                // with no deploy and no record on our side.
+                app_version: Number(appVersionRaw),
                 connection_config: {
                     connection_id: Deno.env.get('SARVAM_CONNECTION_ID')!,
                     agent_phone_number: Deno.env.get('SARVAM_AGENT_PHONE_NUMBER')!,
