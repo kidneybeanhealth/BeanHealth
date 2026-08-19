@@ -45,7 +45,16 @@ psql "$DATABASE_URL" -f sql/20260817_voice_call_attempts.sql
 
 ### 2. Commit the agent in the Sarvam console
 
-Done — committed as **`app_version: 3`** on `app_id: Conversatio-aaae688f-7e96`.
+Committed on `app_id: Conversatio-aaae688f-7e96`. **Pin `SARVAM_APP_VERSION=7`.**
+
+Version history, because pinning the wrong one silently changes the call:
+
+| Version | What it has |
+|---|---|
+| 3 | Original agent. **No `post_call_outcome_webhook` tool** — a call on this version connects and reports nothing back |
+| 5 | Adds the on_end webhook tool and declares `callback_token` |
+| 6 | English-only, inbound-style greeting. **Do not use** — both were mistaken: English-only strands most of a Coimbatore patient list in `LANGUAGE_BARRIER`, and "thank you for calling" is false on an outbound call |
+| **7** | v5 + the `callback_token` guard line + `LANGUAGE_BARRIER`, with v6's language and greeting reverted |
 
 `SARVAM_APP_VERSION` is **required**, not optional. Leaving it unset does not
 track the newest commit — `version_filter` defaults to `specific`, so the API
@@ -121,6 +130,23 @@ Use **your own mobile**, on a test patient whose phone is set to it. Then check:
 - a matching row appears in `hospital_patient_followups`
 - the Call History card on that patient shows `[AI call] …`
 - `next_review_date` is **unchanged**
+
+## Two outcome paths, and what each carries
+
+| | Platform webhook (`webhook_config.url`) | Agent `post_call_outcome_webhook` (on_end) |
+|---|---|---|
+| Fires | Never observed — two connected calls, no delivery | On call end |
+| Auth | `?token=` query string | `callback_token` in the body |
+| Carries | status, duration, **transcript**, final variables | declared output variables only |
+
+The webhook endpoint accepts both shapes. The on_end tool is what actually
+works today, and it **cannot carry the transcript** — Sarvam exposes no system
+variable for it, so it is not addable from the agent surface. Retrieving the
+verbatim conversation needs either the platform webhook fixed or a polling
+endpoint; both are open with Sarvam support.
+
+Because shape B has no carrier status, its presence is read as `connected` — the
+agent only reaches on_end if the call connected.
 
 ## Outcome mapping
 
