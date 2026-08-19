@@ -444,13 +444,23 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                             // 'placed' means Sarvam accepted the call but no outcome has
                                             // come back. Showing it as a plain entry would read as "we
                                             // called and they said nothing" — the opposite of the truth.
-                                            const awaitingOutcome = call.status === 'placing' || call.status === 'placed';
+                                            const inFlight = call.status === 'placing' || call.status === 'placed';
+                                            // Staleness is derived from the clock, not from the stored
+                                            // status. The server-side sweep runs at the START of the next
+                                            // place-review-call — so if nobody rings anyone else, a row
+                                            // sits at 'placed' indefinitely and the card would keep
+                                            // promising an outcome that is never coming.
+                                            const ageMinutes = (Date.now() - new Date(call.createdAt).getTime()) / 60000;
+                                            const outcomeLost = inFlight && ageMinutes > 30;
+                                            const awaitingOutcome = inFlight && !outcomeLost;
                                             return (
                                                 <div key={call.id} className="text-xs bg-white border border-violet-100 rounded-lg px-2.5 py-2">
                                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                                         <span className="font-semibold text-gray-700">{formatCallTimestamp(call.createdAt)}</span>
                                                         {awaitingOutcome ? (
                                                             <span className="font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">Waiting for outcome</span>
+                                                        ) : outcomeLost ? (
+                                                            <span className="font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-800">No outcome received</span>
                                                         ) : call.status === 'failed' ? (
                                                             <span className="font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700">Failed</span>
                                                         ) : (
@@ -471,7 +481,13 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
 
                                                     {awaitingOutcome && (
                                                         <p className="mt-1 text-amber-700 leading-relaxed">
-                                                            The call was placed. Nothing has come back yet — it is cleared automatically after 30 minutes.
+                                                            The call was placed. The result usually lands within a few minutes of it ending.
+                                                        </p>
+                                                    )}
+                                                    {outcomeLost && (
+                                                        <p className="mt-1 text-orange-800 leading-relaxed">
+                                                            The call was placed, but no result was ever reported back — so we cannot say
+                                                            whether it was answered or what was said. Check with the patient before assuming.
                                                         </p>
                                                     )}
                                                     {call.status === 'failed' && call.failureReason && (
