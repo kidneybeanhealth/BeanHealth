@@ -23,6 +23,7 @@ import {
 import AdmittedPatientsPanel from './AdmittedPatientsPanel';
 import { resolvePatientDoctorSpecialty } from './PastRecordsMetricsSection';
 import AddFollowupModal from './AddFollowupModal';
+import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
@@ -94,6 +95,7 @@ interface CallLogTarget {
 interface StopFollowupTarget {
     patientId: string;
     patientName: string;
+    mrNumber?: string | null;
 }
 
 interface StopFollowupOverride {
@@ -798,8 +800,8 @@ const ReceptionDashboard: React.FC = () => {
         setStopFollowupTarget({
             patientId: patient.id,
             patientName: patient.name,
+            mrNumber: patient.mr_number,
         });
-        setStopFollowupReason(patient.followupStopReason || '');
     };
 
     const closeStopFollowupModal = () => {
@@ -808,15 +810,10 @@ const ReceptionDashboard: React.FC = () => {
         setStopFollowupReason('');
     };
 
-    const handleSubmitStopFollowup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!profile?.id || !stopFollowupTarget) return;
-
-        const reason = stopFollowupReason.trim();
-        if (!reason) {
-            toast.error('Reason is required to stop follow-up');
-            return;
-        }
+    // Reason and notes come from StopFollowupModal, which is shared with the
+    // Doctor dashboard so both surfaces record the same thing the same way.
+    const handleSubmitStopFollowup = async (reason: string, notes: string) => {
+        if (!profile?.id || !stopFollowupTarget || !reason.trim()) return;
 
         setStopFollowupSubmitting(true);
         try {
@@ -824,6 +821,7 @@ const ReceptionDashboard: React.FC = () => {
                 hospitalId: profile.id,
                 patientId: stopFollowupTarget.patientId,
                 reason,
+                notes,
             });
 
             const nowIso = new Date().toISOString();
@@ -2308,7 +2306,7 @@ const ReceptionDashboard: React.FC = () => {
                                     )}
                                 </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                    {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'calendar'] as PastRecordsView[]).map((filterKey) => (
+                                    {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'followup_stopped', 'calendar'] as PastRecordsView[]).map((filterKey) => (
                                         <button
                                             key={filterKey}
                                             type="button"
@@ -3528,65 +3526,13 @@ const ReceptionDashboard: React.FC = () => {
             )}
 
             {stopFollowupTarget && (
-                <div className="fixed inset-0 z-[99] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white flex items-start justify-between gap-3">
-                            <div>
-                                <h3 className="text-lg font-bold">Stop Follow-up</h3>
-                                <p className="text-amber-100 text-sm mt-0.5 font-medium">
-                                    {stopFollowupTarget.patientName}
-                                </p>
-                            </div>
-                            <button
-                                onClick={closeStopFollowupModal}
-                                disabled={stopFollowupSubmitting}
-                                className="p-1.5 rounded-lg text-amber-100 hover:text-white hover:bg-amber-700/50 transition-colors disabled:opacity-50"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSubmitStopFollowup} className="p-6 space-y-4">
-                            <p className="text-sm text-gray-600">
-                                This will cancel active upcoming or pending reviews for this patient.
-                            </p>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                    Reason <span className="text-red-500">*</span>
-                                </label>
-                                <textarea
-                                    value={stopFollowupReason}
-                                    onChange={(e) => setStopFollowupReason(e.target.value)}
-                                    rows={3}
-                                    placeholder="Enter reason for stopping follow-up"
-                                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 resize-none"
-                                    required
-                                />
-                            </div>
-
-                            <div className="flex gap-3 pt-1">
-                                <button
-                                    type="button"
-                                    onClick={closeStopFollowupModal}
-                                    disabled={stopFollowupSubmitting}
-                                    className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-60"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={stopFollowupSubmitting}
-                                    className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 shadow-md transition-all disabled:opacity-60"
-                                >
-                                    {stopFollowupSubmitting ? 'Saving...' : 'Stop Follow-up'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <StopFollowupModal
+                    patientName={stopFollowupTarget.patientName}
+                    mrNumber={stopFollowupTarget.mrNumber}
+                    submitting={stopFollowupSubmitting}
+                    onCancel={closeStopFollowupModal}
+                    onConfirm={(reason, notes) => handleSubmitStopFollowup(reason, notes)}
+                />
             )}
 
             {/* Printer Setup Modal */}

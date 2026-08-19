@@ -33,6 +33,7 @@ export const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'overdue') return 'Missed Followup';
     if (filterKey === 'followup_needed') return 'Followup Needed';
     if (filterKey === 'review_completed') return 'Review Completed';
+    if (filterKey === 'followup_stopped') return 'Follow-up Stopped';
     if (filterKey === 'weekly_report') return 'Overdue Weekly Report';
     if (filterKey === 'calendar') return 'Calendar';
     return 'Not Completed';
@@ -45,6 +46,7 @@ export const getReviewBadgeClass = (category: ReceptionReviewFilter): string => 
     if (category === 'overdue') return 'bg-rose-50 text-rose-700';
     if (category === 'followup_needed') return 'bg-amber-50 text-amber-700';
     if (category === 'not_completed') return 'bg-red-50 text-red-700';
+    if (category === 'followup_stopped') return 'bg-amber-50 text-amber-700';
     return 'bg-gray-100 text-gray-600';
 };
 
@@ -126,6 +128,12 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
         (dr) => dr.reviewCategory === 'overdue' || dr.reviewCategory === 'followup_needed'
     ) || null;
     const latestVisit = patient.prescriptions?.[0] || null;
+    // Why this patient is being brought back, from whichever doctor's review is
+    // live. Shown for everyone, not just the overdue — reception reads it before
+    // dialling, and "come for review" is not something you can say on a call.
+    const followupReason = (patient.doctorReviews || [])
+        .map((dr) => dr.reviewReason)
+        .find((r) => r && r.trim()) || null;
     const lastCall = (patient.callHistory || [])[0] || null;
 
     const visibleCallHistory = isCallHistoryExpanded ? callHistory : callHistory.slice(0, 2);
@@ -227,6 +235,12 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                 Visits: {patient.prescriptions?.length || 0}
                             </span>
                         </div>
+
+                        {followupReason && !patient.isDeceased && !isFollowupStopped && (
+                            <div className="rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-[11px] leading-relaxed text-sky-900">
+                                <span className="font-bold text-sky-800">Follow-up for: </span>{followupReason}
+                            </div>
+                        )}
 
                         {overdueReview && !patient.isDeceased && !isFollowupStopped && (
                             <div className="rounded-lg border border-rose-200 bg-rose-50/60 px-3 py-2 text-[11px] leading-relaxed text-rose-900">

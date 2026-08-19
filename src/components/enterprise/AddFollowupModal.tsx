@@ -72,6 +72,8 @@ const AddFollowupModal: React.FC<Props> = ({ hospitalId, lockedDoctor = null, on
     const [doctors, setDoctors] = useState<DoctorOption[]>([]);
     const [doctorId, setDoctorId] = useState<string>(lockedDoctor?.id || '');
     const [reviewDate, setReviewDate] = useState('');
+    const [reason, setReason] = useState('');
+    const [age, setAge] = useState('');
     const [tests, setTests] = useState('');
     const [specialists, setSpecialists] = useState('');
 
@@ -121,6 +123,9 @@ const AddFollowupModal: React.FC<Props> = ({ hospitalId, lockedDoctor = null, on
 
     const selectPatient = useCallback(async (hit: PatientHit) => {
         setPatient(hit);
+        // Prefilled from the record: most hand-added patients have no age on file,
+        // and this is the moment someone is already looking at them.
+        setAge(hit.age != null ? String(hit.age) : '');
         setExistingReviews([]);
         setReviewsLoading(true);
         try {
@@ -133,6 +138,7 @@ const AddFollowupModal: React.FC<Props> = ({ hospitalId, lockedDoctor = null, on
         if (!patient || saving) return;
         if (!doctorId) { toast.error('Choose which doctor this review is for'); return; }
         if (!reviewDate) { toast.error('Choose a review date'); return; }
+        if (!reason.trim()) { toast.error('Say why this patient is being brought back'); return; }
 
         setSaving(true);
         const toastId = toast.loading('Scheduling follow-up…');
@@ -142,8 +148,10 @@ const AddFollowupModal: React.FC<Props> = ({ hospitalId, lockedDoctor = null, on
                 patientId: patient.id,
                 doctorId,
                 reviewDate,
+                reviewReason: reason.trim() || null,
                 testsToReview: tests.trim() || null,
                 specialistsToReview: specialists.trim() || null,
+                age: age.trim() || null,
             });
             const doctorName = lockedDoctor?.name || doctors.find(d => d.id === doctorId)?.name || 'the doctor';
             toast.success(
@@ -317,6 +325,35 @@ const AddFollowupModal: React.FC<Props> = ({ hospitalId, lockedDoctor = null, on
                                 />
                             </div>
 
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">
+                                    Reason for follow-up <span className="text-rose-500">*</span>
+                                </label>
+                                <textarea
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    rows={2}
+                                    placeholder="e.g. Recheck creatinine after dose change"
+                                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-200 resize-none"
+                                />
+                                <p className="mt-1 text-[11px] text-gray-500">
+                                    Whoever rings this patient reads this first — "come for review" is not a reason.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">
+                                    Age {patient.age == null && <span className="font-normal normal-case text-amber-600">· missing on file</span>}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={age}
+                                    onChange={(e) => setAge(e.target.value)}
+                                    placeholder="e.g. 54"
+                                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-200"
+                                />
+                            </div>
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Tests to review</label>
@@ -349,7 +386,7 @@ const AddFollowupModal: React.FC<Props> = ({ hospitalId, lockedDoctor = null, on
                         </button>
                         <button
                             onClick={handleSave}
-                            disabled={saving || !doctorId || !reviewDate}
+                            disabled={saving || !doctorId || !reviewDate || !reason.trim()}
                             className="px-5 py-2 text-sm font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {saving ? 'Scheduling…' : clashingReview ? 'Move Review' : 'Add to Follow-up'}

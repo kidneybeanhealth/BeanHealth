@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { withTimeout } from '../utils/requestUtils';
 
-export type ReceptionReviewFilter = 'all' | 'due_today' | 'due_tomorrow' | 'upcoming' | 'overdue' | 'followup_needed' | 'not_completed' | 'review_completed';
+export type ReceptionReviewFilter = 'all' | 'due_today' | 'due_tomorrow' | 'upcoming' | 'overdue' | 'followup_needed' | 'not_completed' | 'review_completed' | 'followup_stopped';
 
 export interface ReceptionVisitRecord {
     id: string;
@@ -49,6 +49,8 @@ export interface DoctorReview {
     reviewSetAt: string | null;
     /** What set it: a prescription, a discharge card, or a reception-side entry */
     reviewSource: 'prescription' | 'discharge_card' | 'reception' | null;
+    /** Why the patient is being brought back, as typed by whoever scheduled it. */
+    reviewReason: string | null;
 }
 
 export interface ReceptionPastRecordPatient {
@@ -150,6 +152,7 @@ type ReviewRow = {
     completed_at?: string | null;
     created_at?: string | null;
     updated_at?: string | null;
+    review_reason?: string | null;
 };
 
 type FollowupRow = {
@@ -418,6 +421,7 @@ const groupReviewsByDoctor = (
                 reviewCategory,
                 reviewSetAt,
                 reviewSource,
+                reviewReason: primaryReview.review_reason || null,
             });
         }
     }
@@ -631,6 +635,13 @@ export async function fetchReceptionPastRecords(
             query = query.range(from, to);
         }
 
+        // Stopped patients are deliberately invisible to every review bucket —
+        // latestReviewDate is forced null for them — so the only way to list them
+        // is off continuity_status directly.
+        if (reviewFilter === 'followup_stopped' && includeDeceasedFields) {
+            query = query.in('continuity_status', ['transferred_out', 'inactive_lost_followup']);
+        }
+
         const trimmedSearch = searchQuery.trim();
         if (trimmedSearch) {
             const escaped = escapeForIlike(trimmedSearch);
@@ -721,7 +732,7 @@ export async function fetchReceptionPastRecords(
             withTimeout(
                 (supabase
                     .from('hospital_patient_reviews' as any)
-                    .select('id, patient_id, doctor_id, status, next_review_date, source_prescription_id, completed_at, created_at, updated_at')
+                    .select('id, patient_id, doctor_id, status, next_review_date, source_prescription_id, completed_at, created_at, updated_at, review_reason')
                     .eq('hospital_id', hospitalId)
                     .in('patient_id', idChunk)
                     .order('updated_at', { ascending: false })) as any,
@@ -935,6 +946,14 @@ export async function fetchReceptionPastRecords(
                 ...(patient.doctorReviews || []).map((dr) => dr.reviewCategory),
             ];
 
+            // Stop-follow-up is a lifecycle state, not a review category: these
+            // patients have no active review by definition, so matching them against
+            // reviewCategory would always fail.
+            if (reviewFilter === 'followup_stopped') {
+                return patient.continuityStatus === 'transferred_out'
+                    || patient.continuityStatus === 'inactive_lost_followup';
+            }
+
             if (reviewFilter !== 'all') {
                 // 'overdue' chip is surfaced as "Missed Followup" — it consolidates
                 // date-overdue patients and not-picked-call (followup_needed) patients.
@@ -1085,8 +1104,17 @@ export interface ScheduleReviewParams {
     doctorId: string;
     /** YYYY-MM-DD */
     reviewDate: string;
+    /** Why the patient is being brought back — read by whoever calls them. */
+    reviewReason?: string | null;
     testsToReview?: string | null;
     specialistsToReview?: string | null;
+    /**
+     * Optional correction to hospital_patients.age. Most patients added to
+     * follow-up by hand have no age on file; capturing it at the moment someone
+     * is already looking at the record is cheaper than a separate cleanup.
+     * Only written when a value is supplied — never blanked.
+     */
+    age?: string | null;
 }
 
 /**
@@ -1111,12 +1139,29 @@ export interface ScheduleReviewParams {
 export async function scheduleReviewForPatient(
     params: ScheduleReviewParams
 ): Promise<{ created: boolean }> {
-    const { hospitalId, patientId, doctorId, reviewDate, testsToReview = null, specialistsToReview = null } = params;
+    const { hospitalId, patientId, doctorId, reviewDate, reviewReason = null, testsToReview = null, specialistsToReview = null, age = null } = params;
     if (!hospitalId || !patientId || !doctorId || !reviewDate) {
         throw new Error('Hospital, patient, doctor and review date are all required');
     }
 
     const nowIso = new Date().toISOString();
+
+    // Non-fatal by design: a bad age must never stop the follow-up being scheduled,
+    // which is the thing the user actually came here to do.
+    if (age && String(age).trim()) {
+        try {
+            await withTimeout(
+                ((supabase.from('hospital_patients' as any) as any)
+                    .update({ age: String(age).trim() })
+                    .eq('hospital_id', hospitalId)
+                    .eq('id', patientId)) as any,
+                8000,
+                'Timed out while updating age'
+            );
+        } catch (err) {
+            console.warn('[scheduleReviewForPatient] age update failed (non-critical)', err);
+        }
+    }
 
     const existing = await withTimeout(
         ((supabase.from('hospital_patient_reviews' as any) as any)
@@ -1139,6 +1184,7 @@ export async function scheduleReviewForPatient(
             ((supabase.from('hospital_patient_reviews' as any) as any)
                 .update({
                     next_review_date: reviewDate,
+                    review_reason: reviewReason,
                     tests_to_review: testsToReview,
                     specialists_to_review: specialistsToReview,
                     status: 'rescheduled',
@@ -1160,6 +1206,7 @@ export async function scheduleReviewForPatient(
             patient_id: patientId,
             doctor_id: doctorId,
             next_review_date: reviewDate,
+            review_reason: reviewReason,
             tests_to_review: testsToReview,
             specialists_to_review: specialistsToReview,
             status: 'pending',
@@ -2089,6 +2136,7 @@ function getCategoryLabel(category: ReceptionReviewFilter): string {
         'followup_needed': 'Followup Needed',
         'not_completed': 'Not Completed',
         'review_completed': 'Completed',
+        'followup_stopped': 'Follow-up Stopped',
         'all': 'All',
     };
     return labels[category] || category;
