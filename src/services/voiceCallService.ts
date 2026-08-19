@@ -33,6 +33,12 @@ export interface PlaceReviewCallParams {
     requestedByName?: string | null;
     /** Agent opening language. Defaults to Tamil, which is most KKC patients. */
     language?: 'Tamil' | 'English';
+    /**
+     * A number typed for a campaign, for the majority of patients who have none
+     * on file. Used for this call only — never written to the patient record,
+     * and only its last two digits reach the attempt row.
+     */
+    phoneOverride?: string | null;
 }
 
 export interface PlaceReviewCallResult {
@@ -53,12 +59,12 @@ export interface PlaceReviewCallResult {
 export async function placeReviewCall(
     params: PlaceReviewCallParams
 ): Promise<PlaceReviewCallResult> {
-    const { patientId, requestedByName = null, language = 'Tamil' } = params;
+    const { patientId, requestedByName = null, language = 'Tamil', phoneOverride = null } = params;
     if (!patientId) throw new Error('Missing patient');
 
     const { data, error } = await withTimeout(
         supabase.functions.invoke('place-review-call', {
-            body: { patientId, requestedByName, language },
+            body: { patientId, requestedByName, language, phoneOverride },
         }) as any,
         30000,
         'Timed out while placing the call'

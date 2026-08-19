@@ -120,7 +120,15 @@ serve(async (req) => {
         // phone_e164 is generated, so it is the authority. Fall back to computing
         // it only when the column is absent (migration not yet applied) — never
         // to the raw string, which is exactly what is not dialable.
-        const dialedNumber = patient.phone_e164 ?? toE164(patient.phone)
+        //
+        // A campaign may supply the number instead. The hospital stopped collecting
+        // phone numbers, so most patients have none on file — a typed number is the
+        // only way to reach them, and it is NOT written back to the patient record.
+        const suppliedNumber = typeof body?.phoneOverride === 'string' ? toE164(body.phoneOverride) : null
+        if (body?.phoneOverride && !suppliedNumber) {
+            return json({ error: `"${body.phoneOverride}" is not a usable mobile number.` }, 422)
+        }
+        const dialedNumber = suppliedNumber ?? patient.phone_e164 ?? toE164(patient.phone)
         if (!dialedNumber) {
             return json({
                 error: patient.phone
@@ -128,6 +136,18 @@ serve(async (req) => {
                     : 'No phone number on file for this patient.',
             }, 422)
         }
+
+        // What goes in the attempt row.
+        //
+        // A number the hospital already stores is recorded as-is — it is theirs and
+        // already on the patient. A number TYPED for a campaign is not: the chief
+        // asked that the software hold no further phone numbers, and writing it to
+        // an attempt row would put it back in the database by another door. Only the
+        // last two digits are kept, which is enough for reception to confirm they
+        // reached the number they meant and useless for dialling.
+        const recordedNumber = suppliedNumber
+            ? `••••••${dialedNumber.slice(-2)}`
+            : dialedNumber
 
         // The agent cannot handle a red flag without a number to give. Fail loudly
         // here rather than place a call that would go silent in an emergency.
@@ -210,7 +230,7 @@ serve(async (req) => {
                 patient_id: patient.id,
                 doctor_id: review?.doctor_id ?? null,
                 review_id: review?.id ?? null,
-                dialed_number: dialedNumber,
+                dialed_number: recordedNumber,
                 webhook_token: webhookToken,
                 status: 'placing',
                 requested_by_name: requestedByName,
@@ -340,7 +360,7 @@ serve(async (req) => {
             ok: true,
             attemptRef: attempt.id,
             sarvamAttemptId: sarvamJson?.attempt_id ?? null,
-            dialedNumber,
+            dialedNumber: recordedNumber,
         })
     } catch (err) {
         console.error('[place-review-call]', err)

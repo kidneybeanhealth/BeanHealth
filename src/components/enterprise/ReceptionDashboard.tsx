@@ -24,6 +24,7 @@ import {
 import AdmittedPatientsPanel from './AdmittedPatientsPanel';
 import { resolvePatientDoctorSpecialty } from './PastRecordsMetricsSection';
 import { placeReviewCall, voiceCallsEnabled } from '../../services/voiceCallService';
+import AICallCampaignPage from './AICallCampaignPage';
 import AddFollowupModal from './AddFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
@@ -505,6 +506,7 @@ const ReceptionDashboard: React.FC = () => {
     const [missedMonth, setMissedMonth] = useState<string | null>(null);
 
     const [showAddFollowup, setShowAddFollowup] = useState(false);
+    const [showAICampaign, setShowAICampaign] = useState(false);
 
     useEffect(() => {
         if (reviewFilter !== 'overdue' || !profile?.id) {
@@ -2389,6 +2391,19 @@ const ReceptionDashboard: React.FC = () => {
                                         )}
 
                                     <div className="flex flex-wrap items-center gap-2 ml-auto">
+                                        {voiceCallsEnabled() && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAICampaign(true)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 10v2a7 7 0 01-14 0v-2M12 19v4" />
+                                                </svg>
+                                                AI Call Campaign
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={handleOpenPastRegistrationModal}
@@ -3351,6 +3366,12 @@ const ReceptionDashboard: React.FC = () => {
                             </div>
                         )}
                     </div>
+                </div>
+            )}
+
+            {showAICampaign && profile?.id && (
+                <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
+                    <AICallCampaignPage hospitalId={profile.id} onBack={() => setShowAICampaign(false)} />
                 </div>
             )}
 
