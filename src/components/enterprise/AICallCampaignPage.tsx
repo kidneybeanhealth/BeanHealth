@@ -44,6 +44,19 @@ const toE164 = (raw: string): string | null => {
 
 type RunState = 'idle' | 'calling' | 'waiting' | 'done' | 'failed';
 
+interface PlacedCall {
+    id: string;
+    patientId: string;
+    name: string;
+    mrNumber: string | null;
+    createdAt: string;
+    status: string;
+    sarvamStatus: string | null;
+    dialedNumber: string | null;
+    summary: string | null;
+    disposition: string | null;
+}
+
 interface Row {
     patient: ReceptionPastRecordPatient;
     phone: string;
@@ -76,18 +89,24 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     const [locked, setLocked] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const [showScript, setShowScript] = useState(false);
+    const [placed, setPlaced] = useState<PlacedCall[]>([]);
+    const [placedOpen, setPlacedOpen] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const pollRef = useRef<number | null>(null);
 
     // ── Cohort ────────────────────────────────────────────────────────────
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        fetchReceptionPastRecords({ hospitalId, page: 0, pageSize: CAMPAIGN_FETCH_LIMIT, searchQuery: search, reviewFilter: cohort })
+        fetchReceptionPastRecords({ hospitalId, page: 0, pageSize: CAMPAIGN_FETCH_LIMIT, reviewFilter: cohort })
             .then((res) => { if (!cancelled) setCandidates(res.patients); })
             .catch((err) => { if (!cancelled) toast.error(err?.message || 'Could not load patients'); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [hospitalId, cohort, search]);
+    }, [hospitalId, cohort]);
+    // NOT keyed on `search`. The cohort fetch pulls the whole list in ~40
+    // sequential chunks; re-running it per keystroke left the page pinned on
+    // "Loading…" and never settling. Search filters what is already in memory.
 
     // Typed numbers exist only here. A reload throws away the operator's work.
     useEffect(() => {
@@ -108,9 +127,15 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     );
 
     const visible = useMemo(() => {
-        const base = cohort === 'overdue' && missedMonth
+        const q = search.trim().toLowerCase();
+        let base = cohort === 'overdue' && missedMonth
             ? candidates.filter((p) => (missedReviewDate(p) || '').slice(0, 7) === missedMonth)
             : candidates;
+        if (q) {
+            base = base.filter((p) =>
+                (p.name || '').toLowerCase().includes(q) ||
+                (p.mr_number || '').toLowerCase().includes(q));
+        }
         // Selected float to the top and hold their order, so a long list stays
         // reviewable — the operator can see what they picked without scrolling
         // back through hundreds of unchecked rows.
@@ -118,7 +143,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
         const rest: ReceptionPastRecordPatient[] = [];
         for (const p of base) (selectedIds.has(p.id) ? picked : rest).push(p);
         return [...picked, ...rest];
-    }, [candidates, cohort, missedMonth, selectedIds]);
+    }, [candidates, cohort, missedMonth, selectedIds, search]);
 
     const allVisibleSelected = visible.length > 0 && visible.every((p) => selectedIds.has(p.id));
 
@@ -130,6 +155,61 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
         else visible.forEach((p) => next.add(p.id));
         return next;
     });
+
+    // Every call this hospital has placed, newest first — campaign or the AI Call
+    // button on a card. One list, because "have we already rung them?" does not
+    // care which surface started it.
+    const loadPlaced = useCallback(async () => {
+        const { data, error } = await (supabase.from('hospital_voice_call_attempts' as any) as any)
+            .select('id, patient_id, status, sarvam_status, final_agent_variables, created_at, dialed_number, patient:hospital_patients(name, mr_number)')
+            .eq('hospital_id', hospitalId)
+            .order('created_at', { ascending: false })
+            .limit(200);
+        if (error) { toast.error('Could not load placed calls'); return; }
+        setPlaced((data || []).map((r: any) => ({
+            id: r.id,
+            patientId: r.patient_id,
+            name: r.patient?.name || 'Unknown patient',
+            mrNumber: r.patient?.mr_number || null,
+            createdAt: r.created_at,
+            status: r.status,
+            sarvamStatus: r.sarvam_status,
+            dialedNumber: r.dialed_number || null,
+            summary: typeof r.final_agent_variables?.call_summary === 'string' ? r.final_agent_variables.call_summary : null,
+            disposition: typeof r.final_agent_variables?.disposition === 'string' ? r.final_agent_variables.disposition : null,
+        })));
+    }, [hospitalId]);
+
+    useEffect(() => { loadPlaced(); }, [loadPlaced]);
+
+    const deletePlaced = async (call: PlacedCall) => {
+        // The attempt row is the ONLY record of the call. Deleting it clears the
+        // campaign entry and the patient's AI Call History together, because both
+        // read this table — so say that plainly rather than let it surprise them.
+        const ok = window.confirm(
+            `Delete the AI call record for ${call.name}?\n\n` +
+            `This also removes the summary from their Past Records card, and cannot be undone. ` +
+            `You can then call them again from scratch.`
+        );
+        if (!ok) return;
+        setDeletingId(call.id);
+        try {
+            const { error } = await (supabase.from('hospital_voice_call_attempts' as any) as any)
+                .delete().eq('id', call.id).eq('hospital_id', hospitalId);
+            if (error) throw error;
+            setPlaced((prev) => prev.filter((c) => c.id !== call.id));
+            // Clear it from the run column too, so a deleted call cannot keep
+            // showing a summary that no longer exists anywhere.
+            setRows((prev) => prev.map((r) => r.attemptRef === call.id
+                ? { ...r, state: 'idle', attemptRef: null, summary: null, disposition: null, error: null }
+                : r));
+            toast.success('Call record deleted');
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not delete the call record');
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     const toggle = (id: string) => setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -188,8 +268,9 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                     ? 'No outcome came back within 10 minutes.'
                     : (data?.failure_reason || null),
             }));
+            loadPlaced();
         }, 5000);
-    }, []);
+    }, [loadPlaced]);
 
     const placeCall = async (index: number) => {
         const row = rows[index];
@@ -253,6 +334,64 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
 
             {showScript && <CallScript />}
 
+            <div className="rounded-2xl border border-gray-200 bg-white">
+                <button type="button" onClick={() => setPlacedOpen((v) => !v)}
+                    className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left">
+                    <span className="text-sm font-bold text-gray-900">
+                        Placed Call List
+                        {placed.length > 0 && <span className="ml-1.5 text-violet-700">({placed.length})</span>}
+                    </span>
+                    <span className="text-xs font-semibold text-violet-700">{placedOpen ? 'Hide' : 'Show'}</span>
+                </button>
+                {placedOpen && (
+                    <div className="px-4 pb-4">
+                        {placed.length === 0 ? (
+                            <p className="text-sm text-gray-500">No AI calls have been placed yet.</p>
+                        ) : (
+                            <div className="max-h-[420px] overflow-y-auto space-y-2">
+                                {placed.map((call) => (
+                                    <div key={call.id} className="grid grid-cols-1 md:grid-cols-[1.1fr_2fr_auto] gap-3 items-start rounded-xl border border-gray-200 p-3">
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-gray-900 text-sm">{call.name}</p>
+                                            <p className="text-xs text-gray-500">{call.mrNumber || '—'}</p>
+                                            <p className="text-xs text-gray-400 mt-0.5">
+                                                {formatPastDate(call.createdAt)}
+                                                {call.dialedNumber ? ` · ${call.dialedNumber}` : ''}
+                                            </p>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                                <StateChip state={
+                                                    call.status === 'completed' ? 'done'
+                                                        : call.status === 'failed' ? 'failed'
+                                                            : 'waiting'
+                                                } />
+                                                {call.disposition && (
+                                                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${call.disposition === 'RED_FLAG_REPORTED' ? 'bg-red-100 text-red-800' : 'bg-violet-100 text-violet-800'}`}>
+                                                        {call.disposition.replace(/_/g, ' ')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {call.summary
+                                                ? <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">{call.summary}</p>
+                                                : <p className="text-xs text-gray-400">No summary recorded.</p>}
+                                        </div>
+                                        <button type="button" onClick={() => deletePlaced(call)} disabled={deletingId === call.id}
+                                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 whitespace-nowrap">
+                                            {deletingId === call.id ? 'Deleting…' : 'Delete'}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <p className="mt-2 text-[11px] text-gray-400">
+                            Deleting a call removes its summary from the patient's Past Records card too — both read the
+                            same record. Delete when you want to call that patient again from scratch.
+                        </p>
+                    </div>
+                )}
+            </div>
+
             <div className="flex items-center gap-2 text-xs font-semibold">
                 {(['Select patients', 'Confirm & numbers', 'Place calls'] as const).map((label, i) => (
                     <React.Fragment key={label}>
@@ -305,7 +444,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                 {allVisibleSelected ? 'Clear all' : 'Select all'}
                             </span>
                             <span className="text-gray-400">
-                                {loading ? 'Loading…' : `${visible.length} shown`}
+                                {loading ? 'Loading the full list — this takes a moment…' : `${visible.length} shown`}
                             </span>
                         </label>
                         <span className="font-semibold text-violet-700">{selectedIds.size} selected</span>
