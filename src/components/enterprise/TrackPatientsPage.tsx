@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { formatDoctorLabel } from './PastRecordsPatientCard';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -198,11 +199,9 @@ const CallLogModal: React.FC<CallLogModalProps> = ({ review, history, submitting
                             <span className="bg-orange-50 text-orange-700 border border-orange-200 rounded-full px-2.5 py-1 font-semibold">
                                 Review: {formatDDMMYYYY(review.next_review_date)}
                             </span>
-                            {review.doctor?.name && (
-                                <span className="bg-gray-100 text-gray-600 rounded-full px-2.5 py-1 font-medium">
-                                    Dr. {review.doctor.name}
-                                </span>
-                            )}
+                            <span className={`rounded-full px-2.5 py-1 font-medium ${review.doctor?.name ? 'bg-gray-100 text-gray-600' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                                {formatDoctorLabel(review.doctor?.name)}
+                            </span>
                             {history.length > 0 && (
                                 <span className="bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-1 font-semibold">
                                     {history.length} prior call{history.length > 1 ? 's' : ''}
@@ -831,13 +830,17 @@ const TrackPatientsPage: React.FC<TrackPatientsPageProps> = ({ onBack, readOnly 
                 .select('id')
                 .single();
             if (patientError) throw patientError;
+            if (addPatientForm.reviewDate && !addPatientForm.doctorId) {
+                toast.error('Pick a doctor for the review — an unassigned review never reaches anyone\'s list.');
+                return;
+            }
             if (addPatientForm.reviewDate) {
                 const { error: reviewError } = await (supabase as any)
                     .from('hospital_patient_reviews')
                     .insert({
                         hospital_id: profile.id,
                         patient_id: newPatient.id,
-                        doctor_id: addPatientForm.doctorId || null,
+                        doctor_id: addPatientForm.doctorId,
                         next_review_date: addPatientForm.reviewDate,
                         tests_to_review: addPatientForm.testsToReview.trim() || null,
                         status: 'pending',

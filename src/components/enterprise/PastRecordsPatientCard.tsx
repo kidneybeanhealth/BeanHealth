@@ -48,6 +48,21 @@ const VOICE_STATUS_LABEL: Record<string, string> = {
     failed: 'Could not connect',
 };
 
+/**
+ * Render a doctor's name for display.
+ *
+ * Two problems this solves. Names are stored inconsistently — "Dr.A.Prabhakar",
+ * "A. Divakar", "Dr Divakar" — so call sites that blindly prefixed "Dr. "
+ * produced "Dr. Dr.A.Prabhakar". And a review with no doctor rendered as
+ * "Dr. Unknown", which reads like a real clinician nobody can identify rather
+ * than what it is: a row that still needs assigning.
+ */
+export const formatDoctorLabel = (name?: string | null): string => {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return 'Unassigned';
+    return /^dr\b\.?/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
+};
+
 export const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'all') return 'All';
     if (filterKey === 'due_today') return 'Due Today';
@@ -56,6 +71,7 @@ export const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'overdue') return 'Missed Followup';
     if (filterKey === 'followup_needed') return 'Followup Needed';
     if (filterKey === 'review_completed') return 'Review Completed';
+    if (filterKey === 'followup_stopped') return 'Follow-up Stopped';
     if (filterKey === 'weekly_report') return 'Overdue Weekly Report';
     if (filterKey === 'calendar') return 'Calendar';
     return 'Not Completed';
@@ -68,13 +84,13 @@ export const getReviewBadgeClass = (category: ReceptionReviewFilter): string => 
     if (category === 'overdue') return 'bg-rose-50 text-rose-700';
     if (category === 'followup_needed') return 'bg-amber-50 text-amber-700';
     if (category === 'not_completed') return 'bg-red-50 text-red-700';
+    if (category === 'followup_stopped') return 'bg-amber-50 text-amber-700';
     return 'bg-gray-100 text-gray-600';
 };
 
-export const formatPastDate = (value?: string | null): string => {
-    if (!value) return '--';
-    return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-};
+// Lives in pastRecordsPrint so the print builder pulls in no React.
+import { formatPastDate } from './pastRecordsPrint';
+export { formatPastDate };
 
 const shortDate = (value?: string | null): string => {
     if (!value) return '--';
@@ -163,6 +179,12 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
         (dr) => dr.reviewCategory === 'overdue' || dr.reviewCategory === 'followup_needed'
     ) || null;
     const latestVisit = patient.prescriptions?.[0] || null;
+    // Why this patient is being brought back, from whichever doctor's review is
+    // live. Shown for everyone, not just the overdue — reception reads it before
+    // dialling, and "come for review" is not something you can say on a call.
+    const followupReason = (patient.doctorReviews || [])
+        .map((dr) => dr.reviewReason)
+        .find((r) => r && r.trim()) || null;
     const lastCall = (patient.callHistory || [])[0] || null;
 
     const visibleCallHistory = isCallHistoryExpanded ? callHistory : callHistory.slice(0, 2);
@@ -216,7 +238,7 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                             key={dr.doctorId || `${dr.doctorName || 'unassigned'}-${dr.reviewDate || 'none'}`}
                                             className="inline-flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1 whitespace-nowrap"
                                         >
-                                            {dr.doctorName ? `${dr.doctorName} - ` : ''}{shortDate(dr.reviewDate)}
+                                            {formatDoctorLabel(dr.doctorName)} - {shortDate(dr.reviewDate)}
                                             {dr.reviewSetAt && (
                                                 <span className="ml-1.5 text-[10px] font-medium text-gray-400">
                                                     · set {shortDate(dr.reviewSetAt)}
@@ -293,6 +315,12 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                 </span>
                             )}
                         </div>
+
+                        {followupReason && !patient.isDeceased && !isFollowupStopped && (
+                            <div className="rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-[11px] leading-relaxed text-sky-900">
+                                <span className="font-bold text-sky-800">Follow-up for: </span>{followupReason}
+                            </div>
+                        )}
 
                         {overdueReview && !patient.isDeceased && !isFollowupStopped && (
                             <div className="rounded-lg border border-rose-200 bg-rose-50/60 px-3 py-2 text-[11px] leading-relaxed text-rose-900">

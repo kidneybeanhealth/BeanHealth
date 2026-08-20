@@ -11,12 +11,15 @@ import {
 
 import { placeReviewCall, voiceCallsEnabled } from '../../services/voiceCallService';
 import AddFollowupModal from './AddFollowupModal';
+import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
+    formatDoctorLabel,
     formatPastDate,
     type PastRecordsView,
 } from './PastRecordsPatientCard';
+import { buildPastRecordsPrintHtml } from './pastRecordsPrint';
 
 const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 
@@ -77,14 +80,6 @@ const toLocalISODate = (date: Date): string => {
     const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
 };
-
-const escapeHtml = (value: string): string =>
-    value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
 
 const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor, onBack, onViewPrescription, onEditResend }) => {
     const [pastRecords, setPastRecords] = useState<ReceptionPastRecordPatient[]>([]);
@@ -240,6 +235,8 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
     const [missedMonth, setMissedMonth] = useState<string | null>(null);
 
     const [showAddFollowup, setShowAddFollowup] = useState(false);
+    const [stopFollowupTarget, setStopFollowupTarget] = useState<ReceptionPastRecordPatient | null>(null);
+    const [stopFollowupSubmitting, setStopFollowupSubmitting] = useState(false);
 
     useEffect(() => {
         if (reviewFilter !== 'overdue' || !doctor.hospital_id) {
@@ -348,84 +345,12 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
             return;
         }
 
-        const generatedAt = new Date().toLocaleString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
+        const html = buildPastRecordsPrintHtml({
+            records: printRecords,
+            orgLabel: formatDoctorLabel(doctor.name),
+            filterLabel: getReviewFilterLabel(reviewFilter),
+            footerNote: 'Printed from Doctor Past Records module.',
         });
-
-        const rowsHtml = printRecords
-            .map((patient, index) => {
-                const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
-                return `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${escapeHtml(patient.name || '--')}</td>
-                        <td>${patient.age ?? '--'}</td>
-                        <td>${relationLabel} ${escapeHtml(patient.father_husband_name || '--')}</td>
-                        <td>${escapeHtml(patient.mr_number || '--')}</td>
-                        <td>${formatPastDate(patient.latestReviewDate)}</td>
-                        <td>${formatPastDate(patient.lastVisitAt)}</td>
-                    </tr>
-                `;
-            })
-            .join('');
-
-        const html = `
-            <!doctype html>
-            <html>
-            <head>
-                <meta charset="utf-8" />
-                <title>Past Records Print List</title>
-                <style>
-                    * { box-sizing: border-box; }
-                    body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 24px; color: #1f2937; }
-                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-                    .title { font-size: 20px; font-weight: 700; margin: 0; }
-                    .meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
-                    .pill { display: inline-block; background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; margin-right: 8px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
-                    thead th { text-align: left; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px; }
-                    tbody td { border: 1px solid #e5e7eb; padding: 10px; font-size: 12px; vertical-align: top; }
-                    tbody tr:nth-child(even) { background: #fcfcfd; }
-                    .footer { margin-top: 14px; font-size: 11px; color: #6b7280; }
-                    @media print { body { margin: 10mm; } .no-print { display: none; } }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <div>
-                        <h1 class="title">Past Records List</h1>
-                        <p class="meta">${escapeHtml(doctor.name || 'Doctor')}</p>
-                        <p class="meta">Generated: ${generatedAt}</p>
-                    </div>
-                    <div>
-                        <span class="pill">Filter: ${escapeHtml(getReviewFilterLabel(reviewFilter))}</span>
-                        <span class="pill">Total: ${printRecords.length}</span>
-                    </div>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Age</th>
-                            <th>S/o / W/o</th>
-                            <th>MR ID</th>
-                            <th>Due Date</th>
-                            <th>Last Visit Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rowsHtml}</tbody>
-                </table>
-                <p class="footer">Printed from Doctor Past Records module.</p>
-                <script>window.onload = function () { window.print(); };</script>
-            </body>
-            </html>
-        `;
 
         printWindow.document.open();
         printWindow.document.write(html);
@@ -538,18 +463,28 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
         }
     };
 
-    const handleStopFollowup = async (patient: ReceptionPastRecordPatient) => {
-        if (!doctor.hospital_id) return;
-        const confirmed = window.confirm(
-            `Stop follow-up for ${patient.name}?\n\nThis will cancel active upcoming/pending reviews for this patient.`
-        );
-        if (!confirmed) return;
+    /**
+     * Opens the reason modal. This used to be a window.confirm() that then wrote
+     * reason: 'external_hospital_transfer' regardless of why — so a stop recorded
+     * from this dashboard said "transferred to another hospital" even when the
+     * patient had simply declined, or died, or could not travel. The stored reason
+     * is the whole point of the Follow-up Stopped list, so it has to be real.
+     */
+    const handleStopFollowup = (patient: ReceptionPastRecordPatient) => {
+        setStopFollowupTarget(patient);
+    };
+
+    const confirmStopFollowup = async (reason: string, notes: string) => {
+        const patient = stopFollowupTarget;
+        if (!doctor.hospital_id || !patient) return;
+        setStopFollowupSubmitting(true);
 
         try {
             await stopPatientFollowup({
                 hospitalId: doctor.hospital_id,
                 patientId: patient.id,
-                reason: 'external_hospital_transfer',
+                reason,
+                notes,
             });
 
             const nowIso = new Date().toISOString();
@@ -563,7 +498,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                 [patient.id]: {
                     continuityStatus: 'transferred_out',
                     followupStoppedAt: nowIso,
-                    followupStopReason: patient.followupStopReason || 'external_hospital_transfer',
+                    followupStopReason: reason,
                 },
             }));
             setPastRecords((prev) => prev.map((item) => {
@@ -572,16 +507,21 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     ...item,
                     continuityStatus: 'transferred_out',
                     followupStoppedAt: item.followupStoppedAt || nowIso,
-                    followupStopReason: item.followupStopReason || 'external_hospital_transfer',
+                    followupStopReason: reason,
                     latestReviewDate: null,
                 };
             }));
 
-            toast.success('Follow-up stopped and active reviews cancelled');
+            toast.success(`Follow-up stopped for ${patient.name}`);
+            setStopFollowupTarget(null);
             fetchPastRecords(true, 0, false);
         } catch (error) {
             console.error('Failed to stop follow-up:', error);
             toast.error('Could not stop follow-up for this patient');
+        } finally {
+            // Without this the button stays disabled forever after a failure and
+            // the modal becomes a dead end.
+            setStopFollowupSubmitting(false);
         }
     };
 
@@ -758,7 +698,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'calendar'] as PastRecordsView[]).map((filterKey) => (
+                        {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'followup_stopped', 'calendar'] as PastRecordsView[]).map((filterKey) => (
                             <button
                                 key={filterKey}
                                 type="button"
@@ -1015,6 +955,16 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                         </form>
                     </div>
                 </div>
+            )}
+
+            {stopFollowupTarget && (
+                <StopFollowupModal
+                    patientName={stopFollowupTarget.name}
+                    mrNumber={stopFollowupTarget.mr_number}
+                    submitting={stopFollowupSubmitting}
+                    onCancel={() => setStopFollowupTarget(null)}
+                    onConfirm={confirmStopFollowup}
+                />
             )}
 
             {showAddFollowup && (

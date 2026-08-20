@@ -109,6 +109,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     const [dischargeCandidate, setDischargeCandidate] = useState<AdmittedPatientRecord | null>(null);
     const [dischargeStep, setDischargeStep] = useState<1 | 2>(1);
     const [dischargeReviewDate, setDischargeReviewDate] = useState('');
+    const [dischargeReviewReason, setDischargeReviewReason] = useState('');
     const [dischargeConfirmReady, setDischargeConfirmReady] = useState(false);
     const [deceasedCandidate, setDeceasedCandidate] = useState<AdmittedPatientRecord | null>(null);
     const [returnCandidate, setReturnCandidate] = useState<AdmittedPatientRecord | null>(null);
@@ -182,6 +183,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
         setDischargeCandidate(record);
         setDischargeStep(1);
         setDischargeReviewDate('');
+        setDischargeReviewReason('');
         setDischargeConfirmReady(false);
     };
 
@@ -195,7 +197,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
 
     const handleConfirmDischarge = async () => {
         if (!dischargeCandidate) return;
-        const { queueId, patient, patientId } = dischargeCandidate;
+        const { queueId, patient, patientId, doctorId: dischargeDoctorId } = dischargeCandidate;
         const reviewDate = dischargeReviewDate.trim();
         setDischargeCandidate(null);
         const toastId = toast.loading('Discharging patient...');
@@ -204,10 +206,17 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
             // Schedule a follow-up review if a date was chosen
             if (reviewDate) {
                 try {
+                    // doctor_id was omitted here, so every discharge with a review
+                    // date created an ownerless row: nothing closed it, it never
+                    // appeared on a doctor's list, and when the doctor prescribed a
+                    // different date hours later it survived and pulled the patient
+                    // into the wrong bucket. The admission already knows its doctor.
                     await (supabase.from('hospital_patient_reviews' as any) as any).insert({
                         hospital_id: hospitalId,
                         patient_id: patientId,
+                        doctor_id: dischargeDoctorId,
                         next_review_date: reviewDate,
+                        review_reason: dischargeReviewReason.trim() || null,
                         status: 'pending',
                     });
                 } catch (reviewErr) {
@@ -555,6 +564,24 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                                 Review on {new Date(dischargeReviewDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
                                             </p>
                                         )}
+                                        {dischargeReviewDate && (
+                                            <div className="mt-3">
+                                                <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                                                    Why <span className="font-normal text-gray-400 normal-case">(optional)</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={dischargeReviewReason}
+                                                    onChange={e => setDischargeReviewReason(e.target.value)}
+                                                    placeholder="e.g. Wound check, repeat creatinine"
+                                                    className="mt-1.5 w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-200 bg-gray-50"
+                                                />
+                                                <p className="mt-1 text-[11px] text-gray-500">
+                                                    Reception reads this before calling. Without it a discharge date is
+                                                    indistinguishable from a placeholder.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-2">
@@ -567,7 +594,7 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                     <div className="flex items-center gap-2">
                                         {dischargeReviewDate ? (
                                             <button
-                                                onClick={() => { setDischargeReviewDate(''); setDischargeStep(2); }}
+                                                onClick={() => { setDischargeReviewDate(''); setDischargeReviewReason(''); setDischargeStep(2); }}
                                                 className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
                                             >
                                                 Skip review

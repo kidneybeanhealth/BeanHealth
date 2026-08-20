@@ -26,12 +26,15 @@ import { resolvePatientDoctorSpecialty } from './PastRecordsMetricsSection';
 import { placeReviewCall, voiceCallsEnabled } from '../../services/voiceCallService';
 import AICallCampaignPage from './AICallCampaignPage';
 import AddFollowupModal from './AddFollowupModal';
+import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
+    formatDoctorLabel,
     formatPastDate,
     type PastRecordsView,
 } from './PastRecordsPatientCard';
+import { buildPastRecordsPrintHtml } from './pastRecordsPrint';
 
 // Past Records report views — lazy (only loaded when the chip is opened)
 const WeeklyOverdueReportPanel = lazy(() =>
@@ -97,6 +100,7 @@ interface CallLogTarget {
 interface StopFollowupTarget {
     patientId: string;
     patientName: string;
+    mrNumber?: string | null;
 }
 
 interface StopFollowupOverride {
@@ -159,14 +163,6 @@ const compareQueueTokens = (a: any, b: any, dir: 'asc' | 'desc'): number => {
     if (bMissing) return -1;
     return dir === 'asc' ? na - nb : nb - na;
 };
-
-const escapeHtml = (value: string): string =>
-    value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
 
 /**
  * Inline reachability feedback under the registration phone field.
@@ -620,98 +616,12 @@ const ReceptionDashboard: React.FC = () => {
             return;
         }
 
-        const generatedAt = new Date().toLocaleString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
+        const html = buildPastRecordsPrintHtml({
+            records: printRecords,
+            orgLabel: displayName || 'Hospital',
+            filterLabel: getReviewFilterLabel(reviewFilter),
+            footerNote: 'Printed from Reception Past Records module.',
         });
-
-        const rowsHtml = printRecords
-            .map((patient, index) => {
-                const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
-                return `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${escapeHtml(patient.name || '--')}</td>
-                        <td>${patient.age ?? '--'}</td>
-                        <td>${relationLabel} ${escapeHtml(patient.father_husband_name || '--')}</td>
-                        <td>${escapeHtml(patient.mr_number || '--')}</td>
-                        <td>${formatPastDate(patient.latestReviewDate)}</td>
-                        <td>${formatPastDate(patient.lastVisitAt)}</td>
-                    </tr>
-                `;
-            })
-            .join('');
-
-        const filterLabel = getReviewFilterLabel(reviewFilter);
-
-        const html = `
-            <!doctype html>
-            <html>
-            <head>
-                <meta charset="utf-8" />
-                <title>Past Records Print List</title>
-                <style>
-                    * { box-sizing: border-box; }
-                    body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 24px; color: #1f2937; }
-                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-                    .title { font-size: 20px; font-weight: 700; margin: 0; }
-                    .meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
-                    .pill { display: inline-block; background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; margin-right: 8px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
-                    thead th { text-align: left; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px; }
-                    tbody td { border: 1px solid #e5e7eb; padding: 10px; font-size: 12px; vertical-align: top; }
-                    tbody tr:nth-child(even) { background: #fcfcfd; }
-                    .footer { margin-top: 14px; font-size: 11px; color: #6b7280; }
-                    @media print {
-                        body { margin: 10mm; }
-                        .no-print { display: none; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <div>
-                        <h1 class="title">Past Records List</h1>
-                        <p class="meta">${escapeHtml(displayName || 'Hospital')}</p>
-                        <p class="meta">Generated: ${generatedAt}</p>
-                    </div>
-                    <div>
-                        <span class="pill">Filter: ${escapeHtml(filterLabel)}</span>
-                        <span class="pill">Total: ${printRecords.length}</span>
-                    </div>
-                </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Age</th>
-                            <th>S/o / W/o</th>
-                            <th>MR ID</th>
-                            <th>Due Date</th>
-                            <th>Last Visit Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rowsHtml}
-                    </tbody>
-                </table>
-
-                <p class="footer">Printed from Reception Past Records module.</p>
-
-                <script>
-                    window.onload = function () {
-                        window.print();
-                    };
-                </script>
-            </body>
-            </html>
-        `;
 
         printWindow.document.open();
         printWindow.document.write(html);
@@ -727,15 +637,19 @@ const ReceptionDashboard: React.FC = () => {
             return;
         }
         
-        // Single or no doctor review - use primary doctor
+        // Single or no doctor review — use the primary doctor, and when there is no
+        // review at all fall back to whoever last actually saw the patient. A call
+        // log that reschedules must land on a real doctor: an ownerless review is
+        // one no visit ever closes and no doctor's list ever shows.
         const primaryDoctor = patient.doctorReviews?.[0];
+        const lastTreatingDoctor = patient.prescriptions?.find(rx => rx.doctor?.id)?.doctor;
         setCallLogTarget({
             patientId: patient.id,
             mrNumber: patient.mr_number || null,
             patientName: patient.name,
             reviewDate: primaryDoctor?.reviewDate || patient.latestReviewDate,
-            doctorId: primaryDoctor?.doctorId || null,
-            doctorName: primaryDoctor?.doctorName || null,
+            doctorId: primaryDoctor?.doctorId || lastTreatingDoctor?.id || null,
+            doctorName: primaryDoctor?.doctorName || lastTreatingDoctor?.name || null,
         });
         setCallHistory([]);
         setCallHistoryLoading(true);
@@ -853,8 +767,8 @@ const ReceptionDashboard: React.FC = () => {
         setStopFollowupTarget({
             patientId: patient.id,
             patientName: patient.name,
+            mrNumber: patient.mr_number,
         });
-        setStopFollowupReason(patient.followupStopReason || '');
     };
 
     const closeStopFollowupModal = () => {
@@ -863,15 +777,10 @@ const ReceptionDashboard: React.FC = () => {
         setStopFollowupReason('');
     };
 
-    const handleSubmitStopFollowup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!profile?.id || !stopFollowupTarget) return;
-
-        const reason = stopFollowupReason.trim();
-        if (!reason) {
-            toast.error('Reason is required to stop follow-up');
-            return;
-        }
+    // Reason and notes come from StopFollowupModal, which is shared with the
+    // Doctor dashboard so both surfaces record the same thing the same way.
+    const handleSubmitStopFollowup = async (reason: string, notes: string) => {
+        if (!profile?.id || !stopFollowupTarget || !reason.trim()) return;
 
         setStopFollowupSubmitting(true);
         try {
@@ -879,6 +788,7 @@ const ReceptionDashboard: React.FC = () => {
                 hospitalId: profile.id,
                 patientId: stopFollowupTarget.patientId,
                 reason,
+                notes,
             });
 
             const nowIso = new Date().toISOString();
@@ -1013,7 +923,10 @@ const ReceptionDashboard: React.FC = () => {
                         .insert({
                             hospital_id: profile.id,
                             patient_id: mrPatient.id,
-                            doctor_id: null,
+                            // Never null. An ownerless review is one nothing ever
+                            // closes and no doctor ever sees — reception rescheduling
+                            // a call should keep it with whoever the patient saw.
+                            doctor_id: callLogTarget.doctorId || null,
                             next_review_date: effectiveReviewDate || callLogTarget.reviewDate,
                             status: callLogStatus === 'picked' ? 'rescheduled' : 'pending',
                         });
@@ -1579,7 +1492,10 @@ const ReceptionDashboard: React.FC = () => {
                         .insert({
                             hospital_id: profile.id,
                             patient_id: patientData.id,
-                            doctor_id: null,
+                            // The form already collects a doctor; this insert simply
+                            // ignored it, which is how past registrations became the
+                            // third source of ownerless reviews.
+                            doctor_id: walkInForm.doctorId || null,
                             next_review_date: walkInForm.reviewDate,
                             status: 'pending',
                         });
@@ -2373,7 +2289,7 @@ const ReceptionDashboard: React.FC = () => {
                                     )}
                                 </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                    {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'calendar'] as PastRecordsView[]).map((filterKey) => (
+                                    {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'followup_stopped', 'calendar'] as PastRecordsView[]).map((filterKey) => (
                                         <button
                                             key={filterKey}
                                             type="button"
@@ -3577,7 +3493,7 @@ const ReceptionDashboard: React.FC = () => {
                                 >
                                     <div className="flex items-start justify-between">
                                         <div>
-                                            <p className="font-semibold text-gray-900">Dr. {dr.doctorName || 'Unknown'}</p>
+                                            <p className={`font-semibold ${dr.doctorName ? 'text-gray-900' : 'text-amber-700'}`}>{formatDoctorLabel(dr.doctorName)}</p>
                                             {dr.doctorSpecialty && (
                                                 <p className="text-xs text-gray-500 mt-0.5">{dr.doctorSpecialty}</p>
                                             )}
@@ -3603,65 +3519,13 @@ const ReceptionDashboard: React.FC = () => {
             )}
 
             {stopFollowupTarget && (
-                <div className="fixed inset-0 z-[99] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white flex items-start justify-between gap-3">
-                            <div>
-                                <h3 className="text-lg font-bold">Stop Follow-up</h3>
-                                <p className="text-amber-100 text-sm mt-0.5 font-medium">
-                                    {stopFollowupTarget.patientName}
-                                </p>
-                            </div>
-                            <button
-                                onClick={closeStopFollowupModal}
-                                disabled={stopFollowupSubmitting}
-                                className="p-1.5 rounded-lg text-amber-100 hover:text-white hover:bg-amber-700/50 transition-colors disabled:opacity-50"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSubmitStopFollowup} className="p-6 space-y-4">
-                            <p className="text-sm text-gray-600">
-                                This will cancel active upcoming or pending reviews for this patient.
-                            </p>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                    Reason <span className="text-red-500">*</span>
-                                </label>
-                                <textarea
-                                    value={stopFollowupReason}
-                                    onChange={(e) => setStopFollowupReason(e.target.value)}
-                                    rows={3}
-                                    placeholder="Enter reason for stopping follow-up"
-                                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 resize-none"
-                                    required
-                                />
-                            </div>
-
-                            <div className="flex gap-3 pt-1">
-                                <button
-                                    type="button"
-                                    onClick={closeStopFollowupModal}
-                                    disabled={stopFollowupSubmitting}
-                                    className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-60"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={stopFollowupSubmitting}
-                                    className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 shadow-md transition-all disabled:opacity-60"
-                                >
-                                    {stopFollowupSubmitting ? 'Saving...' : 'Stop Follow-up'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <StopFollowupModal
+                    patientName={stopFollowupTarget.patientName}
+                    mrNumber={stopFollowupTarget.mrNumber}
+                    submitting={stopFollowupSubmitting}
+                    onCancel={closeStopFollowupModal}
+                    onConfirm={(reason, notes) => handleSubmitStopFollowup(reason, notes)}
+                />
             )}
 
             {/* Printer Setup Modal */}
