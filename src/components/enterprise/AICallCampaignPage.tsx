@@ -23,6 +23,7 @@ import {
 } from '../../services/enterpriseReviewService';
 import { placeReviewCall } from '../../services/voiceCallService';
 import { formatPastDate } from './PastRecordsPatientCard';
+import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 import { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 
 type CohortFilter = Extract<ReceptionReviewFilter, 'all' | 'due_today' | 'due_tomorrow' | 'overdue'>;
@@ -92,6 +93,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     const [placed, setPlaced] = useState<PlacedCall[]>([]);
     const [placedOpen, setPlacedOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [pendingDelete, setPendingDelete] = useState<PlacedCall | null>(null);
     const pollRef = useRef<number | null>(null);
 
     // ── Cohort ────────────────────────────────────────────────────────────
@@ -182,16 +184,10 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
 
     useEffect(() => { loadPlaced(); }, [loadPlaced]);
 
-    const deletePlaced = async (call: PlacedCall) => {
-        // The attempt row is the ONLY record of the call. Deleting it clears the
-        // campaign entry and the patient's AI Call History together, because both
-        // read this table — so say that plainly rather than let it surprise them.
-        const ok = window.confirm(
-            `Delete the AI call record for ${call.name}?\n\n` +
-            `This also removes the summary from their Past Records card, and cannot be undone. ` +
-            `You can then call them again from scratch.`
-        );
-        if (!ok) return;
+    const deletePlaced = async () => {
+        const call = pendingDelete;
+        if (!call) return;
+        setPendingDelete(null);
         setDeletingId(call.id);
         try {
             const { error } = await (supabase.from('hospital_voice_call_attempts' as any) as any)
@@ -376,7 +372,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                                 ? <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">{call.summary}</p>
                                                 : <p className="text-xs text-gray-400">No summary recorded.</p>}
                                         </div>
-                                        <button type="button" onClick={() => deletePlaced(call)} disabled={deletingId === call.id}
+                                        <button type="button" onClick={() => setPendingDelete(call)} disabled={deletingId === call.id}
                                             className="px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 whitespace-nowrap">
                                             {deletingId === call.id ? 'Deleting…' : 'Delete'}
                                         </button>
@@ -593,6 +589,19 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                     </div>
                 </div>
             )}
+
+            <TwoStepConfirmModal
+                isOpen={!!pendingDelete}
+                title={`Delete the AI call record for ${pendingDelete?.name ?? ''}?`}
+                description={
+                    'This is the only record of that call. Deleting it also removes the summary from the ' +
+                    "patient's Past Records card, and cannot be undone. You can then call them again from scratch."
+                }
+                continueLabel="Yes, delete it"
+                confirmLabel="Delete permanently"
+                onCancel={() => setPendingDelete(null)}
+                onConfirm={deletePlaced}
+            />
         </div>
     );
 };
