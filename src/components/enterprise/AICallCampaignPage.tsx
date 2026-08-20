@@ -23,6 +23,7 @@ import {
 } from '../../services/enterpriseReviewService';
 import { placeReviewCall } from '../../services/voiceCallService';
 import { formatPastDate } from './PastRecordsPatientCard';
+import { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 
 type CohortFilter = Extract<ReceptionReviewFilter, 'all' | 'due_today' | 'due_tomorrow' | 'overdue'>;
 
@@ -59,7 +60,13 @@ interface Props {
 }
 
 const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
+    // The campaign works a whole cohort, so it must not be paginated. Missed
+    // Followup at KKC runs to thousands across years, and a 200-row page hid
+    // most of them behind a count that read as complete.
+    const CAMPAIGN_FETCH_LIMIT = 5000;
+
     const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [missedMonth, setMissedMonth] = useState<string | null>(null);
     const [cohort, setCohort] = useState<CohortFilter>('overdue');
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
@@ -75,7 +82,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        fetchReceptionPastRecords({ hospitalId, page: 0, pageSize: 200, searchQuery: search, reviewFilter: cohort })
+        fetchReceptionPastRecords({ hospitalId, page: 0, pageSize: CAMPAIGN_FETCH_LIMIT, searchQuery: search, reviewFilter: cohort })
             .then((res) => { if (!cancelled) setCandidates(res.patients); })
             .catch((err) => { if (!cancelled) toast.error(err?.message || 'Could not load patients'); })
             .finally(() => { if (!cancelled) setLoading(false); });
@@ -91,6 +98,38 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     }, [locked, rows.length]);
 
     useEffect(() => () => { if (pollRef.current) window.clearInterval(pollRef.current); }, []);
+
+    // Month buckets, Missed Followup only. Built from the full cohort, so the
+    // count on each chip is the real total for that month rather than whatever
+    // happened to land on a page.
+    const missedMonths = useMemo(
+        () => (cohort === 'overdue' ? buildMissedMonths(candidates) : []),
+        [cohort, candidates]
+    );
+
+    const visible = useMemo(() => {
+        const base = cohort === 'overdue' && missedMonth
+            ? candidates.filter((p) => (missedReviewDate(p) || '').slice(0, 7) === missedMonth)
+            : candidates;
+        // Selected float to the top and hold their order, so a long list stays
+        // reviewable — the operator can see what they picked without scrolling
+        // back through hundreds of unchecked rows.
+        const picked: ReceptionPastRecordPatient[] = [];
+        const rest: ReceptionPastRecordPatient[] = [];
+        for (const p of base) (selectedIds.has(p.id) ? picked : rest).push(p);
+        return [...picked, ...rest];
+    }, [candidates, cohort, missedMonth, selectedIds]);
+
+    const allVisibleSelected = visible.length > 0 && visible.every((p) => selectedIds.has(p.id));
+
+    // Scoped to what is on screen. Selecting across a hidden month would queue
+    // calls to patients the operator never looked at.
+    const toggleAllVisible = () => setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (allVisibleSelected) visible.forEach((p) => next.delete(p.id));
+        else visible.forEach((p) => next.add(p.id));
+        return next;
+    });
 
     const toggle = (id: string) => setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -229,7 +268,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                 <div className="rounded-2xl border border-gray-200 bg-white p-4">
                     <div className="flex flex-wrap gap-2 mb-3">
                         {COHORTS.map((c) => (
-                            <button key={c.key} type="button" onClick={() => { setCohort(c.key); setSelectedIds(new Set()); }}
+                            <button key={c.key} type="button" onClick={() => { setCohort(c.key); setSelectedIds(new Set()); setMissedMonth(null); }}
                                 className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${cohort === c.key ? 'bg-orange-50 text-orange-700 border-orange-300' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
                                 {c.label}
                             </button>
@@ -238,13 +277,42 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or MR number…"
                         className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200" />
 
+                    {cohort === 'overdue' && missedMonths.length > 0 && (
+                        <div className="mb-3">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1.5">
+                                Missed by month — pick one to work through
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                                <button type="button" onClick={() => setMissedMonth(null)}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${missedMonth === null ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                                    All months ({candidates.length})
+                                </button>
+                                {missedMonths.map((m) => (
+                                    <button key={m.key} type="button" onClick={() => setMissedMonth(m.key)}
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${missedMonth === m.key ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                                        {m.label} ({m.patients.length})
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex items-center justify-between mb-2 text-sm">
-                        <span className="text-gray-500">{loading ? 'Loading…' : `${candidates.length} patients`}</span>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible}
+                                disabled={visible.length === 0} className="w-4 h-4 accent-violet-600" />
+                            <span className="font-semibold text-gray-700">
+                                {allVisibleSelected ? 'Clear all' : 'Select all'}
+                            </span>
+                            <span className="text-gray-400">
+                                {loading ? 'Loading…' : `${visible.length} shown`}
+                            </span>
+                        </label>
                         <span className="font-semibold text-violet-700">{selectedIds.size} selected</span>
                     </div>
 
                     <div className="max-h-[420px] overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-xl">
-                        {candidates.map((p) => (
+                        {visible.map((p) => (
                             <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-violet-50/40 cursor-pointer">
                                 <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggle(p.id)}
                                     className="w-4 h-4 accent-violet-600" />
@@ -257,7 +325,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                 </span>
                             </label>
                         ))}
-                        {!loading && candidates.length === 0 && (
+                        {!loading && visible.length === 0 && (
                             <p className="px-3 py-6 text-center text-sm text-gray-500">No patients in this list.</p>
                         )}
                     </div>
