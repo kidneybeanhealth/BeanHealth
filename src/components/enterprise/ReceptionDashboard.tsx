@@ -252,7 +252,7 @@ const ReceptionDashboard: React.FC = () => {
     const [showPrinterSetup, setShowPrinterSetup] = useState(false);
     const [printerConnected, setPrinterConnected] = useState(false);
     const [showPrintDialog, setShowPrintDialog] = useState(false);
-    const [reviewAlertCount, setReviewAlertCount] = useState(0);
+
     const [duplicateQueueWarning, setDuplicateQueueWarning] = useState<{
         patientName: string;
         existingDoctorName: string;
@@ -507,6 +507,7 @@ const ReceptionDashboard: React.FC = () => {
 
     const [showAddFollowup, setShowAddFollowup] = useState(false);
     const [showAICampaign, setShowAICampaign] = useState(false);
+    const [reviewAlertCount, setReviewAlertCount] = useState(0);
 
     useEffect(() => {
         if (reviewFilter !== 'overdue' || !profile?.id) {
@@ -2153,18 +2154,20 @@ const ReceptionDashboard: React.FC = () => {
                                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                             )}
                         </button>
-                        <button
-                            onClick={() => navigate('/enterprise-dashboard/reception/tracker')}
-                            className="relative px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-gray-900 hover:border-gray-300 font-semibold shadow-sm transition-all text-sm whitespace-nowrap"
-                            title="Track patients with review dates"
-                        >
-                            Track patients
-                            {reviewAlertCount > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">
-                                    {reviewAlertCount > 99 ? '99+' : reviewAlertCount}
-                                </span>
-                            )}
-                        </button>
+                        {voiceCallsEnabled() && (
+                            <button
+                                onClick={() => setShowAICampaign(true)}
+                                className="px-4 py-3 rounded-xl border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:border-violet-300 font-semibold shadow-sm transition-all text-sm whitespace-nowrap flex items-center gap-2"
+                                title="Place AI reminder calls to patients who have missed a review"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 10v2a7 7 0 01-14 0v-2M12 19v4" />
+                                </svg>
+                                <span className="hidden sm:inline">AI Call Campaign</span>
+                                <span className="inline sm:hidden">AI Calls</span>
+                            </button>
+                        )}
                         <button
                             onClick={() => fetchQueue()}
                             className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
@@ -2236,9 +2239,17 @@ const ReceptionDashboard: React.FC = () => {
                                     setReviewFilter('all');
                                     setReviewDateFilter('');
                                 }}
-                                className={`px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'past_records' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'}`}
+                                className={`relative px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'past_records' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'}`}
                             >
                                 Past Records
+                                {/* Reviews due or overdue. This badge used to sit on
+                                    "Track patients"; it belongs here, where the number
+                                    is actually actionable. */}
+                                {reviewAlertCount > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">
+                                        {reviewAlertCount > 99 ? '99+' : reviewAlertCount}
+                                    </span>
+                                )}
                             </button>
                             <button
                                 onClick={() => setActiveTab('admitted')}
@@ -2391,19 +2402,6 @@ const ReceptionDashboard: React.FC = () => {
                                         )}
 
                                     <div className="flex flex-wrap items-center gap-2 ml-auto">
-                                        {voiceCallsEnabled() && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowAICampaign(true)}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors"
-                                            >
-                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 10v2a7 7 0 01-14 0v-2M12 19v4" />
-                                                </svg>
-                                                AI Call Campaign
-                                            </button>
-                                        )}
                                         <button
                                             type="button"
                                             onClick={handleOpenPastRegistrationModal}
