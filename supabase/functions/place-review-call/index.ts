@@ -197,6 +197,45 @@ serve(async (req) => {
             return Math.max(0, Math.floor((today - due) / 86400000))
         })()
 
+        // ── Daily cap ────────────────────────────────────────────────────────
+        //
+        // A circuit breaker, not a business rule. The campaign accepts typed
+        // numbers, so a single mistyped batch can dial hundreds of strangers
+        // from the hospital's own number — and the provider balance it drains is
+        // prepaid and shared by every hospital, so one clinic's mistake stops
+        // calls for all of them.
+        //
+        // Counts calls that were actually DIALLED. A request rejected upstream
+        // before dialling (a 422) costs nothing and reached nobody, so it must
+        // not consume the day's allowance and lock out real calls.
+        const istDayStart = (() => {
+            const nowIst = new Date(Date.now() + 5.5 * 3600_000)
+            nowIst.setUTCHours(0, 0, 0, 0)
+            return new Date(nowIst.getTime() - 5.5 * 3600_000).toISOString()
+        })()
+
+        const { data: profile } = await admin
+            .from('hospital_profiles')
+            .select('ai_call_daily_cap')
+            .eq('id', caller.id)
+            .maybeSingle()
+
+        const dailyCap = typeof profile?.ai_call_daily_cap === 'number' ? profile.ai_call_daily_cap : 200
+
+        const { count: dialledToday } = await admin
+            .from('hospital_voice_call_attempts')
+            .select('id', { count: 'exact', head: true })
+            .eq('hospital_id', caller.id)
+            .gte('created_at', istDayStart)
+            .or('status.in.(placing,placed,completed),sarvam_attempt_id.not.is.null')
+
+        if ((dialledToday ?? 0) >= dailyCap) {
+            return json({
+                error: `Daily limit reached — ${dailyCap} calls have already been placed today.`,
+                detail: 'This is a safety limit. Calls resume tomorrow, or raise the cap in hospital settings.',
+            }, 429)
+        }
+
         // Expire attempts that never got an outcome.
         //
         // The in-flight uniqueness index is what stops a double-click dialling twice,

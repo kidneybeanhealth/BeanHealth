@@ -187,3 +187,102 @@ export async function fetchVoiceUsage(hospitalId: string, months = 12): Promise<
 
     return Array.from(byMonth.values()).sort((a, b) => b.key.localeCompare(a.key));
 }
+
+export interface VoiceCallLogRow {
+    id: string;
+    createdAt: string;
+    patientName: string;
+    mrNumber: string | null;
+    durationSeconds: number | null;
+    /** connected / no_answer / busy / failed / null */
+    outcome: string | null;
+    connected: boolean;
+    /** Paise. 0 when the call did not connect — those are not charged. */
+    amountPaise: number;
+}
+
+export interface VoiceCallStatement {
+    /** Paise per connected call. NULL = no rate agreed; amounts are withheld. */
+    ratePaise: number | null;
+    rows: VoiceCallLogRow[];
+    billableCount: number;
+    totalPaise: number;
+}
+
+/** ₹ for display. Money is stored and summed in paise; this is the last step. */
+export const formatRupees = (paise: number): string =>
+    `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+export const formatDuration = (seconds?: number | null): string => {
+    if (typeof seconds !== 'number' || seconds <= 0) return '—';
+    const m = Math.floor(seconds / 60);
+    return m > 0 ? `${m}m ${seconds % 60}s` : `${seconds}s`;
+};
+
+/**
+ * The line items behind one month's invoice.
+ *
+ * Charged per CONNECTED call. Unanswered, busy and failed calls appear in the
+ * log — the hospital should see everything that was attempted on their behalf —
+ * but at zero, so the statement reconciles against what they are actually asked
+ * to pay.
+ */
+export async function fetchVoiceCallStatement(
+    hospitalId: string,
+    monthKey: string
+): Promise<VoiceCallStatement> {
+    // IST month bounds. A call at 9pm on the 31st belongs to that month on the
+    // invoice; UTC bounds would move it into the next one and the statement
+    // would disagree with the usage totals beside it.
+    const [y, m] = monthKey.split('-').map(Number);
+    const startIst = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0) - 5.5 * 3600_000).toISOString();
+    const endIst = new Date(Date.UTC(y, m, 1, 0, 0, 0) - 5.5 * 3600_000).toISOString();
+
+    const [profileRes, rowsRes] = await Promise.all([
+        (supabase.from('hospital_profiles' as any) as any)
+            .select('ai_call_rate_paise').eq('id', hospitalId).maybeSingle(),
+        withTimeout(
+            (supabase.from('hospital_voice_call_attempts' as any) as any)
+                .select('id, created_at, status, sarvam_status, duration_seconds, patient:hospital_patients(name, mr_number)')
+                .eq('hospital_id', hospitalId)
+                .gte('created_at', startIst)
+                .lt('created_at', endIst)
+                .order('created_at', { ascending: true })
+                .limit(5000) as any,
+            15000,
+            'Timed out while loading the call statement'
+        ),
+    ]) as [any, { data: any[]; error: any }];
+
+    if (rowsRes.error) throw rowsRes.error;
+
+    const ratePaise = typeof profileRes?.data?.ai_call_rate_paise === 'number'
+        ? profileRes.data.ai_call_rate_paise
+        : null;
+
+    const rows: VoiceCallLogRow[] = (rowsRes.data || [])
+        // An attempt still in flight has no outcome, so it cannot be billed or
+        // called unanswered yet. Excluded rather than guessed at.
+        .filter((r: any) => r.status === 'completed' || r.status === 'failed')
+        .map((r: any) => {
+            const connected = r.sarvam_status === 'connected';
+            return {
+                id: r.id,
+                createdAt: r.created_at,
+                patientName: r.patient?.name || 'Unknown patient',
+                mrNumber: r.patient?.mr_number || null,
+                durationSeconds: typeof r.duration_seconds === 'number' ? r.duration_seconds : null,
+                outcome: r.sarvam_status || (r.status === 'failed' ? 'failed' : null),
+                connected,
+                amountPaise: connected && ratePaise !== null ? ratePaise : 0,
+            };
+        });
+
+    const billableCount = rows.filter((r) => r.connected).length;
+    return {
+        ratePaise,
+        rows,
+        billableCount,
+        totalPaise: rows.reduce((sum, r) => sum + r.amountPaise, 0),
+    };
+}

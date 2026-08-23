@@ -21,7 +21,10 @@ import {
     type ReceptionPastRecordPatient,
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
-import { placeReviewCall, fetchVoiceUsage, type VoiceUsageMonth } from '../../services/voiceCallService';
+import {
+    placeReviewCall, fetchVoiceUsage, fetchVoiceCallStatement, formatRupees, formatDuration,
+    type VoiceUsageMonth, type VoiceCallStatement,
+} from '../../services/voiceCallService';
 import { formatPastDate } from './PastRecordsPatientCard';
 import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 import { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
@@ -608,6 +611,111 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     );
 };
 
+/** One month's line items — who was called, when, how long, and what it cost. */
+const CallStatement: React.FC<{ hospitalId: string; monthKey: string; monthLabel: string }> = ({ hospitalId, monthKey, monthLabel }) => {
+    const [data, setData] = useState<VoiceCallStatement | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setData(null); setError(null);
+        fetchVoiceCallStatement(hospitalId, monthKey)
+            .then(setData)
+            .catch((e) => setError(e?.message || 'Could not load the statement'));
+    }, [hospitalId, monthKey]);
+
+    const exportCsv = () => {
+        if (!data) return;
+        const head = 'Date,Time,Patient,MR ID,Duration (s),Outcome,Amount (INR)';
+        const body = data.rows.map((r) => [
+            new Date(r.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }),
+            new Date(r.createdAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false }),
+            `"${r.patientName.replace(/"/g, '""')}"`,
+            r.mrNumber || '',
+            r.durationSeconds ?? '',
+            r.outcome || '',
+            (r.amountPaise / 100).toFixed(2),
+        ].join(','));
+        const blob = new Blob([[head, ...body].join('\n')], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `beanhealth-ai-calls-${monthKey}.csv`; a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    if (error) return <p className="text-sm text-red-600 mt-3">{error}</p>;
+    if (!data) return <p className="text-sm text-gray-500 mt-3">Loading statement…</p>;
+    if (data.rows.length === 0) return <p className="text-sm text-gray-500 mt-3">No completed calls in {monthLabel}.</p>;
+
+    return (
+        <div className="mt-3">
+            {data.ratePaise === null && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+                    No per-call rate is set for this hospital, so amounts are not shown. Usage below is complete.
+                </p>
+            )}
+            <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                <table className="w-full text-xs">
+                    <thead className="bg-gray-50">
+                        <tr className="text-left text-gray-500 uppercase tracking-wide text-[10px]">
+                            <th className="px-2.5 py-2">Date &amp; time</th>
+                            <th className="px-2.5 py-2">Patient</th>
+                            <th className="px-2.5 py-2">Duration</th>
+                            <th className="px-2.5 py-2">Outcome</th>
+                            <th className="px-2.5 py-2 text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.rows.map((r) => (
+                            <tr key={r.id} className="border-t border-gray-100">
+                                <td className="px-2.5 py-2 whitespace-nowrap text-gray-600">
+                                    {new Date(r.createdAt).toLocaleString('en-IN', {
+                                        timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short',
+                                        hour: '2-digit', minute: '2-digit', hour12: true,
+                                    })}
+                                </td>
+                                <td className="px-2.5 py-2">
+                                    <span className="font-semibold text-gray-900">{r.patientName}</span>
+                                    <span className="block text-[11px] text-gray-500">{r.mrNumber || '—'}</span>
+                                </td>
+                                <td className="px-2.5 py-2 text-gray-600 whitespace-nowrap">{formatDuration(r.durationSeconds)}</td>
+                                <td className="px-2.5 py-2">
+                                    <span className={`font-bold ${r.connected ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                        {r.connected ? 'Answered' : (r.outcome === 'no_answer' ? 'No answer' : r.outcome === 'busy' ? 'Busy' : 'Not connected')}
+                                    </span>
+                                </td>
+                                <td className="px-2.5 py-2 text-right whitespace-nowrap">
+                                    {data.ratePaise === null
+                                        ? <span className="text-gray-400">—</span>
+                                        : r.amountPaise > 0
+                                            ? <span className="font-semibold text-gray-900">{formatRupees(r.amountPaise)}</span>
+                                            : <span className="text-gray-400">Not charged</span>}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                        <tr>
+                            <td className="px-2.5 py-2.5 font-bold text-gray-900" colSpan={3}>
+                                {monthLabel} — {data.rows.length} call{data.rows.length === 1 ? '' : 's'} attempted
+                            </td>
+                            <td className="px-2.5 py-2.5 font-bold text-emerald-700 whitespace-nowrap">
+                                {data.billableCount} billable
+                            </td>
+                            <td className="px-2.5 py-2.5 text-right font-bold text-gray-900 whitespace-nowrap">
+                                {data.ratePaise === null ? '—' : formatRupees(data.totalPaise)}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <button type="button" onClick={exportCsv}
+                className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
+                Export {monthLabel} as CSV
+            </button>
+        </div>
+    );
+};
+
 /**
  * Usage & Billing — what this hospital used, per month.
  *
@@ -620,6 +728,7 @@ const UsagePanel: React.FC<{ hospitalId: string }> = ({ hospitalId }) => {
     const [open, setOpen] = useState(false);
     const [rows, setRows] = useState<VoiceUsageMonth[] | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [openMonth, setOpenMonth] = useState<string | null>(null);
 
     useEffect(() => {
         if (!open || rows) return;
@@ -699,8 +808,11 @@ const UsagePanel: React.FC<{ hospitalId: string }> = ({ hospitalId }) => {
                                     </thead>
                                     <tbody>
                                         {rows.map((m) => (
-                                            <tr key={m.key} className="border-t border-gray-100">
-                                                <td className="py-1.5 pr-3 font-semibold text-gray-800 whitespace-nowrap">{m.label}</td>
+                                            <tr key={m.key} onClick={() => setOpenMonth(openMonth === m.key ? null : m.key)}
+                                                className={`border-t border-gray-100 cursor-pointer ${openMonth === m.key ? 'bg-violet-50' : 'hover:bg-gray-50'}`}>
+                                                <td className="py-1.5 pr-3 font-semibold text-gray-800 whitespace-nowrap">
+                                                    {openMonth === m.key ? '▾ ' : '▸ '}{m.label}
+                                                </td>
                                                 <td className="py-1.5 pr-3">{m.placed}</td>
                                                 <td className="py-1.5 pr-3 font-bold text-emerald-700">{m.connected}</td>
                                                 <td className="py-1.5 pr-3 text-gray-500">{m.notConnected}</td>
@@ -711,9 +823,14 @@ const UsagePanel: React.FC<{ hospitalId: string }> = ({ hospitalId }) => {
                                 </table>
                             </div>
 
+                            {openMonth && (
+                                <CallStatement hospitalId={hospitalId} monthKey={openMonth}
+                                    monthLabel={rows.find((m) => m.key === openMonth)?.label || openMonth} />
+                            )}
+
                             <button type="button" onClick={exportCsv}
                                 className="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
-                                Export CSV
+                                Export monthly summary
                             </button>
                         </>
                     )}
