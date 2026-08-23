@@ -97,3 +97,93 @@ export async function placeReviewCall(
         dialedNumber: data?.dialedNumber,
     };
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Usage metering
+ *
+ * The hospital pays BeanHealth; BeanHealth holds a prepaid balance with the
+ * voice provider. The two are not linked per transaction — the provider is a
+ * supplier cost, not a pass-through — so what has to be exact is the count of
+ * what each hospital used, per month, for the invoice.
+ *
+ * BILLABLE = a call that connected. A call that never reached the patient is
+ * not a service delivered, and a hospital charged for unanswered calls stops
+ * trusting the number within one billing cycle.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export interface VoiceUsageMonth {
+    /** YYYY-MM */
+    key: string;
+    label: string;
+    placed: number;
+    /** Connected — the billable count */
+    connected: number;
+    notConnected: number;
+    failed: number;
+    /** Still awaiting an outcome. Deliberately excluded from every other figure. */
+    pending: number;
+    /**
+     * How many connected calls carry a duration.
+     *
+     * Duration only ever arrives on the provider's own call-ended webhook, which
+     * does not fire for this account; the agent's end-of-call hook carries no
+     * duration field. So this is usually far below `connected`, and any
+     * per-minute total built from it would be a fraction of reality.
+     * Surfaced rather than hidden, because it is the reason to bill per call.
+     */
+    withDuration: number;
+    totalSeconds: number;
+}
+
+export async function fetchVoiceUsage(hospitalId: string, months = 12): Promise<VoiceUsageMonth[]> {
+    const since = new Date();
+    since.setMonth(since.getMonth() - (months - 1));
+    since.setDate(1);
+    since.setHours(0, 0, 0, 0);
+
+    const { data, error } = await withTimeout(
+        (supabase.from('hospital_voice_call_attempts' as any) as any)
+            .select('status, sarvam_status, duration_seconds, created_at')
+            .eq('hospital_id', hospitalId)
+            .gte('created_at', since.toISOString())
+            .order('created_at', { ascending: false })
+            .limit(20000) as any,
+        15000,
+        'Timed out while loading call usage'
+    ) as { data: any[]; error: any };
+
+    if (error) throw error;
+
+    const byMonth = new Map<string, VoiceUsageMonth>();
+    for (const row of data || []) {
+        // Bucketed in IST, not UTC. A call placed at 9pm on the 31st belongs to
+        // that month on the invoice, and UTC would push it into the next one.
+        const key = new Date(row.created_at).toLocaleDateString('en-CA', {
+            timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit',
+        }).slice(0, 7);
+
+        if (!byMonth.has(key)) {
+            byMonth.set(key, {
+                key,
+                label: new Date(`${key}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+                placed: 0, connected: 0, notConnected: 0, failed: 0, pending: 0,
+                withDuration: 0, totalSeconds: 0,
+            });
+        }
+        const m = byMonth.get(key)!;
+
+        if (row.status === 'placing' || row.status === 'placed') { m.pending += 1; continue; }
+
+        m.placed += 1;
+        if (row.status === 'failed') m.failed += 1;
+        else if (row.sarvam_status === 'connected') {
+            m.connected += 1;
+            if (typeof row.duration_seconds === 'number' && row.duration_seconds > 0) {
+                m.withDuration += 1;
+                m.totalSeconds += row.duration_seconds;
+            }
+        } else m.notConnected += 1;
+    }
+
+    return Array.from(byMonth.values()).sort((a, b) => b.key.localeCompare(a.key));
+}

@@ -21,7 +21,7 @@ import {
     type ReceptionPastRecordPatient,
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
-import { placeReviewCall } from '../../services/voiceCallService';
+import { placeReviewCall, fetchVoiceUsage, type VoiceUsageMonth } from '../../services/voiceCallService';
 import { formatPastDate } from './PastRecordsPatientCard';
 import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 import { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
@@ -330,6 +330,8 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
 
             {showScript && <CallScript />}
 
+            <UsagePanel hospitalId={hospitalId} />
+
             <div className="rounded-2xl border border-gray-200 bg-white">
                 <button type="button" onClick={() => setPlacedOpen((v) => !v)}
                     className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left">
@@ -602,6 +604,121 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                 onCancel={() => setPendingDelete(null)}
                 onConfirm={deletePlaced}
             />
+        </div>
+    );
+};
+
+/**
+ * Usage & Billing — what this hospital used, per month.
+ *
+ * Deliberately shows NO rupee figure. The rate is a commercial term between
+ * BeanHealth and the hospital, not something reception sets, and baking a price
+ * into the UI before it is agreed is how a wrong number ends up on an invoice.
+ * This panel supplies the count; the invoice supplies the rate.
+ */
+const UsagePanel: React.FC<{ hospitalId: string }> = ({ hospitalId }) => {
+    const [open, setOpen] = useState(false);
+    const [rows, setRows] = useState<VoiceUsageMonth[] | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!open || rows) return;
+        fetchVoiceUsage(hospitalId)
+            .then(setRows)
+            .catch((e) => setError(e?.message || 'Could not load usage'));
+    }, [open, rows, hospitalId]);
+
+    const exportCsv = () => {
+        if (!rows?.length) return;
+        const header = 'Month,Calls placed,Connected (billable),Not connected,Failed,Duration known,Total seconds';
+        const body = rows.map((m) =>
+            [m.label, m.placed, m.connected, m.notConnected, m.failed, m.withDuration, m.totalSeconds].join(','));
+        const blob = new Blob([[header, ...body].join('\n')], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `beanhealth-ai-calls-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const current = rows?.[0] || null;
+
+    return (
+        <div className="rounded-2xl border border-gray-200 bg-white">
+            <button type="button" onClick={() => setOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left">
+                <span className="text-sm font-bold text-gray-900">
+                    Usage &amp; Billing
+                    {current && <span className="ml-1.5 text-violet-700">({current.connected} billable this month)</span>}
+                </span>
+                <span className="text-xs font-semibold text-violet-700">{open ? 'Hide' : 'Show'}</span>
+            </button>
+
+            {open && (
+                <div className="px-4 pb-4">
+                    {error && <p className="text-sm text-red-600">{error}</p>}
+                    {!rows && !error && <p className="text-sm text-gray-500">Loading usage…</p>}
+                    {rows && rows.length === 0 && <p className="text-sm text-gray-500">No calls placed yet.</p>}
+
+                    {rows && rows.length > 0 && (
+                        <>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                                {[
+                                    ['Calls placed', current!.placed, 'text-gray-900'],
+                                    ['Connected — billable', current!.connected, 'text-emerald-700'],
+                                    ['Not connected', current!.notConnected, 'text-gray-500'],
+                                    ['Failed', current!.failed, 'text-red-600'],
+                                ].map(([label, value, cls]) => (
+                                    <div key={String(label)} className="rounded-xl border border-gray-200 p-3">
+                                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
+                                        <p className={`text-2xl font-bold mt-0.5 ${cls}`}>{value as number}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-xs text-gray-500 mb-3">
+                                {current!.label} · billable means the call reached the patient. Unanswered and failed
+                                calls are not charged.
+                                {current!.withDuration < current!.connected && (
+                                    <> Call duration is recorded for only {current!.withDuration} of {current!.connected} connected
+                                    calls — the provider sends it on a webhook that does not fire for this account, so
+                                    per-minute billing is not possible on this data.</>
+                                )}
+                            </p>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="text-left text-gray-400 uppercase tracking-wide text-[10px]">
+                                            <th className="py-1.5 pr-3">Month</th>
+                                            <th className="py-1.5 pr-3">Placed</th>
+                                            <th className="py-1.5 pr-3">Connected</th>
+                                            <th className="py-1.5 pr-3">Not connected</th>
+                                            <th className="py-1.5">Failed</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rows.map((m) => (
+                                            <tr key={m.key} className="border-t border-gray-100">
+                                                <td className="py-1.5 pr-3 font-semibold text-gray-800 whitespace-nowrap">{m.label}</td>
+                                                <td className="py-1.5 pr-3">{m.placed}</td>
+                                                <td className="py-1.5 pr-3 font-bold text-emerald-700">{m.connected}</td>
+                                                <td className="py-1.5 pr-3 text-gray-500">{m.notConnected}</td>
+                                                <td className="py-1.5 text-red-600">{m.failed}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <button type="button" onClick={exportCsv}
+                                className="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
+                                Export CSV
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
