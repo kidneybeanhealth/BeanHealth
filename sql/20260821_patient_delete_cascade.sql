@@ -37,6 +37,12 @@ BEGIN
           AND att.attname = 'patient_id'
           AND con.confdeltype <> 'c'          -- 'c' = already CASCADE
           AND cl.relnamespace = 'public'::regnamespace
+          -- NEVER cascade an audit log. A record of what was done to a patient
+          -- that vanishes when the patient is deleted is not an audit log — and
+          -- a deletion is precisely the event you would later want to look up.
+          -- Left alone deliberately: if a delete blocks on it, that is the table
+          -- telling you to decide, not a bug to cascade away.
+          AND cl.relname <> 'hospital_activity_audit_log'
     LOOP
         RAISE NOTICE 'cascading %.% (%)', r.child_table, r.child_column, r.conname;
         EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT %I', r.child_table, r.conname);
