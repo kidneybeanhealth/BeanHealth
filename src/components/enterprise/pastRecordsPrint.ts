@@ -5,6 +5,21 @@ export const formatPastDate = (value?: string | null): string => {
     return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+/**
+ * Render a doctor's name for display.
+ *
+ * Two problems this solves. Names are stored inconsistently — "Dr.A.Prabhakar",
+ * "A. Divakar", "Dr Divakar" — so call sites that blindly prefixed "Dr. "
+ * produced "Dr. Dr.A.Prabhakar". And a review with no doctor rendered as
+ * "Dr. Unknown", which reads like a real clinician nobody can identify rather
+ * than what it is: a row that still needs assigning.
+ */
+export const formatDoctorLabel = (name?: string | null): string => {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return 'Unassigned';
+    return /^dr\b\.?/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
+};
+
 export const escapeHtml = (value: string): string =>
     value
         .replace(/&/g, '&amp;')
@@ -56,7 +71,12 @@ export function buildPastRecordsPrintHtml({
 
     const rowsHtml = records
         .map((patient, index) => {
-            const relationLabel = patient.gender === 'F' ? 'W/o' : 'S/o';
+            // Whose review is due — the doctor reception will name on the call.
+            // Matched to the printed date rather than taking the first, since a
+            // patient can hold a review with each doctor.
+            const reviews = patient.doctorReviews || [];
+            const dueReview = reviews.find((dr) => dr.reviewDate === patient.latestReviewDate) || reviews[0];
+            const doctorLabel = dueReview ? formatDoctorLabel(dueReview.doctorName) : '';
             return `
                 <tr>
                     <td class="num">${index + 1}</td>
@@ -64,10 +84,13 @@ export function buildPastRecordsPrintHtml({
                         <div class="pname">${escapeHtml(patient.name || '--')}</div>
                         <div class="pmr">${escapeHtml(patient.mr_number || '--')}</div>
                     </td>
-                    <td class="date">${formatPastDate(patient.latestReviewDate)}</td>
+                    <td class="date">
+                        <div>${formatPastDate(patient.latestReviewDate)}</div>
+                        ${doctorLabel ? `<div class="pdoc">${escapeHtml(doctorLabel)}</div>` : ''}
+                    </td>
                     <td class="date">${formatPastDate(patient.lastVisitAt)}</td>
                     <td class="age">${patient.age ?? '--'}</td>
-                    <td class="rel">${relationLabel} ${escapeHtml(patient.father_husband_name || '--')}</td>
+                    <td class="rel">${escapeHtml(patient.father_husband_name || '--')}</td>
                     <td class="remarks"></td>
                 </tr>
             `;
@@ -97,18 +120,24 @@ export function buildPastRecordsPrintHtml({
                 tbody td { border: 1px solid #d1d5db; padding: 8px 6px; font-size: 12px; vertical-align: top; }
 
                 /* Fixed widths: the remarks box must not be squeezed by a long name. */
+                /* Due Date carries a second line (the doctor) so it needs the
+                   width a name takes; the relation column needs enough not to
+                   wrap a long "D/O MR.PITCHAIMUTHU S" across three lines. */
                 col.c-num     { width: 4%; }
-                col.c-patient { width: 24%; }
-                col.c-due     { width: 11%; }
-                col.c-visit   { width: 11%; }
-                col.c-age     { width: 6%; }
-                col.c-rel     { width: 18%; }
-                col.c-remarks { width: 26%; }
+                col.c-patient { width: 22%; }
+                col.c-due     { width: 15%; }
+                col.c-visit   { width: 10%; }
+                col.c-age     { width: 5%; }
+                col.c-rel     { width: 20%; }
+                col.c-remarks { width: 24%; }
 
                 .num { text-align: center; color: #6b7280; }
                 .pname { font-weight: 700; font-size: 12.5px; line-height: 1.3; }
                 .pmr { font-size: 11px; color: #4b5563; letter-spacing: 0.02em; margin-top: 2px; }
                 .date { white-space: nowrap; font-size: 11.5px; }
+                /* Bold, because on a call the doctor's name is the first thing
+                   reception says after the patient's own. */
+                .pdoc { font-weight: 700; font-size: 11px; margin-top: 2px; color: #111827; }
                 .age { text-align: center; }
                 .rel { font-size: 11.5px; }
 

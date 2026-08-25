@@ -25,20 +25,9 @@ import type {
 /** Past Records view — review filters plus the two report views */
 export type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar';
 
-/**
- * Render a doctor's name for display.
- *
- * Two problems this solves. Names are stored inconsistently — "Dr.A.Prabhakar",
- * "A. Divakar", "Dr Divakar" — so call sites that blindly prefixed "Dr. "
- * produced "Dr. Dr.A.Prabhakar". And a review with no doctor rendered as
- * "Dr. Unknown", which reads like a real clinician nobody can identify rather
- * than what it is: a row that still needs assigning.
- */
-export const formatDoctorLabel = (name?: string | null): string => {
-    const trimmed = (name || '').trim();
-    if (!trimmed) return 'Unassigned';
-    return /^dr\b\.?/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
-};
+// Lives in pastRecordsPrint so the print builder pulls in no React.
+import { formatDoctorLabel } from './pastRecordsPrint';
+export { formatDoctorLabel };
 
 export const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'all') return 'All';
