@@ -23,6 +23,7 @@ import {
 import AdmittedPatientsPanel from './AdmittedPatientsPanel';
 import { resolvePatientDoctorSpecialty } from './PastRecordsMetricsSection';
 import AddFollowupModal from './AddFollowupModal';
+import EditPatientModal from './EditPatientModal';
 import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
@@ -465,6 +466,7 @@ const ReceptionDashboard: React.FC = () => {
     const [missedMonth, setMissedMonth] = useState<string | null>(null);
 
     const [showAddFollowup, setShowAddFollowup] = useState(false);
+    const [editPastPatient, setEditPastPatient] = useState<ReceptionPastRecordPatient | null>(null);
 
     useEffect(() => {
         if (reviewFilter !== 'overdue' || !profile?.id) {
@@ -2352,6 +2354,7 @@ const ReceptionDashboard: React.FC = () => {
                                                 onStopFollowup={handleStopFollowup}
                                                 onCallLog={openCallLog}
                                                 onDelete={(p) => confirmDelete('patient', p.id, p.name)}
+                                        onEdit={setEditPastPatient}
                                                 isAppAccessUpdating={updatingAccessPatientIds.has(patient.id)}
                                                 isCallHistoryExpanded={expandedCallHistoryPatientIds.has(patient.id)}
                                                 onToggleCallHistory={togglePatientCallHistory}
@@ -3212,6 +3215,15 @@ const ReceptionDashboard: React.FC = () => {
                         )}
                     </div>
                 </div>
+            )}
+
+            {editPastPatient && profile?.id && (
+                <EditPatientModal
+                    hospitalId={profile.id}
+                    patient={editPastPatient}
+                    onClose={() => setEditPastPatient(null)}
+                    onSaved={() => { setPastRecords([]); setPastRecordsPage(0); setHasMorePastRecords(true); setPastRecordsLoadedAt(Date.now()); }}
+                />
             )}
 
             {showAddFollowup && profile?.id && (

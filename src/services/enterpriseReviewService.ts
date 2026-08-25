@@ -663,7 +663,14 @@ export async function fetchReceptionPastRecords(
         // latestReviewDate is forced null for them — so the only way to list them
         // is off continuity_status directly.
         if (reviewFilter === 'followup_stopped' && includeDeceasedFields) {
-            query = query.in('continuity_status', ['transferred_out', 'inactive_lost_followup']);
+            // Deceased patients belong here too. markPatientDeceased writes
+            // is_deceased and cancels the reviews, but never touches
+            // continuity_status — so filtering on that column alone made every
+            // patient marked deceased from Admitted Patients unlistable. They are
+            // the clearest case of "no longer being followed up", and leaving them
+            // out meant the only record of the decision was a badge on a card
+            // nobody could navigate to.
+            query = query.or('continuity_status.in.(transferred_out,inactive_lost_followup),is_deceased.is.true');
         }
 
         const trimmedSearch = searchQuery.trim();
@@ -975,7 +982,8 @@ export async function fetchReceptionPastRecords(
             // reviewCategory would always fail.
             if (reviewFilter === 'followup_stopped') {
                 return patient.continuityStatus === 'transferred_out'
-                    || patient.continuityStatus === 'inactive_lost_followup';
+                    || patient.continuityStatus === 'inactive_lost_followup'
+                    || patient.isDeceased === true;
             }
 
             if (reviewFilter !== 'all') {
