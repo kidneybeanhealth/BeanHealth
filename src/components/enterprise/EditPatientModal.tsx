@@ -80,7 +80,8 @@ const EditPatientModal: React.FC<Props> = ({ hospitalId, patient, onClose, onSav
                         father_husband_name: form.fatherHusbandName.trim() || null,
                         mr_number: mrNumber || null,
                         phone: form.phone.trim() || null,
-                        updated_at: new Date().toISOString(),
+                        // No updated_at: hospital_patients does not have that column.
+                        // hospital_queues does, which is where the habit comes from.
                     })
                     .eq('id', patient.id)
                     // Tenancy boundary: without it a signed-in hospital could edit

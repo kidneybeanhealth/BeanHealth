@@ -1283,7 +1283,12 @@ export async function stopPatientFollowup(
                 followup_stopped_at: nowIso,
                 followup_stop_reason: reason,
                 followup_stop_notes: notes || null,
-                updated_at: nowIso,
+                // updated_at was here, and hospital_patients has no such column —
+                // hospital_queues does, which is where the habit came from. THIS is
+                // why Stop Follow-up never recorded once in 3,019 patients: the
+                // write failed on a column that does not exist, and the old
+                // degradation guard listed 'updated_at' among the "not migrated
+                // yet" signals, so it caught its own bug and reported success.
             })
             .eq('hospital_id', hospitalId)
             .eq('id', patientId)) as any,
