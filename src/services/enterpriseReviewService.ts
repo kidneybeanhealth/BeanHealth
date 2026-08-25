@@ -1292,21 +1292,29 @@ export async function stopPatientFollowup(
     ) as SupabaseResult;
 
     if (patientUpdateResult.error) {
-        const message = String(patientUpdateResult.error.message || '').toLowerCase();
-        const missingLifecycleColumns =
-            message.includes('continuity_status') ||
-            message.includes('followup_stopped_at') ||
-            message.includes('followup_stop_reason') ||
-            message.includes('followup_stop_notes') ||
-            message.includes('updated_at');
-
-        if (!missingLifecycleColumns) {
+        // THIS USED TO SWALLOW THE FAILURE AND REPORT SUCCESS.
+        //
+        // The old guard degraded whenever the message merely mentioned one of the
+        // lifecycle columns — including `updated_at`, which appears in almost any
+        // error on this table. So a genuinely failed write logged a console
+        // warning, cancelled the reviews anyway, and showed a success toast.
+        //
+        // The result across 3,019 patients at KKC: not one row with
+        // continuity_status = 'transferred_out', while their reviews had been
+        // cancelled. Patients were stopped in effect but never recorded as
+        // stopped — invisible in Follow-up Stopped AND absent from every review
+        // bucket. A silent dropout, produced by a button that said it worked.
+        //
+        // Degrade ONLY on a real undefined-column error (Postgres 42703), and
+        // even then say so out loud instead of returning as if nothing happened.
+        const code = String((patientUpdateResult.error as any)?.code || '');
+        if (code !== '42703') {
             throw patientUpdateResult.error;
         }
-
-        // Backward compatibility: allow review cancellation even when the
-        // lifecycle columns have not been migrated yet.
-        console.warn('[stopPatientFollowup] lifecycle columns missing, proceeding with review cancellation only');
+        throw new Error(
+            'Follow-up could not be recorded: this database is missing the follow-up ' +
+            'lifecycle columns. Run sql/20260819_followup_reason.sql, then try again.'
+        );
     }
 
     const cancelReviewsResult = await withTimeout(
