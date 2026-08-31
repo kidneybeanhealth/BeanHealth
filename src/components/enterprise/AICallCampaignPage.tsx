@@ -29,9 +29,89 @@ import { formatPastDate } from './PastRecordsPatientCard';
 import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 import { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 
-type CohortFilter = Extract<ReceptionReviewFilter, 'all' | 'due_today' | 'due_tomorrow' | 'overdue'>;
+type CohortFilter = Extract<ReceptionReviewFilter, 'all' | 'due_today' | 'due_tomorrow' | 'overdue'> | 'priority';
+
+/** 'priority' re-orders the missed-followup cohort; it is not its own query. */
+const cohortToFilter = (c: CohortFilter): ReceptionReviewFilter =>
+    (c === 'priority' ? 'overdue' : c);
+
+/**
+ * Call priority — who reception should ring first.
+ *
+ * OPERATIONAL, NOT CLINICAL. This ranks on how long someone has been out of
+ * contact and how hard we have already tried to reach them. It says nothing
+ * about how ill anyone is: this table has no eGFR, no CKD stage, no labs. A
+ * score presented as clinical risk would be read as one by whoever works the
+ * list, and that would be a lie the software told a nurse.
+ *
+ * Every reason is shown on the row. Reception should be able to disagree with
+ * the order and see immediately why it came out that way — a ranking nobody can
+ * audit is one nobody should follow.
+ */
+export interface CallPriority {
+    score: number;
+    reasons: string[];
+}
+
+export const scoreCallPriority = (
+    patient: ReceptionPastRecordPatient,
+    today = new Date()
+): CallPriority => {
+    const reasons: string[] = [];
+    let score = 0;
+
+    const due = patient.latestReviewDate ? new Date(patient.latestReviewDate) : null;
+    const daysOverdue = due
+        ? Math.floor((new Date(today.toDateString()).getTime() - new Date(due.toDateString()).getTime()) / 86400000)
+        : 0;
+    if (daysOverdue > 0) {
+        // The dominant term. Capped so a two-year-old review cannot bury a
+        // patient who is three weeks out and still reachable.
+        score += Math.min(daysOverdue, 180);
+        reasons.push(`${daysOverdue}d overdue`);
+    }
+
+    const calls = patient.callHistory || [];
+    if (calls.length === 0) {
+        // Nobody has tried. Ranks above someone already chased repeatedly:
+        // an untried patient is the one most likely to be reached today.
+        score += 60;
+        reasons.push('never called');
+    } else {
+        const last = calls[0];
+        if (last?.call_status && last.call_status !== 'picked') {
+            score += 25;
+            reasons.push('last call not picked');
+        }
+        // Diminishing returns, not zero — someone rung four times without answer
+        // still matters, just less than someone nobody has phoned.
+        score -= Math.min(calls.length * 8, 40);
+    }
+
+    const age = Number(String(patient.age ?? '').replace(/\D/g, ''));
+    if (Number.isFinite(age) && age >= 70) {
+        score += 20;
+        reasons.push('age 70+');
+    }
+
+    if (patient.lastVisitAt) {
+        const monthsSince = Math.floor(
+            (today.getTime() - new Date(patient.lastVisitAt).getTime()) / (30 * 86400000)
+        );
+        if (monthsSince >= 6) {
+            score += 25;
+            reasons.push(`${monthsSince}m since last visit`);
+        }
+    } else {
+        score += 15;
+        reasons.push('no recorded visit');
+    }
+
+    return { score, reasons };
+};
 
 const COHORTS: { key: CohortFilter; label: string }[] = [
+    { key: 'priority', label: 'Call First' },
     { key: 'overdue', label: 'Missed Followup' },
     { key: 'due_today', label: 'Due Today' },
     { key: 'due_tomorrow', label: 'Due Tomorrow' },
@@ -93,6 +173,10 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     const [locked, setLocked] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const [showScript, setShowScript] = useState(false);
+    // Three sections stacked as collapsibles meant opening Usage pushed the
+    // patient list — the thing the page exists for — below the fold. They are
+    // peers, not accessories, so they are views rather than accordions.
+    const [view, setView] = useState<'campaign' | 'placed' | 'usage'>('campaign');
     const [placed, setPlaced] = useState<PlacedCall[]>([]);
     const [placedOpen, setPlacedOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -103,7 +187,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        fetchReceptionPastRecords({ hospitalId, page: 0, pageSize: CAMPAIGN_FETCH_LIMIT, reviewFilter: cohort })
+        fetchReceptionPastRecords({ hospitalId, page: 0, pageSize: CAMPAIGN_FETCH_LIMIT, reviewFilter: cohortToFilter(cohort) })
             .then((res) => { if (!cancelled) setCandidates(res.patients); })
             .catch((err) => { if (!cancelled) toast.error(err?.message || 'Could not load patients'); })
             .finally(() => { if (!cancelled) setLoading(false); });
@@ -144,6 +228,9 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
         // Selected float to the top and hold their order, so a long list stays
         // reviewable — the operator can see what they picked without scrolling
         // back through hundreds of unchecked rows.
+        if (cohort === 'priority') {
+            base = [...base].sort((a, b) => scoreCallPriority(b).score - scoreCallPriority(a).score);
+        }
         const picked: ReceptionPastRecordPatient[] = [];
         const rest: ReceptionPastRecordPatient[] = [];
         for (const p of base) (selectedIds.has(p.id) ? picked : rest).push(p);
@@ -333,18 +420,27 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
 
             {showScript && <CallScript />}
 
-            <UsagePanel hospitalId={hospitalId} />
+            <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+                {([
+                    ['campaign', 'Call Campaign'],
+                    ['placed', `Placed Calls${placed.length ? ` (${placed.length})` : ''}`],
+                    ['usage', 'Usage & Billing'],
+                ] as const).map(([key, label]) => (
+                    <button key={key} type="button" onClick={() => setView(key)}
+                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${view === key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}>
+                        {label}
+                    </button>
+                ))}
+            </div>
 
+            {view === 'usage' && <UsagePanel hospitalId={hospitalId} />}
+
+            {view === 'placed' && (
             <div className="rounded-2xl border border-gray-200 bg-white">
-                <button type="button" onClick={() => setPlacedOpen((v) => !v)}
-                    className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left">
-                    <span className="text-sm font-bold text-gray-900">
-                        Placed Call List
-                        {placed.length > 0 && <span className="ml-1.5 text-violet-700">({placed.length})</span>}
-                    </span>
-                    <span className="text-xs font-semibold text-violet-700">{placedOpen ? 'Hide' : 'Show'}</span>
-                </button>
-                {placedOpen && (
+                <div className="px-4 pt-4">
+                    <p className="text-sm font-bold text-gray-900">Placed Call List</p>
+                </div>
+                {(
                     <div className="px-4 pb-4">
                         {placed.length === 0 ? (
                             <p className="text-sm text-gray-500">No AI calls have been placed yet.</p>
@@ -392,7 +488,10 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                     </div>
                 )}
             </div>
+            )}
 
+            {view === 'campaign' && (
+            <>
             <div className="flex items-center gap-2 text-xs font-semibold">
                 {(['Select patients', 'Confirm & numbers', 'Place calls'] as const).map((label, i) => (
                     <React.Fragment key={label}>
@@ -406,6 +505,13 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
 
             {step === 1 && (
                 <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                    {cohort === 'priority' && (
+                        <p className="mb-3 text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 leading-relaxed">
+                            <span className="font-bold">Ordered by how long the patient has been out of contact</span> — days
+                            overdue, whether anyone has called, how long since their last visit. The reason for each
+                            position is shown on the row. This is not a clinical risk score: it uses no labs or CKD stage.
+                        </p>
+                    )}
                     <div className="flex flex-wrap gap-2 mb-3">
                         {COHORTS.map((c) => (
                             <button key={c.key} type="button" onClick={() => { setCohort(c.key); setSelectedIds(new Set()); setMissedMonth(null); }}
@@ -460,9 +566,19 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                     <span className="block font-semibold text-gray-900 text-sm truncate">{p.name}</span>
                                     <span className="block text-xs text-gray-500">{p.mr_number || '—'} · Age {p.age ?? '--'}</span>
                                 </span>
-                                <span className="text-xs text-gray-500 whitespace-nowrap">
-                                    {formatPastDate(p.latestReviewDate)}
-                                </span>
+                                {cohort === 'priority' ? (
+                                    <span className="flex flex-wrap justify-end gap-1 max-w-[55%]">
+                                        {scoreCallPriority(p).reasons.map((r) => (
+                                            <span key={r} className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 whitespace-nowrap">
+                                                {r}
+                                            </span>
+                                        ))}
+                                    </span>
+                                ) : (
+                                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                                        {formatPastDate(p.latestReviewDate)}
+                                    </span>
+                                )}
                             </label>
                         ))}
                         {!loading && visible.length === 0 && (
@@ -595,6 +711,9 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                 </div>
             )}
 
+            </>
+            )}
+
             <TwoStepConfirmModal
                 isOpen={!!pendingDelete}
                 title={`Delete the AI call record for ${pendingDelete?.name ?? ''}?`}
@@ -725,7 +844,7 @@ const CallStatement: React.FC<{ hospitalId: string; monthKey: string; monthLabel
  * This panel supplies the count; the invoice supplies the rate.
  */
 const UsagePanel: React.FC<{ hospitalId: string }> = ({ hospitalId }) => {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(true);
     const [rows, setRows] = useState<VoiceUsageMonth[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [openMonth, setOpenMonth] = useState<string | null>(null);
