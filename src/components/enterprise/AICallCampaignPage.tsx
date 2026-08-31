@@ -972,43 +972,84 @@ const StateChip: React.FC<{ state: RunState }> = ({ state }) => {
 };
 
 /**
- * The call outline, so reception knows what the patient will hear.
+ * The call outline, per language.
  *
  * NOT the agent's prompt — that lives in the Sarvam console and is the single
  * source of truth. This is a plain-language summary of the flow, kept here so
  * nobody has to open the console to answer "what did it say to my patient?".
- * The Tamil is what a Tamil-language call sounds like; the agent mirrors the
- * patient's language from the opening.
+ *
+ * One section per language rather than one language with a translation beneath
+ * it: reception reads the language the call was actually placed in, and a
+ * receptionist checking a Hindi call should not have to read past Tamil to
+ * find it. English stays last as the fallback the agent uses when it cannot
+ * continue in the patient's own language.
  */
+const SCRIPT_STEPS = [
+    {
+        label: 'Greeting',
+        ta: 'வணக்கம், நான் ஆஷா, {hospital_name}-லிருந்து பேசுகிறேன். {patient_name} பேசுகிறீர்களா, அல்லது குடும்பத்தினரா?',
+        hi: 'नमस्ते, मैं आशा बोल रही हूँ, {hospital_name} से। क्या मैं {patient_name} से बात कर रही हूँ, या परिवार के किसी सदस्य से?',
+        en: 'Hello, this is Asha calling from {hospital_name}. Am I speaking with {patient_name}, or a family member?',
+    },
+    {
+        label: 'Why we called',
+        ta: 'உங்கள் மறு பரிசோதனை தேதி {review_date}. அது முடிந்து {days_overdue} நாட்கள் ஆகிவிட்டன.',
+        hi: 'आपकी जाँच की तारीख़ {review_date} थी। उसे {days_overdue} दिन हो चुके हैं।',
+        en: 'Your review was due on {review_date} — that was {days_overdue} days ago.',
+    },
+    {
+        label: 'The ask',
+        ta: 'நீங்கள் எப்போது வர முடியும்? நேரம் ஒதுக்க வேண்டாம், OP நேரத்தில் வந்தால் போதும்.',
+        hi: 'आप कब आ सकते हैं? अपॉइंटमेंट की ज़रूरत नहीं है — OP समय में आ जाइए।',
+        en: 'When can you come? No appointment needed — just come during OP hours.',
+    },
+    {
+        label: 'Red flag',
+        ta: 'மூச்சுத் திணறல், வீக்கம், சிறுநீர் குறைவு இருந்தால் — உடனே வாருங்கள். முன் அலுவலகம்: {front_desk_number}',
+        hi: 'साँस लेने में तकलीफ़, सूजन, या पेशाब कम होना — तुरंत आइए। फ्रंट डेस्क: {front_desk_number}',
+        en: 'Breathlessness, swelling, reduced urine — come in now. Front desk: {front_desk_number}',
+    },
+] as const;
+
+const SCRIPT_LANGUAGES = [
+    { key: 'ta', name: 'தமிழ்', english: 'Tamil', note: 'Default opening language for KKC.' },
+    { key: 'hi', name: 'हिन्दी', english: 'Hindi', note: 'Used when the patient answers in Hindi.' },
+    { key: 'en', name: 'English', english: '', note: 'Fallback, and what reception reads to check the flow.' },
+] as const;
+
 const CallScript: React.FC = () => (
     <div className="rounded-2xl border border-violet-200 bg-white p-4">
         <div className="flex items-baseline justify-between gap-2 mb-2">
             <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700">Call script — what the patient hears</p>
-            <p className="text-[11px] text-gray-400">Agent “Asha” · Sarvam app_version 8</p>
+            <p className="text-[11px] text-gray-400">Agent “Asha” · Sarvam app_version 9</p>
         </div>
-        <p className="text-xs text-gray-500 mb-3">
-            Summary of the flow, not the agent's prompt — that lives in the Sarvam console. The call opens in
-            Tamil and follows the patient from there.
+        <p className="text-xs text-gray-500 mb-4">
+            Summary of the flow, not the agent's prompt — that lives in the Sarvam console. The call opens in the
+            language set for that call and follows the patient from there; the agent supports 11 Indian languages,
+            of which the three below are the ones KKC actually sees.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            {[
-                ['Greeting', 'வணக்கம், நான் ஆஷா, {hospital_name}-லிருந்து பேசுகிறேன். {patient_name} பேசுகிறீர்களா, அல்லது குடும்பத்தினரா?',
-                    'Hello, this is Asha calling from {hospital_name}. Am I speaking with {patient_name}, or a family member?'],
-                ['Why we called', 'உங்கள் மறு பரிசோதனை தேதி {review_date}. அது முடிந்து {days_overdue} நாட்கள் ஆகிவிட்டன.',
-                    'Your review was due on {review_date} — that was {days_overdue} days ago.'],
-                ['The ask', 'நீங்கள் எப்போது வர முடியும்? நேரம் ஒதுக்க வேண்டாம், OP நேரத்தில் வந்தால் போதும்.',
-                    'When can you come? No appointment needed — just come during OP hours.'],
-                ['Red flag', 'மூச்சுத் திணறல், வீக்கம், சிறுநீர் குறைவு இருந்தால் — உடனே வாருங்கள். முன் அலுவலகம்: {front_desk_number}',
-                    'Breathlessness, swelling, reduced urine — come in now. Front desk: {front_desk_number}'],
-            ].map(([label, ta, en]) => (
-                <div key={label} className="rounded-xl border border-gray-200 p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
-                    <p className="mt-1 text-gray-900 leading-relaxed">{ta}</p>
-                    <p className="mt-1 text-xs text-gray-500 leading-relaxed">{en}</p>
-                </div>
+
+        <div className="space-y-4">
+            {SCRIPT_LANGUAGES.map((lang) => (
+                <section key={lang.key}>
+                    <div className="flex items-baseline gap-2 mb-2 pb-1.5 border-b border-gray-200">
+                        <h4 className="text-sm font-bold text-gray-900">{lang.name}</h4>
+                        {lang.english && <span className="text-xs text-gray-400">{lang.english}</span>}
+                        <span className="ml-auto text-[11px] text-gray-400">{lang.note}</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-sm">
+                        {SCRIPT_STEPS.map((step) => (
+                            <div key={step.label} className="rounded-xl border border-gray-200 p-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{step.label}</p>
+                                <p className="mt-1 text-gray-900 leading-relaxed">{step[lang.key]}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
             ))}
         </div>
-        <p className="mt-3 text-xs text-gray-500">
+
+        <p className="mt-4 text-xs text-gray-500">
             The agent never moves an appointment. It records what the patient said; a human reschedules.
         </p>
     </div>
