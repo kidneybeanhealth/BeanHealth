@@ -765,7 +765,14 @@ export async function fetchReceptionPastRecords(
         // latestReviewDate is forced null for them — so the only way to list them
         // is off continuity_status directly.
         if (reviewFilter === 'followup_stopped' && includeDeceasedFields) {
-            query = query.in('continuity_status', ['transferred_out', 'inactive_lost_followup']);
+            // Deceased patients belong here too. markPatientDeceased writes
+            // is_deceased and cancels the reviews, but never touches
+            // continuity_status — so filtering on that column alone made every
+            // patient marked deceased from Admitted Patients unlistable. They are
+            // the clearest case of "no longer being followed up", and leaving them
+            // out meant the only record of the decision was a badge on a card
+            // nobody could navigate to.
+            query = query.or('continuity_status.in.(transferred_out,inactive_lost_followup),is_deceased.is.true');
         }
 
         const trimmedSearch = searchQuery.trim();
@@ -1149,7 +1156,8 @@ export async function fetchReceptionPastRecords(
             // reviewCategory would always fail.
             if (reviewFilter === 'followup_stopped') {
                 return patient.continuityStatus === 'transferred_out'
-                    || patient.continuityStatus === 'inactive_lost_followup';
+                    || patient.continuityStatus === 'inactive_lost_followup'
+                    || patient.isDeceased === true;
             }
 
             if (reviewFilter !== 'all') {
@@ -1449,7 +1457,12 @@ export async function stopPatientFollowup(
                 followup_stopped_at: nowIso,
                 followup_stop_reason: reason,
                 followup_stop_notes: notes || null,
-                updated_at: nowIso,
+                // updated_at was here, and hospital_patients has no such column —
+                // hospital_queues does, which is where the habit came from. THIS is
+                // why Stop Follow-up never recorded once in 3,019 patients: the
+                // write failed on a column that does not exist, and the old
+                // degradation guard listed 'updated_at' among the "not migrated
+                // yet" signals, so it caught its own bug and reported success.
             })
             .eq('hospital_id', hospitalId)
             .eq('id', patientId)) as any,
@@ -1458,21 +1471,29 @@ export async function stopPatientFollowup(
     ) as SupabaseResult;
 
     if (patientUpdateResult.error) {
-        const message = String(patientUpdateResult.error.message || '').toLowerCase();
-        const missingLifecycleColumns =
-            message.includes('continuity_status') ||
-            message.includes('followup_stopped_at') ||
-            message.includes('followup_stop_reason') ||
-            message.includes('followup_stop_notes') ||
-            message.includes('updated_at');
-
-        if (!missingLifecycleColumns) {
+        // THIS USED TO SWALLOW THE FAILURE AND REPORT SUCCESS.
+        //
+        // The old guard degraded whenever the message merely mentioned one of the
+        // lifecycle columns — including `updated_at`, which appears in almost any
+        // error on this table. So a genuinely failed write logged a console
+        // warning, cancelled the reviews anyway, and showed a success toast.
+        //
+        // The result across 3,019 patients at KKC: not one row with
+        // continuity_status = 'transferred_out', while their reviews had been
+        // cancelled. Patients were stopped in effect but never recorded as
+        // stopped — invisible in Follow-up Stopped AND absent from every review
+        // bucket. A silent dropout, produced by a button that said it worked.
+        //
+        // Degrade ONLY on a real undefined-column error (Postgres 42703), and
+        // even then say so out loud instead of returning as if nothing happened.
+        const code = String((patientUpdateResult.error as any)?.code || '');
+        if (code !== '42703') {
             throw patientUpdateResult.error;
         }
-
-        // Backward compatibility: allow review cancellation even when the
-        // lifecycle columns have not been migrated yet.
-        console.warn('[stopPatientFollowup] lifecycle columns missing, proceeding with review cancellation only');
+        throw new Error(
+            'Follow-up could not be recorded: this database is missing the follow-up ' +
+            'lifecycle columns. Run sql/20260819_followup_reason.sql, then try again.'
+        );
     }
 
     const cancelReviewsResult = await withTimeout(

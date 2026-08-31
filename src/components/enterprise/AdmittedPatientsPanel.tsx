@@ -20,6 +20,7 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 import {
+    stopPatientFollowup,
     fetchAdmittedPatients,
     dischargePatient,
     markPatientDeceased,
@@ -88,6 +89,15 @@ const formatAdmittedAt = (value?: string | null): string => {
     });
 };
 
+/** Deceased is deliberately absent — that is Mark Deceased, which also records the date. */
+const NO_FOLLOWUP_REASONS = [
+    'Treatment complete — no follow-up needed',
+    'Transferred to another hospital',
+    'Patient declined further follow-up',
+    'Follow-up with local doctor',
+    'Other',
+];
+
 const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     hospitalId,
     doctor,
@@ -110,6 +120,12 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
     const [dischargeStep, setDischargeStep] = useState<1 | 2>(1);
     const [dischargeReviewDate, setDischargeReviewDate] = useState('');
     const [dischargeReviewReason, setDischargeReviewReason] = useState('');
+    // Why this patient needs NO follow-up. Required when no review date is set:
+    // admission already cancelled their existing review, so discharging with
+    // neither a date nor a reason drops them out of the programme with nothing
+    // recording that anyone decided it.
+    const [dischargeNoFollowupReason, setDischargeNoFollowupReason] = useState('');
+    const [dischargeNoFollowupOther, setDischargeNoFollowupOther] = useState('');
     const [dischargeConfirmReady, setDischargeConfirmReady] = useState(false);
     const [deceasedCandidate, setDeceasedCandidate] = useState<AdmittedPatientRecord | null>(null);
     const [returnCandidate, setReturnCandidate] = useState<AdmittedPatientRecord | null>(null);
@@ -195,10 +211,19 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
         return () => window.clearTimeout(t);
     }, [dischargeCandidate, dischargeStep]);
 
+    const noFollowupChosen = dischargeNoFollowupReason === 'Other'
+        ? dischargeNoFollowupOther.trim().length > 0
+        : dischargeNoFollowupReason.length > 0;
+
     const handleConfirmDischarge = async () => {
         if (!dischargeCandidate) return;
         const { queueId, patient, patientId, doctorId: dischargeDoctorId } = dischargeCandidate;
         const reviewDate = dischargeReviewDate.trim();
+        const noFollowupReason = reviewDate
+            ? ''
+            : (dischargeNoFollowupReason === 'Other'
+                ? dischargeNoFollowupOther.trim()
+                : dischargeNoFollowupReason);
         setDischargeCandidate(null);
         const toastId = toast.loading('Discharging patient...');
         try {
@@ -223,11 +248,28 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                     console.error('[AdmittedPatientsPanel] review schedule failed', reviewErr);
                     // Non-fatal — discharge still succeeded
                 }
+            } else if (noFollowupReason) {
+                // No review date. Admission already cancelled whatever review this
+                // patient had, so without this they would sit in active_followup
+                // with nothing scheduled — invisible in every review bucket and
+                // absent from Follow-up Stopped. Recording the decision puts them
+                // somewhere a human can find them.
+                try {
+                    await stopPatientFollowup({
+                        hospitalId,
+                        patientId,
+                        reason: noFollowupReason,
+                        notes: 'Recorded at discharge',
+                    });
+                } catch (stopErr) {
+                    console.error('[AdmittedPatientsPanel] stop-followup at discharge failed', stopErr);
+                    toast.error('Discharged, but the no-follow-up reason was not saved.');
+                }
             }
             toast.success(
                 reviewDate
                     ? `${patient.name} discharged · Review scheduled for ${new Date(reviewDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`
-                    : `${patient.name} discharged`,
+                    : `${patient.name} discharged · Follow-up stopped (${noFollowupReason})`,
                 { id: toastId }
             );
             loadRecords();
@@ -564,6 +606,41 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                                 Review on {new Date(dischargeReviewDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
                                             </p>
                                         )}
+                                        {!dischargeReviewDate && (
+                                            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                                                <p className="text-xs font-bold text-amber-800 uppercase tracking-wide">No follow-up — why?</p>
+                                                <p className="mt-1 text-[11px] text-amber-700 leading-relaxed">
+                                                    Admission already cancelled this patient's review. Without a date or a
+                                                    reason they leave the follow-up programme with nothing recording it.
+                                                </p>
+                                                <div className="mt-2 space-y-1">
+                                                    {NO_FOLLOWUP_REASONS.map((r) => (
+                                                        <label key={r} className="flex items-center gap-2 text-xs text-gray-800 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="no-followup-reason"
+                                                                checked={dischargeNoFollowupReason === r}
+                                                                onChange={() => setDischargeNoFollowupReason(r)}
+                                                                className="accent-rose-600"
+                                                            />
+                                                            {r}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                {dischargeNoFollowupReason === 'Other' && (
+                                                    <input
+                                                        type="text"
+                                                        value={dischargeNoFollowupOther}
+                                                        onChange={(e) => setDischargeNoFollowupOther(e.target.value)}
+                                                        placeholder="Type the reason"
+                                                        className="mt-2 w-full px-3 py-2 text-sm rounded-lg border border-amber-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-200"
+                                                    />
+                                                )}
+                                                <p className="mt-2 text-[11px] text-amber-700">
+                                                    They will appear under <span className="font-bold">Follow-up Stopped</span> in Past Records.
+                                                </p>
+                                            </div>
+                                        )}
                                         {dischargeReviewDate && (
                                             <div className="mt-3">
                                                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
@@ -599,17 +676,12 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                             >
                                                 Skip review
                                             </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => setDischargeStep(2)}
-                                                className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
-                                            >
-                                                Continue without review
-                                            </button>
-                                        )}
+                                        ) : null}
                                         <button
                                             onClick={() => setDischargeStep(2)}
-                                            className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                            disabled={!dischargeReviewDate && !noFollowupChosen}
+                                            className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                            title={!dischargeReviewDate && !noFollowupChosen ? 'Set a review date, or say why there is no follow-up' : undefined}
                                         >
                                             Continue
                                         </button>
@@ -646,7 +718,10 @@ const AdmittedPatientsPanel: React.FC<AdmittedPatientsPanelProps> = ({
                                     ) : (
                                         <div className="bg-gray-50 rounded-xl border border-gray-200 px-4 py-3 flex items-center gap-2.5">
                                             <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <p className="text-xs text-gray-500">No review scheduled — patient will be discharged without a follow-up date.</p>
+                                            <p className="text-xs text-gray-500">
+                                                No review scheduled. Follow-up will be stopped and recorded as:
+                                                <span className="font-bold text-gray-700"> {dischargeNoFollowupReason === 'Other' ? dischargeNoFollowupOther.trim() : dischargeNoFollowupReason}</span>
+                                            </p>
                                         </div>
                                     )}
 

@@ -26,6 +26,7 @@ import { resolvePatientDoctorSpecialty } from './PastRecordsMetricsSection';
 import { placeReviewCall, voiceCallsEnabled } from '../../services/voiceCallService';
 import AICallCampaignPage from './AICallCampaignPage';
 import AddFollowupModal from './AddFollowupModal';
+import EditPatientModal from './EditPatientModal';
 import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import PastRecordsPatientCard, {
@@ -504,6 +505,7 @@ const ReceptionDashboard: React.FC = () => {
     const [showAddFollowup, setShowAddFollowup] = useState(false);
     const [showAICampaign, setShowAICampaign] = useState(false);
     const [reviewAlertCount, setReviewAlertCount] = useState(0);
+    const [editPastPatient, setEditPastPatient] = useState<ReceptionPastRecordPatient | null>(null);
 
     useEffect(() => {
         if (reviewFilter !== 'overdue' || !profile?.id) {
@@ -2417,6 +2419,7 @@ const ReceptionDashboard: React.FC = () => {
                                                 onStopFollowup={handleStopFollowup}
                                                 onCallLog={openCallLog}
                                                 onDelete={(p) => confirmDelete('patient', p.id, p.name)}
+                                        onEdit={setEditPastPatient}
                                                 isAppAccessUpdating={updatingAccessPatientIds.has(patient.id)}
                                                 isCallHistoryExpanded={expandedCallHistoryPatientIds.has(patient.id)}
                                                 onToggleCallHistory={togglePatientCallHistory}
@@ -3287,6 +3290,15 @@ const ReceptionDashboard: React.FC = () => {
                 <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
                     <AICallCampaignPage hospitalId={profile.id} onBack={() => setShowAICampaign(false)} />
                 </div>
+            )}
+
+            {editPastPatient && profile?.id && (
+                <EditPatientModal
+                    hospitalId={profile.id}
+                    patient={editPastPatient}
+                    onClose={() => setEditPastPatient(null)}
+                    onSaved={() => { setPastRecords([]); setPastRecordsPage(0); setHasMorePastRecords(true); setPastRecordsLoadedAt(Date.now()); }}
+                />
             )}
 
             {showAddFollowup && profile?.id && (

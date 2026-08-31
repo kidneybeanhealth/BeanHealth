@@ -48,20 +48,9 @@ const VOICE_STATUS_LABEL: Record<string, string> = {
     failed: 'Could not connect',
 };
 
-/**
- * Render a doctor's name for display.
- *
- * Two problems this solves. Names are stored inconsistently — "Dr.A.Prabhakar",
- * "A. Divakar", "Dr Divakar" — so call sites that blindly prefixed "Dr. "
- * produced "Dr. Dr.A.Prabhakar". And a review with no doctor rendered as
- * "Dr. Unknown", which reads like a real clinician nobody can identify rather
- * than what it is: a row that still needs assigning.
- */
-export const formatDoctorLabel = (name?: string | null): string => {
-    const trimmed = (name || '').trim();
-    if (!trimmed) return 'Unassigned';
-    return /^dr\b\.?/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
-};
+// Lives in pastRecordsPrint so the print builder pulls in no React.
+import { formatDoctorLabel } from './pastRecordsPrint';
+export { formatDoctorLabel };
 
 export const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'all') return 'All';
@@ -121,6 +110,8 @@ export interface PastRecordsPatientCardProps {
     onVoiceCall?: (patient: ReceptionPastRecordPatient) => void;
     /** True while a call is being placed for THIS patient. */
     isVoiceCallPlacing?: boolean;
+    /** Correct the patient's own details. Optional, like onDelete. */
+    onEdit?: (patient: ReceptionPastRecordPatient) => void;
 
     isAppAccessUpdating: boolean;
     isCallHistoryExpanded: boolean;
@@ -143,6 +134,7 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
     onDelete,
     onVoiceCall,
     isVoiceCallPlacing = false,
+    onEdit,
     isAppAccessUpdating,
     isCallHistoryExpanded,
     onToggleCallHistory,
@@ -415,6 +407,19 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                 </svg>
                                 Call Log
                             </button>
+                            {onEdit && (
+                                <button
+                                    type="button"
+                                    onClick={() => onEdit(patient)}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                                    title="Edit patient details"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    Edit
+                                </button>
+                            )}
                             {onDelete && (
                                 <button
                                     type="button"
