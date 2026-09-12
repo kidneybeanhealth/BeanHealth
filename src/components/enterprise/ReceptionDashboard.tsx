@@ -509,8 +509,16 @@ const ReceptionDashboard: React.FC = () => {
 
 
     const handlePrintPastRecordsList = async () => {
-        if (!['due_today', 'due_tomorrow', 'overdue'].includes(reviewFilter)) {
-            toast.error('Print List is available for Due Today, Due Tomorrow, or Missed Followup');
+        // A specific review date is a printable cohort in its own right —
+        // "who is coming on the 25th" is exactly the sheet reception wants to
+        // carry. The fetch below already passed reviewDate through; only this
+        // guard stood in the way, so picking a date left the list on screen and
+        // no way to take it off the screen.
+        const isPrintableCohort =
+            Boolean(reviewDateFilter) ||
+            ['due_today', 'due_tomorrow', 'overdue'].includes(reviewFilter);
+        if (!isPrintableCohort) {
+            toast.error('Pick a review date, or Due Today / Due Tomorrow / Missed Followup, to print a list');
             return;
         }
 
@@ -566,7 +574,12 @@ const ReceptionDashboard: React.FC = () => {
         const html = buildPastRecordsPrintHtml({
             records: printRecords,
             orgLabel: displayName || 'Hospital',
-            filterLabel: getReviewFilterLabel(reviewFilter),
+            // Naming the chip on a date-filtered sheet would print "All" over a
+            // list of one day's patients — the one thing the reader needs to
+            // know is which day it is for.
+            filterLabel: reviewDateFilter
+                ? `Due ${formatPastDate(reviewDateFilter)}`
+                : getReviewFilterLabel(reviewFilter),
             footerNote: 'Printed from Reception Past Records module.',
         });
 
@@ -2241,7 +2254,7 @@ const ReceptionDashboard: React.FC = () => {
                                         </button>
                                     ))}
 
-                                        {(['due_today', 'due_tomorrow', 'overdue'] as PastRecordsView[]).includes(reviewFilter) && (
+                                        {(Boolean(reviewDateFilter) || (['due_today', 'due_tomorrow', 'overdue'] as PastRecordsView[]).includes(reviewFilter)) && (
                                             <button
                                                 type="button"
                                                 onClick={handlePrintPastRecordsList}
