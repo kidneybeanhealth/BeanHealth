@@ -60,7 +60,7 @@ import {
 import "@/styles/beanhealth-landing.css";
 
 const navLinks = [
-  { label: "Frontdesk AI", href: "#frontdesk", Icon: Tag },
+  { label: "Frontdesk AI", href: "/frontdesk", Icon: Tag },
   { label: "Kidney Care OS", href: "#kidney-os", Icon: Layers },
   { label: "How it works", href: "#workflow", Icon: GitBranch },
   { label: "Pricing", href: "#pricing", Icon: Tag },

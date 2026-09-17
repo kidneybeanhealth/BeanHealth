@@ -10,6 +10,7 @@ import EnterpriseLogin from '../components/auth/EnterpriseLogin';
 import AdminLogin from '../components/auth/AdminLogin';
 import ProfileSetup from '../components/auth/ProfileSetup';
 import LandingPage from '../components/landing/BeanHealthLanding';
+import FrontdeskLanding from '../components/landing/FrontdeskLanding';
 
 // Dashboard Components - LAZY LOADED for faster initial load
 const PatientDashboard = React.lazy(() => import('../components/PatientDashboard'));
@@ -169,6 +170,10 @@ const AppRoutes: React.FC = () => {
                         </AuthRedirect>
                     }
                 />
+
+                {/* Frontdesk product page — public, no auth redirect: a clinic
+                    evaluating the product must be able to read it while logged in */}
+                <Route path="/frontdesk" element={<FrontdeskLanding />} />
 
                 {/* Auth Role Chooser */}
                 <Route

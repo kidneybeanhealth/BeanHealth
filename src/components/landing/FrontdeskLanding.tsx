@@ -1,0 +1,251 @@
+/**
+ * BeanHealth Frontdesk — product page (/frontdesk)
+ *
+ * A separate page, not a section of the main landing, because it sells to a
+ * different buyer with a different motion: a clinic administrator who has an
+ * HMIS already and wants overdue patients phoned without changing anything.
+ *
+ * The signature is the call ledger in the hero: one real call unfolding —
+ * dial, ring, connect, Tamil, English account. It IS the product, so it opens
+ * the page. Everything after it is deliberately plain.
+ *
+ * All copy is real. The call shown is shaped exactly like what the agent
+ * writes back (see call_summary in hospital_voice_call_attempts).
+ */
+import React from 'react';
+import { Link } from 'react-router-dom';
+import '@/styles/frontdesk-landing.css';
+
+const Arrow = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+);
+
+const FrontdeskLanding: React.FC = () => (
+    <div className="fd">
+        <nav className="fd-nav" aria-label="Frontdesk">
+            <div className="fd-wrap">
+                <Link to="/" className="fd-wordmark">
+                    BeanHealth <span className="slash">/</span> <span className="prod">Frontdesk</span>
+                </Link>
+                <div className="fd-nav-links">
+                    <a href="#how" className="hide-sm">How it works</a>
+                    <a href="#record" className="hide-sm">What comes back</a>
+                    <a href="#rules" className="hide-sm">What it never does</a>
+                    <Link to="/#kidney-os" className="hide-sm">Kidney Care OS</Link>
+                    <a href="#start" className="fd-btn fd-btn-primary">Send us a CSV <Arrow /></a>
+                </div>
+            </div>
+        </nav>
+
+        {/* ── Hero ── */}
+        <header className="fd-hero">
+            <div className="fd-wrap">
+                <div>
+                    <span className="fd-eyebrow">Outbound follow-up, in the patient&rsquo;s language</span>
+                    <h1 className="fd-h1">
+                        Every patient who didn&rsquo;t come back <em>gets a phone call.</em>
+                    </h1>
+                    <p className="fd-lede">
+                        Export a CSV from the HMIS you already use. Frontdesk rings the patients who are due, speaks to
+                        them in Tamil, Hindi or nine other languages, and writes down what they said &mdash; on the
+                        patient&rsquo;s record, before your morning round.
+                    </p>
+                    <div className="fd-hero-actions">
+                        <a href="#start" className="fd-btn fd-btn-primary">Send us a CSV <Arrow /></a>
+                        <a href="#record" className="fd-btn fd-btn-ghost">See what comes back</a>
+                    </div>
+                    <p className="fd-hero-note">
+                        No integration. No app for the patient to install. Nothing for your software vendor to approve.
+                    </p>
+                </div>
+
+                {/* The signature: one call, as it happens. */}
+                <div className="fd-ledger" role="figure" aria-label="A follow-up call as it is recorded">
+                    <div className="fd-ledger-head">
+                        <span><strong>MR. ARUMUGAM P</strong> &middot; review due 11 Aug</span>
+                        <span>Dr. A. Prabhakar</span>
+                    </div>
+                    <div className="fd-ledger-line"><span className="t">10:02:14</span><span className="state ringing">Dialling &bull;&bull;&bull;&bull;&bull;&bull;47</span></div>
+                    <div className="fd-ledger-line"><span className="t">10:02:19</span><span className="state ok">Connected</span></div>
+                    <div className="fd-ledger-line"><span className="t">10:02:20</span><span><span className="who agent">Agent</span> &nbsp;<span className="ta">வணக்கம், நான் ஆஷா, Kongunad Kidney Centre-லிருந்து பேசுகிறேன்.</span></span></div>
+                    <div className="fd-ledger-line"><span className="t">10:02:31</span><span><span className="who pt">Son</span> &nbsp;<span className="ta">அப்பா இப்போ இல்ல&hellip; இரண்டு நாள் கழிச்சு வர்றோம்.</span></span></div>
+                    <div className="fd-ledger-line"><span className="t">10:03:02</span><span><span className="who agent">Agent</span> &nbsp;<span className="ta">சரி. OP நேரத்தில் வந்தால் போதும், நேரம் ஒதுக்க வேண்டாம்.</span></span></div>
+                    <div className="fd-ledger-line"><span className="t">10:03:41</span><span className="state end">Call ended &middot; 1m 22s</span></div>
+                    <div className="fd-account">
+                        <div className="label">Agent&rsquo;s account of the call</div>
+                        Spoke with the patient&rsquo;s son. Review since 11 August had passed. He said <q>we will come after
+                        two days</q> and understood there is no fixed appointment &mdash; arrive in OP hours. No health
+                        concerns raised.
+                        <div className="chips">
+                            <span className="fd-chip ok">WILL COME</span>
+                            <span className="fd-chip">Spoke to: family</span>
+                            <span className="fd-chip">Prefers: Thursday</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        {/* ── Facts ── */}
+        <section className="fd-strip" aria-label="At a glance">
+            <div className="fd-wrap">
+                <div className="fd-fact"><span className="n">1</span><span className="l">CSV export is the whole integration</span></div>
+                <div className="fd-fact"><span className="n">11</span><span className="l">Indian languages, mirrored to whoever answers</span></div>
+                <div className="fd-fact"><span className="n">0</span><span className="l">appointments moved by the agent. It reports; a person decides.</span></div>
+            </div>
+        </section>
+
+        {/* ── How ── */}
+        <section className="fd-section" id="how">
+            <div className="fd-wrap">
+                <span className="fd-kicker">How it works</span>
+                <h2 className="fd-h2">Three steps. None of them are for your IT department.</h2>
+                <p className="fd-sub">
+                    Every hospital system can produce a report. That report is the integration.
+                </p>
+                <ol className="fd-steps" style={{ listStyle: 'none', padding: 0 }}>
+                    <li className="fd-step">
+                        <span className="num">STEP 1 &middot; 5 MIN</span>
+                        <h3>Export the follow-up list</h3>
+                        <p>From your HMIS, as CSV or Excel. Patient, phone, review date, last visit, doctor. If a column is missing, we work with what you have.</p>
+                        <span className="who">Done by: your reception</span>
+                    </li>
+                    <li className="fd-step">
+                        <span className="num">STEP 2 &middot; 2 MIN</span>
+                        <h3>Upload and check the preview</h3>
+                        <p>You see every row before anything is dialled &mdash; numbers that won&rsquo;t connect, duplicates, dates that didn&rsquo;t parse. Nothing is called until you approve the list.</p>
+                        <span className="who">Done by: your reception</span>
+                    </li>
+                    <li className="fd-step">
+                        <span className="num">STEP 3 &middot; SAME DAY</span>
+                        <h3>Calls go out, notes come back</h3>
+                        <p>Each patient is called once, in their language. What they said lands on their record within minutes of the call ending, ready for your team to act on.</p>
+                        <span className="who">Done by: Frontdesk</span>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
+        {/* ── What comes back ── */}
+        <section className="fd-section alt" id="record">
+            <div className="fd-wrap">
+                <span className="fd-kicker">What comes back</span>
+                <h2 className="fd-h2">One record per call, written for the person who has to act on it.</h2>
+                <div className="fd-record">
+                    <div className="fd-card" aria-label="Example call record">
+                        <div className="hd">
+                            <span className="name">MRS. VALARMATHI R</span>
+                            <span className="mr">KNH/23/007796</span>
+                        </div>
+                        <div className="row">
+                            <div className="label">Outcome</div>
+                            <p><span className="fd-chip ok">WILL COME</span> &nbsp;<span className="fd-chip">Answered &middot; 1m 12s</span></p>
+                        </div>
+                        <div className="row">
+                            <div className="label">In her words</div>
+                            <p>&ldquo;Next week, Tuesday.&rdquo;</p>
+                        </div>
+                        <div className="row">
+                            <div className="label">Agent&rsquo;s account</div>
+                            <p>Spoke with the patient. Review since 21 April had passed. She agreed to come <q>next week</q>, specifically Tuesday, and confirmed she will bring her prescriptions and reports. No health concerns discussed.</p>
+                        </div>
+                        <div className="red">
+                            <div className="label">If a red flag is raised</div>
+                            Breathlessness, swelling or reduced urine: the agent tells the patient to come in now, reads out your front desk number, and the record is marked <strong>REVIEW NOW</strong> so it is the first thing your team sees.
+                        </div>
+                    </div>
+                    <div className="fd-anno">
+                        <div>
+                            <h4>The patient&rsquo;s own words are kept</h4>
+                            <p>Not paraphrased into a status code. Reception reads what was actually said and decides what to do with it.</p>
+                        </div>
+                        <div>
+                            <h4>Labelled as the agent&rsquo;s account</h4>
+                            <p>The summary is written by the agent and says so. It is never presented as a transcript, because a paraphrase that looks like a quote is worse than no record.</p>
+                        </div>
+                        <div>
+                            <h4>Always in English</h4>
+                            <p>The call happens in the patient&rsquo;s language. The note is written in English, so your whole team reads every call the same way.</p>
+                        </div>
+                        <div>
+                            <h4>Every call is on the bill, line by line</h4>
+                            <p>Who was called, when, whether it connected, what it cost. Unanswered calls are listed and not charged.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {/* ── Guardrails ── */}
+        <section className="fd-section" id="rules">
+            <div className="fd-wrap">
+                <span className="fd-kicker">What it never does</span>
+                <h2 className="fd-h2">An automated caller should know exactly how little it is allowed to decide.</h2>
+                <ul className="fd-rules">
+                    <li><span className="k">Never moves an appointment</span><span className="v">A patient saying &ldquo;I&rsquo;ll come tomorrow&rdquo; is recorded, not booked. The agent cannot know whether a doctor saw that patient the same afternoon. A person reschedules.</span></li>
+                    <li><span className="k">Never gives medical advice</span><span className="v">It reminds, it listens, and on a red-flag symptom it says <em>come in now</em> and gives your front desk number. It does not interpret, reassure, or suggest.</span></li>
+                    <li><span className="k">Never invents a name</span><span className="v">The patient is addressed by the name on your record and nothing else. If someone on the line gives a different name, that is noted as who answered &mdash; never substituted.</span></li>
+                    <li><span className="k">Never calls again after &ldquo;don&rsquo;t call&rdquo;</span><span className="v">A patient or family member who asks not to be phoned is marked, and the system refuses to dial them from then on.</span></li>
+                    <li><span className="k">Never keeps a number you didn&rsquo;t give it</span><span className="v">Numbers typed in for a campaign are used for that call and discarded. Only the last two digits are kept, so you can confirm the right person was reached.</span></li>
+                </ul>
+            </div>
+        </section>
+
+        {/* ── Proof ── */}
+        <section className="fd-section fd-proof">
+            <div className="fd-wrap">
+                <span className="fd-kicker">Where it comes from</span>
+                <h2 className="fd-h2">Built inside a kidney centre, not for one.</h2>
+                <p className="fd-sub">
+                    Frontdesk is the follow-up layer of the system that runs Kongunad Kidney Centre, Coimbatore &mdash;
+                    reception, queue, prescriptions, pharmacy and admissions. The rules above were learned there, on
+                    real missed follow-ups, before this became a product.
+                </p>
+                <div className="fd-proof-grid">
+                    <div className="fd-proof-item"><strong>3,000+ patients</strong>under follow-up tracking at one nephrology centre</div>
+                    <div className="fd-proof-item"><strong>Two doctors, one list</strong>a patient due with both is shown under both, not filed under one</div>
+                    <div className="fd-proof-item"><strong>Printed call sheet</strong>the same list reception carries for the 10 AM round, now with the calls already made</div>
+                    <div className="fd-proof-item"><strong>Full system available</strong>clinics that want the whole desk can run <Link to="/#kidney-os" style={{ textDecoration: 'underline' }}>Kidney Care OS</Link></div>
+                </div>
+            </div>
+        </section>
+
+        {/* ── CTA ── */}
+        <section className="fd-section fd-cta" id="start">
+            <div className="fd-wrap">
+                <div>
+                    <span className="fd-kicker">Start</span>
+                    <h2 className="fd-h2">Send us one CSV. We&rsquo;ll call the first batch with you watching.</h2>
+                    <p className="fd-sub">
+                        The first campaign is run together, one call at a time, so your team hears what patients hear
+                        before anything runs on its own. These are the only columns we need.
+                    </p>
+                    <div className="fd-hero-actions">
+                        <a href="mailto:harish@beanhealth.in?subject=Frontdesk%20%E2%80%94%20first%20CSV" className="fd-btn fd-btn-dark">Email us your CSV <Arrow /></a>
+                        <Link to="/#cta" className="fd-btn" style={{ border: '1px solid var(--fd-rule)' }}>Book a 20-minute call</Link>
+                    </div>
+                </div>
+                <div className="fd-columns" aria-label="Columns the CSV needs">
+                    <div className="hd">Your export &middot; six columns</div>
+                    <div className="r"><span className="c">patient_id</span><span className="d">Your MR number. Used as-is.</span></div>
+                    <div className="r"><span className="c">name</span><span className="d">As you&rsquo;d want it spoken.</span></div>
+                    <div className="r"><span className="c">phone</span><span className="d">Any Indian format. We normalise it.</span></div>
+                    <div className="r"><span className="c">review_date</span><span className="d">When they were told to return.</span></div>
+                    <div className="r"><span className="c">last_visit <span className="opt">optional</span></span><span className="d">So the agent can say how long it has been.</span></div>
+                    <div className="r"><span className="c">doctor <span className="opt">optional</span></span><span className="d">So the agent can say who they are due to see.</span></div>
+                </div>
+            </div>
+        </section>
+
+        <footer className="fd-foot">
+            <div className="fd-wrap">
+                <span>BeanHealth Frontdesk &middot; reports, never reschedules.</span>
+                <span><Link to="/">BeanHealth</Link> &middot; <Link to="/#kidney-os">Kidney Care OS</Link></span>
+            </div>
+        </footer>
+    </div>
+);
+
+export default FrontdeskLanding;

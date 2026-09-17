@@ -63,8 +63,8 @@ export const productLines: ProductLine[] = [
           "The agent records; a person decides. An automated caller cannot know whether a doctor saw that patient the same afternoon.",
       },
     ],
-    ctaLabel: "Start with a CSV",
-    ctaHref: "#cta",
+    ctaLabel: "See Frontdesk",
+    ctaHref: "/frontdesk",
     availability: "Available now",
   },
   {
