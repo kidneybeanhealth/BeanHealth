@@ -1,13 +1,105 @@
 export const heroPills: string[] = [
-  "Reduce clinical overload",
-  "Rapid risk flags",
-  "Explainable provenance",
+  "No integration required",
+  "Runs a live kidney centre",
+  "Calls in 11 Indian languages",
 ];
 
+// Deliberately concrete and verifiable. A landing page for a clinical product
+// should not carry a number nobody can point at.
 export const heroMetrics: { value: string; label: string }[] = [
-  { value: "6-step", label: "closed-loop nephrology workflow" },
-  { value: "1 screen", label: "decision snapshot for clinicians" },
-  { value: "24/7", label: "follow-up visibility between visits" },
+  { value: "1 CSV", label: "the only integration Frontdesk needs" },
+  { value: "1 centre", label: "running the complete Kidney Care OS today" },
+  { value: "11", label: "Indian languages the follow-up agent speaks" },
+];
+
+export interface ProductLine {
+  id: string;
+  eyebrow: string;
+  name: string;
+  tagline: string;
+  description: string;
+  points: { title: string; detail: string }[];
+  ctaLabel: string;
+  ctaHref: string;
+  availability: string;
+}
+
+/**
+ * Two product lines, deliberately unequal.
+ *
+ * Frontdesk leads because it explains in one sentence, needs nothing from the
+ * hospital's software vendor, and shows a result in a week. The Kidney Care OS
+ * is the proof that makes Frontdesk credible — a solo product making claims
+ * about clinical follow-up has no standing; one that runs an entire kidney
+ * centre does.
+ */
+export const productLines: ProductLine[] = [
+  {
+    id: "frontdesk",
+    eyebrow: "Product 01",
+    name: "BeanHealth Frontdesk",
+    tagline: "Your follow-up calls, made for you.",
+    description:
+      "Upload a CSV from the HMIS you already use. Our voice agent calls the patients who are due, speaks to them in their own language, and writes back what they said. No integration, no migration, nothing for your software vendor to approve.",
+    points: [
+      {
+        title: "Export, upload, done",
+        detail:
+          "Every HMIS can produce a report. That report is the whole integration — no API, no database access, no vendor sign-off.",
+      },
+      {
+        title: "The agent knows the context",
+        detail:
+          "It has the review date, the treating doctor and the last visit, so the patient hears a real reason to come in rather than a generic reminder.",
+      },
+      {
+        title: "Every call comes back in writing",
+        detail:
+          "What the patient said, when they agreed to come, and whether they raised a symptom — on the patient's record, ready for your front desk to act on.",
+      },
+      {
+        title: "It never moves an appointment on its own",
+        detail:
+          "The agent records; a person decides. An automated caller cannot know whether a doctor saw that patient the same afternoon.",
+      },
+    ],
+    ctaLabel: "Start with a CSV",
+    ctaHref: "#cta",
+    availability: "Available now",
+  },
+  {
+    id: "kidney-os",
+    eyebrow: "Product 02",
+    name: "Kidney Care OS",
+    tagline: "The whole kidney centre, running on one system.",
+    description:
+      "Reception and token printing, the doctor's live queue, digital prescriptions, the pharmacy counter and its calling display, in-patient admission and discharge cards, and the follow-up programme that ties them together. Deployed and in daily use at Kongunad Kidney Centre.",
+    points: [
+      {
+        title: "Reception to pharmacy, one queue",
+        detail:
+          "Walk-in registration, printed tokens, the doctor's queue, and the pharmacy calling display are the same patient moving through one system.",
+      },
+      {
+        title: "Prescriptions built for nephrology",
+        detail:
+          "A shared hospital drug and diagnosis catalogue, saved dosages with food timing, dialysis prescriptions and discharge cards.",
+      },
+      {
+        title: "Admission through to discharge",
+        detail:
+          "Admit from the queue, prepare the discharge card at the bedside on a tablet, and the follow-up review is scheduled as the patient leaves.",
+      },
+      {
+        title: "Nobody drops out quietly",
+        detail:
+          "Due today, due tomorrow, missed follow-up and stopped follow-up are each a list somebody works — with a printed call sheet for the morning round.",
+      },
+    ],
+    ctaLabel: "Talk to us about a deployment",
+    ctaHref: "#cta",
+    availability: "Deployed at one centre · onboarding selectively",
+  },
 ];
 
 export const problemCards: { title: string; description: string; accent: string }[] = [

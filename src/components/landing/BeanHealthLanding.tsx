@@ -51,6 +51,7 @@ import {
   platformComponents,
   pricingPlans,
   problemCards,
+  productLines,
   stakeholderImpact,
   teamMembers,
   valueItems,
@@ -59,9 +60,9 @@ import {
 import "@/styles/beanhealth-landing.css";
 
 const navLinks = [
-  { label: "Projects", href: "#projects", Icon: FolderKanban },
-  { label: "Platform", href: "#platform", Icon: Layers },
-  { label: "Workflow", href: "#workflow", Icon: GitBranch },
+  { label: "Frontdesk AI", href: "#frontdesk", Icon: Tag },
+  { label: "Kidney Care OS", href: "#kidney-os", Icon: Layers },
+  { label: "How it works", href: "#workflow", Icon: GitBranch },
   { label: "Pricing", href: "#pricing", Icon: Tag },
   { label: "Team", href: "#team", Icon: Users },
 ];
@@ -263,10 +264,12 @@ export default function BeanHealthLanding() {
                 For Hospitals &amp; Nephrologists
               </div>
               <h1 className="text-balance text-4xl font-semibold leading-[1.02] text-slate-950 sm:text-5xl lg:text-6xl">
-                Turn CKD follow-up chaos into a single clinical snapshot
+                Chronic patients don&rsquo;t stop needing care. They stop coming back.
               </h1>
               <p className="mt-6 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
-                BeanHealth compresses fragmented medical data into a clinician-ready decision snapshot — highlighting deterioration, pending actions, and provenance so nephrologists can act faster with confidence and less manual review.
+                BeanHealth builds the follow-up layer for chronic disease. Start with an AI front desk that
+                calls your overdue patients from a CSV export &mdash; or run the whole centre on the system a
+                kidney hospital already uses every day.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 {heroPills.map((pill) => (
@@ -274,7 +277,10 @@ export default function BeanHealthLanding() {
                 ))}
               </div>
               <p className="mt-7 max-w-2xl text-sm leading-7 text-slate-500">
-                <span className="font-semibold text-slate-700">Provenance &amp; disclaimer:</span> BeanHealth extracts decision-relevant facts from clinical records and surfaces explainable, rule-based risk flags. The snapshot supports clinician decision-making and never replaces full medical review or clinical judgement.
+                <span className="font-semibold text-slate-700">How it is used:</span> BeanHealth records and
+                surfaces what clinicians and patients have already said &mdash; review dates, call outcomes,
+                prescriptions and visit history. The follow-up agent reports; it does not reschedule, advise, or
+                make clinical decisions. Nothing here replaces medical review or clinical judgement.
               </p>
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
                 <a href="#cta" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#73BA27] px-6 py-4 text-sm font-semibold text-white shadow-[0_18px_48px_rgba(92,160,31,0.24)] transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-1 hover:bg-[#5FA01F]">
@@ -409,6 +415,84 @@ export default function BeanHealthLanding() {
         </section>
 
         {/* ── Platform / Comparison ── */}
+        {/* ── Two product lines ──
+            A deliberate fork, not a split message. The hero states one problem;
+            this is where the visitor picks which half of it they have. */}
+        <section id="products" className="px-4 py-24 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={sectionReveal} className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#5FA01F]">Two ways to start</p>
+              <h2 className="mt-4 text-3xl font-semibold text-slate-950 sm:text-4xl">
+                One of these fits the hospital you are today.
+              </h2>
+              <p className="mt-5 text-sm leading-7 text-slate-600">
+                Most clinics start with the calls, because it changes nothing about how they already work.
+                Some replace the whole desk. Both run on the same follow-up engine underneath.
+              </p>
+            </motion.div>
+
+            <div className="mt-14 grid gap-6 lg:grid-cols-2">
+              {productLines.map((product, index) => (
+                <motion.a
+                  key={product.id}
+                  href={`#${product.id}`}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.25 }}
+                  variants={sectionReveal}
+                  transition={{ delay: index * 0.08 }}
+                  className="glass-panel group flex flex-col rounded-[2rem] p-8 transition-[transform,box-shadow] duration-300 hover:-translate-y-1"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#73BA27]">{product.eyebrow}</span>
+                    <span className="rounded-full border border-slate-200/80 bg-white/70 px-3 py-1 text-[11px] font-semibold text-slate-500">
+                      {product.availability}
+                    </span>
+                  </div>
+                  <h3 className="mt-5 text-2xl font-semibold text-slate-950">{product.name}</h3>
+                  <p className="mt-2 text-base font-medium text-[#5FA01F]">{product.tagline}</p>
+                  <p className="mt-4 flex-1 text-sm leading-7 text-slate-600">{product.description}</p>
+                  <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    {product.ctaLabel}
+                    <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                  </span>
+                </motion.a>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── One detail section per product ── */}
+        {productLines.map((product) => (
+          <section key={product.id} id={product.id} className="px-4 py-24 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl">
+              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.25 }} variants={sectionReveal} className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#5FA01F]">{product.eyebrow}</p>
+                  <h2 className="mt-4 text-3xl font-semibold text-slate-950 sm:text-4xl">{product.name}</h2>
+                  <p className="mt-3 text-lg font-medium text-slate-700">{product.tagline}</p>
+                  <p className="mt-6 text-sm leading-7 text-slate-600">{product.description}</p>
+                  <a
+                    href={product.ctaHref}
+                    className="mt-9 inline-flex items-center justify-center gap-2 rounded-full bg-[#73BA27] px-6 py-4 text-sm font-semibold text-white shadow-[0_18px_48px_rgba(92,160,31,0.24)] transition-[transform,box-shadow,background-color] duration-300 hover:-translate-y-1 hover:bg-[#5FA01F]"
+                  >
+                    {product.ctaLabel} <ArrowRight className="h-4 w-4" />
+                  </a>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {product.points.map((point) => (
+                    <div key={point.title} className="glass-panel rounded-[1.75rem] p-6">
+                      <h3 className="text-base font-semibold text-slate-950">{point.title}</h3>
+                      <p className="mt-3 text-sm leading-6 text-slate-600">{point.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+          </section>
+        ))}
+
         <section id="platform" className="px-4 py-24 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionReveal}>
