@@ -60,7 +60,7 @@ import {
 import "@/styles/beanhealth-landing.css";
 
 const navLinks = [
-  { label: "Frontdesk AI", href: "/frontdesk", Icon: Tag },
+  { label: "Frontdesk AI", href: "/frontdesk", Icon: Tag, highlight: true },
   { label: "Kidney Care OS", href: "#kidney-os", Icon: Layers },
   { label: "How it works", href: "#workflow", Icon: GitBranch },
   { label: "Pricing", href: "#pricing", Icon: Tag },
@@ -198,10 +198,18 @@ export default function BeanHealthLanding() {
               <a
                 key={link.label}
                 href={link.href}
-                className="group flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-[#F0F9E6] hover:text-[#5FA01F]"
+                className={
+                  link.highlight
+                    // The lead product gets the one filled pill in the nav — it is
+                    // the page most visitors should land on, so it should not look
+                    // like one more section anchor.
+                    ? "group flex items-center gap-1.5 rounded-full bg-[#73BA27] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(92,160,31,0.28)] transition-all duration-200 hover:bg-[#5FA01F]"
+                    : "group flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-[#F0F9E6] hover:text-[#5FA01F]"
+                }
               >
-                <link.Icon className="h-3.5 w-3.5 text-slate-400 transition-colors duration-200 group-hover:text-[#73BA27]" />
+                <link.Icon className={link.highlight ? "h-3.5 w-3.5 text-white/90" : "h-3.5 w-3.5 text-slate-400 transition-colors duration-200 group-hover:text-[#73BA27]"} />
                 {link.label}
+                {link.highlight && <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]">New</span>}
               </a>
             ))}
           </nav>
@@ -239,11 +247,16 @@ export default function BeanHealthLanding() {
               <a
                 key={link.label}
                 href={link.href}
-                className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#F0F9E6] hover:text-[#5FA01F]"
+                className={
+                  link.highlight
+                    ? "flex items-center gap-2.5 rounded-2xl bg-[#73BA27] px-3 py-2.5 text-sm font-semibold text-white"
+                    : "flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#F0F9E6] hover:text-[#5FA01F]"
+                }
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <link.Icon className="h-4 w-4 text-slate-400" />
+                <link.Icon className={link.highlight ? "h-4 w-4 text-white/90" : "h-4 w-4 text-slate-400"} />
                 {link.label}
+                {link.highlight && <span className="ml-auto rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]">New</span>}
               </a>
             ))}
             <div className="grid gap-3 sm:grid-cols-2">
