@@ -41,7 +41,7 @@ export interface VoiceCallHistoryEntry {
     /** placing | placed | completed | failed */
     status: string;
     /** Carrier result: connected / no_answer / busy / failed */
-    sarvamStatus: string | null;
+    providerStatus: string | null;
     durationSeconds: number | null;
     failureReason: string | null;
     /** The agent's own conclusion, e.g. WILL_ATTEND, PATIENT_DECEASED */
@@ -888,7 +888,7 @@ export async function fetchReceptionPastRecords(
             withTimeout(
                 (supabase
                     .from('hospital_voice_call_attempts' as any)
-                    .select('id, patient_id, status, sarvam_status, duration_seconds, failure_reason, transcript, final_agent_variables, requested_by_name, created_at, completed_at')
+                    .select('id, patient_id, status, provider_status, duration_seconds, failure_reason, transcript, final_agent_variables, requested_by_name, created_at, completed_at')
                     .eq('hospital_id', hospitalId)
                     .in('patient_id', idChunk)
                     .order('created_at', { ascending: false })) as any,
@@ -978,7 +978,7 @@ export async function fetchReceptionPastRecords(
             createdAt: attempt.created_at,
             completedAt: attempt.completed_at || null,
             status: attempt.status || 'placing',
-            sarvamStatus: attempt.sarvam_status || null,
+            providerStatus: attempt.provider_status || null,
             durationSeconds: typeof attempt.duration_seconds === 'number' ? attempt.duration_seconds : null,
             failureReason: attempt.failure_reason || null,
             disposition: readVar(vars, 'disposition'),

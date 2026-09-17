@@ -39,7 +39,7 @@ const json = (body: unknown, status = 200) =>
 /**
  * Sarvam outcome → the call_status values hospital_patient_followups already
  * accepts. Anything unrecognised becomes 'not_reachable' rather than throwing:
- * a status we don't know about must still land on the card, and sarvam_status
+ * a status we don't know about must still land on the card, and provider_status
  * keeps the original for anyone investigating later.
  */
 const mapCallStatus = (sarvamStatus?: string | null): string => {
@@ -183,7 +183,7 @@ serve(async (req) => {
             .from('hospital_voice_call_attempts')
             .update({
                 status: 'completed',
-                sarvam_status: sarvamStatus,
+                provider_status: sarvamStatus,
                 duration_seconds: typeof payload?.duration === 'number' ? payload.duration : null,
                 failure_reason: payload?.failure_reason ?? null,
                 interaction_id: payload?.interaction_id ?? null,

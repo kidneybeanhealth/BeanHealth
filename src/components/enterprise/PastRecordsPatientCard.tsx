@@ -516,8 +516,8 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                                         ) : call.status === 'failed' ? (
                                                             <span className="font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700">Failed</span>
                                                         ) : (
-                                                            <span className={`font-bold px-1.5 py-0.5 rounded ${call.sarvamStatus === 'connected' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                                {VOICE_STATUS_LABEL[call.sarvamStatus || ''] || 'Completed'}
+                                                            <span className={`font-bold px-1.5 py-0.5 rounded ${call.providerStatus === 'connected' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                {VOICE_STATUS_LABEL[call.providerStatus || ''] || 'Completed'}
                                                             </span>
                                                         )}
                                                         {duration && <span className="text-gray-500">{duration}</span>}

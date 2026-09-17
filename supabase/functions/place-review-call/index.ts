@@ -34,6 +34,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+import { getProvider } from './providers/index.ts'
+
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -86,7 +88,7 @@ serve(async (req) => {
         const body = await req.json().catch(() => ({}))
         const patientId: string | undefined = body?.patientId
         const requestedByName: string | null = body?.requestedByName ?? null
-        const languageName: string = body?.language === 'English' ? 'English' : 'Tamil'
+        const requestedLanguage: string | null = typeof body?.language === 'string' && body.language.trim() ? body.language.trim() : null
         if (!patientId) return json({ error: 'patientId is required' }, 400)
 
         const admin = createClient(supabaseUrl, serviceRoleKey)
@@ -96,7 +98,7 @@ serve(async (req) => {
         // signed-in hospital could dial another clinic's patient by guessing an id.
         const { data: patient, error: patientError } = await admin
             .from('hospital_patients')
-            .select('id, hospital_id, name, phone, phone_e164, mr_number, is_deceased, continuity_status, do_not_call')
+            .select('id, hospital_id, name, phone, phone_e164, mr_number, is_deceased, continuity_status, do_not_call, call_hold, call_hold_reason, attender_phone, attender_phone_e164')
             .eq('id', patientId)
             .eq('hospital_id', caller.id)
             .maybeSingle()
@@ -116,6 +118,14 @@ serve(async (req) => {
         if (patient.do_not_call) {
             return json({ error: 'This patient has asked not to be called again.' }, 409)
         }
+        // Temporary hold set by reception — admitted elsewhere, travelling,
+        // grieving. Not permanent like do_not_call, but "not now" must mean it.
+        if (patient.call_hold) {
+            return json({
+                error: 'Calls to this patient are on hold.',
+                detail: patient.call_hold_reason ? `Reason: ${patient.call_hold_reason}` : 'Clear the hold in the patient record to call them.',
+            }, 409)
+        }
 
         // phone_e164 is generated, so it is the authority. Fall back to computing
         // it only when the column is absent (migration not yet applied) — never
@@ -128,7 +138,12 @@ serve(async (req) => {
         if (body?.phoneOverride && !suppliedNumber) {
             return json({ error: `"${body.phoneOverride}" is not a usable mobile number.` }, 422)
         }
-        const dialedNumber = suppliedNumber ?? patient.phone_e164 ?? toE164(patient.phone)
+        // Patient's own number first; the attender's if the patient has none.
+        // For an elderly chronic patient the carer's phone is often the only one
+        // that gets answered, and half of KKC's answered calls were family.
+        const dialedNumber = suppliedNumber
+            ?? patient.phone_e164 ?? toE164(patient.phone)
+            ?? patient.attender_phone_e164 ?? toE164(patient.attender_phone)
         if (!dialedNumber) {
             return json({
                 error: patient.phone
@@ -151,10 +166,26 @@ serve(async (req) => {
 
         // The agent cannot handle a red flag without a number to give. Fail loudly
         // here rather than place a call that would go silent in an emergency.
-        const frontDeskNumber = Deno.env.get('SARVAM_FRONT_DESK_NUMBER')
+        // Per-hospital voice config. These used to be GLOBAL secrets, which meant
+        // a second hospital's red-flag patient would have been read the first
+        // hospital's front desk number. The env values remain only as a fallback
+        // for a row that predates the migration.
+        const { data: voiceCfg } = await admin
+            .from('hospital_profiles')
+            .select('voice_provider, voice_front_desk_number, voice_hospital_address, default_call_language, ai_call_daily_cap')
+            .eq('id', caller.id)
+            .maybeSingle()
+
+        const frontDeskNumber = voiceCfg?.voice_front_desk_number || Deno.env.get('SARVAM_FRONT_DESK_NUMBER')
         if (!frontDeskNumber) {
-            return json({ error: 'SARVAM_FRONT_DESK_NUMBER is not configured — refusing to place the call.' }, 500)
+            return json({
+                error: 'No front desk number is set for this hospital — refusing to place the call.',
+                detail: 'The agent reads this out on a red-flag call. Set voice_front_desk_number on the hospital profile.',
+            }, 500)
         }
+        const hospitalAddress = voiceCfg?.voice_hospital_address || Deno.env.get('SARVAM_HOSPITAL_ADDRESS') || ''
+        const languageName = requestedLanguage || voiceCfg?.default_call_language || 'Tamil'
+        const provider = getProvider(voiceCfg?.voice_provider)
 
         // ── Latest active review, for what the agent actually says ───────────
         const { data: review } = await admin
@@ -214,20 +245,14 @@ serve(async (req) => {
             return new Date(nowIst.getTime() - 5.5 * 3600_000).toISOString()
         })()
 
-        const { data: profile } = await admin
-            .from('hospital_profiles')
-            .select('ai_call_daily_cap')
-            .eq('id', caller.id)
-            .maybeSingle()
-
-        const dailyCap = typeof profile?.ai_call_daily_cap === 'number' ? profile.ai_call_daily_cap : 200
+        const dailyCap = typeof voiceCfg?.ai_call_daily_cap === 'number' ? voiceCfg.ai_call_daily_cap : 200
 
         const { count: dialledToday } = await admin
             .from('hospital_voice_call_attempts')
             .select('id', { count: 'exact', head: true })
             .eq('hospital_id', caller.id)
             .gte('created_at', istDayStart)
-            .or('status.in.(placing,placed,completed),sarvam_attempt_id.not.is.null')
+            .or('status.in.(placing,placed,completed),provider_call_id.not.is.null')
 
         if ((dialledToday ?? 0) >= dailyCap) {
             return json({
@@ -270,6 +295,7 @@ serve(async (req) => {
                 doctor_id: review?.doctor_id ?? null,
                 review_id: review?.id ?? null,
                 dialed_number: recordedNumber,
+                provider: provider.name,
                 webhook_token: webhookToken,
                 status: 'placing',
                 requested_by_name: requestedByName,
@@ -285,120 +311,49 @@ serve(async (req) => {
             throw attemptError
         }
 
-        // ── Place the call ───────────────────────────────────────────────────
-        const orgId = Deno.env.get('SARVAM_ORG_ID')!
-        const workspaceId = Deno.env.get('SARVAM_WORKSPACE_ID')!
-        const appVersionRaw = Deno.env.get('SARVAM_APP_VERSION')
-        const webhookBase = Deno.env.get('SARVAM_WEBHOOK_BASE_URL')!
-
-        // org/workspace live in the PATH, not the body — easy to miss because the
-        // docs render them as {org_id}/{workspace_id} placeholders.
-        // Refuse here rather than letting Sarvam reject it. The upstream message
-        // ("app_version is required when version_filter is specific") names a
-        // parameter we never send and gives no hint that the fix is one secret.
-        if (!appVersionRaw || !Number.isFinite(Number(appVersionRaw))) {
-            return json({
-                error: 'Voice calling is not configured',
-                detail: 'SARVAM_APP_VERSION is unset. Set it to the agent version committed in the Sarvam console.',
-            }, 503)
-        }
-
-        const sendCallbackToken =
-            String(Deno.env.get('SARVAM_SEND_CALLBACK_TOKEN') ?? '').toLowerCase() === 'true'
-
-        const endpoint = `https://apps.sarvam.ai/api/outbounds/v1/orgs/${orgId}/workspaces/${workspaceId}/outbounds`
-
-        const payload: Record<string, unknown> = {
-            app_config: {
-                app_id: Deno.env.get('SARVAM_APP_ID')!,
-                app_type: 'agent',
-                // Always an explicit number. Sending null does NOT mean "use the
-                // newest commit" — version_filter defaults to 'specific', so the
-                // API rejects the call outright:
-                //
-                //   422 app_config: app_version is required when version_filter
-                //       is specific
-                //
-                // Pinning is Sarvam's own guidance for production anyway: without
-                // it, an edit committed in the console changes what patients hear
-                // with no deploy and no record on our side.
-                app_version: Number(appVersionRaw),
-                connection_config: {
-                    connection_id: Deno.env.get('SARVAM_CONNECTION_ID')!,
-                    agent_phone_number: Deno.env.get('SARVAM_AGENT_PHONE_NUMBER')!,
-                },
-                // Exactly the nine the agent script declares. An empty string means
-                // "we don't know" — the script is written to skip anything blank
-                // rather than guess, so never substitute a placeholder here.
-                agent_variables: {
-                    patient_name: patient.name ?? '',
-                    mr_number: patient.mr_number ?? '',
-                    doctor_name: doctorName ?? '',
-                    last_visit_date: lastRx?.created_at ? formatReviewDate(String(lastRx.created_at).slice(0, 10)) : '',
-                    review_date: formatReviewDate(review?.next_review_date),
-                    days_overdue: String(daysOverdue),
-                    hospital_name: hospital?.name ?? '',
-                    hospital_address: Deno.env.get('SARVAM_HOSPITAL_ADDRESS') ?? '',
-                    front_desk_number: frontDeskNumber,
-                    // Echoed back by the agent's on_end tool so the webhook can
-                    // authenticate the outcome. Never referenced in the script, so it
-                    // is never spoken; it exists only to be handed straight back.
-                    //
-                    // BEHIND A FLAG because Sarvam validates agent_variables against
-                    // the set the agent declares and rejects the whole call otherwise:
-                    //
-                    //   422 Agent variables '{'callback_token'}' not found in agent
-                    //       variables of app 'Conversatio-aaae688f-7e96'
-                    //
-                    // So sending it before the variable is declared in the console
-                    // does not degrade outcome delivery — it stops every call dead.
-                    // Declare it there first, recommit the agent, then set
-                    // SARVAM_SEND_CALLBACK_TOKEN=true. Off by default so the agent
-                    // config, not this code, is what decides.
-                    ...(sendCallbackToken ? { callback_token: webhookToken } : {}),
-                },
-                app_overrides: { initial_language_name: languageName },
+        // ── Place the call, through whichever provider this hospital is on ───
+        const result = await provider.placeCall({
+            attemptId: attempt.id,
+            webhookToken,
+            dialedNumber,
+            languageName,
+            // Exactly the nine the agent script declares. An empty string means
+            // "we don't know" — the script skips anything blank rather than guess,
+            // so never substitute a placeholder here.
+            agentVariables: {
+                patient_name: patient.name ?? '',
+                mr_number: patient.mr_number ?? '',
+                doctor_name: doctorName ?? '',
+                last_visit_date: lastRx?.created_at ? formatReviewDate(String(lastRx.created_at).slice(0, 10)) : '',
+                review_date: formatReviewDate(review?.next_review_date),
+                days_overdue: String(daysOverdue),
+                hospital_name: hospital?.name ?? '',
+                hospital_address: hospitalAddress,
+                front_desk_number: frontDeskNumber,
             },
-            user_config: { user_phone_number: dialedNumber },
-            webhook_config: {
-                url: `${webhookBase}?token=${webhookToken}`,
-                metadata: { attempt_ref: attempt.id, token: webhookToken },
-            },
-        }
-
-        const sarvamRes = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': Deno.env.get('SARVAM_API_KEY')!,
-            },
-            body: JSON.stringify(payload),
         })
 
-        const sarvamText = await sarvamRes.text()
-
-        if (!sarvamRes.ok) {
+        if (!result.ok) {
             // Close the attempt out so the in-flight index doesn't wedge this
             // patient permanently after a failed placement.
             await admin.from('hospital_voice_call_attempts')
-                .update({
-                    status: 'failed',
-                    failure_reason: `Sarvam ${sarvamRes.status}: ${sarvamText.slice(0, 500)}`,
-                    completed_at: new Date().toISOString(),
-                })
+                .update({ status: 'failed', failure_reason: result.detail.slice(0, 500), completed_at: new Date().toISOString() })
                 .eq('id', attempt.id)
-            return json({ error: 'Could not place the call', detail: sarvamText.slice(0, 500) }, 502)
+            return json({
+                error: result.notConfigured ? 'Voice calling is not configured' : 'Could not place the call',
+                detail: result.detail,
+            }, result.status)
         }
 
-        const sarvamJson = JSON.parse(sarvamText || '{}')
         await admin.from('hospital_voice_call_attempts')
-            .update({ status: 'placed', sarvam_attempt_id: sarvamJson?.attempt_id ?? null })
+            .update({ status: 'placed', provider_call_id: result.providerCallId })
             .eq('id', attempt.id)
 
         return json({
             ok: true,
             attemptRef: attempt.id,
-            sarvamAttemptId: sarvamJson?.attempt_id ?? null,
+            provider: provider.name,
+            providerCallId: result.providerCallId,
             dialedNumber: recordedNumber,
         })
     } catch (err) {

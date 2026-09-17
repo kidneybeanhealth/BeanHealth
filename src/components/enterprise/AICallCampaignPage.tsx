@@ -135,7 +135,7 @@ interface PlacedCall {
     mrNumber: string | null;
     createdAt: string;
     status: string;
-    sarvamStatus: string | null;
+    providerStatus: string | null;
     dialedNumber: string | null;
     summary: string | null;
     disposition: string | null;
@@ -253,7 +253,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     // care which surface started it.
     const loadPlaced = useCallback(async () => {
         const { data, error } = await (supabase.from('hospital_voice_call_attempts' as any) as any)
-            .select('id, patient_id, status, sarvam_status, final_agent_variables, created_at, dialed_number, patient:hospital_patients(name, mr_number)')
+            .select('id, patient_id, status, provider_status, final_agent_variables, created_at, dialed_number, patient:hospital_patients(name, mr_number)')
             .eq('hospital_id', hospitalId)
             .order('created_at', { ascending: false })
             .limit(200);
@@ -265,7 +265,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
             mrNumber: r.patient?.mr_number || null,
             createdAt: r.created_at,
             status: r.status,
-            sarvamStatus: r.sarvam_status,
+            providerStatus: r.provider_status,
             dialedNumber: r.dialed_number || null,
             summary: typeof r.final_agent_variables?.call_summary === 'string' ? r.final_agent_variables.call_summary : null,
             disposition: typeof r.final_agent_variables?.disposition === 'string' ? r.final_agent_variables.disposition : null,
@@ -333,7 +333,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
         const startedAt = Date.now();
         pollRef.current = window.setInterval(async () => {
             const { data } = await (supabase.from('hospital_voice_call_attempts' as any) as any)
-                .select('status, sarvam_status, final_agent_variables, failure_reason')
+                .select('status, provider_status, final_agent_variables, failure_reason')
                 .eq('id', attemptRef).maybeSingle();
 
             const settled = data && (data.status === 'completed' || data.status === 'failed');

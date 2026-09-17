@@ -43,7 +43,7 @@ export interface PlaceReviewCallParams {
 
 export interface PlaceReviewCallResult {
     attemptRef: string;
-    sarvamAttemptId: string | null;
+    providerCallId: string | null;
     dialedNumber: string;
 }
 
@@ -93,7 +93,7 @@ export async function placeReviewCall(
 
     return {
         attemptRef: data?.attemptRef,
-        sarvamAttemptId: data?.sarvamAttemptId ?? null,
+        providerCallId: data?.providerCallId ?? null,
         dialedNumber: data?.dialedNumber,
     };
 }
@@ -143,7 +143,7 @@ export async function fetchVoiceUsage(hospitalId: string, months = 12): Promise<
 
     const { data, error } = await withTimeout(
         (supabase.from('hospital_voice_call_attempts' as any) as any)
-            .select('status, sarvam_status, duration_seconds, created_at')
+            .select('status, provider_status, duration_seconds, created_at')
             .eq('hospital_id', hospitalId)
             .gte('created_at', since.toISOString())
             .order('created_at', { ascending: false })
@@ -176,7 +176,7 @@ export async function fetchVoiceUsage(hospitalId: string, months = 12): Promise<
 
         m.placed += 1;
         if (row.status === 'failed') m.failed += 1;
-        else if (row.sarvam_status === 'connected') {
+        else if (row.provider_status === 'connected') {
             m.connected += 1;
             if (typeof row.duration_seconds === 'number' && row.duration_seconds > 0) {
                 m.withDuration += 1;
@@ -243,7 +243,7 @@ export async function fetchVoiceCallStatement(
             .select('ai_call_rate_paise').eq('id', hospitalId).maybeSingle(),
         withTimeout(
             (supabase.from('hospital_voice_call_attempts' as any) as any)
-                .select('id, created_at, status, sarvam_status, duration_seconds, patient:hospital_patients(name, mr_number)')
+                .select('id, created_at, status, provider_status, duration_seconds, patient:hospital_patients(name, mr_number)')
                 .eq('hospital_id', hospitalId)
                 .gte('created_at', startIst)
                 .lt('created_at', endIst)
@@ -265,14 +265,14 @@ export async function fetchVoiceCallStatement(
         // called unanswered yet. Excluded rather than guessed at.
         .filter((r: any) => r.status === 'completed' || r.status === 'failed')
         .map((r: any) => {
-            const connected = r.sarvam_status === 'connected';
+            const connected = r.provider_status === 'connected';
             return {
                 id: r.id,
                 createdAt: r.created_at,
                 patientName: r.patient?.name || 'Unknown patient',
                 mrNumber: r.patient?.mr_number || null,
                 durationSeconds: typeof r.duration_seconds === 'number' ? r.duration_seconds : null,
-                outcome: r.sarvam_status || (r.status === 'failed' ? 'failed' : null),
+                outcome: r.provider_status || (r.status === 'failed' ? 'failed' : null),
                 connected,
                 amountPaise: connected && ratePaise !== null ? ratePaise : 0,
             };
