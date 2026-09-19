@@ -225,9 +225,10 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none px-1">×</button>
                 </div>
 
-                <div className="flex-1 overflow-auto p-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4">
-                    {/* Preview */}
-                    <div className="space-y-3">
+                <div className="flex-1 min-h-0 overflow-auto lg:overflow-hidden p-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4">
+                    {/* Preview — stays put while the controls scroll beside it. Adjusting
+                        a size you cannot see is the one thing this screen must not do. */}
+                    <div className="space-y-3 min-w-0 lg:min-h-0 lg:overflow-auto">
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Preview</span>
                             <div className="flex items-center gap-1 ml-auto">
@@ -248,7 +249,7 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                             )}
                         </div>
 
-                        <div className="bg-[repeating-conic-gradient(#f3f4f6_0%_25%,#ffffff_0%_50%)] bg-[length:16px_16px] rounded-xl border border-gray-200 p-6 overflow-auto flex items-start justify-center">
+                        <div className="bg-[repeating-conic-gradient(#f3f4f6_0%_25%,#ffffff_0%_50%)] bg-[length:16px_16px] rounded-xl border border-gray-200 p-4 sm:p-6 overflow-auto flex items-start justify-center sticky top-0 z-10 lg:static">
                             <div
                                 style={{ width: `${draft.widthMm * zoom}mm`, height: `${draft.heightMm * zoom}mm` }}
                                 className="shadow-[0_2px_10px_rgba(0,0,0,0.18)] bg-white shrink-0"
@@ -280,8 +281,8 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                         </div>
                     </div>
 
-                    {/* Controls */}
-                    <div className="space-y-3">
+                    {/* Controls — the only column that scrolls on a wide screen. */}
+                    <div className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
                         {mode === 'batch' ? (
                         <>
                         <Group title="Pick patients">
