@@ -232,13 +232,6 @@ const ReceptionDashboard: React.FC = () => {
         mrNumber?: string;
         doctorName: string;
         department: string;
-        // Carried so the confirmation dialog can print the case-record label
-        // without re-reading the patient row it just wrote.
-        age?: string | null;
-        gender?: string | null;
-        phone?: string | null;
-        fatherHusbandName?: string | null;
-        place?: string | null;
     } | null>(null);
     const [isPrintingToken, setIsPrintingToken] = useState(false);
     const [labelSettings, setLabelSettings] = useState<LabelSettings>(DEFAULT_LABEL_SETTINGS);
@@ -1764,13 +1757,6 @@ const ReceptionDashboard: React.FC = () => {
                 mrNumber: walkInForm.mrNumber || undefined,
                 doctorName: selectedDoctor?.name || '',
                 department: walkInForm.department,
-                // Carried so the label can be printed straight from this dialog
-                // without a second round trip for the patient row.
-                age: walkInForm.age || null,
-                gender: walkInForm.gender || null,
-                phone: walkInForm.phone || null,
-                fatherHusbandName: walkInForm.fatherHusbandName || null,
-                place: walkInForm.place || null,
             });
             setShowPrintDialog(true);
 
@@ -3262,35 +3248,6 @@ const ReceptionDashboard: React.FC = () => {
                                     Above is a live simulation of the 58mm thermal receipt. Verify the token spacing and layout before printing.
                                 </p>
                             </div>
-
-                            {lastRegisteredPatient.mrNumber && (
-                                <div className="rounded-lg border border-gray-200 bg-white p-3">
-                                    <h4 className="text-xs font-bold text-gray-800">Case record label</h4>
-                                    <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">
-                                        The sticker for the physical file, on the TSC label printer cabled to this computer.
-                                    </p>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            if (!printLabels([{
-                                                mrNumber: lastRegisteredPatient.mrNumber || '',
-                                                name: lastRegisteredPatient.name,
-                                                age: lastRegisteredPatient.age ?? null,
-                                                gender: lastRegisteredPatient.gender ?? null,
-                                                phone: lastRegisteredPatient.phone ?? null,
-                                                fatherHusbandName: lastRegisteredPatient.fatherHusbandName ?? null,
-                                                place: lastRegisteredPatient.place ?? null,
-                                                registeredAt: new Date().toISOString(),
-                                            }], labelSettings)) {
-                                                toast.error('Could not start the print');
-                                            }
-                                        }}
-                                        className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
-                                    >
-                                        Print label
-                                    </button>
-                                </div>
-                            )}
                         </div>
 
                         {/* Actions */}
