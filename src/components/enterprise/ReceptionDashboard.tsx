@@ -26,6 +26,7 @@ import AddFollowupModal from './AddFollowupModal';
 import EditPatientModal from './EditPatientModal';
 import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
+import { DEFAULT_LABEL_SETTINGS, printLabels, type LabelPatient, type LabelSettings } from './patientLabel';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
     formatDoctorLabel,
@@ -39,6 +40,7 @@ const WeeklyOverdueReportPanel = lazy(() =>
     import('./ReceptionActivityPanels').then(m => ({ default: m.WeeklyOverdueReportPanel }))
 );
 const DialysisRegisterPanel = lazy(() => import('./DialysisRegisterPanel'));
+const LabelDesignerModal = lazy(() => import('./LabelDesignerModal'));
 const ReceptionCalendarPanel = lazy(() =>
     import('./ReceptionActivityPanels').then(m => ({ default: m.ReceptionCalendarPanel }))
 );
@@ -233,6 +235,10 @@ const ReceptionDashboard: React.FC = () => {
         department: string;
     } | null>(null);
     const [isPrintingToken, setIsPrintingToken] = useState(false);
+    const [labelSettings, setLabelSettings] = useState<LabelSettings>(DEFAULT_LABEL_SETTINGS);
+    const [showLabelDesigner, setShowLabelDesigner] = useState(false);
+    const [labelPatient, setLabelPatient] = useState<LabelPatient | null>(null);
+    const [isSavingLabelSettings, setIsSavingLabelSettings] = useState(false);
     const [printerSettings, setPrinterSettings] = useState<{ spacing: number; alignment: 'left' | 'center' | 'right' }>({
         spacing: 1,
         alignment: 'center'
@@ -1299,11 +1305,63 @@ const ReceptionDashboard: React.FC = () => {
             }
 
             // Sync printer settings if they exist
+            if (data?.label_settings) {
+                // Merge over defaults: a layout saved before a new control existed
+                // must not leave that control undefined and render NaN millimetres.
+                setLabelSettings({ ...DEFAULT_LABEL_SETTINGS, ...data.label_settings });
+            }
             if (data?.printer_settings) {
                 setPrinterSettings(data.printer_settings);
             }
         } catch (err) {
             console.warn('Failed to fetch hospital settings:', err);
+        }
+    };
+
+    /** Map a Past Records row onto the label. Structured address fields do not
+     *  exist on hospital_patients yet, so `place` carries the address line. */
+    const toLabelPatient = (p: ReceptionPastRecordPatient): LabelPatient => ({
+        mrNumber: p.mr_number || '',
+        name: p.name,
+        age: p.age ?? null,
+        gender: p.gender ?? null,
+        phone: p.phone ?? null,
+        fatherHusbandName: p.father_husband_name ?? null,
+        place: (p as any).place ?? null,
+        registeredAt: p.created_at ?? null,
+    });
+
+    const handlePrintPatientLabel = (p: ReceptionPastRecordPatient) => {
+        if (!p.mr_number) {
+            toast.error('This patient has no MR number, so the label cannot be barcoded');
+            return;
+        }
+        if (!printLabels([toLabelPatient(p)], labelSettings)) {
+            toast.error('Pop-up blocked — allow pop-ups to print the label');
+        }
+    };
+
+    const handleSaveLabelSettings = async (next: LabelSettings) => {
+        if (!profile?.id) return;
+        setIsSavingLabelSettings(true);
+        try {
+            const { error } = await ((supabase.from('hospital_profiles' as any) as any)
+                .update({ label_settings: next } as any)
+                .eq('id', profile.id) as any);
+            if (error) throw error;
+            setLabelSettings(next);
+            toast.success('Label layout saved');
+        } catch (error: any) {
+            // 42703 / PGRST204 both mean the column is not there yet. Say which
+            // migration adds it instead of a raw Postgres message.
+            const msg = String(error?.message || '');
+            if (error?.code === '42703' || error?.code === 'PGRST204' || msg.includes('label_settings')) {
+                toast.error('Run sql/20260919_label_settings.sql, then save again');
+            } else {
+                toast.error(`Could not save the layout: ${msg || 'unknown error'}`);
+            }
+        } finally {
+            setIsSavingLabelSettings(false);
         }
     };
 
@@ -2411,6 +2469,7 @@ const ReceptionDashboard: React.FC = () => {
                                                 onCallLog={openCallLog}
                                                 onDelete={(p) => confirmDelete('patient', p.id, p.name)}
                                         onEdit={setEditPastPatient}
+                                        onPrintLabel={handlePrintPatientLabel}
                                                 isAppAccessUpdating={updatingAccessPatientIds.has(patient.id)}
                                                 isCallHistoryExpanded={expandedCallHistoryPatientIds.has(patient.id)}
                                                 onToggleCallHistory={togglePatientCallHistory}
@@ -3216,6 +3275,23 @@ const ReceptionDashboard: React.FC = () => {
                                     Above is a live simulation of the 58mm thermal receipt. Verify the token spacing and layout before printing.
                                 </p>
                             </div>
+
+                            <div className="rounded-lg border border-gray-200 bg-white p-3">
+                                <h4 className="text-xs font-bold text-gray-800">Case record label</h4>
+                                <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">
+                                    The sticker for the physical file, printed on the TSC label printer cabled to this computer.
+                                    Set the stock size and layout here.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => { setLabelPatient(null); setShowLabelDesigner(true); }}
+                                    className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                                >
+                                    Open label designer
+                                </button>
+                                <p className="hidden">
+                                </p>
+                            </div>
                         </div>
 
                         {/* Actions */}
@@ -3519,6 +3595,20 @@ const ReceptionDashboard: React.FC = () => {
                     onCancel={closeStopFollowupModal}
                     onConfirm={(reason, notes) => handleSubmitStopFollowup(reason, notes)}
                 />
+            )}
+
+            {/* Case-record label designer */}
+            {showLabelDesigner && (
+                <Suspense fallback={null}>
+                    <LabelDesignerModal
+                        isOpen={showLabelDesigner}
+                        onClose={() => { setShowLabelDesigner(false); setLabelPatient(null); }}
+                        settings={labelSettings}
+                        onSave={handleSaveLabelSettings}
+                        isSaving={isSavingLabelSettings}
+                        patient={labelPatient}
+                    />
+                </Suspense>
             )}
 
             {/* Printer Setup Modal */}
