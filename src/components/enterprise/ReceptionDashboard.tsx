@@ -1337,7 +1337,7 @@ const ReceptionDashboard: React.FC = () => {
             return;
         }
         if (!printLabels([toLabelPatient(p)], labelSettings)) {
-            toast.error('Pop-up blocked — allow pop-ups to print the label');
+            toast.error('Could not start the print');
         }
     };
 
@@ -3309,7 +3309,7 @@ const ReceptionDashboard: React.FC = () => {
                                                 place: lastRegisteredPatient.place ?? null,
                                                 registeredAt: new Date().toISOString(),
                                             }], labelSettings)) {
-                                                toast.error('Pop-up blocked — allow pop-ups to print the label');
+                                                toast.error('Could not start the print');
                                             }
                                         }}
                                         className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"

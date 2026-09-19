@@ -338,7 +338,13 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
  * 20mm margin. colour adjust is forced because the header bar is a solid black
  * fill, which "economy" print settings would otherwise drop.
  */
-export function buildLabelPrintHtml(svgs: string[], s: LabelSettings, title = 'Patient label'): string {
+export function buildLabelPrintHtml(
+    svgs: string[],
+    s: LabelSettings,
+    title = 'Patient label',
+    /** Self-printing is for a standalone window. In a frame the caller drives it. */
+    autoPrint = true,
+): string {
     const quarterTurn = s.rotateDeg === 90 || s.rotateDeg === 270;
     const pageW = quarterTurn ? s.heightMm : s.widthMm;
     const pageH = quarterTurn ? s.widthMm : s.heightMm;
@@ -355,10 +361,28 @@ export function buildLabelPrintHtml(svgs: string[], s: LabelSettings, title = 'P
   svg { display: block; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 </style></head>
-<body>${pages}<script>window.onload=function(){window.print();};</script></body></html>`;
+<body>${pages}${autoPrint ? '<script>window.onload=function(){window.print();};</script>' : ''}</body></html>`;
 }
 
-/** Open the print window. Returns false when the pop-up was blocked. */
+/**
+ * Print without leaving the page.
+ *
+ * This used to open a window per print. Reception prints labels in quick
+ * succession, and a tab appearing and needing dismissing between each one is
+ * enough friction to make people avoid the feature. A hidden same-origin frame
+ * carries its own document, so its `@page` rule still governs the sheet, and the
+ * receptionist never leaves the dashboard. It also removes pop-up blocking as a
+ * failure mode entirely.
+ *
+ * Driving a USB printer directly from the browser is deliberately not attempted:
+ * on Windows the TSC driver owns the device, and claiming it for WebUSB needs a
+ * driver swap that would stop the hospital's own HIS printing to the same
+ * printer. To lose the print dialog as well, Chrome is launched with kiosk
+ * printing from a dedicated shortcut, which prints straight to the default
+ * printer.
+ *
+ * Returns false only when a frame could not be created at all.
+ */
 export function printLabels(patients: LabelPatient[], s: LabelSettings): boolean {
     const svgs: string[] = [];
     const copies = Math.max(1, Math.min(20, Math.round(s.copies || 1)));
@@ -366,10 +390,55 @@ export function printLabels(patients: LabelPatient[], s: LabelSettings): boolean
         const { svg } = buildLabelSvg(p, s);
         for (let i = 0; i < copies; i++) svgs.push(svg);
     }
-    const w = window.open('', '_blank', `width=900,height=600`);
-    if (!w) return false;
-    w.document.open();
-    w.document.write(buildLabelPrintHtml(svgs, s));
-    w.document.close();
+    if (svgs.length === 0) return false;
+
+    const quarterTurn = s.rotateDeg === 90 || s.rotateDeg === 270;
+    const frame = document.createElement('iframe');
+    frame.setAttribute('data-label-print', 'true');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.setAttribute('tabindex', '-1');
+    // Parked off-screen at its real size rather than hidden or zero-sized: a
+    // display:none or 0x0 frame is never laid out, and some engines then print
+    // a blank sheet.
+    frame.style.cssText =
+        `position:fixed;left:-10000px;top:0;border:0;` +
+        `width:${quarterTurn ? s.heightMm : s.widthMm}mm;` +
+        `height:${quarterTurn ? s.widthMm : s.heightMm}mm;`;
+    document.body.appendChild(frame);
+
+    const win = frame.contentWindow;
+    const doc = win?.document;
+    if (!win || !doc) { frame.remove(); return false; }
+
+    doc.open();
+    doc.write(buildLabelPrintHtml(svgs, s, 'Patient label', false));
+    doc.close();
+
+    let cleaned = false;
+    const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        // Removing the frame while the dialog is still open cancels the job, so
+        // this always trails the event rather than racing it.
+        window.setTimeout(() => frame.remove(), 1000);
+    };
+
+    const go = () => {
+        try {
+            win.focus();
+            win.print();
+        } catch {
+            /* A refused print is the browser's to report, not ours to retry. */
+        }
+        cleanup();
+    };
+
+    try { win.addEventListener('afterprint', cleanup); } catch { /* older engines */ }
+    // A small delay lets the document lay out before the dialog snapshots it.
+    if (doc.readyState === 'complete') window.setTimeout(go, 60);
+    else frame.onload = () => window.setTimeout(go, 60);
+    // Backstop, in case neither load nor afterprint ever fires.
+    window.setTimeout(cleanup, 60000);
+
     return true;
 }

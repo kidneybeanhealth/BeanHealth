@@ -180,7 +180,7 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
 
     const printBatch = () => {
         if (picked.length === 0) { toast.error('Pick at least one patient'); return; }
-        if (!printLabels(picked, draft)) toast.error('Pop-up blocked — allow pop-ups to print');
+        if (!printLabels(picked, draft)) toast.error('Could not start the print');
     };
 
     const subject: LabelPatient = mode === 'batch'
@@ -209,7 +209,7 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
 
     const doPrint = () => {
         if (!printLabels([subject], draft)) {
-            toast.error('Pop-up blocked — allow pop-ups to print');
+            toast.error('Could not start the print');
         }
     };
 
