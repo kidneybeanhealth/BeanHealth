@@ -1785,7 +1785,14 @@ const ReceptionDashboard: React.FC = () => {
                 name: walkInForm.name,
                 mrNumber: walkInForm.mrNumber || undefined,
                 doctorName: selectedDoctor?.name || '',
-                department: walkInForm.department
+                department: walkInForm.department,
+                // Carried so the label can be printed straight from this dialog
+                // without a second round trip for the patient row.
+                age: walkInForm.age || null,
+                gender: walkInForm.gender || null,
+                phone: walkInForm.phone || null,
+                fatherHusbandName: walkInForm.fatherHusbandName || null,
+                place: walkInForm.place || null,
             });
             setShowPrintDialog(true);
 
@@ -2111,6 +2118,19 @@ const ReceptionDashboard: React.FC = () => {
                             {printerConnected && (
                                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                             )}
+                        </button>
+                        {/* Case-record label designer. Sits beside Printer because
+                            that is where reception already looks for anything that
+                            comes out of a machine. */}
+                        <button
+                            onClick={() => { setLabelPatient(null); setShowLabelDesigner(true); }}
+                            className="p-3 rounded-xl border border-gray-200 bg-white text-gray-400 hover:text-gray-900 hover:border-gray-300 transition-all shadow-sm flex items-center gap-2"
+                            title="Case record label — layout and test print"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 10V5a2 2 0 012-2z" />
+                            </svg>
+                            <span className="hidden sm:inline text-sm font-medium text-gray-600">Label</span>
                         </button>
                         <button
                             onClick={() => navigate('/enterprise-dashboard/reception/tracker')}
@@ -3276,22 +3296,34 @@ const ReceptionDashboard: React.FC = () => {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-gray-200 bg-white p-3">
-                                <h4 className="text-xs font-bold text-gray-800">Case record label</h4>
-                                <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">
-                                    The sticker for the physical file, printed on the TSC label printer cabled to this computer.
-                                    Set the stock size and layout here.
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={() => { setLabelPatient(null); setShowLabelDesigner(true); }}
-                                    className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
-                                >
-                                    Open label designer
-                                </button>
-                                <p className="hidden">
-                                </p>
-                            </div>
+                            {lastRegisteredPatient.mrNumber && (
+                                <div className="rounded-lg border border-gray-200 bg-white p-3">
+                                    <h4 className="text-xs font-bold text-gray-800">Case record label</h4>
+                                    <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">
+                                        The sticker for the physical file, on the TSC label printer cabled to this computer.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (!printLabels([{
+                                                mrNumber: lastRegisteredPatient.mrNumber || '',
+                                                name: lastRegisteredPatient.name,
+                                                age: lastRegisteredPatient.age ?? null,
+                                                gender: lastRegisteredPatient.gender ?? null,
+                                                phone: lastRegisteredPatient.phone ?? null,
+                                                fatherHusbandName: lastRegisteredPatient.fatherHusbandName ?? null,
+                                                place: lastRegisteredPatient.place ?? null,
+                                                registeredAt: new Date().toISOString(),
+                                            }], labelSettings)) {
+                                                toast.error('Pop-up blocked — allow pop-ups to print the label');
+                                            }
+                                        }}
+                                        className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                                    >
+                                        Print label
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Actions */}
