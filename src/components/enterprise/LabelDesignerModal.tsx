@@ -274,10 +274,15 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                         </div>
 
                         <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-[11px] text-sky-800 leading-5">
-                            <strong>Setting it up.</strong> Print one label, measure what came out, and correct
-                            Width and Height until the artwork lands inside the sticker. If everything sits
-                            slightly high or to one side, leave the sizes alone and use the two Offset controls.
-                            If the scanner struggles, raise Bar width to 4 dots.
+                            <strong>Set the printer's stock first.</strong> Windows Settings, Printers, TSC
+                            TTP-244 Pro, Printing preferences, and set the stock to {draft.widthMm} × {draft.heightMm} mm
+                            with media type "labels with gaps". A driver left on its 4 × 6 inch default is why a
+                            label prints sideways across three stickers.
+                            <br /><br />
+                            <strong>Then calibrate here.</strong> Print one label, measure it, and correct Width and
+                            Height until the artwork lands inside the sticker. If it sits slightly high or to one
+                            side, leave the sizes alone and use the two Offset controls. If the scanner struggles,
+                            raise Bar width to 4 dots.
                         </div>
                     </div>
 
@@ -510,6 +515,24 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                             <Num label="Height" value={draft.heightMm} min={12} max={150} step={0.5} onChange={v => set('heightMm', v)} />
                             <Num label="Offset across" value={draft.offsetXMm} min={-10} max={10} step={0.25} onChange={v => set('offsetXMm', v)} />
                             <Num label="Offset down" value={draft.offsetYMm} min={-10} max={10} step={0.25} onChange={v => set('offsetYMm', v)} hint="Use these when the print is off-register, not the sizes." />
+                            <div className="py-1.5">
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Rotation</label>
+                                <div className="grid grid-cols-4 gap-1">
+                                    {([0, 90, 180, 270] as const).map(d => (
+                                        <button
+                                            key={d} type="button" onClick={() => set('rotateDeg', d)}
+                                            className={`px-1 py-1.5 rounded-lg text-[11px] font-bold border ${draft.rotateDeg === d ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-600'}`}
+                                        >
+                                            {d}°
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-1 leading-4">
+                                    Only if the print comes out sideways. First set the printer's own stock
+                                    to {draft.widthMm} × {draft.heightMm} mm — a driver still on its 4 × 6 inch
+                                    default is what makes one label run down three.
+                                </p>
+                            </div>
                             <Num label="Side padding" value={draft.paddingXMm} min={0} max={10} step={0.25} onChange={v => set('paddingXMm', v)} />
                             <Num label="Top padding" value={draft.paddingTopMm} min={0} max={10} step={0.25} onChange={v => set('paddingTopMm', v)} />
                         </Group>

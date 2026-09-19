@@ -63,6 +63,15 @@ export interface LabelSettings {
 
     showAddress: boolean;
     showFooterBlock: boolean;
+    /**
+     * Quarter turns applied to the artwork before printing.
+     *
+     * Chrome rotates a landscape @page onto portrait media on its own, which is
+     * how a 100x50 label ended up running lengthways down three stickers. The
+     * real fix is to match the driver's stock, but a printer that cannot be
+     * matched is fixed here instead of by reprinting until it looks right.
+     */
+    rotateDeg: 0 | 90 | 180 | 270;
     /** Push the barcode to the bottom edge instead of letting it follow the text. */
     barcodeBottomAligned: boolean;
     copies: number;
@@ -100,6 +109,7 @@ export const DEFAULT_LABEL_SETTINGS: LabelSettings = {
 
     showAddress: true,
     showFooterBlock: true,
+    rotateDeg: 0,
     barcodeBottomAligned: false,
     copies: 1,
 };
@@ -299,10 +309,23 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
     const contentBottom = barcodeTop + s.barcodeHeightMm + textBlockMm;
     const overflowed = contentBottom > H + 0.01 || y > barcodeTop + 0.01 || barcodeWidthMm > innerW + 0.01 || barcodeFailed;
 
+    // A quarter turn swaps the page's outer dimensions, so the viewBox swaps with
+    // it and the artwork is rotated inside. Doing it here rather than with a CSS
+    // transform on the print page keeps one source of truth and avoids the
+    // rounding that transformed raster output picks up at 203 dpi.
+    const rot = ((s.rotateDeg || 0) % 360 + 360) % 360;
+    const quarter = rot === 90 || rot === 270;
+    const outerW = quarter ? H : W;
+    const outerH = quarter ? W : H;
+    const transform =
+        rot === 90 ? ` transform="rotate(90) translate(0,-${H})"` :
+        rot === 270 ? ` transform="rotate(-90) translate(-${W},0)"` :
+        rot === 180 ? ` transform="rotate(180) translate(-${W},-${H})"` : '';
+
     const svg =
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" shape-rendering="crispEdges">` +
-        `<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>` +
-        parts.join('') +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${outerW}mm" height="${outerH}mm" viewBox="0 0 ${outerW} ${outerH}" shape-rendering="crispEdges">` +
+        `<rect x="0" y="0" width="${outerW}" height="${outerH}" fill="#fff"/>` +
+        `<g${transform}>` + parts.join('') + `</g>` +
         `</svg>`;
 
     return { svg, overflowed, barcodeWidthMm };
@@ -316,16 +339,19 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
  * fill, which "economy" print settings would otherwise drop.
  */
 export function buildLabelPrintHtml(svgs: string[], s: LabelSettings, title = 'Patient label'): string {
+    const quarterTurn = s.rotateDeg === 90 || s.rotateDeg === 270;
+    const pageW = quarterTurn ? s.heightMm : s.widthMm;
+    const pageH = quarterTurn ? s.widthMm : s.heightMm;
     const pages = svgs
         .map((svg, i) => `<div class="pg"${i === svgs.length - 1 ? ' style="page-break-after:auto"' : ''}>${svg}</div>`)
         .join('');
     return `<!doctype html>
 <html><head><meta charset="utf-8" /><title>${esc(title)}</title>
 <style>
-  @page { size: ${s.widthMm}mm ${s.heightMm}mm; margin: 0; }
+  @page { size: ${pageW}mm ${pageH}mm; margin: 0; }
   :root { color-scheme: only light; }
   html, body { margin: 0; padding: 0; background: #fff; }
-  .pg { width: ${s.widthMm}mm; height: ${s.heightMm}mm; overflow: hidden; page-break-after: always; }
+  .pg { width: ${pageW}mm; height: ${pageH}mm; overflow: hidden; page-break-after: always; }
   svg { display: block; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 </style></head>
