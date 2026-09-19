@@ -346,7 +346,24 @@ const ReceptionDashboard: React.FC = () => {
     const [reviewDateFilter, setReviewDateFilter] = useState('');
     // Report views replace the patient list; list fetches fall back to 'all'
     const isPanelView = reviewFilter === 'weekly_report' || reviewFilter === 'calendar' || reviewFilter === 'dialysis';
-    const activeListFilter: ReceptionReviewFilter = isPanelView ? 'all' : (reviewFilter as ReceptionReviewFilter);
+    /**
+     * Past Records is a record database, not a review list.
+     *
+     * A review chip narrows the list to patients who have a review in that state,
+     * and the search box ran INSIDE that narrowing. So a receptionist standing on
+     * Due Today who typed a stopped patient's MR number got "No patients found" —
+     * and reasonably concluded the patient had been deleted. Nothing was deleted:
+     * Stop Follow-up only sets continuity_status and NULLs next_review_date, so
+     * the patient is absent from every review bucket by construction.
+     *
+     * A typed name or MR number is a lookup of a person, not a question about a
+     * cohort, so it searches every patient and the chip and review date stand
+     * aside while it does. Browsing is unchanged when the box is empty.
+     */
+    const isSearchingPastRecords = searchQuery.trim().length > 0;
+    const chipListFilter: ReceptionReviewFilter = isPanelView ? 'all' : (reviewFilter as ReceptionReviewFilter);
+    const activeListFilter: ReceptionReviewFilter = isSearchingPastRecords ? 'all' : chipListFilter;
+    const activeReviewDate = isSearchingPastRecords ? '' : reviewDateFilter;
     const [pastRecordsPage, setPastRecordsPage] = useState(0);
     const [hasMorePastRecords, setHasMorePastRecords] = useState(true);
     const [isLoadingMorePast, setIsLoadingMorePast] = useState(false);
@@ -439,7 +456,7 @@ const ReceptionDashboard: React.FC = () => {
         fetchPastRecords(true, pastRecordsPage + 1, true, {
             searchValue: searchQuery,
             reviewFilterValue: activeListFilter,
-            reviewDateValue: reviewDateFilter,
+            reviewDateValue: activeReviewDate,
         });
     };
 
@@ -451,7 +468,7 @@ const ReceptionDashboard: React.FC = () => {
         await fetchPastRecords(false, 0, false, {
             searchValue: searchQuery,
             reviewFilterValue: activeListFilter,
-            reviewDateValue: reviewDateFilter,
+            reviewDateValue: activeReviewDate,
         });
     };
 
@@ -515,6 +532,12 @@ const ReceptionDashboard: React.FC = () => {
         // carry. The fetch below already passed reviewDate through; only this
         // guard stood in the way, so picking a date left the list on screen and
         // no way to take it off the screen.
+        // While a search is active the list on screen spans every patient, so a
+        // sheet built from the chip cohort would not be the list being looked at.
+        if (isSearchingPastRecords) {
+            toast.error('Clear the search to print a list');
+            return;
+        }
         const isPrintableCohort =
             Boolean(reviewDateFilter) ||
             ['due_today', 'due_tomorrow', 'overdue'].includes(reviewFilter);
@@ -539,7 +562,7 @@ const ReceptionDashboard: React.FC = () => {
                 page: 0,
                 pageSize: PAST_RECORDS_PRINT_LIMIT,
                 searchQuery,
-                reviewFilter: activeListFilter,
+                reviewFilter: chipListFilter,
                 reviewDate: reviewDateFilter || undefined,
             });
             printRecords = full.patients;
@@ -782,7 +805,7 @@ const ReceptionDashboard: React.FC = () => {
             fetchPastRecords(true, 0, false, {
                 searchValue: searchQuery,
                 reviewFilterValue: activeListFilter,
-                reviewDateValue: reviewDateFilter,
+                reviewDateValue: activeReviewDate,
             });
         } catch (error) {
             console.error('Failed to stop follow-up:', error);
@@ -915,7 +938,7 @@ const ReceptionDashboard: React.FC = () => {
             await fetchPastRecords(false, 0, false, {
                 searchValue: searchQuery,
                 reviewFilterValue: activeListFilter,
-                reviewDateValue: reviewDateFilter,
+                reviewDateValue: activeReviewDate,
             });
         } catch (error: any) {
             console.error('Call log save error:', error);
@@ -980,7 +1003,7 @@ const ReceptionDashboard: React.FC = () => {
         fetchPastRecords(false, 0, false, {
             searchValue: searchQuery,
             reviewFilterValue: activeListFilter,
-            reviewDateValue: reviewDateFilter,
+            reviewDateValue: activeReviewDate,
         });
     }, [activeTab, reviewFilter, reviewDateFilter, fetchPastRecords]);
 
@@ -995,7 +1018,7 @@ const ReceptionDashboard: React.FC = () => {
             fetchPastRecords(true, 0, false, {
                 searchValue: searchQuery,
                 reviewFilterValue: activeListFilter,
-                reviewDateValue: reviewDateFilter,
+                reviewDateValue: activeReviewDate,
             });
         }, 350);
 
@@ -1469,7 +1492,7 @@ const ReceptionDashboard: React.FC = () => {
                 await fetchPastRecords(false, 0, false, {
                     searchValue: searchQuery,
                     reviewFilterValue: activeListFilter,
-                    reviewDateValue: reviewDateFilter,
+                    reviewDateValue: activeReviewDate,
                 });
                 await fetchReviewAlertCount();
                 return;
@@ -2226,7 +2249,7 @@ const ReceptionDashboard: React.FC = () => {
                                                 onClick={() => fetchPastRecords(false, 0, false, {
                                                     searchValue: searchQuery,
                                                     reviewFilterValue: activeListFilter,
-                                                    reviewDateValue: reviewDateFilter,
+                                                    reviewDateValue: activeReviewDate,
                                                 })}
                                                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors"
                                                 title="Re-pull the list — do this right before printing the call sheet"
@@ -2255,7 +2278,7 @@ const ReceptionDashboard: React.FC = () => {
                                         </button>
                                     ))}
 
-                                        {(Boolean(reviewDateFilter) || (['due_today', 'due_tomorrow', 'overdue'] as PastRecordsView[]).includes(reviewFilter)) && (
+                                        {!isSearchingPastRecords && (Boolean(reviewDateFilter) || (['due_today', 'due_tomorrow', 'overdue'] as PastRecordsView[]).includes(reviewFilter)) && (
                                             <button
                                                 type="button"
                                                 onClick={handlePrintPastRecordsList}
@@ -2328,6 +2351,21 @@ const ReceptionDashboard: React.FC = () => {
                                 </form>
                                 )}
                             </div>
+                            {isSearchingPastRecords && !isPanelView && (
+                                <div className="mx-4 mb-3 px-4 py-2.5 rounded-xl bg-sky-50 border border-sky-200 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                                    <span className="font-semibold text-sky-800">Searching all patients.</span>
+                                    <span className="text-sky-700">
+                                        Filters are paused so a patient is found whether or not they have a review, including anyone whose follow-up was stopped.
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchQuery('')}
+                                        className="ml-auto px-2.5 py-1 rounded-lg text-xs font-bold text-sky-800 bg-white border border-sky-200 hover:bg-sky-100"
+                                    >
+                                        Clear search
+                                    </button>
+                                </div>
+                            )}
                             {reviewFilter === 'weekly_report' ? (
                                 <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading report…</div>}>
                                     <WeeklyOverdueReportPanel hospitalId={profile?.id || ''} />
@@ -3251,7 +3289,7 @@ const ReceptionDashboard: React.FC = () => {
                     onScheduled={() => fetchPastRecords(false, 0, false, {
                         searchValue: searchQuery,
                         reviewFilterValue: activeListFilter,
-                        reviewDateValue: reviewDateFilter,
+                        reviewDateValue: activeReviewDate,
                     })}
                 />
             )}
