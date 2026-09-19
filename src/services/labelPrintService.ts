@@ -134,6 +134,105 @@ export async function updatePatientLabelDetails(
     }
 }
 
+export interface NewLabelPatientInput {
+    name: string;
+    mrNumber: string;
+    age?: string | null;
+    gender?: string | null;
+    phone?: string | null;
+    altPhone?: string | null;
+    fatherHusbandName?: string | null;
+    place?: string | null;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
+    cityPincode?: string | null;
+}
+
+/**
+ * Register a patient from the label screen.
+ *
+ * Mirrors the Past Records "New Registration" branch, which writes ONE row to
+ * hospital_patients and nothing else. Read that carefully before changing this:
+ *
+ *   THIS MUST NEVER TOUCH hospital_queues.
+ *
+ * A patient registered here is someone whose physical file needs a sticker, not
+ * someone waiting to see a doctor. Putting them in the live queue would hand a
+ * doctor a patient who is not in the building, and `token_number` is explicitly
+ * null for the same reason — a token belongs to a visit.
+ *
+ * No review row either. A review needs an owning doctor, and four separate paths
+ * have already created ownerless reviews that then drifted into false missed
+ * follow-ups. Follow-up is scheduled from Past Records, where the doctor is
+ * required.
+ */
+export async function registerPatientForLabel(
+    hospitalId: string,
+    input: NewLabelPatientInput
+): Promise<LabelCandidate> {
+    const name = (input.name || '').trim();
+    const mr = (input.mrNumber || '').trim();
+    if (!hospitalId) throw new Error('Hospital profile not found');
+    if (!name) throw new Error('Name is required');
+    // A bare "KNH/" is the autofilled prefix with nothing typed after it.
+    if (!mr || mr.toUpperCase() === 'KNH/') throw new Error('MR number is required — it is what gets barcoded');
+
+    const dup = await withTimeout(
+        ((supabase.from('hospital_patients') as any)
+            .select('id')
+            .eq('hospital_id', hospitalId)
+            .eq('mr_number', mr)
+            .maybeSingle()) as any,
+        10000,
+        'Timed out while checking the MR number'
+    ) as SupabaseResult<any>;
+    if (dup.error) throw dup.error;
+    if (dup.data?.id) throw new Error('That MR number already exists');
+
+    const blank = (v: unknown) => {
+        const t = String(v ?? '').trim();
+        return t === '' ? null : t;
+    };
+    const base: Record<string, any> = {
+        hospital_id: hospitalId,
+        name,
+        mr_number: mr,
+        age: blank(input.age),
+        gender: blank(input.gender),
+        phone: blank(input.phone),
+        father_husband_name: blank(input.fatherHusbandName),
+        place: blank(input.place),
+        // Not a visit. No token, and deliberately no queue row anywhere below.
+        token_number: null,
+    };
+    const withAddress = {
+        ...base,
+        address_line1: blank(input.addressLine1),
+        address_line2: blank(input.addressLine2),
+        city_pincode: blank(input.cityPincode),
+        alt_phone: blank(input.altPhone),
+    };
+
+    const insert = async (row: Record<string, any>, cols: string) =>
+        await withTimeout(
+            ((supabase.from('hospital_patients') as any).insert(row).select(cols).single()) as any,
+            12000,
+            'Timed out while saving the patient'
+        ) as SupabaseResult<any>;
+
+    let res = hasAddressColumns === false ? null : await insert(withAddress, SELECT);
+    if (res && res.error && missingAddressColumns(res.error)) {
+        hasAddressColumns = false;
+        res = null;
+    } else if (res && !res.error) {
+        hasAddressColumns = true;
+    }
+    if (!res) res = await insert(base, BASE);
+    if (res.error) throw res.error;
+
+    return toCandidate(res.data);
+}
+
 const escapeForIlike = (v: string) => v.replace(/[%_,()]/g, ' ').trim();
 
 /** Name or MR number, newest first. Bounded — this feeds a pick list, not a report. */

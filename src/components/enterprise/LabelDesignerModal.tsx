@@ -19,8 +19,8 @@ import {
     type LabelPatient, type LabelSettings,
 } from './patientLabel';
 import {
-    LabelColumnsMissingError, fetchTodayRegistrations, searchPatientsForLabel, updatePatientLabelDetails,
-    type LabelCandidate,
+    LabelColumnsMissingError, fetchTodayRegistrations, registerPatientForLabel, searchPatientsForLabel,
+    updatePatientLabelDetails, type LabelCandidate,
 } from '../../services/labelPrintService';
 
 interface Props {
@@ -92,11 +92,20 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
     // ── Batch ────────────────────────────────────────────────────────────────
     // Labels come off a roll one at a time, so a batch is just more pages. The
     // only thing missing was a way to say which patients.
-    const [mode, setMode] = useState<'layout' | 'batch'>('layout');
+    const [mode, setMode] = useState<'layout' | 'batch'>('batch');
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<LabelCandidate[]>([]);
     const [searching, setSearching] = useState(false);
     const [picked, setPicked] = useState<LabelCandidate[]>([]);
+
+    // Registering straight from here, for a walk-in whose file needs a sticker.
+    const EMPTY_REG = {
+        name: '', mrNumber: 'KNH/', age: '', gender: '', phone: '', altPhone: '',
+        fatherHusbandName: '', place: '', addressLine1: '', addressLine2: '', cityPincode: '',
+    };
+    const [showNewReg, setShowNewReg] = useState(false);
+    const [reg, setReg] = useState({ ...EMPTY_REG });
+    const [registering, setRegistering] = useState(false);
 
     useEffect(() => {
         if (mode !== 'batch' || query.trim().length < 2) { setResults([]); return; }
@@ -175,6 +184,25 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
             toast.error(e instanceof LabelColumnsMissingError ? e.message : (e?.message || 'Could not save'));
         } finally {
             setSavingRow(false);
+        }
+    };
+
+    const submitNewReg = async () => {
+        if (registering) return;
+        setRegistering(true);
+        try {
+            // Writes one patient row. No queue entry and no token — see
+            // registerPatientForLabel for why that matters.
+            const created = await registerPatientForLabel(hospitalId, reg);
+            addMany([created]);
+            setForm({ ...created });
+            setReg({ ...EMPTY_REG });
+            setShowNewReg(false);
+            toast.success(`${created.name} registered and added to this batch`);
+        } catch (e: any) {
+            toast.error(e?.message || 'Could not register the patient');
+        } finally {
+            setRegistering(false);
         }
     };
 
@@ -330,11 +358,79 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                     <div className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
                         {mode === 'batch' ? (
                         <>
+                        {showNewReg && (
+                            <Group title="New registration">
+                                <p className="text-[10px] text-gray-500 mb-2 leading-4">
+                                    Creates the patient record only. They are <strong>not</strong> put in the live
+                                    queue and get no token, so no doctor sees them waiting.
+                                </p>
+                                {([
+                                    ['name', 'Name', true],
+                                    ['mrNumber', 'MR number', true],
+                                    ['fatherHusbandName', 'S/O or W/O', false],
+                                    ['phone', 'Phone', false],
+                                    ['altPhone', 'Second phone', false],
+                                    ['addressLine1', 'Address line 1', false],
+                                    ['addressLine2', 'Address line 2', false],
+                                    ['cityPincode', 'City and pincode', false],
+                                    ['place', 'Place', false],
+                                ] as const).map(([k, lbl, req]) => (
+                                    <div key={k} className="mb-1.5">
+                                        <label className="block text-[10px] font-semibold text-gray-500">
+                                            {lbl}{req && <span className="text-rose-500"> *</span>}
+                                        </label>
+                                        <input
+                                            value={(reg as any)[k]}
+                                            onChange={e => setReg(prev => ({ ...prev, [k]: e.target.value }))}
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded mt-0.5"
+                                        />
+                                    </div>
+                                ))}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block text-[10px] font-semibold text-gray-500">Age</label>
+                                        <input
+                                            value={reg.age}
+                                            onChange={e => setReg(prev => ({ ...prev, age: e.target.value }))}
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded mt-0.5"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-semibold text-gray-500">Gender</label>
+                                        <select
+                                            value={reg.gender}
+                                            onChange={e => setReg(prev => ({ ...prev, gender: e.target.value }))}
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded mt-0.5 bg-white"
+                                        >
+                                            <option value="">—</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={submitNewReg}
+                                    disabled={registering}
+                                    className="w-full mt-3 px-3 py-2 rounded-lg text-xs font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-300"
+                                >
+                                    {registering ? 'Saving…' : 'Register and add to batch'}
+                                </button>
+                            </Group>
+                        )}
+
                         <Group title="Pick patients">
                             <button
                                 type="button"
+                                onClick={() => setShowNewReg(v => !v)}
+                                className={`w-full px-3 py-2.5 rounded-lg text-xs font-bold transition-colors ${showNewReg ? 'bg-gray-100 text-gray-700 border border-gray-300' : 'text-white bg-green-600 hover:bg-green-700'}`}
+                            >
+                                {showNewReg ? 'Cancel new registration' : '+ New registration'}
+                            </button>
+                            <button
+                                type="button"
                                 onClick={loadToday}
-                                className="w-full mb-2 px-3 py-2 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                className="w-full mt-1.5 mb-2 px-2 py-1 rounded-lg text-[10px] font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                             >
                                 Add everyone registered today
                             </button>
