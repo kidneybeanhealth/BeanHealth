@@ -332,28 +332,54 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                                     of ten simply prints ten labels in a row.
                                 </p>
                             ) : (
-                                <div className="max-h-56 overflow-auto -mx-1">
+                            <>
+                            <p className="text-[10px] text-gray-500 mb-2">
+                                Click a patient to load them into the template and fill in what is missing.
+                            </p>
+                                <div className="max-h-64 overflow-auto space-y-1.5 pr-0.5">
                                     {picked.map(pp => {
                                         const open = form?.id === pp.id;
                                         const hasAddress = Boolean(pp.addressLine1 || pp.place);
                                         return (
                                             <div
                                                 key={pp.id}
-                                                className={`flex items-center gap-2 px-1 py-1.5 border-b border-gray-100 last:border-0 ${open ? 'bg-orange-50' : ''}`}
+                                                className={`group relative flex items-center gap-2 rounded-xl border transition-all ${
+                                                    open
+                                                        ? 'border-orange-400 bg-orange-50 shadow-sm ring-1 ring-orange-200'
+                                                        : 'border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-sm'
+                                                }`}
                                             >
                                                 <button
                                                     type="button"
                                                     onClick={() => openPatient(pp)}
-                                                    className="flex-1 min-w-0 text-left"
-                                                    title="Open in the template and edit"
+                                                    className="flex-1 min-w-0 text-left pl-2.5 pr-1 py-2 cursor-pointer"
+                                                    title="Open this patient in the template"
                                                 >
-                                                    <span className="block text-xs font-semibold text-gray-900 truncate">
-                                                        {savedIds.has(pp.id) && <span className="text-emerald-600 mr-1">✓</span>}
-                                                        {pp.name}
+                                                    <span className="flex items-center gap-1.5 min-w-0">
+                                                        <span className="block text-xs font-semibold text-gray-900 truncate">
+                                                            {savedIds.has(pp.id) && <span className="text-emerald-600 mr-1">✓</span>}
+                                                            {pp.name}
+                                                        </span>
                                                     </span>
-                                                    <span className="block text-[10px] text-gray-500">
-                                                        {pp.mrNumber}
-                                                        {!hasAddress && <span className="text-amber-600"> · no address</span>}
+                                                    <span className="flex items-center gap-1.5 mt-0.5">
+                                                        <span className="text-[10px] text-gray-500 truncate">{pp.mrNumber}</span>
+                                                        {!hasAddress && (
+                                                            <span className="text-[9px] font-bold uppercase tracking-wide text-amber-700 bg-amber-100 border border-amber-200 rounded px-1 py-px">
+                                                                no address
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    {/* The affordance. Without it the list reads as a static
+                                                        summary and nobody discovers the editor behind it. */}
+                                                    <span
+                                                        className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold ${
+                                                            open ? 'text-orange-700' : 'text-orange-600 opacity-70 group-hover:opacity-100'
+                                                        }`}
+                                                    >
+                                                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                        {open ? 'Editing now' : 'Click to edit'}
                                                     </span>
                                                 </button>
                                                 <button
@@ -362,8 +388,8 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                                                         setPicked(prev => prev.filter(x => x.id !== pp.id));
                                                         if (form?.id === pp.id) setForm(null);
                                                     }}
-                                                    className="text-gray-400 hover:text-rose-600 text-lg leading-none px-1"
-                                                    title="Remove"
+                                                    className="self-start mt-1.5 mr-1.5 w-6 h-6 shrink-0 rounded-lg text-gray-300 hover:text-rose-600 hover:bg-rose-50 text-base leading-none transition-colors"
+                                                    title="Remove from this batch"
                                                 >
                                                     ×
                                                 </button>
@@ -371,6 +397,7 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                                         );
                                     })}
                                 </div>
+                            </>
                             )}
                             {picked.length > 0 && (
                                 <button
