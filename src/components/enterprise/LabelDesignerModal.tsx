@@ -15,7 +15,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
-    DEFAULT_LABEL_SETTINGS, DOT_MM, buildLabelSvg, printLabels,
+    DEFAULT_LABEL_SETTINGS, DOT_MM, buildLabelSvg, printAlignmentTest, printLabels,
     type LabelPatient, type LabelSettings,
 } from './patientLabel';
 import {
@@ -292,16 +292,37 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                             </span>
                         </div>
 
-                        <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-[11px] text-sky-800 leading-5">
-                            <strong>Set the printer's stock first.</strong> Windows Settings, Printers, TSC
-                            TTP-244 Pro, Printing preferences, and set the stock to {draft.widthMm} × {draft.heightMm} mm
-                            with media type "labels with gaps". A driver left on its 4 × 6 inch default is why a
-                            label prints sideways across three stickers.
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-900 leading-5">
+                            <strong>If one label prints across three, nothing here will fix it.</strong> These
+                            settings size the page the browser draws. They cannot set the printer's paper. On the
+                            reception PC the driver's stock decides how much label material feeds, and a driver
+                            still on its 4 × 6 inch default feeds 152 mm, which is three 50 mm labels. Rotating
+                            changes the picture, not the paper.
                             <br /><br />
-                            <strong>Then calibrate here.</strong> Print one label, measure it, and correct Width and
-                            Height until the artwork lands inside the sticker. If it sits slightly high or to one
-                            side, leave the sizes alone and use the two Offset controls. If the scanner struggles,
-                            raise Bar width to 4 dots.
+                            <strong>Fix it on that PC.</strong> Devices and Printers, right-click TSC TTP-244 Pro,
+                            Printing preferences, Page Setup, Stock, and create {draft.widthMm} × {draft.heightMm} mm.
+                            Set media type to labels with gaps, make it the printer's default, then calibrate the
+                            gap sensor. Print the alignment test below to check.
+                            <div className="mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { if (!printAlignmentTest(draft)) toast.error('Could not start the print'); }}
+                                    className="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+                                >
+                                    Print alignment test
+                                </button>
+                                <span className="ml-2 text-[10px]">
+                                    A box the size of one label. On one sticker means the stock is right.
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-[11px] text-sky-800 leading-5">
+                            <strong>Once the box lands on one label, calibrate here.</strong> Print a label, measure
+                            it, and correct Width and Height until the artwork sits inside the sticker. If it is
+                            slightly high or to one side, leave the sizes alone and use the two Offset controls. If
+                            the scanner struggles, raise Bar width to 4 dots. With the stock set correctly, Rotation
+                            belongs back at 0°.
                         </div>
                     </div>
 

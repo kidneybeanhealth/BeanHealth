@@ -365,6 +365,51 @@ export function buildLabelPrintHtml(
 }
 
 /**
+ * A page-sized box with rulers, for proving where the printer actually puts ink.
+ *
+ * `@page` sizes the page the BROWSER composes. It cannot set the printer's
+ * media. On Windows the driver's stock decides how much label material is fed,
+ * and Chrome only uses our size if a matching form exists in the driver —
+ * otherwise it falls back to the driver default and drops our page into that
+ * area. A driver still on 4 x 6 inch feeds 152mm, which is three 50mm labels,
+ * and no amount of rotating the artwork changes that: rotation changes the
+ * picture, not the paper.
+ *
+ * So this prints a rectangle at the exact page bounds with 10mm ticks. If it
+ * lands inside one sticker, the stock is right and the label will be too. If it
+ * runs across three, the driver is wrong and nothing in this app can fix it.
+ */
+export function buildAlignmentSvg(s: LabelSettings): string {
+    const quarter = s.rotateDeg === 90 || s.rotateDeg === 270;
+    const W = quarter ? s.heightMm : s.widthMm;
+    const H = quarter ? s.widthMm : s.heightMm;
+    const parts: string[] = [
+        `<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`,
+        // Inset by half the stroke so the border is not clipped by the edge.
+        `<rect x="0.25" y="0.25" width="${(W - 0.5).toFixed(2)}" height="${(H - 0.5).toFixed(2)}" fill="none" stroke="#000" stroke-width="0.5"/>`,
+    ];
+    for (let x = 10; x < W; x += 10) {
+        const long = x % 50 === 0;
+        parts.push(`<rect x="${x}" y="0.5" width="0.3" height="${long ? 5 : 3}" fill="#000"/>`);
+        parts.push(`<text x="${x + 0.8}" y="${long ? 8.4 : 6.4}" font-family="${FONT}" font-size="2.6" fill="#000">${x}</text>`);
+    }
+    for (let y = 10; y < H; y += 10) {
+        const long = y % 50 === 0;
+        parts.push(`<rect x="0.5" y="${y}" width="${long ? 5 : 3}" height="0.3" fill="#000"/>`);
+        parts.push(`<text x="${long ? 6 : 4}" y="${y + 1}" font-family="${FONT}" font-size="2.6" fill="#000">${y}</text>`);
+    }
+    // The caption has to fit the narrow side too, or a rotated sheet prints it
+    // running off both edges — on a diagnostic page that reads as a fault.
+    const capSize = Math.min(2.5, W / 15);
+    parts.push(
+        `<text x="${W / 2}" y="${H / 2 - 1}" text-anchor="middle" font-family="${FONT}" font-size="${Math.min(4, W / 26)}" font-weight="700" fill="#000">${W} \u00d7 ${H} mm</text>`,
+        `<text x="${W / 2}" y="${H / 2 + capSize + 1.6}" text-anchor="middle" font-family="${FONT}" font-size="${capSize}" fill="#000">If this box is not on ONE label,</text>`,
+        `<text x="${W / 2}" y="${H / 2 + capSize * 2.4 + 1.6}" text-anchor="middle" font-family="${FONT}" font-size="${capSize}" fill="#000">the printer stock is wrong</text>`,
+    );
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" shape-rendering="crispEdges">${parts.join('')}</svg>`;
+}
+
+/**
  * Print without leaving the page.
  *
  * This used to open a window per print. Reception prints labels in quick
@@ -390,6 +435,15 @@ export function printLabels(patients: LabelPatient[], s: LabelSettings): boolean
         const { svg } = buildLabelSvg(p, s);
         for (let i = 0; i < copies; i++) svgs.push(svg);
     }
+    return printSvgPages(svgs, s);
+}
+
+/** Print the alignment box, through the same path a real label takes. */
+export function printAlignmentTest(s: LabelSettings): boolean {
+    return printSvgPages([buildAlignmentSvg(s)], s);
+}
+
+function printSvgPages(svgs: string[], s: LabelSettings): boolean {
     if (svgs.length === 0) return false;
 
     const quarterTurn = s.rotateDeg === 90 || s.rotateDeg === 270;
