@@ -220,7 +220,6 @@ const ReceptionDashboard: React.FC = () => {
     const [showPrinterSetup, setShowPrinterSetup] = useState(false);
     const [printerConnected, setPrinterConnected] = useState(false);
     const [showPrintDialog, setShowPrintDialog] = useState(false);
-    const [reviewAlertCount, setReviewAlertCount] = useState(0);
     const [duplicateQueueWarning, setDuplicateQueueWarning] = useState<{
         patientName: string;
         existingDoctorName: string;
@@ -233,6 +232,13 @@ const ReceptionDashboard: React.FC = () => {
         mrNumber?: string;
         doctorName: string;
         department: string;
+        // Carried so the confirmation dialog can print the case-record label
+        // without re-reading the patient row it just wrote.
+        age?: string | null;
+        gender?: string | null;
+        phone?: string | null;
+        fatherHusbandName?: string | null;
+        place?: string | null;
     } | null>(null);
     const [isPrintingToken, setIsPrintingToken] = useState(false);
     const [labelSettings, setLabelSettings] = useState<LabelSettings>(DEFAULT_LABEL_SETTINGS);
@@ -965,31 +971,6 @@ const ReceptionDashboard: React.FC = () => {
         }
     }, [isLoadingQueue]);
 
-    const fetchReviewAlertCount = useCallback(async () => {
-        if (!profile?.id) return;
-        try {
-            const today = toLocalISODate(new Date());
-            const { count, error } = await (supabase as any)
-                .from('hospital_patient_reviews')
-                .select('id', { count: 'exact', head: true })
-                .eq('hospital_id', profile.id)
-                .in('status', ['pending', 'rescheduled'])
-                .lte('next_review_date', today);
-
-            if (error) {
-                // If table is not migrated yet, silently ignore.
-                if (String(error.message || '').toLowerCase().includes('hospital_patient_reviews')) {
-                    setReviewAlertCount(0);
-                    return;
-                }
-                throw error;
-            }
-            setReviewAlertCount(count || 0);
-        } catch (error) {
-            console.warn('Review alert count unavailable:', error);
-            setReviewAlertCount(0);
-        }
-    }, [profile?.id]);
 
     // Initial fetch
     useEffect(() => {
@@ -997,9 +978,8 @@ const ReceptionDashboard: React.FC = () => {
             fetchDoctors();
             fetchQueue();
             fetchHospitalSettings();
-            fetchReviewAlertCount();
         }
-    }, [profile?.id, fetchDoctors, fetchQueue, fetchReviewAlertCount]);
+    }, [profile?.id, fetchDoctors, fetchQueue]);
 
     useEffect(() => {
         if (activeTab !== 'past_records' || isPanelView) return;
@@ -1552,7 +1532,6 @@ const ReceptionDashboard: React.FC = () => {
                     reviewFilterValue: activeListFilter,
                     reviewDateValue: activeReviewDate,
                 });
-                await fetchReviewAlertCount();
                 return;
             }
 
@@ -1767,7 +1746,6 @@ const ReceptionDashboard: React.FC = () => {
                             .eq('id', activeReview.id);
 
                         toast.success('Review marked as completed — patient visited early', { duration: 4000 });
-                        fetchReviewAlertCount();
                     }
                 } catch (reviewErr) {
                     console.warn('Auto-complete review failed (non-critical):', reviewErr);
@@ -2203,15 +2181,10 @@ const ReceptionDashboard: React.FC = () => {
                                     setReviewFilter('all');
                                     setReviewDateFilter('');
                                 }}
-                                className={`relative px-5 py-2 font-semibold text-sm rounded-lg transition-all ${activeTab === 'past_records' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'}`}
-                                title="Patient records, and who is due for review"
+                                className={`px-5 py-2 font-semibold text-sm rounded-lg transition-all whitespace-nowrap ${activeTab === 'past_records' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-700'}`}
+                                title="Every patient on record, and who is due for follow-up"
                             >
-                                Past Records
-                                {reviewAlertCount > 0 && (
-                                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">
-                                        {reviewAlertCount > 99 ? '99+' : reviewAlertCount}
-                                    </span>
-                                )}
+                                Past Records and Follow-up
                             </button>
                             <button
                                 onClick={() => setActiveTab('admitted')}
