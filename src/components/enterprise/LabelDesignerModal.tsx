@@ -186,9 +186,23 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
     const subject: LabelPatient = mode === 'batch'
         ? (form || picked[0] || SAMPLE)
         : ((useSample || !patient) ? SAMPLE : patient);
+    /**
+     * Rotation exists to satisfy a printer, not to be designed or typed through.
+     * While working a batch the preview is shown flat, because filling in an
+     * address against sideways text is miserable and the rotation changes
+     * nothing about the content. Layout still previews rotated, since that is
+     * where the setting is being judged.
+     */
+    const previewSettings: LabelSettings = mode === 'batch' ? { ...draft, rotateDeg: 0 } : draft;
+    const previewQuarterTurn = previewSettings.rotateDeg === 90 || previewSettings.rotateDeg === 270;
+    // The white card has to follow the artwork, or a quarter turn leaves the
+    // label hanging off a background still sized for landscape.
+    const previewW = previewQuarterTurn ? draft.heightMm : draft.widthMm;
+    const previewH = previewQuarterTurn ? draft.widthMm : draft.heightMm;
+
     const { svg, overflowed, barcodeWidthMm } = useMemo(
-        () => buildLabelSvg(subject, draft),
-        [subject, draft]
+        () => buildLabelSvg(subject, previewSettings),
+        [subject, previewSettings]
     );
 
     if (!isOpen) return null;
@@ -251,11 +265,11 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
 
                         <div className="bg-[repeating-conic-gradient(#f3f4f6_0%_25%,#ffffff_0%_50%)] bg-[length:16px_16px] rounded-xl border border-gray-200 p-4 sm:p-6 overflow-auto flex items-start justify-center sticky top-0 z-10 lg:static">
                             <div
-                                style={{ width: `${draft.widthMm * zoom}mm`, height: `${draft.heightMm * zoom}mm` }}
+                                style={{ width: `${previewW * zoom}mm`, height: `${previewH * zoom}mm` }}
                                 className="shadow-[0_2px_10px_rgba(0,0,0,0.18)] bg-white shrink-0"
                             >
                                 <div
-                                    style={{ width: `${draft.widthMm}mm`, height: `${draft.heightMm}mm`, transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+                                    style={{ width: `${previewW}mm`, height: `${previewH}mm`, transform: `scale(${zoom})`, transformOrigin: 'top left' }}
                                     dangerouslySetInnerHTML={{ __html: svg }}
                                 />
                             </div>
@@ -268,6 +282,11 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                             <span className="px-2 py-1 rounded-lg bg-white border border-gray-200 text-gray-600">
                                 Barcode {barcodeWidthMm.toFixed(1)} mm wide · {draft.barcodeModuleDots} dots per bar
                             </span>
+                            {mode === 'batch' && draft.rotateDeg !== 0 && (
+                                <span className="px-2 py-1 rounded-lg font-semibold border bg-amber-50 text-amber-800 border-amber-200">
+                                    Shown flat for editing · prints rotated {draft.rotateDeg}°
+                                </span>
+                            )}
                             <span className="text-gray-400">
                                 On-screen size is approximate. Print one and measure it.
                             </span>
