@@ -22,8 +22,14 @@ import type {
     ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
 
-/** Past Records view — review filters plus the two report views */
-export type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar';
+/**
+ * Past Records view — review filters plus the report views.
+ *
+ * 'dialysis' is deliberately NOT a ReceptionReviewFilter. Review filters answer
+ * "is this patient due"; dialysis answers "what kind of visit was this". Putting
+ * a visit type on the review axis would make every bucket match special-case it.
+ */
+export type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar' | 'dialysis';
 
 // Lives in pastRecordsPrint so the print builder pulls in no React.
 import { formatDoctorLabel } from './pastRecordsPrint';
@@ -40,6 +46,7 @@ export const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'followup_stopped') return 'Follow-up Stopped';
     if (filterKey === 'weekly_report') return 'Overdue Weekly Report';
     if (filterKey === 'calendar') return 'Calendar';
+    if (filterKey === 'dialysis') return 'Dialysis';
     return 'Not Completed';
 };
 
