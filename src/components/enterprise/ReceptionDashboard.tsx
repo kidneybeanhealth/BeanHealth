@@ -3634,6 +3634,7 @@ const ReceptionDashboard: React.FC = () => {
                 <Suspense fallback={null}>
                     <LabelDesignerModal
                         isOpen={showLabelDesigner}
+                        hospitalId={profile?.id || ''}
                         onClose={() => { setShowLabelDesigner(false); setLabelPatient(null); }}
                         settings={labelSettings}
                         onSave={handleSaveLabelSettings}

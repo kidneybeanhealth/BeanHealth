@@ -12,15 +12,17 @@
  * The preview is built by the same `buildLabelSvg` that the printer gets, so
  * what is on screen cannot drift from what comes out.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
     DEFAULT_LABEL_SETTINGS, DOT_MM, buildLabelSvg, printLabels,
     type LabelPatient, type LabelSettings,
 } from './patientLabel';
+import { fetchTodayRegistrations, searchPatientsForLabel, type LabelCandidate } from '../../services/labelPrintService';
 
 interface Props {
     isOpen: boolean;
+    hospitalId: string;
     onClose: () => void;
     settings: LabelSettings;
     onSave: (s: LabelSettings) => Promise<void> | void;
@@ -76,13 +78,63 @@ const Group: React.FC<{ title: string; children: React.ReactNode }> = ({ title, 
     </div>
 );
 
-const LabelDesignerModal: React.FC<Props> = ({ isOpen, onClose, settings, onSave, isSaving = false, patient }) => {
+const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, settings, onSave, isSaving = false, patient }) => {
     const [draft, setDraft] = useState<LabelSettings>(settings);
     const [zoom, setZoom] = useState(1.6);
     const [useSample, setUseSample] = useState(!patient);
 
     const set = <K extends keyof LabelSettings>(k: K, v: LabelSettings[K]) =>
         setDraft(prev => ({ ...prev, [k]: v }));
+
+    // ── Batch ────────────────────────────────────────────────────────────────
+    // Labels come off a roll one at a time, so a batch is just more pages. The
+    // only thing missing was a way to say which patients.
+    const [mode, setMode] = useState<'layout' | 'batch'>('layout');
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<LabelCandidate[]>([]);
+    const [searching, setSearching] = useState(false);
+    const [picked, setPicked] = useState<LabelCandidate[]>([]);
+
+    useEffect(() => {
+        if (mode !== 'batch' || query.trim().length < 2) { setResults([]); return; }
+        let cancelled = false;
+        setSearching(true);
+        const t = window.setTimeout(() => {
+            searchPatientsForLabel(hospitalId, query)
+                .then(r => { if (!cancelled) setResults(r); })
+                .catch((e: any) => { if (!cancelled) toast.error(e?.message || 'Could not search patients'); })
+                .finally(() => { if (!cancelled) setSearching(false); });
+        }, 300);
+        return () => { cancelled = true; window.clearTimeout(t); };
+    }, [mode, query, hospitalId]);
+
+    const addMany = useCallback((rows: LabelCandidate[]) => {
+        setPicked(prev => {
+            const seen = new Set(prev.map(p => p.id));
+            // An MR number is what gets barcoded, so a row without one cannot
+            // produce a usable label and is dropped rather than printed blank.
+            const add = rows.filter(r => r.mrNumber && !seen.has(r.id));
+            return [...prev, ...add];
+        });
+    }, []);
+
+    const loadToday = async () => {
+        try {
+            const rows = await fetchTodayRegistrations(hospitalId);
+            const usable = rows.filter(r => r.mrNumber);
+            if (usable.length === 0) { toast('Nobody registered today yet', { icon: '\u2139\uFE0F' }); return; }
+            addMany(usable);
+            const skipped = rows.length - usable.length;
+            toast.success(`Added ${usable.length} from today${skipped ? ` · ${skipped} without an MR number skipped` : ''}`);
+        } catch (e: any) {
+            toast.error(e?.message || 'Could not load today\u2019s registrations');
+        }
+    };
+
+    const printBatch = () => {
+        if (picked.length === 0) { toast.error('Pick at least one patient'); return; }
+        if (!printLabels(picked, draft)) toast.error('Pop-up blocked — allow pop-ups to print');
+    };
 
     const subject: LabelPatient = (useSample || !patient) ? SAMPLE : patient;
     const { svg, overflowed, barcodeWidthMm } = useMemo(
@@ -110,6 +162,16 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, onClose, settings, onSave
                         <p className="text-xs text-gray-500 mt-0.5">
                             TSC TTP-244 Pro · 203 dpi · one dot is {DOT_MM.toFixed(3)} mm
                         </p>
+                    </div>
+                    <div className="ml-auto flex items-center gap-1 rounded-xl bg-gray-100 p-1">
+                        {(['layout', 'batch'] as const).map(m => (
+                            <button
+                                key={m} type="button" onClick={() => setMode(m)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === m ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}
+                            >
+                                {m === 'layout' ? 'Layout' : `Print labels${picked.length ? ` (${picked.length})` : ''}`}
+                            </button>
+                        ))}
                     </div>
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none px-1">×</button>
                 </div>
@@ -171,6 +233,103 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, onClose, settings, onSave
 
                     {/* Controls */}
                     <div className="space-y-3">
+                        {mode === 'batch' ? (
+                        <>
+                        <Group title="Pick patients">
+                            <button
+                                type="button"
+                                onClick={loadToday}
+                                className="w-full mb-2 px-3 py-2 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            >
+                                Add everyone registered today
+                            </button>
+                            <input
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                                placeholder="Search by name or MR number…"
+                                className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg"
+                            />
+                            <div className="mt-2 max-h-48 overflow-auto rounded-lg border border-gray-100 divide-y divide-gray-100">
+                                {searching && <p className="px-2.5 py-2 text-[11px] text-gray-400">Searching…</p>}
+                                {!searching && query.trim().length >= 2 && results.length === 0 && (
+                                    <p className="px-2.5 py-2 text-[11px] text-gray-400">No patients found</p>
+                                )}
+                                {results.map(r => {
+                                    const already = picked.some(p => p.id === r.id);
+                                    return (
+                                        <button
+                                            key={r.id}
+                                            type="button"
+                                            disabled={already || !r.mrNumber}
+                                            onClick={() => addMany([r])}
+                                            className="w-full text-left px-2.5 py-2 hover:bg-orange-50/60 disabled:opacity-45 disabled:hover:bg-transparent"
+                                        >
+                                            <span className="block text-xs font-semibold text-gray-900 truncate">{r.name}</span>
+                                            <span className="block text-[10px] text-gray-500">
+                                                {r.mrNumber || 'No MR number — cannot be barcoded'}
+                                                {already ? ' · added' : ''}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </Group>
+
+                        <Group title={`Selected (${picked.length})`}>
+                            {picked.length === 0 ? (
+                                <p className="text-[11px] text-gray-400 py-1">
+                                    Nothing selected yet. Labels feed one at a time off the roll, so a batch
+                                    of ten simply prints ten labels in a row.
+                                </p>
+                            ) : (
+                                <div className="max-h-56 overflow-auto -mx-1">
+                                    {picked.map(pp => (
+                                        <div key={pp.id} className="flex items-center gap-2 px-1 py-1.5 border-b border-gray-100 last:border-0">
+                                            <span className="flex-1 min-w-0">
+                                                <span className="block text-xs font-semibold text-gray-900 truncate">{pp.name}</span>
+                                                <span className="block text-[10px] text-gray-500">{pp.mrNumber}</span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setPicked(prev => prev.filter(x => x.id !== pp.id))}
+                                                className="text-gray-400 hover:text-rose-600 text-lg leading-none px-1"
+                                                title="Remove"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {picked.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setPicked([])}
+                                    className="mt-2 text-[11px] font-semibold text-gray-500 hover:text-gray-800"
+                                >
+                                    Clear all
+                                </button>
+                            )}
+                        </Group>
+
+                        <Group title="Print">
+                            <Num label="Copies each" value={draft.copies} min={1} max={10} step={1} unit="" onChange={v => set('copies', v)} />
+                            <button
+                                type="button"
+                                onClick={printBatch}
+                                disabled={picked.length === 0}
+                                className="w-full mt-2 px-3 py-2.5 rounded-xl text-sm font-bold text-white bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300"
+                            >
+                                Print {picked.length * Math.max(1, draft.copies)} label{picked.length * Math.max(1, draft.copies) === 1 ? '' : 's'}
+                            </button>
+                            <p className="text-[10px] text-gray-400 mt-1.5 leading-4">
+                                One label per page, fed one at a time off the roll. Nothing is printed after
+                                the last one, so no blank label is wasted.
+                            </p>
+                        </Group>
+                        </>
+                        ) : (
+                        <>
                         <Group title="Stock">
                             <Num label="Width" value={draft.widthMm} min={25} max={108} step={0.5} onChange={v => set('widthMm', v)} />
                             <Num label="Height" value={draft.heightMm} min={12} max={150} step={0.5} onChange={v => set('heightMm', v)} />
@@ -235,6 +394,8 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, onClose, settings, onSave
                             </label>
                             <Num label="Copies per print" value={draft.copies} min={1} max={10} step={1} unit="" onChange={v => set('copies', v)} />
                         </Group>
+                        </>
+                        )}
                     </div>
                 </div>
 
