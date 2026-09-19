@@ -18,7 +18,10 @@ import {
     DEFAULT_LABEL_SETTINGS, DOT_MM, buildLabelSvg, printLabels,
     type LabelPatient, type LabelSettings,
 } from './patientLabel';
-import { fetchTodayRegistrations, searchPatientsForLabel, type LabelCandidate } from '../../services/labelPrintService';
+import {
+    LabelColumnsMissingError, fetchTodayRegistrations, searchPatientsForLabel, updatePatientLabelDetails,
+    type LabelCandidate,
+} from '../../services/labelPrintService';
 
 interface Props {
     isOpen: boolean;
@@ -131,12 +134,58 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
         }
     };
 
+    // The patient currently open in the template. `form` is the live draft, so the
+    // preview redraws as the receptionist types rather than after a save — the
+    // point of editing here instead of in a separate dialog is seeing the label.
+    const [form, setForm] = useState<LabelCandidate | null>(null);
+    const [savingRow, setSavingRow] = useState(false);
+    const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+
+    const focusIndex = form ? picked.findIndex(p => p.id === form.id) : -1;
+    const openPatient = (row: LabelCandidate) => setForm({ ...row });
+    const step = (delta: number) => {
+        if (focusIndex < 0) return;
+        const next = picked[focusIndex + delta];
+        if (next) setForm({ ...next });
+    };
+    const field = <K extends keyof LabelCandidate>(k: K, v: LabelCandidate[K]) =>
+        setForm(prev => (prev ? { ...prev, [k]: v } : prev));
+
+    const saveRow = async () => {
+        if (!form) return;
+        setSavingRow(true);
+        try {
+            await updatePatientLabelDetails(hospitalId, form.id, {
+                addressLine1: (form.addressLine1 as string) ?? null,
+                addressLine2: (form.addressLine2 as string) ?? null,
+                cityPincode: (form.cityPincode as string) ?? null,
+                altPhone: (form.altPhone as string) ?? null,
+                phone: (form.phone as string) ?? null,
+                fatherHusbandName: (form.fatherHusbandName as string) ?? null,
+                age: form.age ?? null,
+                gender: (form.gender as string) ?? null,
+            });
+            setPicked(prev => prev.map(p => (p.id === form.id ? { ...form } : p)));
+            setSavedIds(prev => new Set(prev).add(form.id));
+            toast.success('Saved');
+            // Straight on to the next one; working a list is the whole workflow.
+            const next = picked[focusIndex + 1];
+            if (next) setForm({ ...next });
+        } catch (e: any) {
+            toast.error(e instanceof LabelColumnsMissingError ? e.message : (e?.message || 'Could not save'));
+        } finally {
+            setSavingRow(false);
+        }
+    };
+
     const printBatch = () => {
         if (picked.length === 0) { toast.error('Pick at least one patient'); return; }
         if (!printLabels(picked, draft)) toast.error('Pop-up blocked — allow pop-ups to print');
     };
 
-    const subject: LabelPatient = (useSample || !patient) ? SAMPLE : patient;
+    const subject: LabelPatient = mode === 'batch'
+        ? (form || picked[0] || SAMPLE)
+        : ((useSample || !patient) ? SAMPLE : patient);
     const { svg, overflowed, barcodeWidthMm } = useMemo(
         () => buildLabelSvg(subject, draft),
         [subject, draft]
@@ -283,22 +332,43 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                                 </p>
                             ) : (
                                 <div className="max-h-56 overflow-auto -mx-1">
-                                    {picked.map(pp => (
-                                        <div key={pp.id} className="flex items-center gap-2 px-1 py-1.5 border-b border-gray-100 last:border-0">
-                                            <span className="flex-1 min-w-0">
-                                                <span className="block text-xs font-semibold text-gray-900 truncate">{pp.name}</span>
-                                                <span className="block text-[10px] text-gray-500">{pp.mrNumber}</span>
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => setPicked(prev => prev.filter(x => x.id !== pp.id))}
-                                                className="text-gray-400 hover:text-rose-600 text-lg leading-none px-1"
-                                                title="Remove"
+                                    {picked.map(pp => {
+                                        const open = form?.id === pp.id;
+                                        const hasAddress = Boolean(pp.addressLine1 || pp.place);
+                                        return (
+                                            <div
+                                                key={pp.id}
+                                                className={`flex items-center gap-2 px-1 py-1.5 border-b border-gray-100 last:border-0 ${open ? 'bg-orange-50' : ''}`}
                                             >
-                                                ×
-                                            </button>
-                                        </div>
-                                    ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openPatient(pp)}
+                                                    className="flex-1 min-w-0 text-left"
+                                                    title="Open in the template and edit"
+                                                >
+                                                    <span className="block text-xs font-semibold text-gray-900 truncate">
+                                                        {savedIds.has(pp.id) && <span className="text-emerald-600 mr-1">✓</span>}
+                                                        {pp.name}
+                                                    </span>
+                                                    <span className="block text-[10px] text-gray-500">
+                                                        {pp.mrNumber}
+                                                        {!hasAddress && <span className="text-amber-600"> · no address</span>}
+                                                    </span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setPicked(prev => prev.filter(x => x.id !== pp.id));
+                                                        if (form?.id === pp.id) setForm(null);
+                                                    }}
+                                                    className="text-gray-400 hover:text-rose-600 text-lg leading-none px-1"
+                                                    title="Remove"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                             {picked.length > 0 && (
@@ -311,6 +381,83 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                                 </button>
                             )}
                         </Group>
+
+                        {form && (
+                            <Group title={`Editing · ${focusIndex + 1} of ${picked.length}`}>
+                                <p className="text-[10px] text-gray-400 mb-2 leading-4">
+                                    The preview on the left is this patient. Anything typed here shows up
+                                    immediately and is saved to their record, so the next label already has it.
+                                </p>
+                                {([
+                                    ['name', 'Name', false],
+                                    ['fatherHusbandName', 'S/O or W/O', false],
+                                    ['phone', 'Phone', false],
+                                    ['altPhone', 'Second phone', false],
+                                    ['addressLine1', 'Address line 1', false],
+                                    ['addressLine2', 'Address line 2', false],
+                                    ['cityPincode', 'City and pincode', false],
+                                ] as const).map(([k, lbl]) => (
+                                    <div key={k} className="mb-1.5">
+                                        <label className="block text-[10px] font-semibold text-gray-500">{lbl}</label>
+                                        <input
+                                            value={(form[k] as string) || ''}
+                                            onChange={e => field(k, e.target.value as any)}
+                                            disabled={k === 'name'}
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded mt-0.5 disabled:bg-gray-50 disabled:text-gray-500"
+                                            placeholder={k === 'addressLine1' && form.place ? `${form.place}` : ''}
+                                        />
+                                    </div>
+                                ))}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block text-[10px] font-semibold text-gray-500">Age</label>
+                                        <input
+                                            value={(form.age as any) ?? ''}
+                                            onChange={e => field('age', e.target.value as any)}
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded mt-0.5"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-semibold text-gray-500">Gender</label>
+                                        <select
+                                            value={(form.gender as string) || ''}
+                                            onChange={e => field('gender', e.target.value as any)}
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded mt-0.5 bg-white"
+                                        >
+                                            <option value="">—</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 mt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => step(-1)}
+                                        disabled={focusIndex <= 0}
+                                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-gray-200 bg-white text-gray-600 disabled:opacity-40"
+                                    >
+                                        ← Prev
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={saveRow}
+                                        disabled={savingRow}
+                                        className="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-300"
+                                    >
+                                        {savingRow ? 'Saving…' : (focusIndex < picked.length - 1 ? 'Save and next' : 'Save')}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => step(1)}
+                                        disabled={focusIndex < 0 || focusIndex >= picked.length - 1}
+                                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-gray-200 bg-white text-gray-600 disabled:opacity-40"
+                                    >
+                                        Next →
+                                    </button>
+                                </div>
+                            </Group>
+                        )}
 
                         <Group title="Print">
                             <Num label="Copies each" value={draft.copies} min={1} max={10} step={1} unit="" onChange={v => set('copies', v)} />

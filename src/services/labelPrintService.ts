@@ -14,7 +14,20 @@ import { supabase } from '../lib/supabase';
 import { withTimeout } from '../utils/requestUtils';
 import type { LabelPatient } from '../components/enterprise/patientLabel';
 
-const SELECT = 'id, name, age, gender, phone, mr_number, father_husband_name, place, created_at';
+const BASE = 'id, name, age, gender, phone, mr_number, father_husband_name, place, created_at';
+/** Added by sql/20260919_patient_address_fields.sql. Absent on an un-migrated DB. */
+const EXTRA = 'address_line1, address_line2, city_pincode, alt_phone';
+const SELECT = `${BASE}, ${EXTRA}`;
+
+/** True once we learn this database has the address columns; false once we learn it does not. */
+let hasAddressColumns: boolean | null = null;
+
+const missingAddressColumns = (error: any): boolean => {
+    const msg = String(error?.message || '').toLowerCase();
+    return error?.code === '42703'
+        || error?.code === 'PGRST204'
+        || ['address_line1', 'address_line2', 'city_pincode', 'alt_phone'].some(c => msg.includes(c));
+};
 
 export interface LabelCandidate extends LabelPatient {
     id: string;
@@ -29,10 +42,97 @@ const toCandidate = (r: any): LabelCandidate => ({
     age: r.age ?? null,
     gender: r.gender ?? null,
     phone: r.phone ?? null,
+    altPhone: r.alt_phone ?? null,
     fatherHusbandName: r.father_husband_name ?? null,
     place: r.place ?? null,
+    addressLine1: r.address_line1 ?? null,
+    addressLine2: r.address_line2 ?? null,
+    cityPincode: r.city_pincode ?? null,
     registeredAt: r.created_at ?? null,
 });
+
+/**
+ * Run a patient query, dropping the address columns if this database predates
+ * them. Degrading to the base columns keeps label printing working on a site
+ * that has not run the migration; failing outright would take the whole feature
+ * down over four optional fields.
+ */
+const selectPatients = async (
+    build: (cols: string) => any,
+    timeoutMessage: string
+): Promise<any[]> => {
+    if (hasAddressColumns !== false) {
+        const res = await withTimeout(build(SELECT) as any, 10000, timeoutMessage) as SupabaseResult<any[]>;
+        if (!res.error) { hasAddressColumns = true; return res.data || []; }
+        if (!missingAddressColumns(res.error)) throw res.error;
+        hasAddressColumns = false;
+    }
+    const res = await withTimeout(build(BASE) as any, 10000, timeoutMessage) as SupabaseResult<any[]>;
+    if (res.error) throw res.error;
+    return res.data || [];
+};
+
+export interface PatientLabelDetails {
+    addressLine1: string | null;
+    addressLine2: string | null;
+    cityPincode: string | null;
+    altPhone: string | null;
+    phone: string | null;
+    fatherHusbandName: string | null;
+    age: string | number | null;
+    gender: string | null;
+}
+
+export class LabelColumnsMissingError extends Error {
+    constructor() {
+        super('Run sql/20260919_patient_address_fields.sql, then save again');
+        this.name = 'LabelColumnsMissingError';
+    }
+}
+
+/**
+ * Persist what the desk typed while working through a batch.
+ *
+ * Empty strings are written as NULL, so clearing a field actually clears it —
+ * a label that keeps printing an address the receptionist just deleted is worse
+ * than one that never had it.
+ */
+export async function updatePatientLabelDetails(
+    hospitalId: string,
+    patientId: string,
+    d: PatientLabelDetails
+): Promise<void> {
+    if (!hospitalId || !patientId) throw new Error('Missing hospital or patient identifier');
+    const blank = (v: unknown) => {
+        const t = String(v ?? '').trim();
+        return t === '' ? null : t;
+    };
+
+    const res = await withTimeout(
+        ((supabase.from('hospital_patients') as any)
+            .update({
+                address_line1: blank(d.addressLine1),
+                address_line2: blank(d.addressLine2),
+                city_pincode: blank(d.cityPincode),
+                alt_phone: blank(d.altPhone),
+                phone: blank(d.phone),
+                father_husband_name: blank(d.fatherHusbandName),
+                age: blank(d.age),
+                gender: blank(d.gender),
+                // hospital_patients has NO updated_at column. Writing one here is
+                // exactly what made Stop Follow-up silently fail for months.
+            })
+            .eq('hospital_id', hospitalId)
+            .eq('id', patientId)) as any,
+        10000,
+        'Timed out while saving patient details'
+    ) as SupabaseResult<any>;
+
+    if (res.error) {
+        if (missingAddressColumns(res.error)) throw new LabelColumnsMissingError();
+        throw res.error;
+    }
+}
 
 const escapeForIlike = (v: string) => v.replace(/[%_,()]/g, ' ').trim();
 
@@ -45,19 +145,16 @@ export async function searchPatientsForLabel(
     const q = escapeForIlike(query || '');
     if (!hospitalId || q.length < 2) return [];
 
-    const res = await withTimeout(
-        ((supabase.from('hospital_patients') as any)
-            .select(SELECT)
+    const rows = await selectPatients(
+        (cols) => (supabase.from('hospital_patients') as any)
+            .select(cols)
             .eq('hospital_id', hospitalId)
             .or(`name.ilike.%${q}%,mr_number.ilike.%${q}%`)
             .order('created_at', { ascending: false })
-            .limit(limit)) as any,
-        10000,
+            .limit(limit),
         'Timed out while searching patients'
-    ) as SupabaseResult<any[]>;
-
-    if (res.error) throw res.error;
-    return (res.data || []).map(toCandidate);
+    );
+    return rows.map(toCandidate);
 }
 
 /**
