@@ -24,7 +24,7 @@ interface VisitJourneyModalProps {
     onClose: () => void;
 }
 
-type EventType = 'prescription' | 'discharge_card' | 'admitted' | 'discharged' | 'deceased';
+type EventType = 'prescription' | 'dialysis_rx' | 'discharge_card' | 'admitted' | 'discharged' | 'deceased';
 
 interface JourneyEvent {
     id: string;
@@ -37,6 +37,17 @@ interface JourneyEvent {
     /** Doctor display name when available. */
     doctorName?: string | null;
 }
+
+/**
+ * A dialysis session, not an OP visit.
+ *
+ * `handleSendDialysisToPharmacy` stamps visitType on every dialysis Rx. The
+ * document itself is an ordinary prescription — same modal, same template — so
+ * the timeline was labelling it "Prescription" alongside the patient's OP
+ * visits, which is confusing on a patient who has both.
+ */
+const isDialysisRx = (rx: ReceptionVisitRecord) =>
+    (rx?.metadata as any)?.visitType === 'dialysis';
 
 const isDischargeCardRx = (rx: ReceptionVisitRecord) => {
     const docType = (rx?.metadata as any)?.documentType;
@@ -107,7 +118,9 @@ const VisitJourneyModal: React.FC<VisitJourneyModalProps> = ({
             list.push({
                 id: `rx-${rx.id}`,
                 date: rx.created_at,
-                type: isDC ? 'discharge_card' : 'prescription',
+                // Discharge card wins: it is a different document, while dialysis
+                // only changes what kind of visit produced an ordinary one.
+                type: isDC ? 'discharge_card' : isDialysisRx(rx) ? 'dialysis_rx' : 'prescription',
                 prescription: rx,
                 doctorName: rx.doctor?.name || null,
             });
@@ -141,6 +154,9 @@ const VisitJourneyModal: React.FC<VisitJourneyModalProps> = ({
         switch (type) {
             case 'prescription':
                 return { label: 'Prescription', cls: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' };
+            case 'dialysis_rx':
+                // Violet, matching the Dialysis register chip in Past Records.
+                return { label: 'Dialysis Rx', cls: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500' };
             case 'discharge_card':
                 return { label: 'Discharge Card', cls: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' };
             case 'admitted':
@@ -193,7 +209,7 @@ const VisitJourneyModal: React.FC<VisitJourneyModalProps> = ({
                             <ol className="relative border-l-2 border-gray-200 ml-3 space-y-4">
                                 {events.map(ev => {
                                     const badge = getBadge(ev.type);
-                                    const isRxLike = ev.type === 'prescription' || ev.type === 'discharge_card';
+                                    const isRxLike = ev.type === 'prescription' || ev.type === 'dialysis_rx' || ev.type === 'discharge_card';
                                     return (
                                         <li key={ev.id} className="ml-5">
                                             <span className={`absolute -left-[7px] flex items-center justify-center w-3 h-3 rounded-full ring-4 ring-white ${badge.dot}`} />
@@ -231,7 +247,7 @@ const VisitJourneyModal: React.FC<VisitJourneyModalProps> = ({
                                                         >
                                                             {ev.type === 'discharge_card' ? 'View Discharge Card' : 'View Rx'}
                                                         </button>
-                                                        {onEditResend && (ev.type === 'prescription' || ev.type === 'discharge_card') && (
+                                                        {onEditResend && (ev.type === 'prescription' || ev.type === 'dialysis_rx' || ev.type === 'discharge_card') && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => onEditResend(ev.prescription!)}
