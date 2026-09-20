@@ -75,9 +75,20 @@ const Stat: React.FC<{ label: string; value: React.ReactNode; hint?: string }> =
     </div>
 );
 
-interface Props { hospitalId: string; orgLabel?: string }
+interface Props {
+    hospitalId: string;
+    orgLabel?: string;
+    /**
+     * Open this patient's prescriptions. Passed in rather than rendered here so
+     * each dashboard uses its own Rx viewer: reception gets view and download,
+     * the doctor additionally gets edit and resend to pharmacy. A dialysis Rx is
+     * an ordinary hospital_prescriptions row, so both viewers already handle it —
+     * it was simply unreachable from this register.
+     */
+    onViewRx?: (patient: DialysisPatientRow) => void;
+}
 
-const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospital' }) => {
+const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospital', onViewRx }) => {
     const [period, setPeriod] = useState<Period>('month');
     const [customFrom, setCustomFrom] = useState('');
     const [customTo, setCustomTo] = useState('');
@@ -268,6 +279,18 @@ const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospit
                                             <span className="block text-lg font-bold text-gray-900 leading-none">{p.sessionCount}</span>
                                             <span className="block text-[10px] uppercase tracking-wide text-gray-400 mt-0.5">sessions</span>
                                         </span>
+                                        {onViewRx && (
+                                            <span
+                                                role="button"
+                                                tabIndex={0}
+                                                title="Open this patient's prescriptions"
+                                                onClick={(e) => { e.stopPropagation(); onViewRx(p); }}
+                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onViewRx(p); } }}
+                                                className="shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 cursor-pointer"
+                                            >
+                                                View Rx
+                                            </span>
+                                        )}
                                         <svg className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -297,6 +320,7 @@ const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospit
                                             <p className="text-[10px] text-gray-400 mt-2 leading-4">
                                                 A struck-through date was superseded at the pharmacy by a later prescription.
                                                 The patient still attended, so it is counted.
+                                                {onViewRx && ' Use View Rx to open, download or resend the prescription itself.'}
                                             </p>
                                         </div>
                                     )}

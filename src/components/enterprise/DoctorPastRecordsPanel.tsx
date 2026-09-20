@@ -12,6 +12,7 @@ import {
 import AddFollowupModal from './AddFollowupModal';
 import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
+import PastRecordsFilterChips from './PastRecordsFilterChips';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
     formatDoctorLabel,
@@ -26,6 +27,7 @@ const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 const WeeklyOverdueReportPanel = lazy(() =>
     import('./ReceptionActivityPanels').then(m => ({ default: m.WeeklyOverdueReportPanel }))
 );
+const DialysisRegisterPanel = lazy(() => import('./DialysisRegisterPanel'));
 const ReceptionCalendarPanel = lazy(() =>
     import('./ReceptionActivityPanels').then(m => ({ default: m.ReceptionCalendarPanel }))
 );
@@ -86,7 +88,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
     const [reviewFilter, setReviewFilter] = useState<PastRecordsView>('all');
     const [reviewDateFilter, setReviewDateFilter] = useState('');
     // Report views replace the patient list; list fetches fall back to 'all'
-    const isPanelView = reviewFilter === 'weekly_report' || reviewFilter === 'calendar';
+    const isPanelView = reviewFilter === 'weekly_report' || reviewFilter === 'calendar' || reviewFilter === 'dialysis';
     const activeListFilter: ReceptionReviewFilter = isPanelView ? 'all' : (reviewFilter as ReceptionReviewFilter);
     const [pastRecordsPage, setPastRecordsPage] = useState(0);
     const [hasMorePastRecords, setHasMorePastRecords] = useState(true);
@@ -689,20 +691,11 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'followup_stopped', 'calendar'] as PastRecordsView[]).map((filterKey) => (
-                            <button
-                                key={filterKey}
-                                type="button"
-                                onClick={() => setReviewFilter(filterKey)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                                    reviewFilter === filterKey
-                                        ? 'bg-orange-100 text-orange-700 border-orange-300'
-                                        : 'bg-white text-gray-600 border-gray-200 hover:border-orange-200'
-                                }`}
-                            >
-                                {getReviewFilterLabel(filterKey)}
-                            </button>
-                        ))}
+<PastRecordsFilterChips
+                            views={['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'review_completed', 'followup_stopped', 'weekly_report', 'calendar', 'dialysis']}
+                            value={reviewFilter}
+                            onChange={setReviewFilter}
+                        />
                         {(Boolean(reviewDateFilter) || (['due_today', 'due_tomorrow', 'overdue'] as PastRecordsView[]).includes(reviewFilter)) && (
                             <button
                                 type="button"
@@ -764,7 +757,15 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     )}
                 </div>
 
-                {reviewFilter === 'weekly_report' ? (
+                {reviewFilter === 'dialysis' ? (
+                    <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading register…</div>}>
+                        <DialysisRegisterPanel
+                            hospitalId={doctor.hospital_id}
+                            orgLabel="Hospital"
+                            onViewRx={(p) => setJourneyPatient({ id: p.id, name: p.name, mr_number: p.mrNumber, age: p.age, prescriptions: [] } as any)}
+                        />
+                    </Suspense>
+                ) : reviewFilter === 'weekly_report' ? (
                     <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading report…</div>}>
                         <WeeklyOverdueReportPanel hospitalId={doctor.hospital_id} doctorId={doctor.id} />
                     </Suspense>

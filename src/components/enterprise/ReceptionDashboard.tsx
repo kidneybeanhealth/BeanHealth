@@ -27,6 +27,7 @@ import EditPatientModal from './EditPatientModal';
 import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import { DEFAULT_LABEL_SETTINGS, printLabels, type LabelPatient, type LabelSettings } from './patientLabel';
+import PastRecordsFilterChips from './PastRecordsFilterChips';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
     formatDoctorLabel,
@@ -2294,20 +2295,11 @@ const ReceptionDashboard: React.FC = () => {
                                     )}
                                 </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                    {(['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'weekly_report', 'review_completed', 'followup_stopped', 'dialysis', 'calendar'] as PastRecordsView[]).map((filterKey) => (
-                                        <button
-                                            key={filterKey}
-                                            type="button"
-                                            onClick={() => setReviewFilter(filterKey)}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                                                reviewFilter === filterKey
-                                                    ? 'bg-orange-100 text-orange-700 border-orange-300'
-                                                    : 'bg-white text-gray-600 border-gray-200 hover:border-orange-200'
-                                            }`}
-                                        >
-                                            {getReviewFilterLabel(filterKey)}
-                                        </button>
-                                    ))}
+                                    <PastRecordsFilterChips
+                                        views={['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'review_completed', 'followup_stopped', 'weekly_report', 'calendar', 'dialysis']}
+                                        value={reviewFilter}
+                                        onChange={setReviewFilter}
+                                    />
 
                                         {!isSearchingPastRecords && (Boolean(reviewDateFilter) || (['due_today', 'due_tomorrow', 'overdue'] as PastRecordsView[]).includes(reviewFilter)) && (
                                             <button
@@ -2403,7 +2395,11 @@ const ReceptionDashboard: React.FC = () => {
                                 </Suspense>
                             ) : reviewFilter === 'dialysis' ? (
                                 <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading register…</div>}>
-                                    <DialysisRegisterPanel hospitalId={profile?.id || ''} orgLabel={displayName || 'Hospital'} />
+                                    <DialysisRegisterPanel
+                                        hospitalId={profile?.id || ''}
+                                        orgLabel={displayName || 'Hospital'}
+                                        onViewRx={(p) => setRxHistoryPatient({ id: p.id, name: p.name, mr_number: p.mrNumber, age: p.age, prescriptions: [] } as any)}
+                                    />
                                 </Suspense>
                             ) : reviewFilter === 'calendar' ? (
                                 <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading calendar…</div>}>
