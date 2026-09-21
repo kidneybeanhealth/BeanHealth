@@ -154,12 +154,25 @@ const fmtStamp = (d: Date): string => {
     return `${String(d.getDate()).padStart(2, '0')}-${mon}-${yy} ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
 };
 
-/** Honorific matching the hospital's own label, which prints Mr./Ms. before the name. */
-const honorific = (gender?: string | null): string => {
+/**
+ * Relation line, printed as typed.
+ *
+ * Reception types the prefix themselves — "W/O MR.HAKKIM" — so prepending one
+ * produced "S/O W/O MR.HAKKIM" on a real patient's file. Same fault as the
+ * honorific that printed "Ms. MRS. JERENA", and the same fault as
+ * `formatDoctorLabel` exists to prevent for "Dr. Dr.A.Prabhakar".
+ *
+ * A prefix is added only when the typed value has none, so a bare "HAKKIM"
+ * still reads as a relation rather than a stray name.
+ */
+const RELATION_PREFIX = /^\s*(s\s*\/\s*o|w\s*\/\s*o|d\s*\/\s*o|c\s*\/\s*o|h\s*\/\s*o|s\/o|w\/o)\b\.?/i;
+
+const relationLine = (value: string, gender?: string | null): string => {
+    const typed = String(value || '').trim();
+    if (!typed) return '';
+    if (RELATION_PREFIX.test(typed)) return typed;
     const g = String(gender || '').trim().toLowerCase();
-    if (g.startsWith('m')) return 'Mr. ';
-    if (g.startsWith('f')) return 'Ms. ';
-    return '';
+    return `${g.startsWith('f') ? 'W/O' : 'S/O'} ${typed}`;
 };
 
 export interface BuildLabelResult {
@@ -210,7 +223,7 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
     const ageBits = [patient.age ? `${patient.age} Y` : '', patient.gender || ''].filter(Boolean).join(' / ');
     if (ageBits) {
         parts.push(
-            `<text x="${right}" y="${mrBaseline}" text-anchor="end" font-family="${FONT}" font-size="${s.ageFontMm}" fill="#000">${esc(ageBits)}</text>`,
+            `<text x="${right}" y="${mrBaseline}" text-anchor="end" font-family="${FONT}" font-size="${s.ageFontMm}" font-weight="700" fill="#000">${esc(ageBits)}</text>`,
         );
     }
     y = mrBaseline + s.lineGapMm + 0.6;
@@ -218,7 +231,7 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
     // ── Name ─────────────────────────────────────────────────────────────────
     const nameBaseline = y + s.nameFontMm * 0.82;
     parts.push(
-        `<text x="${left}" y="${nameBaseline}" font-family="${FONT}" font-size="${s.nameFontMm}" font-weight="700" fill="#000">${esc(honorific(patient.gender) + (patient.name || ''))}</text>`,
+        `<text x="${left}" y="${nameBaseline}" font-family="${FONT}" font-size="${s.nameFontMm}" font-weight="700" fill="#000">${esc(patient.name || '')}</text>`,
     );
     y = nameBaseline + s.lineGapMm * 0.8;
 
@@ -238,7 +251,7 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
 
     const phones = [patient.phone, patient.altPhone].filter(Boolean).join(' / ');
     if (phones) bodyLine(`Ph ${phones}`);
-    if (patient.fatherHusbandName) bodyLine(`S/O ${patient.fatherHusbandName}`);
+    if (patient.fatherHusbandName) bodyLine(relationLine(patient.fatherHusbandName, patient.gender));
     if (s.showAddress) {
         // Today only `place` is stored, so it carries the address line. The
         // structured fields render the moment they exist.
