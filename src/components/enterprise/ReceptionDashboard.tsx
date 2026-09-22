@@ -27,6 +27,7 @@ import EditPatientModal from './EditPatientModal';
 import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import { DEFAULT_LABEL_SETTINGS, printLabels, type LabelPatient, type LabelSettings } from './patientLabel';
+import { writePatientWithContact, selectPatientsDegrading } from '../../services/labelPrintService';
 import PastRecordsFilterChips from './PastRecordsFilterChips';
 import PastRecordsPatientCard, {
     getReviewFilterLabel,
@@ -86,6 +87,11 @@ interface MrPatient {
     place: string | null;
     father_husband_name: string | null;
     gender: string | null;
+    /** Added by sql/20260919_patient_address_fields.sql; absent before it runs. */
+    alt_phone?: string | null;
+    address_line1?: string | null;
+    address_line2?: string | null;
+    city_pincode?: string | null;
 }
 
 type CallLogStatus = 'picked' | 'not_picked';
@@ -188,6 +194,10 @@ const ReceptionDashboard: React.FC = () => {
         fatherHusbandName: '',
         place: '',
         phone: '',
+        altPhone: '',
+        addressLine1: '',
+        addressLine2: '',
+        cityPincode: '',
         department: '',
         doctorId: '',
         tokenNumber: '',
@@ -1131,6 +1141,10 @@ const ReceptionDashboard: React.FC = () => {
             fatherHusbandName: '',
             place: '',
             phone: '',
+            altPhone: '',
+            addressLine1: '',
+            addressLine2: '',
+            cityPincode: '',
             department: '',
             doctorId: '',
             tokenNumber: nextToken, // Pre-fill with smart Auto-Calc
@@ -1151,6 +1165,10 @@ const ReceptionDashboard: React.FC = () => {
             fatherHusbandName: '',
             place: '',
             phone: '',
+            altPhone: '',
+            addressLine1: '',
+            addressLine2: '',
+            cityPincode: '',
             department: '',
             doctorId: '',
             tokenNumber: '',
@@ -1173,13 +1191,20 @@ const ReceptionDashboard: React.FC = () => {
         }
         setMrSearchLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('hospital_patients' as any)
-                .select('id, name, age, mr_number, phone, place, father_husband_name, gender')
-                .eq('hospital_id', profile.id)
-                .ilike('mr_number', `%${query}%`)
-                .order('created_at', { ascending: false })
-                .limit(8) as { data: MrPatient[] | null; error: any };
+            // Degrades to the base columns on a database that has not run the
+            // address migration, rather than breaking the dropdown over four
+            // optional fields.
+            const data = await selectPatientsDegrading(
+                (cols) => supabase
+                    .from('hospital_patients' as any)
+                    .select(cols)
+                    .eq('hospital_id', profile.id)
+                    .ilike('mr_number', `%${query}%`)
+                    .order('created_at', { ascending: false })
+                    .limit(8),
+                'Timed out while searching MR numbers'
+            ).then(rows => rows as MrPatient[]).catch(() => null);
+            const error = data === null;
             if (!error && data && data.length > 0) {
                 setMrSuggestions(data);
                 setShowMrDropdown(true);
@@ -1226,6 +1251,12 @@ const ReceptionDashboard: React.FC = () => {
             place: patient.place || '',
             fatherHusbandName: patient.father_husband_name || '',
             gender: patient.gender || '',
+            // Pulled back so a returning patient's address is already on the
+            // label, and so re-registering them does not blank what is stored.
+            altPhone: patient.alt_phone || '',
+            addressLine1: patient.address_line1 || '',
+            addressLine2: patient.address_line2 || '',
+            cityPincode: patient.city_pincode || '',
         }));
         setShowMrDropdown(false);
         setMrSuggestions([]);
@@ -1235,7 +1266,11 @@ const ReceptionDashboard: React.FC = () => {
     const handleCloseWalkInModal = () => {
         setShowWalkInModal(false);
         setRegistrationMode('queue');
-        setWalkInForm({ name: '', age: '', dob: '', gender: '', fatherHusbandName: '', place: '', phone: '', department: '', doctorId: '', tokenNumber: '', mrNumber: '', reviewDate: '' });
+        setWalkInForm({
+            name: '', age: '', dob: '', gender: '', fatherHusbandName: '', place: '', phone: '',
+            altPhone: '', addressLine1: '', addressLine2: '', cityPincode: '',
+            department: '', doctorId: '', tokenNumber: '', mrNumber: '', reviewDate: '',
+        });
         setBhidMatch(null);
         setIsSearchingBhid(false);
         setMrSuggestions([]);
@@ -1483,9 +1518,13 @@ const ReceptionDashboard: React.FC = () => {
                     throw new Error('MR number already exists');
                 }
 
-                const { data: patientData, error: patientError } = await (supabase as any)
-                    .from('hospital_patients')
-                    .insert({
+                const { data: patientData, error: patientError } = await writePatientWithContact<any>(
+                    (row) => (supabase as any)
+                        .from('hospital_patients')
+                        .insert(row)
+                        .select('id, name')
+                        .single(),
+                    {
                         hospital_id: profile.id,
                         name: walkInForm.name,
                         age: walkInForm.age.trim() || null,
@@ -1496,9 +1535,9 @@ const ReceptionDashboard: React.FC = () => {
                         place: walkInForm.place || null,
                         phone: normalizedPhone,
                         linked_user_id: linkedUserId || null,
-                    })
-                    .select('id, name')
-                    .single();
+                    },
+                    walkInForm
+                );
 
                 if (patientError) throw patientError;
 
@@ -1649,15 +1688,23 @@ const ReceptionDashboard: React.FC = () => {
                 if (!wasDuplicateOverride) {
                     patientPayload.token_number = globalToken;
                 }
-                const patientUpdate = await (supabase
-                    .from('hospital_patients') as any)
-                    .update(patientPayload)
-                    .eq('id', patientId);
+                // omitBlank: an address the receptionist did not type is not an
+                // instruction to erase the one on file. Typing an MR number
+                // without picking from the dropdown leaves these boxes empty.
+                const patientUpdate = await writePatientWithContact<any>(
+                    (row) => (supabase.from('hospital_patients') as any).update(row).eq('id', patientId),
+                    patientPayload,
+                    walkInForm,
+                    { omitBlank: true }
+                );
                 if (patientUpdate.error) throw patientUpdate.error;
             } else {
-                const patientInsert = await (supabase
-                    .from('hospital_patients') as any)
-                    .insert({
+                const patientInsert = await writePatientWithContact<any>(
+                    (row) => (supabase.from('hospital_patients') as any)
+                        .insert(row)
+                        .select('id')
+                        .single(),
+                    {
                         hospital_id: profile.id,
                         name: walkInForm.name,
                         age: walkInForm.age.trim() || null,
@@ -1668,9 +1715,9 @@ const ReceptionDashboard: React.FC = () => {
                         place: walkInForm.place || null,
                         phone: normalizedPhone,
                         linked_user_id: linkedUserId
-                    })
-                    .select('id')
-                    .single();
+                    },
+                    walkInForm
+                );
 
                 if (patientInsert.error) throw patientInsert.error;
                 patientId = (patientInsert.data as any)?.id || null;
@@ -2807,61 +2854,121 @@ const ReceptionDashboard: React.FC = () => {
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-                            {!isPastRegistration && (
-                                <>
+                            {/* Contact and address.
+                                Every field here is optional, and every one of them is what the
+                                case-record label prints. Registration is the only moment somebody is
+                                standing at the desk able to read their own address off an ID card, so
+                                collecting it here is what makes label printing a one-click job later
+                                instead of a typing job in the label editor.
+
+                                Shown in BOTH modes. The past-record "New Registration" branch has
+                                always written father_husband_name, place and phone, but the inputs
+                                were inside the queue-only wrapper — so those columns were saved as
+                                NULL every time, and the label had nothing to auto-fill from. */}
+                            <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-4">
+                                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                                    <h4 className="text-xs font-bold uppercase tracking-wide text-gray-700">Contact &amp; Address</h4>
+                                    <span className="text-[11px] text-gray-500">All optional · printed on the case-record label</span>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">S/O or W/O</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.fatherHusbandName}
+                                        onChange={e => setWalkInForm({ ...walkInForm, fatherHusbandName: e.target.value })}
+                                        placeholder="Type the prefix too, e.g. S/O Govindaraju"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Father/Husband Name</label>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
+                                        <div className="relative">
+                                            <input
+                                                type="tel"
+                                                className={`w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900 ${bhidMatch ? 'border-green-400 bg-green-50/30' : ''}`}
+                                                value={walkInForm.phone}
+                                                onChange={e => {
+                                                    setWalkInForm({ ...walkInForm, phone: e.target.value });
+                                                    handlePhoneLookup(e.target.value);
+                                                }}
+                                                placeholder="Phone Number"
+                                            />
+                                            {isSearchingBhid && (
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                                                </div>
+                                            )}
+                                            {bhidMatch && (
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Second Phone</label>
                                         <input
-                                            type="text"
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                            value={walkInForm.fatherHusbandName}
-                                            onChange={e => setWalkInForm({ ...walkInForm, fatherHusbandName: e.target.value })}
-                                            placeholder="Father or Husband Name"
+                                            type="tel"
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                            value={walkInForm.altPhone}
+                                            onChange={e => setWalkInForm({ ...walkInForm, altPhone: e.target.value })}
+                                            placeholder="Alternate Number"
                                         />
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Place</label>
-                                            <input
-                                                type="text"
-                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
-                                                value={walkInForm.place}
-                                                onChange={e => setWalkInForm({ ...walkInForm, place: e.target.value })}
-                                                placeholder="City/Town"
-                                            />
-                                        </div>
-                                        {/* Phone field — previously hidden for KKC via hardcoded email check */}
-                                        {hospitalSettings.features?.capture_phone !== false && (
-                                            <div>
-                                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Phone</label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="tel"
-                                                        className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900 ${bhidMatch ? 'border-green-400 bg-green-50/30' : 'border-gray-200'
-                                                            }`}
-                                                        value={walkInForm.phone}
-                                                        onChange={e => {
-                                                            setWalkInForm({ ...walkInForm, phone: e.target.value });
-                                                            handlePhoneLookup(e.target.value);
-                                                        }}
-                                                        placeholder="Phone Number"
-                                                    />
-                                                    {isSearchingBhid && (
-                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                            <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                                                        </div>
-                                                    )}
-                                                    {bhidMatch && (
-                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                            <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                            </svg>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Address Line 1</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.addressLine1}
+                                        onChange={e => setWalkInForm({ ...walkInForm, addressLine1: e.target.value })}
+                                        placeholder="Door no, apartment, street"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Address Line 2</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                        value={walkInForm.addressLine2}
+                                        onChange={e => setWalkInForm({ ...walkInForm, addressLine2: e.target.value })}
+                                        placeholder="Road, area"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">City and Pincode</label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                            value={walkInForm.cityPincode}
+                                            onChange={e => setWalkInForm({ ...walkInForm, cityPincode: e.target.value })}
+                                            placeholder="Coimbatore - 641 041"
+                                        />
                                     </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Place</label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                                            value={walkInForm.place}
+                                            onChange={e => setWalkInForm({ ...walkInForm, place: e.target.value })}
+                                            placeholder="City/Town"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {!isPastRegistration && (
+                                <>
 
                                     {/* BeanHealth ID Match Banner */}
                                     {bhidMatch && (
@@ -3103,24 +3210,13 @@ const ReceptionDashboard: React.FC = () => {
                                 />
                             </div>
 
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                <div>
-                                    <h4 className="text-sm font-semibold text-gray-900">Capture Phone Number</h4>
-                                    <p className="text-xs text-gray-500 mt-1">Require and show phone number during patient registration</p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        className="sr-only peer"
-                                        checked={hospitalSettings.features.capture_phone !== false}
-                                        onChange={e => setHospitalSettings(prev => ({
-                                            ...prev, 
-                                            features: { ...prev.features, capture_phone: e.target.checked }
-                                        }))}
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                                </label>
-                            </div>
+                            {/* The "Capture Phone Number" toggle used to live here. It existed
+                                to hide one field for one hospital, and that hospital now needs
+                                it: phone, second phone and the address lines are what the
+                                case-record label prints. A switch that silently leaves the
+                                label with nothing to auto-fill from is worse than no switch.
+                                `features.capture_phone` is still read and written, so turning
+                                this back into a per-hospital setting costs one conditional. */}
 
                             <div className="pt-6 border-t border-gray-100 flex flex-col gap-3">
                                 <div className="flex gap-3">

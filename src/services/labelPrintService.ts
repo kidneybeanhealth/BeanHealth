@@ -33,6 +33,68 @@ export interface LabelCandidate extends LabelPatient {
     id: string;
 }
 
+/** Empty string means "not typed", which is NULL in the database, not ''. */
+const blank = (v: unknown) => {
+    const t = String(v ?? '').trim();
+    return t === '' ? null : t;
+};
+
+/**
+ * The four contact fields the label prints and `hospital_patients` gained in
+ * sql/20260919_patient_address_fields.sql.
+ */
+export interface PatientContactInput {
+    altPhone?: string | null;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
+    cityPincode?: string | null;
+}
+
+const contactColumns = (c: PatientContactInput, omitBlank: boolean): Record<string, any> => {
+    const all: Record<string, any> = {
+        address_line1: blank(c.addressLine1),
+        address_line2: blank(c.addressLine2),
+        city_pincode: blank(c.cityPincode),
+        alt_phone: blank(c.altPhone),
+    };
+    if (!omitBlank) return all;
+    // On an UPDATE, a field the form left empty means "I did not type this",
+    // not "erase what is stored". Reception reaches the registration form by
+    // typing an MR number, and when they type one without picking from the
+    // dropdown the form is blank — writing those blanks back would wipe an
+    // address somebody else entered. Clearing a field is done deliberately in
+    // the label editor, which writes NULL on purpose.
+    return Object.fromEntries(Object.entries(all).filter(([, v]) => v !== null));
+};
+
+/**
+ * Run a hospital_patients write with the label's address columns attached, and
+ * run it again without them if this database predates the migration.
+ *
+ * Exported because reception's registration forms write the same row from a
+ * different code path. Without this, adding four optional fields to the busiest
+ * screen in the hospital would take registration down entirely on any site that
+ * has not run sql/20260919_patient_address_fields.sql — a far worse failure than
+ * a label printing without an address.
+ *
+ * `run` receives the row and the columns to select back, so the caller keeps
+ * control of both the operation (insert/update) and its filters.
+ */
+export async function writePatientWithContact<T>(
+    run: (row: Record<string, any>, cols: string) => PromiseLike<{ data: T | null; error: any }>,
+    base: Record<string, any>,
+    contact: PatientContactInput,
+    { omitBlank = false }: { omitBlank?: boolean } = {}
+): Promise<{ data: T | null; error: any }> {
+    if (hasAddressColumns !== false) {
+        const res = await run({ ...base, ...contactColumns(contact, omitBlank) }, SELECT);
+        if (!res.error) { hasAddressColumns = true; return res; }
+        if (!missingAddressColumns(res.error)) return res;
+        hasAddressColumns = false;
+    }
+    return run(base, BASE);
+}
+
 interface SupabaseResult<T> { data: T | null; error: any }
 
 const toCandidate = (r: any): LabelCandidate => ({
@@ -57,7 +119,7 @@ const toCandidate = (r: any): LabelCandidate => ({
  * that has not run the migration; failing outright would take the whole feature
  * down over four optional fields.
  */
-const selectPatients = async (
+export const selectPatientsDegrading = async (
     build: (cols: string) => any,
     timeoutMessage: string
 ): Promise<any[]> => {
@@ -103,10 +165,6 @@ export async function updatePatientLabelDetails(
     d: PatientLabelDetails
 ): Promise<void> {
     if (!hospitalId || !patientId) throw new Error('Missing hospital or patient identifier');
-    const blank = (v: unknown) => {
-        const t = String(v ?? '').trim();
-        return t === '' ? null : t;
-    };
 
     const res = await withTimeout(
         ((supabase.from('hospital_patients') as any)
@@ -189,10 +247,6 @@ export async function registerPatientForLabel(
     if (dup.error) throw dup.error;
     if (dup.data?.id) throw new Error('That MR number already exists');
 
-    const blank = (v: unknown) => {
-        const t = String(v ?? '').trim();
-        return t === '' ? null : t;
-    };
     const base: Record<string, any> = {
         hospital_id: hospitalId,
         name,
@@ -205,29 +259,15 @@ export async function registerPatientForLabel(
         // Not a visit. No token, and deliberately no queue row anywhere below.
         token_number: null,
     };
-    const withAddress = {
-        ...base,
-        address_line1: blank(input.addressLine1),
-        address_line2: blank(input.addressLine2),
-        city_pincode: blank(input.cityPincode),
-        alt_phone: blank(input.altPhone),
-    };
-
-    const insert = async (row: Record<string, any>, cols: string) =>
-        await withTimeout(
+    const res = await writePatientWithContact<any>(
+        (row, cols) => withTimeout(
             ((supabase.from('hospital_patients') as any).insert(row).select(cols).single()) as any,
             12000,
             'Timed out while saving the patient'
-        ) as SupabaseResult<any>;
-
-    let res = hasAddressColumns === false ? null : await insert(withAddress, SELECT);
-    if (res && res.error && missingAddressColumns(res.error)) {
-        hasAddressColumns = false;
-        res = null;
-    } else if (res && !res.error) {
-        hasAddressColumns = true;
-    }
-    if (!res) res = await insert(base, BASE);
+        ) as Promise<SupabaseResult<any>>,
+        base,
+        input
+    );
     if (res.error) throw res.error;
 
     return toCandidate(res.data);
@@ -244,7 +284,7 @@ export async function searchPatientsForLabel(
     const q = escapeForIlike(query || '');
     if (!hospitalId || q.length < 2) return [];
 
-    const rows = await selectPatients(
+    const rows = await selectPatientsDegrading(
         (cols) => (supabase.from('hospital_patients') as any)
             .select(cols)
             .eq('hospital_id', hospitalId)
@@ -267,17 +307,16 @@ export async function fetchTodayRegistrations(hospitalId: string, limit = 200): 
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
-    const res = await withTimeout(
-        ((supabase.from('hospital_patients') as any)
-            .select(SELECT)
+    // Degrades like every other read here: this is the default batch, so a
+    // hard failure would be the first thing reception hits on opening the screen.
+    const rows = await selectPatientsDegrading(
+        (cols) => (supabase.from('hospital_patients') as any)
+            .select(cols)
             .eq('hospital_id', hospitalId)
             .gte('created_at', start.toISOString())
             .order('created_at', { ascending: false })
-            .limit(limit)) as any,
-        10000,
+            .limit(limit),
         'Timed out while loading today’s registrations'
-    ) as SupabaseResult<any[]>;
-
-    if (res.error) throw res.error;
-    return (res.data || []).map(toCandidate);
+    );
+    return rows.map(toCandidate);
 }
