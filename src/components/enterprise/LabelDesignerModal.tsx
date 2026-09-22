@@ -267,10 +267,16 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none px-1">×</button>
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-auto lg:overflow-hidden p-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4">
+                <div className="flex-1 min-h-0 overflow-auto lg:overflow-hidden p-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* Preview — stays put while the controls scroll beside it. Adjusting
-                        a size you cannot see is the one thing this screen must not do. */}
-                    <div className="space-y-3 min-w-0 lg:min-h-0 lg:overflow-auto">
+                        a size you cannot see is the one thing this screen must not do.
+
+                        It sits SECOND on a wide screen (lg:order-2) but stays first in the
+                        DOM, so that on a phone — where this collapses to a single column —
+                        the label is still what you see before a screenful of inputs. The
+                        two halves are equal: typing a patient's address is the slow part
+                        of this screen, and it was doing it in a 360px gutter. */}
+                    <div className="space-y-3 min-w-0 lg:order-2 lg:min-h-0 lg:overflow-auto">
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Preview</span>
                             <div className="flex items-center gap-1 ml-auto">
@@ -354,8 +360,9 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                         </div>
                     </div>
 
-                    {/* Controls — the only column that scrolls on a wide screen. */}
-                    <div className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+                    {/* Controls — on the left on a wide screen, and scrolling independently
+                        of the preview so the label never leaves the view. */}
+                    <div className="space-y-3 min-w-0 lg:order-1 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
                         {mode === 'batch' ? (
                         <>
                         {showNewReg && (

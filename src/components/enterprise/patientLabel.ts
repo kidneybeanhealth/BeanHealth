@@ -141,6 +141,16 @@ const esc = (v: unknown): string =>
 
 const FONT = "Helvetica, Arial, 'Liberation Sans', sans-serif";
 
+/**
+ * Every word on this label prints in capitals and bold, at the hospital's
+ * request. The sticker is read across a counter and from a file drawer, often by
+ * someone already holding three other folders, so legibility beats typography.
+ *
+ * Applied at render, never at entry: what reception typed stays stored as typed,
+ * and the same patient record still reads normally everywhere else in the app.
+ */
+const up = (v: unknown): string => String(v ?? '').toUpperCase();
+
 const fmtDate = (iso?: string | null): string => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -154,26 +164,17 @@ const fmtStamp = (d: Date): string => {
     return `${String(d.getDate()).padStart(2, '0')}-${mon}-${yy} ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
 };
 
-/**
- * Relation line, printed as typed.
+/*
+ * There is deliberately no relation-prefix helper here any more.
  *
  * Reception types the prefix themselves — "W/O MR.HAKKIM" — so prepending one
- * produced "S/O W/O MR.HAKKIM" on a real patient's file. Same fault as the
- * honorific that printed "Ms. MRS. JERENA", and the same fault as
- * `formatDoctorLabel` exists to prevent for "Dr. Dr.A.Prabhakar".
- *
- * A prefix is added only when the typed value has none, so a bare "HAKKIM"
- * still reads as a relation rather than a stray name.
+ * printed "S/O W/O MR.HAKKIM" on a real patient's file. The first fix only
+ * prefixed values that had none, which still guessed S/O or D/O from gender and
+ * still got it wrong for a bare surname. The field is now printed exactly as
+ * typed, like the name beside it. Same lesson as the honorific that printed
+ * "Ms. MRS. JERENA", and as `formatDoctorLabel` for "Dr. Dr.A.Prabhakar":
+ * anything reception types by hand may already carry its own prefix.
  */
-const RELATION_PREFIX = /^\s*(s\s*\/\s*o|w\s*\/\s*o|d\s*\/\s*o|c\s*\/\s*o|h\s*\/\s*o|s\/o|w\/o)\b\.?/i;
-
-const relationLine = (value: string, gender?: string | null): string => {
-    const typed = String(value || '').trim();
-    if (!typed) return '';
-    if (RELATION_PREFIX.test(typed)) return typed;
-    const g = String(gender || '').trim().toLowerCase();
-    return `${g.startsWith('f') ? 'W/O' : 'S/O'} ${typed}`;
-};
 
 export interface BuildLabelResult {
     svg: string;
@@ -204,11 +205,11 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
         const barY = y;
         parts.push(
             `<rect x="${left}" y="${barY}" width="${innerW}" height="${s.headerHeightMm}" fill="#000"/>`,
-            `<text x="${left + 1.2}" y="${barY + s.headerHeightMm * 0.73}" font-family="${FONT}" font-size="${s.headerFontMm}" font-weight="700" fill="#fff">${esc(s.headerText)}</text>`,
+            `<text x="${left + 1.2}" y="${barY + s.headerHeightMm * 0.73}" font-family="${FONT}" font-size="${s.headerFontMm}" font-weight="700" fill="#fff">${esc(up(s.headerText))}</text>`,
         );
         if (s.headerRightText) {
             parts.push(
-                `<text x="${right - 1.2}" y="${barY + s.headerHeightMm * 0.73}" text-anchor="end" font-family="${FONT}" font-size="${s.headerFontMm * 0.88}" font-weight="700" fill="#fff">${esc(s.headerRightText)}</text>`,
+                `<text x="${right - 1.2}" y="${barY + s.headerHeightMm * 0.73}" text-anchor="end" font-family="${FONT}" font-size="${s.headerFontMm * 0.88}" font-weight="700" fill="#fff">${esc(up(s.headerRightText))}</text>`,
             );
         }
         y = barY + s.headerHeightMm + s.lineGapMm + 0.4;
@@ -216,14 +217,19 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
 
     // ── MR number, with age / gender on the right ────────────────────────────
     const mrBaseline = y + s.mrFontMm * 0.82;
+    // "MRD NO" is set less than half the size of the number beside it. Sharing
+    // one baseline sat the caption on the digits' feet and read as bottom
+    // aligned, so it is lifted by half the difference in cap height — roughly
+    // 0.72 of the font size, halved — to centre against them.
+    const mrLabelBaseline = mrBaseline - (s.mrFontMm - s.mrLabelFontMm) * 0.36;
     parts.push(
-        `<text x="${left}" y="${mrBaseline}" font-family="${FONT}" font-size="${s.mrLabelFontMm}" fill="#000">MRD No</text>`,
-        `<text x="${left + s.mrLabelFontMm * 4.2}" y="${mrBaseline}" font-family="${FONT}" font-size="${s.mrFontMm}" font-weight="700" fill="#000">${esc(patient.mrNumber || '')}</text>`,
+        `<text x="${left}" y="${mrLabelBaseline}" font-family="${FONT}" font-size="${s.mrLabelFontMm}" font-weight="700" fill="#000">MRD NO</text>`,
+        `<text x="${left + s.mrLabelFontMm * 4.6}" y="${mrBaseline}" font-family="${FONT}" font-size="${s.mrFontMm}" font-weight="700" fill="#000">${esc(up(patient.mrNumber || ''))}</text>`,
     );
     const ageBits = [patient.age ? `${patient.age} Y` : '', patient.gender || ''].filter(Boolean).join(' / ');
     if (ageBits) {
         parts.push(
-            `<text x="${right}" y="${mrBaseline}" text-anchor="end" font-family="${FONT}" font-size="${s.ageFontMm}" font-weight="700" fill="#000">${esc(ageBits)}</text>`,
+            `<text x="${right}" y="${mrBaseline}" text-anchor="end" font-family="${FONT}" font-size="${s.ageFontMm}" font-weight="700" fill="#000">${esc(up(ageBits))}</text>`,
         );
     }
     y = mrBaseline + s.lineGapMm + 0.6;
@@ -231,7 +237,7 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
     // ── Name ─────────────────────────────────────────────────────────────────
     const nameBaseline = y + s.nameFontMm * 0.82;
     parts.push(
-        `<text x="${left}" y="${nameBaseline}" font-family="${FONT}" font-size="${s.nameFontMm}" font-weight="700" fill="#000">${esc(patient.name || '')}</text>`,
+        `<text x="${left}" y="${nameBaseline}" font-family="${FONT}" font-size="${s.nameFontMm}" font-weight="700" fill="#000">${esc(up(patient.name || ''))}</text>`,
     );
     y = nameBaseline + s.lineGapMm * 0.8;
 
@@ -244,14 +250,15 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
         if (!text) return;
         const baseline = y + s.bodyFontMm * 0.82;
         parts.push(
-            `<text x="${left}" y="${baseline}" font-family="${FONT}" font-size="${s.bodyFontMm}" fill="#000">${esc(text)}</text>`,
+            `<text x="${left}" y="${baseline}" font-family="${FONT}" font-size="${s.bodyFontMm}" font-weight="700" fill="#000">${esc(up(text))}</text>`,
         );
         y = baseline + s.lineGapMm * 0.7;
     };
 
     const phones = [patient.phone, patient.altPhone].filter(Boolean).join(' / ');
-    if (phones) bodyLine(`Ph ${phones}`);
-    if (patient.fatherHusbandName) bodyLine(relationLine(patient.fatherHusbandName, patient.gender));
+    if (phones) bodyLine(`Ph: ${phones}`);
+    // Printed as typed — see the note above `buildLabelSvg`'s imports.
+    if (patient.fatherHusbandName) bodyLine(patient.fatherHusbandName);
     if (s.showAddress) {
         // Today only `place` is stored, so it carries the address line. The
         // structured fields render the moment they exist.
@@ -287,7 +294,7 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
         }
         if (s.showBarcodeText) {
             parts.push(
-                `<text x="${left + barcodeWidthMm / 2}" y="${barcodeTop + s.barcodeHeightMm + s.footnoteFontMm}" text-anchor="middle" font-family="${FONT}" font-size="${s.footnoteFontMm}" fill="#000">${esc(patient.mrNumber)}</text>`,
+                `<text x="${left + barcodeWidthMm / 2}" y="${barcodeTop + s.barcodeHeightMm + s.footnoteFontMm}" text-anchor="middle" font-family="${FONT}" font-size="${s.footnoteFontMm}" font-weight="700" fill="#000">${esc(up(patient.mrNumber))}</text>`,
             );
         }
     } catch {
@@ -295,7 +302,7 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
         // sticks on a folder and discovers at the scanner months later.
         barcodeFailed = true;
         parts.push(
-            `<text x="${left}" y="${barcodeTop + s.barcodeHeightMm * 0.6}" font-family="${FONT}" font-size="${s.bodyFontMm}" font-weight="700" fill="#000">MR number cannot be barcoded</text>`,
+            `<text x="${left}" y="${barcodeTop + s.barcodeHeightMm * 0.6}" font-family="${FONT}" font-size="${s.bodyFontMm}" font-weight="700" fill="#000">MR NUMBER CANNOT BE BARCODED</text>`,
         );
     }
 
@@ -313,7 +320,7 @@ export function buildLabelSvg(patient: LabelPatient, s: LabelSettings): BuildLab
             ].filter(Boolean);
             lines.forEach((line, i) => {
                 parts.push(
-                    `<text x="${fx}" y="${top + s.footnoteFontMm + i * lh}" font-family="${FONT}" font-size="${s.footnoteFontMm}" fill="#000">${esc(line)}</text>`,
+                    `<text x="${fx}" y="${top + s.footnoteFontMm + i * lh}" font-family="${FONT}" font-size="${s.footnoteFontMm}" font-weight="700" fill="#000">${esc(up(line))}</text>`,
                 );
             });
         }
