@@ -83,7 +83,10 @@ const Group: React.FC<{ title: string; children: React.ReactNode }> = ({ title, 
 
 const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, settings, onSave, isSaving = false, patient }) => {
     const [draft, setDraft] = useState<LabelSettings>(settings);
-    const [zoom, setZoom] = useState(1.6);
+    // 1x, so the preview opens at the label's real size. The zoom buttons are
+    // for inspecting detail; opening magnified made the first thing anyone saw
+    // a label that is not the size it will print.
+    const [zoom, setZoom] = useState(1);
     const [useSample, setUseSample] = useState(!patient);
 
     const set = <K extends keyof LabelSettings>(k: K, v: LabelSettings[K]) =>
