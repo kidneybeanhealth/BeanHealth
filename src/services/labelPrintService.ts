@@ -135,9 +135,22 @@ export const selectPatientsDegrading = async (
 };
 
 export interface PatientLabelDetails {
+    /**
+     * Optional, and only written when present.
+     *
+     * Reception types the honorific themselves — the label stopped adding one
+     * after "Ms. MRS. JERENA" reached a patient's file — so a record created
+     * before that change can carry a name with no Mr/Mrs at all, and the label
+     * is where that gets noticed. Blanking it is refused below: this is a
+     * sticker editor, and a patient with no name is not a recoverable state.
+     */
+    name?: string | null;
     addressLine1: string | null;
     addressLine2: string | null;
     cityPincode: string | null;
+    /** The single free-text field that predates the structured address, and
+     *  which the label still falls back to for line 1. */
+    place: string | null;
     altPhone: string | null;
     phone: string | null;
     fatherHusbandName: string | null;
@@ -166,12 +179,19 @@ export async function updatePatientLabelDetails(
 ): Promise<void> {
     if (!hospitalId || !patientId) throw new Error('Missing hospital or patient identifier');
 
+    // `undefined` means the caller is not editing the name; '' means they
+    // cleared it, which is the one edit this function will not make.
+    const name = d.name === undefined ? undefined : String(d.name ?? '').trim();
+    if (name !== undefined && !name) throw new Error('Name cannot be empty');
+
     const res = await withTimeout(
         ((supabase.from('hospital_patients') as any)
             .update({
+                ...(name !== undefined ? { name } : {}),
                 address_line1: blank(d.addressLine1),
                 address_line2: blank(d.addressLine2),
                 city_pincode: blank(d.cityPincode),
+                place: blank(d.place),
                 alt_phone: blank(d.altPhone),
                 phone: blank(d.phone),
                 father_husband_name: blank(d.fatherHusbandName),

@@ -168,9 +168,11 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
         setSavingRow(true);
         try {
             await updatePatientLabelDetails(hospitalId, form.id, {
+                name: (form.name as string) ?? '',
                 addressLine1: (form.addressLine1 as string) ?? null,
                 addressLine2: (form.addressLine2 as string) ?? null,
                 cityPincode: (form.cityPincode as string) ?? null,
+                place: (form.place as string) ?? null,
                 altPhone: (form.altPhone as string) ?? null,
                 phone: (form.phone as string) ?? null,
                 fatherHusbandName: (form.fatherHusbandName as string) ?? null,
@@ -566,7 +568,17 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                                 <p className="text-[10px] text-gray-400 mb-2 leading-4">
                                     The preview on the left is this patient. Anything typed here shows up
                                     immediately and is saved to their record, so the next label already has it.
+                                    The name prints exactly as typed, so add Mr / Mrs / Ms here if an older
+                                    record is missing one.
                                 </p>
+                                {/* The MR number is the barcode and the key every other
+                                    record is filed under, so it is shown but not editable:
+                                    changing it here would quietly detach this patient from
+                                    their own visits. Reception edits it in Past Records. */}
+                                <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-gray-50 border border-gray-200 px-2 py-1.5">
+                                    <span className="text-[10px] font-semibold text-gray-500">MRD No</span>
+                                    <span className="text-[11px] font-bold text-gray-800 truncate">{form.mrNumber || '—'}</span>
+                                </div>
                                 {([
                                     ['name', 'Name', false],
                                     ['fatherHusbandName', 'S/O or W/O', false],
@@ -575,15 +587,18 @@ const LabelDesignerModal: React.FC<Props> = ({ isOpen, hospitalId, onClose, sett
                                     ['addressLine1', 'Address line 1', false],
                                     ['addressLine2', 'Address line 2', false],
                                     ['cityPincode', 'City and pincode', false],
+                                    ['place', 'Place', false],
                                 ] as const).map(([k, lbl]) => (
                                     <div key={k} className="mb-1.5">
                                         <label className="block text-[10px] font-semibold text-gray-500">{lbl}</label>
                                         <input
                                             value={(form[k] as string) || ''}
                                             onChange={e => field(k, e.target.value as any)}
-                                            disabled={k === 'name'}
-                                            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded mt-0.5 disabled:bg-gray-50 disabled:text-gray-500"
-                                            placeholder={k === 'addressLine1' && form.place ? `${form.place}` : ''}
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded mt-0.5"
+                                            placeholder={
+                                                k === 'addressLine1' && form.place ? `${form.place}`
+                                                    : k === 'name' ? 'Mrs. Jerena' : ''
+                                            }
                                         />
                                     </div>
                                 ))}
