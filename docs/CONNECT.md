@@ -49,20 +49,21 @@ Before the subdomain exists, any deployment serves Connect at `/connect`
 There is no self sign-up — a centre is a paying customer set up with them.
 
 1. Supabase → Authentication → Users → **Add user**: the centre's email and a
-   password, auto-confirm. Copy the user's UUID.
-2. SQL, with that UUID:
+   password, tick **Auto Confirm User**. This is the centre's login.
+2. SQL editor, one line:
    ```sql
-   INSERT INTO public.users (id, email, name, role)
-   VALUES ('<uuid>', '<email>', '<Centre name>', 'enterprise')
-   ON CONFLICT (id) DO UPDATE SET role = 'enterprise', name = EXCLUDED.name;
-
-   INSERT INTO public.hospital_profiles (id, hospital_name, product, default_call_language, voice_front_desk_number)
-   VALUES ('<uuid>', '<Centre name>', 'connect', 'Tamil', '<front desk number>')
-   ON CONFLICT (id) DO UPDATE SET product = 'connect';
+   SELECT public.connect_register_centre(
+       'coordinator@centre.in',        -- the login you just created
+       'Sri Vaari Dialysis Centre',    -- shown in the app and on reports
+       '0422 400 1234',                -- read out by the agent on a red flag (required)
+       'Tamil',                        -- default call language
+       'Gandhipuram, Coimbatore');     -- spoken when a patient asks where to come
    ```
-3. The front-desk number is **required**: the agent reads it out when a patient
-   reports a red flag, and calls are refused while it is empty. The centre can
-   change it later in Settings.
+   It refuses an email that already belongs to a hospital on another product,
+   so it can never turn KKC's account into a Connect centre.
+3. Give the centre its email and password. They sign in at
+   **beanhealth.in/connect** (or the **Log in** button on the BeanHealth Connect
+   product page).
 
 ### 4. Review calls work immediately
 Review reminders use the existing Sarvam agent (v9) and the live
