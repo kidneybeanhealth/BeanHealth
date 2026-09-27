@@ -7,7 +7,7 @@ export const heroPills: string[] = [
 // Deliberately concrete and verifiable. A landing page for a clinical product
 // should not carry a number nobody can point at.
 export const heroMetrics: { value: string; label: string }[] = [
-  { value: "1 CSV", label: "the only integration Frontdesk needs" },
+  { value: "1 CSV", label: "the only integration BeanHealth Connect needs" },
   { value: "1 centre", label: "running the complete Kidney Care OS today" },
   { value: "11", label: "Indian languages the follow-up agent speaks" },
 ];
@@ -27,9 +27,9 @@ export interface ProductLine {
 /**
  * Two product lines, deliberately unequal.
  *
- * Frontdesk leads because it explains in one sentence, needs nothing from the
+ * BeanHealth Connect (formerly Frontdesk) leads because it explains in one sentence, needs nothing from the
  * hospital's software vendor, and shows a result in a week. The Kidney Care OS
- * is the proof that makes Frontdesk credible — a solo product making claims
+ * is the proof that makes Connect credible — a solo product making claims
  * about clinical follow-up has no standing; one that runs an entire kidney
  * centre does.
  */
@@ -37,7 +37,7 @@ export const productLines: ProductLine[] = [
   {
     id: "frontdesk",
     eyebrow: "Product 01",
-    name: "BeanHealth Frontdesk",
+    name: "BeanHealth Connect",
     tagline: "Your follow-up calls, made for you.",
     description:
       "Upload a CSV from the HMIS you already use. Our voice agent calls the patients who are due, speaks to them in their own language, and writes back what they said. No integration, no migration, nothing for your software vendor to approve.",
@@ -63,7 +63,7 @@ export const productLines: ProductLine[] = [
           "The agent records; a person decides. An automated caller cannot know whether a doctor saw that patient the same afternoon.",
       },
     ],
-    ctaLabel: "See Frontdesk",
+    ctaLabel: "See BeanHealth Connect",
     ctaHref: "/frontdesk",
     availability: "Available now",
   },

@@ -234,14 +234,72 @@ NOTIFY pgrst, 'reload schema';
 
 COMMIT;
 
--- ── Onboarding a Connect centre (run per centre, by hand) ────────────────
--- 1. Create the login in Supabase Auth (Authentication ▸ Users ▸ Add user),
---    email + password, auto-confirm. Note the user's UUID.
--- 2. Then, with that UUID:
---   INSERT INTO public.users (id, email, name, role)
---   VALUES ('<uuid>', '<email>', '<Centre name>', 'enterprise')
---   ON CONFLICT (id) DO UPDATE SET role = 'enterprise', name = EXCLUDED.name;
+-- ── Registering a centre ─────────────────────────────────────────────────
+-- Onboarding is two steps:
+--   1. Supabase → Authentication → Users → Add user (email + password,
+--      auto-confirm). This is the centre's login.
+--   2. In the SQL editor:
+--        SELECT public.connect_register_centre(
+--            'coordinator@centre.in', 'Sri Vaari Dialysis Centre',
+--            '0422 400 1234', 'Tamil', 'Gandhipuram, Coimbatore');
 --
---   INSERT INTO public.hospital_profiles (id, hospital_name, product, default_call_language, voice_front_desk_number)
---   VALUES ('<uuid>', '<Centre name>', 'connect', 'Tamil', '<front desk number read out on a red flag>')
---   ON CONFLICT (id) DO UPDATE SET product = 'connect';
+-- The function REFUSES to convert an existing hospital on another product: run
+-- with KKC's email by mistake, it would otherwise flip KKC to Connect and take
+-- its reception and doctor dashboards away. It is callable only from the SQL
+-- editor — no signed-in user can reach it from the app.
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.connect_register_centre(
+    p_email             TEXT,
+    p_centre_name       TEXT,
+    p_front_desk_number TEXT,
+    p_language          TEXT DEFAULT 'Tamil',
+    p_address           TEXT DEFAULT NULL
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_id      UUID;
+    v_product TEXT;
+    v_name    TEXT := TRIM(COALESCE(p_centre_name, ''));
+BEGIN
+    IF v_name = '' THEN
+        RAISE EXCEPTION 'A centre name is required.';
+    END IF;
+    IF TRIM(COALESCE(p_front_desk_number, '')) = '' THEN
+        RAISE EXCEPTION 'A front-desk number is required — the voice agent reads it out when a patient reports a red flag.';
+    END IF;
+
+    SELECT id INTO v_id FROM auth.users WHERE LOWER(email) = LOWER(TRIM(p_email)) LIMIT 1;
+    IF v_id IS NULL THEN
+        RAISE EXCEPTION 'No login exists for %. Create it first: Authentication → Users → Add user.', p_email;
+    END IF;
+
+    SELECT product INTO v_product FROM public.hospital_profiles WHERE id = v_id;
+    IF v_product IS NOT NULL AND v_product NOT IN ('connect', 'frontdesk') THEN
+        RAISE EXCEPTION '% is already a hospital on %. Use a separate email for the Connect centre.', p_email, v_product;
+    END IF;
+
+    INSERT INTO public.users (id, email, name, role)
+    VALUES (v_id, LOWER(TRIM(p_email)), v_name, 'enterprise')
+    ON CONFLICT (id) DO UPDATE SET role = 'enterprise', name = EXCLUDED.name;
+
+    INSERT INTO public.hospital_profiles (id, hospital_name, product, default_call_language, voice_front_desk_number, voice_hospital_address)
+    VALUES (v_id, v_name, 'connect', COALESCE(NULLIF(TRIM(p_language), ''), 'Tamil'), TRIM(p_front_desk_number), NULLIF(TRIM(COALESCE(p_address, '')), ''))
+    ON CONFLICT (id) DO UPDATE SET
+        hospital_name           = EXCLUDED.hospital_name,
+        product                 = 'connect',
+        default_call_language   = EXCLUDED.default_call_language,
+        voice_front_desk_number = EXCLUDED.voice_front_desk_number,
+        voice_hospital_address  = COALESCE(EXCLUDED.voice_hospital_address, public.hospital_profiles.voice_hospital_address);
+
+    RETURN format('Connect centre ready: %s (%s). It signs in at beanhealth.in/connect with %s.', v_name, v_id, LOWER(TRIM(p_email)));
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.connect_register_centre(TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+
+COMMIT;

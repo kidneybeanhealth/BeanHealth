@@ -1,5 +1,10 @@
 /**
- * BeanHealth Frontdesk — product page (/frontdesk)
+ * BeanHealth Connect — product page (/frontdesk)
+ *
+ * The product was called Frontdesk on v12; its app is BeanHealth Connect
+ * (connect.html, served at /connect). The page keeps its /frontdesk address so
+ * existing links still land, and its Log in buttons are plain <a> links, not
+ * router Links: /connect is a separate app the main router does not know about.
  *
  * A separate page, not a section of the main landing, because it sells to a
  * different buyer with a different motion: a clinic administrator who has an
@@ -136,15 +141,16 @@ const CallLedger: React.FC = () => {
 
 const FrontdeskLanding: React.FC = () => (
     <div className="fd page-shell">
-        <nav className="fd-nav" aria-label="Frontdesk">
+        <nav className="fd-nav" aria-label="BeanHealth Connect">
             <div className="fd-nav-pill">
                 <Link to="/" className="fd-wordmark">
-                    BeanHealth <span className="slash">/</span> <span className="prod">Frontdesk</span>
+                    BeanHealth <span className="slash">/</span> <span className="prod">Connect</span>
                 </Link>
                 <div className="fd-nav-links">
                     <a href="#how" className="hide-sm">How it works</a>
                     <a href="#record" className="hide-sm">What comes back</a>
                     <a href="#rules" className="hide-sm">What it never does</a>
+                    <a href="/connect" className="fd-btn fd-btn-ghost">Log in</a>
                     <a href="#start" className="fd-btn fd-btn-primary">Send us a CSV <Arrow /></a>
                 </div>
             </div>
@@ -160,7 +166,7 @@ const FrontdeskLanding: React.FC = () => (
                             Every patient who didn&rsquo;t come back <em>gets a phone call.</em>
                         </h1>
                         <p className="fd-lede">
-                            Export a CSV from the HMIS you already use. Frontdesk rings the patients who are due, speaks to
+                            Export a CSV from the HMIS you already use. BeanHealth Connect rings the patients who are due, speaks to
                             them in Tamil, Hindi or nine other languages, and writes down what they said &mdash; on the
                             patient&rsquo;s record, before your morning round.
                         </p>
@@ -209,7 +215,7 @@ const FrontdeskLanding: React.FC = () => (
                             <span className="num">STEP 3 &middot; SAME DAY</span>
                             <h3>Calls go out, notes come back</h3>
                             <p>Each patient is called once, in their language. What they said lands on their record within minutes of the call ending, ready for your team to act on.</p>
-                            <span className="who">Done by: Frontdesk</span>
+                            <span className="who">Done by: BeanHealth Connect</span>
                         </li>
                     </ol>
                 </div>
@@ -286,7 +292,7 @@ const FrontdeskLanding: React.FC = () => (
                     <span className="fd-kicker">Where it comes from</span>
                     <h2 className="fd-h2">Built inside a kidney centre, not for one.</h2>
                     <p className="fd-sub">
-                        Frontdesk is the follow-up layer of the system that runs a nephrology centre in Coimbatore &mdash;
+                        BeanHealth Connect is the follow-up layer of the system that runs a nephrology centre in Coimbatore &mdash;
                         reception, queue, prescriptions, pharmacy and admissions. The rules above were learned there, on
                         real missed follow-ups, before this became a product.
                     </p>
@@ -310,9 +316,12 @@ const FrontdeskLanding: React.FC = () => (
                             before anything runs on its own. These are the only columns we need.
                         </p>
                         <div className="fd-hero-actions">
-                            <a href="mailto:harish@beanhealth.in?subject=Frontdesk%20%E2%80%94%20first%20CSV" className="fd-btn fd-btn-primary">Email us your CSV <Arrow /></a>
+                            <a href="mailto:harish@beanhealth.in?subject=BeanHealth%20Connect%20%E2%80%94%20first%20CSV" className="fd-btn fd-btn-primary">Email us your CSV <Arrow /></a>
                             <Link to="/#cta" className="fd-btn fd-btn-ghost">Book a 20-minute call</Link>
                         </div>
+                        <p className="fd-sub" style={{ marginTop: 14 }}>
+                            Already a BeanHealth Connect centre? <a href="/connect" style={{ textDecoration: 'underline', fontWeight: 600 }}>Log in</a>
+                        </p>
                     </div>
                     <div className="fd-columns glass-panel" aria-label="Columns the CSV needs">
                         <div className="hd">Your export &middot; six columns</div>
@@ -329,7 +338,7 @@ const FrontdeskLanding: React.FC = () => (
 
         <footer className="fd-foot">
             <div className="fd-wrap">
-                <span>BeanHealth Frontdesk &middot; reports, never reschedules.</span>
+                <span>BeanHealth Connect &middot; reports, never reschedules.</span>
                 <span><Link to="/">BeanHealth</Link></span>
             </div>
         </footer>
