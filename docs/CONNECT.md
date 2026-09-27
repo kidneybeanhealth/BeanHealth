@@ -65,17 +65,30 @@ There is no self sign-up — a centre is a paying customer set up with them.
    **beanhealth.in/connect** (or the **Log in** button on the BeanHealth Connect
    product page).
 
-### 4. Review calls work immediately
-Review reminders use the existing Sarvam agent (v9) and the live
-`place-review-call` function unchanged. Nothing else is needed for them.
+### 4. Missed-review calls work immediately — upcoming reminders do not
+The existing Sarvam agent (v9) is a **missed** follow-up script: it tells the
+patient they missed their appointment and how many days ago. So it is used only
+for reviews whose date has **passed** (`review`). A review that is today or
+ahead (`review_reminder`) needs its own agent; until then those patients show on
+Today as "No voice script for this call type yet — ring by hand".
 
-### 5. Missed-session and lab calls need their own agents
+`place-review-call` enforces this whatever the screen sends: a `review` call is
+refused (409) while the patient has any open review dated today or later, and a
+`review_reminder` call is refused once it has passed. This covers the KKC
+campaign and the Past Records button too, not only Connect. (Found 27 Sep: the
+demo patient, due the next day, was told they had missed it and booked into a
+different day.)
+
+### 5. Reminder, missed-session and lab calls need their own agents
 They are **off** until you switch them on, and the centre cannot switch them on
 itself. That is deliberate: see "Why a call type is not a setting" below.
 
-1. Build two agents in the Sarvam console (spec below) and commit each.
+1. Build the agents in the Sarvam console (spec below) and commit each. The
+   reminder agent is the v9 agent with the opening changed to "your review is
+   on {review_date}" and no days-overdue line.
 2. Set the secrets:
    ```
+   supabase secrets set SARVAM_APP_ID_REVIEW_REMINDER=<app id> SARVAM_APP_VERSION_REVIEW_REMINDER=<n>
    supabase secrets set SARVAM_APP_ID_MISSED_SESSION=<app id> SARVAM_APP_VERSION_MISSED_SESSION=<n>
    supabase secrets set SARVAM_APP_ID_LAB_DUE=<app id>        SARVAM_APP_VERSION_LAB_DUE=<n>
    ```
@@ -85,11 +98,11 @@ itself. That is deliberate: see "Why a call type is not a setting" below.
    ```sql
    UPDATE public.hospital_profiles
    SET connect_settings = jsonb_set(coalesce(connect_settings, '{}'::jsonb),
-                                    '{calls,purposesReady}', '["review","missed_session","lab_due"]'::jsonb, true)
+                                    '{calls,purposesReady}', '["review","review_reminder","missed_session","lab_due"]'::jsonb, true)
    WHERE id = '<centre uuid>';
    ```
 
-The function refuses a missed-session or lab call with a 503 until step 2 is
+The function refuses a reminder, missed-session or lab call with a 503 until step 2 is
 done — it never falls back to the review agent.
 
 ---

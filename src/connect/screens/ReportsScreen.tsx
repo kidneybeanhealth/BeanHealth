@@ -16,7 +16,7 @@ import { fetchPatients } from '../services/patients';
 import { localDateKey } from '../services/db';
 import { addDays } from '../protocol/engine';
 import { buildMonthReport, CALL_WINDOW_DAYS, LAB_WINDOW_DAYS, RETURN_WINDOW_DAYS, type MonthReport } from '../protocol/report';
-import { CALL_PURPOSE_LABEL, PROGRAMMES, type CallPurpose } from '../protocol/settings';
+import { CALL_PURPOSES, CALL_PURPOSE_LABEL, PROGRAMMES } from '../protocol/settings';
 import { SetupNotice } from '../ui/SetupNotice';
 import { Button, Card, Spinner, Stat } from '../ui/kit';
 
@@ -34,7 +34,7 @@ const esc = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g,
 
 function reportHtml(centreName: string, ym: string, r: MonthReport, programmeCounts: [string, number][]): string {
     const row = (k: string, v: string, note = '') => `<tr><td>${esc(k)}</td><td class="v">${esc(v)}</td><td class="n">${esc(note)}</td></tr>`;
-    const purposes: CallPurpose[] = ['missed_session', 'lab_due', 'review'];
+    const purposes = CALL_PURPOSES;
     return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(centreName)} — ${esc(monthLabel(ym))}</title>
 <style>
  @page { size: A4; margin: 16mm; }
@@ -212,7 +212,7 @@ const ReportsScreen: React.FC = () => {
                 <Card className="p-5">
                     <h2 className="text-sm font-bold text-gray-900">Calls by reason</h2>
                     <div className="mt-3 space-y-2">
-                        {(['missed_session', 'lab_due', 'review'] as CallPurpose[]).map(p => {
+                        {CALL_PURPOSES.map(p => {
                             const b = r.calls.byPurpose[p];
                             return (
                                 <div key={p} className="flex items-center justify-between gap-3 text-sm">

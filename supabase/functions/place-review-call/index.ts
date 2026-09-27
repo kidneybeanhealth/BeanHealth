@@ -58,6 +58,17 @@ const toE164 = (raw?: string | null): string | null => {
     return null
 }
 
+/** Today's date in India as YYYY-MM-DD. The edge runtime is on UTC, so a bare
+ *  `new Date()` is still yesterday until 05:30 IST — and a call at 09:00 about a
+ *  review "due today" would be judged against the wrong day. */
+const todayIst = (): string => new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10)
+
+const PURPOSE_NAME: Record<string, string> = {
+    review_reminder: 'upcoming-review reminder',
+    missed_session: 'missed-session',
+    lab_due: 'lab-reminder',
+}
+
 const formatReviewDate = (value?: string | null): string => {
     if (!value) return ''
     try {
@@ -94,9 +105,13 @@ serve(async (req) => {
         // ── Why this call is being made ──────────────────────────────────────
         // 'review' is every call KKC has ever placed and remains the default, so
         // a request without a purpose behaves exactly as before. BeanHealth
-        // Connect adds two more, each with its OWN agent script: a review
-        // reminder cannot tell somebody they missed Wednesday's dialysis.
-        const PURPOSES = ['review', 'missed_session', 'lab_due'] as const
+        // Connect adds more, each with its OWN agent script: a review reminder
+        // cannot tell somebody they missed Wednesday's dialysis.
+        //
+        // 'review' is the MISSED follow-up script ("you missed your appointment
+        // on …, it has been N days"). An appointment that has not happened yet
+        // is 'review_reminder', a different agent — see the date guard below.
+        const PURPOSES = ['review', 'review_reminder', 'missed_session', 'lab_due'] as const
         type Purpose = typeof PURPOSES[number]
         const purpose: Purpose = body?.purpose === undefined || body?.purpose === null ? 'review' : body.purpose
         if (!PURPOSES.includes(purpose)) return json({ error: `Unknown call purpose "${body?.purpose}"` }, 400)
@@ -113,7 +128,7 @@ serve(async (req) => {
             const appVersion = Number(Deno.env.get(`SARVAM_APP_VERSION_${key}`))
             if (!appId || !Number.isFinite(appVersion) || appVersion <= 0) {
                 return json({
-                    error: `The voice agent is not set up for ${purpose === 'missed_session' ? 'missed-session' : 'lab-reminder'} calls yet.`,
+                    error: `The voice agent is not set up for ${PURPOSE_NAME[purpose] ?? purpose} calls yet.`,
                     detail: `Set SARVAM_APP_ID_${key} and SARVAM_APP_VERSION_${key} once that agent is committed in the Sarvam console. See docs/CONNECT.md.`,
                 }, 503)
             }
@@ -217,15 +232,44 @@ serve(async (req) => {
         const provider = getProvider(voiceCfg?.voice_provider)
 
         // ── Latest active review, for what the agent actually says ───────────
-        const { data: review } = await admin
+        const { data: activeReviews } = await admin
             .from('hospital_patient_reviews')
             .select('id, doctor_id, next_review_date')
             .eq('hospital_id', caller.id)
             .eq('patient_id', patient.id)
             .in('status', ['pending', 'rescheduled'])
             .order('next_review_date', { ascending: true })
-            .limit(1)
-            .maybeSingle()
+            .limit(20)
+        const today = todayIst()
+        const dated = (activeReviews ?? []).filter(r => r.next_review_date)
+        const nextUpcoming = dated.find(r => r.next_review_date >= today) ?? null
+        // A missed-review call is about the earliest open review (unchanged from
+        // before); a reminder is about the nearest one still ahead.
+        const review = purpose === 'review_reminder' ? nextUpcoming : (dated[0] ?? activeReviews?.[0] ?? null)
+
+        // ── The script must match the date ───────────────────────────────────
+        // The review agent tells the patient they MISSED their appointment. Read
+        // to someone whose review is tomorrow, that is a false statement from the
+        // hospital — and on 27 Sep the agent then booked a demo patient into a
+        // different day than the one the doctor set. So a review call is refused
+        // unless the review date has already passed, and a reminder call unless
+        // it has not. Enforced here, not in the screens, because every caller —
+        // the KKC campaign, the Past Records button, Connect — comes through
+        // this function.
+        // A patient holding an old open review AND an upcoming one is not a
+        // missed follow-up either — they have an appointment coming.
+        const reviewDate: string | null = review?.next_review_date ?? null
+        if (purpose === 'review' && (nextUpcoming || !reviewDate)) {
+            return json({
+                error: nextUpcoming
+                    ? `This patient's review is on ${formatReviewDate(nextUpcoming.next_review_date)} — not missed yet.`
+                    : 'This patient has no review date, so there is no missed follow-up to call about.',
+                detail: 'The review call tells the patient they missed their appointment, so it is only placed once the review date has passed.',
+            }, 409)
+        }
+        if (purpose === 'review_reminder' && !reviewDate) {
+            return json({ error: 'This patient has no upcoming review to remind them about.' }, 409)
+        }
 
         let doctorName: string | null = null
         if (review?.doctor_id) {
@@ -251,10 +295,9 @@ serve(async (req) => {
         // Whole days between the due date and today, floored at 0. Sent as a number
         // the agent phrases in words — it must never read it out as a statistic.
         const daysOverdue = (() => {
-            if (!review?.next_review_date) return 0
-            const due = new Date(`${review.next_review_date}T00:00:00`).getTime()
-            const today = new Date(new Date().toDateString()).getTime()
-            return Math.max(0, Math.floor((today - due) / 86400000))
+            if (!reviewDate) return 0
+            const due = Date.parse(`${reviewDate}T00:00:00Z`)
+            return Math.max(0, Math.round((Date.parse(`${today}T00:00:00Z`) - due) / 86400000))
         })()
 
         // ── Daily cap ────────────────────────────────────────────────────────

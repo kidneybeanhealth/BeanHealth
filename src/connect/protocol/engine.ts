@@ -123,7 +123,9 @@ const REASON_ORDER: Record<WorkReason, number> = { missed_session: 0, review_ove
 const PURPOSE_OF: Record<WorkReason, CallPurpose> = {
     missed_session: 'missed_session',
     review_overdue: 'review',
-    review_due: 'review',
+    // An upcoming review must NOT use the review script: that script tells the
+    // patient they missed their appointment (it did, to a demo patient, 27 Sep).
+    review_due: 'review_reminder',
     lab_due: 'lab_due',
 };
 
@@ -286,7 +288,7 @@ export function buildWorklist(input: EngineInput): WorklistResult {
             if (p.doNotCall) blocked = 'Asked not to be called';
             else if (p.callHold) blocked = 'On hold — not now';
             else if (!hasPhone) blocked = 'No phone number';
-            else if (!settings.calls.purposesReady.includes(purpose)) blocked = 'Voice agent not set up for this call type yet';
+            else if (!settings.calls.purposesReady.includes(purpose)) blocked = 'No voice script for this call type yet — ring by hand';
             else if (inFlight) blocked = 'A call is in progress';
             else if (forThis.some(a => a.connected)) blocked = 'Already reached about this';
             else if (unanswered.length >= settings.calls.maxAttemptsPerItem) blocked = `No answer after ${unanswered.length} calls — ring by hand`;

@@ -14,7 +14,7 @@ import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useCentre, useConnectSession } from '../session';
 import { saveCentreSettings } from '../services/centre';
-import { CALL_LANGUAGES, CALL_PURPOSE_LABEL, PROGRAMMES, type CallPurpose, type ConnectSettings, type LabTestRule, type Programme } from '../protocol/settings';
+import { CALL_LANGUAGES, CALL_PURPOSES, CALL_PURPOSE_LABEL, PROGRAMMES, type ConnectSettings, type LabTestRule, type Programme } from '../protocol/settings';
 import { Badge, Button, Card, Field, cx, inputCls } from '../ui/kit';
 
 const num = (v: string, min: number, max: number, fallback: number) => {
@@ -85,7 +85,7 @@ const SettingsScreen: React.FC = () => {
         }
     };
 
-    const allPurposes: CallPurpose[] = ['review', 'missed_session', 'lab_due'];
+    const allPurposes = CALL_PURPOSES;
 
     return (
         <div className="space-y-4 pb-20">

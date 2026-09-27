@@ -138,11 +138,32 @@ describe('labs due', () => {
 });
 
 describe('reviews', () => {
-    it('reminds the day before', () => {
-        const r = run({ patients: [patient({ programme: 'general' })], reviews: [{ patientId: 'p1', reviewDate: '2026-09-29' }] });
+    it('reminds the day before, once a reminder script exists', () => {
+        const r = run({
+            settings: settings(s => { s.calls.purposesReady = ['review', 'review_reminder']; }),
+            patients: [patient({ programme: 'general' })], reviews: [{ patientId: 'p1', reviewDate: '2026-09-29' }],
+        });
         const item = r.items.find(i => i.reason === 'review_due')!;
         expect(item.callable).toBe(true);
         expect(item.priority).toBe(3);
+    });
+
+    it('never gives an upcoming review the missed-review script', () => {
+        // The review agent says "you missed your appointment". Read to a demo
+        // patient due tomorrow on 27 Sep, it then booked them another day.
+        const r = run({ patients: [patient({ programme: 'general' })], reviews: [{ patientId: 'p1', reviewDate: '2026-09-29' }] });
+        const item = r.items.find(i => i.reason === 'review_due')!;
+        expect(item.purpose).toBe('review_reminder');
+        expect(item.callable).toBe(false);
+        expect(item.blockedReason).toMatch(/ring by hand/);
+        const today = run({ patients: [patient({ programme: 'general' })], reviews: [{ patientId: 'p1', reviewDate: TODAY }] });
+        expect(today.items[0].purpose).toBe('review_reminder');
+    });
+
+    it('gives an overdue review the missed-review script', () => {
+        const r = run({ patients: [patient({ programme: 'general' })], reviews: [{ patientId: 'p1', reviewDate: '2026-09-27' }] });
+        expect(r.items[0].purpose).toBe('review');
+        expect(r.items[0].callable).toBe(true);
     });
 
     it('flags an overdue review inside the window', () => {
@@ -165,7 +186,10 @@ describe('reviews', () => {
 });
 
 describe('who can be called', () => {
-    const due = { reviews: [{ patientId: 'p1', reviewDate: '2026-09-29' }] };
+    // An upcoming review, with its reminder script switched on, so these tests
+    // exercise the callability rules rather than the missing script.
+    const reminderReady = settings(s => { s.calls.purposesReady = ['review', 'review_reminder']; });
+    const due = { settings: reminderReady, reviews: [{ patientId: 'p1', reviewDate: '2026-09-29' }] };
     const gen = (o: Partial<EnginePatient> = {}) => [patient({ programme: 'general', ...o })];
 
     it('blocks do-not-call, hold and no-phone, with a reason a coordinator can act on', () => {
@@ -182,7 +206,7 @@ describe('who can be called', () => {
         const r = run({ sessions: [{ patientId: 'p1', date: '2026-09-25', status: 'missed' }] });
         const item = r.items.find(i => i.reason === 'missed_session')!;
         expect(item.callable).toBe(false);
-        expect(item.blockedReason).toMatch(/not set up/);
+        expect(item.blockedReason).toMatch(/No voice script/);
         const ready = run({
             settings: settings(s => { s.calls.purposesReady = ['review', 'missed_session']; }),
             sessions: [{ patientId: 'p1', date: '2026-09-25', status: 'missed' }],
@@ -208,19 +232,20 @@ describe('who can be called', () => {
         // Labs rank above a review reminder, but the lab script does not exist
         // yet — the review reminder must still go out, not wait behind it.
         const r = run({
+            settings: reminderReady,
             patients: gen({ programme: 'ckd' }),
             reviews: [{ patientId: 'p1', reviewDate: '2026-09-29' }],
             labs: [{ patientId: 'p1', testCode: 'rft_ckd', doneOn: '2026-07-01' }],
         });
         const lab = r.items.find(i => i.reason === 'lab_due')!;
         const review = r.items.find(i => i.reason === 'review_due')!;
-        expect(lab.blockedReason).toMatch(/not set up/);
+        expect(lab.blockedReason).toMatch(/No voice script/);
         expect(review.callable).toBe(true);
     });
 
     it('still allows only one call when both reasons are dialable', () => {
         const r = run({
-            settings: settings(s => { s.calls.purposesReady = ['review', 'lab_due']; }),
+            settings: settings(s => { s.calls.purposesReady = ['review', 'review_reminder', 'lab_due']; }),
             patients: gen({ programme: 'ckd' }),
             reviews: [{ patientId: 'p1', reviewDate: '2026-09-29' }],
             labs: [{ patientId: 'p1', testCode: 'rft_ckd', doneOn: '2026-07-01' }],
@@ -231,7 +256,7 @@ describe('who can be called', () => {
 
     it('waits before retrying an unanswered call', () => {
         const r = run({ ...due, patients: gen(), attempts: [
-            { patientId: 'p1', purpose: 'review', createdAt: '2026-09-28T07:00:00Z', status: 'completed', connected: false },
+            { patientId: 'p1', purpose: 'review_reminder', createdAt: '2026-09-28T07:00:00Z', status: 'completed', connected: false },
         ] });
         expect(r.items[0].blockedReason).toBe('Called 3h ago');
     });
@@ -239,8 +264,8 @@ describe('who can be called', () => {
     it('counts yesterday\'s reminder on the review day itself — no second reminder', () => {
         // Reminded the day before (the engine's own lead window); the item is
         // still "review is today" this morning and must not ring again.
-        const r = run({ reviews: [{ patientId: 'p1', reviewDate: TODAY }], patients: gen(), attempts: [
-            { patientId: 'p1', purpose: 'review', createdAt: '2026-09-27T09:00:00Z', status: 'completed', connected: true },
+        const r = run({ settings: reminderReady, reviews: [{ patientId: 'p1', reviewDate: TODAY }], patients: gen(), attempts: [
+            { patientId: 'p1', purpose: 'review_reminder', createdAt: '2026-09-27T09:00:00Z', status: 'completed', connected: true },
         ] });
         expect(r.items[0].callable).toBe(false);
         expect(r.items[0].blockedReason).toBe('Already reached about this');
@@ -256,7 +281,7 @@ describe('who can be called', () => {
 
     it('does not dial over a call already in progress', () => {
         const r = run({ ...due, patients: gen(), attempts: [
-            { patientId: 'p1', purpose: 'review', createdAt: '2026-09-28T09:59:00Z', status: 'placed', connected: false },
+            { patientId: 'p1', purpose: 'review_reminder', createdAt: '2026-09-28T09:59:00Z', status: 'placed', connected: false },
         ] });
         expect(r.items[0].blockedReason).toBe('A call is in progress');
     });

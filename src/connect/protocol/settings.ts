@@ -28,10 +28,17 @@ export const PROGRAMMES: { id: Programme; label: string }[] = [
  * dialysis — so a purpose is only callable once its agent exists. See
  * `calls.purposesReady` and docs/CONNECT.md.
  */
-export type CallPurpose = 'review' | 'missed_session' | 'lab_due';
+export type CallPurpose = 'review' | 'review_reminder' | 'missed_session' | 'lab_due';
+
+/** Every purpose, in the order screens list them. */
+export const CALL_PURPOSES: CallPurpose[] = ['missed_session', 'review', 'review_reminder', 'lab_due'];
 
 export const CALL_PURPOSE_LABEL: Record<CallPurpose, string> = {
-    review: 'Review reminder',
+    // 'review' is the MISSED-review script — it tells the patient they missed
+    // their appointment. An appointment still ahead is 'review_reminder', which
+    // needs its own agent; place-review-call enforces the date either way.
+    review: 'Missed review',
+    review_reminder: 'Upcoming review reminder',
     missed_session: 'Missed dialysis session',
     lab_due: 'Lab tests due',
 };
@@ -139,7 +146,6 @@ export function resolveSettings(stored: unknown): ConnectSettings {
     out.labs.tests = (out.labs.tests as any[]).filter(t =>
         isObj(t) && typeof t.code === 'string' && t.code && typeof t.label === 'string'
         && Number.isFinite(t.everyDays) && t.everyDays > 0 && Array.isArray(t.programmes));
-    out.calls.purposesReady = (out.calls.purposesReady as any[]).filter(p =>
-        p === 'review' || p === 'missed_session' || p === 'lab_due');
+    out.calls.purposesReady = (out.calls.purposesReady as any[]).filter(p => CALL_PURPOSES.includes(p));
     return out as ConnectSettings;
 }

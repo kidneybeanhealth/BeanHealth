@@ -143,6 +143,7 @@ export function buildMonthReport(input: {
     const monthAttempts = input.attempts.filter(a => inMonth(dayOf(a.createdAt)));
     const byPurpose: MonthReport['calls']['byPurpose'] = {
         review: { placed: 0, reached: 0 },
+        review_reminder: { placed: 0, reached: 0 },
         missed_session: { placed: 0, reached: 0 },
         lab_due: { placed: 0, reached: 0 },
     };
