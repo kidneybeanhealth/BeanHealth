@@ -45,8 +45,6 @@ const T = {
         thanksSub: 'This reaches the hospital today.',
         thanksNamed: 'Your doctor will see it at your next visit.',
         dupe: 'You have already sent feedback from this phone today. Thank you again.',
-        googleQ: 'Happy to say it publicly?',
-        google: 'Review us on Google',
         again: 'Send another response',
         needOne: 'Please rate at least one thing, or write a comment.',
         closed: 'This feedback form is not available.',
@@ -70,8 +68,6 @@ const T = {
         thanksSub: 'இது இன்றே மருத்துவமனையை அடையும்.',
         thanksNamed: 'அடுத்த வருகையின்போது உங்கள் மருத்துவர் இதைப் பார்ப்பார்.',
         dupe: 'இன்று இந்த ஃபோனிலிருந்து ஏற்கனவே கருத்து அனுப்பப்பட்டுள்ளது. மீண்டும் நன்றி.',
-        googleQ: 'இதை வெளிப்படையாகச் சொல்ல விருப்பமா?',
-        google: 'Google-இல் விமர்சனம் எழுதுங்கள்',
         again: 'மற்றொரு கருத்து அனுப்பு',
         needOne: 'குறைந்தது ஒன்றையாவது மதிப்பிடுங்கள், அல்லது கருத்து எழுதுங்கள்.',
         closed: 'இந்த படிவம் இப்போது கிடைக்கவில்லை.',
@@ -90,8 +86,6 @@ const SCORE_TONE: Record<number, string> = {
     4: 'bg-lime-500 border-lime-500 text-white',
     5: 'bg-emerald-500 border-emerald-500 text-white',
 };
-
-const GOOGLE_REVIEW_URL = 'https://search.google.com/local/writereview?placeid=';
 
 const PatientFeedbackForm: React.FC = () => {
     const { code = '' } = useParams<{ code: string }>();
@@ -234,23 +228,10 @@ const PatientFeedbackForm: React.FC = () => {
                     {done.identified && !done.duplicate && (
                         <p className="mt-1 text-sm text-gray-600">{t.thanksNamed}</p>
                     )}
-
-                    {/* Shown to everybody, whatever they scored.
-                        Showing it only to happy patients is review gating: it is
-                        against Google's policy and it is how a business gets its
-                        reviews wiped. The point of this form is to hear the
-                        unhappy ones first, not to filter who gets asked. */}
-                    <div className="mt-7 border-t border-gray-100 pt-6">
-                        <p className="text-sm text-gray-500">{t.googleQ}</p>
-                        <a
-                            href={GOOGLE_REVIEW_URL}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="mt-3 inline-flex min-h-[48px] items-center justify-center rounded-xl border border-gray-200 bg-white px-5 text-sm font-bold text-gray-700 hover:bg-gray-50"
-                        >
-                            {t.google}
-                        </a>
-                    </div>
+                    {/* Deliberately no public-review prompt here. This form is the
+                        hospital's own feedback channel — read on the dashboards and
+                        acted on internally — not a funnel to Google or anywhere else
+                        public. Do not add one back without the hospital asking. */}
                 </div>
                 <button
                     type="button"

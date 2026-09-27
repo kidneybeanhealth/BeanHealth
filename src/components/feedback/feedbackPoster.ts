@@ -23,6 +23,19 @@
  * Must survive black-and-white. Colour is decoration only: every word is
  * dark on white, and the QR carries no colour at all.
  *
+ * ── Type ─────────────────────────────────────────────────────────────────
+ * Two voices, on purpose. The hospital's poster is set in Times New Roman, at
+ * the hospital's request: a formal, institutional face for an institution's
+ * notice. Tinos is loaded as its fallback — it is metric-compatible with Times
+ * New Roman, so a machine without the font lays out identically instead of
+ * reflowing. Times New Roman has no Tamil glyphs, so Tamil is set in Noto Serif
+ * Tamil to stay in the same serif register.
+ *
+ * The "Powered by BeanHealth" signature is set in Inter 600, because that is
+ * what beanhealth.in renders the wordmark in (measured, not assumed: the site's
+ * CSS names Manrope for headings and Tailwind defaults to Nunito, but the brand
+ * word itself computes to Inter). Our mark should look like our mark.
+ *
  * Tamil here is machine-written and UNVERIFIED, like the form's. Have the
  * hospital read it before the first poster goes up.
  */
@@ -73,7 +86,7 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
 <title>${esc(p.hospitalName)} — Patient Review</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&family=Noto+Sans+Tamil:wght@500;700&display=block" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Tinos:wght@400;700&family=Noto+Serif+Tamil:wght@400;600;700&family=Inter:wght@500;600&display=block" rel="stylesheet" />
 <style>
   @page { size: ${p.size} portrait; margin: 0; }
   :root {
@@ -91,10 +104,10 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   html, body { margin: 0; padding: 0; background: #fff; }
   body {
-    font-family: 'Nunito', 'Noto Sans Tamil', 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: 'Times New Roman', Tinos, Times, 'Noto Serif Tamil', serif;
     color: var(--ink);
   }
-  .ta { font-family: 'Noto Sans Tamil', 'Nirmala UI', 'Latha', 'Nunito', sans-serif; }
+  .ta { font-family: 'Noto Serif Tamil', 'Nirmala UI', 'Latha', 'Times New Roman', Tinos, serif; }
 
   .sheet {
     width: ${page.w}mm; height: ${page.h}mm;
@@ -118,12 +131,12 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
   .logo-fallback {
     width: calc(var(--u) * 20); height: calc(var(--u) * 20);
     border-radius: calc(var(--u) * 4.5); background: var(--accent-soft);
-    color: var(--accent); font-weight: 900; font-size: calc(var(--u) * 10);
+    color: var(--accent); font-weight: 700; font-size: calc(var(--u) * 10);
     display: flex; align-items: center; justify-content: center;
   }
   .hosp-name {
-    font-size: calc(var(--u) * 10.5); font-weight: 900; line-height: 1.05;
-    letter-spacing: -0.01em; margin: 0;
+    font-size: calc(var(--u) * 10.5); font-weight: 700; line-height: 1.1;
+    letter-spacing: 0.03em; margin: 0;
   }
 
   .kicker {
@@ -134,18 +147,18 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
     border: calc(var(--u) * 0.35) solid #fed7aa;
   }
   .kicker b {
-    font-size: calc(var(--u) * 4.4); font-weight: 900; letter-spacing: 0.16em;
+    font-size: calc(var(--u) * 4.4); font-weight: 700; letter-spacing: 0.16em;
     text-transform: uppercase; color: #c2410c;
   }
   .kicker span { font-size: calc(var(--u) * 4); font-weight: 700; color: #c2410c; }
   .kicker i { width: calc(var(--u) * 1.3); height: calc(var(--u) * 1.3); border-radius: 50%; background: #fdba74; }
 
   .headline {
-    margin: calc(var(--u) * 8) 0 0; font-size: calc(var(--u) * 13); font-weight: 900;
-    line-height: 1.05; letter-spacing: -0.02em;
+    margin: calc(var(--u) * 8) 0 0; font-size: calc(var(--u) * 14); font-weight: 700;
+    line-height: 1.05; letter-spacing: 0;
   }
-  .headline-ta { margin: calc(var(--u) * 2.4) 0 0; font-size: calc(var(--u) * 6.4); font-weight: 700; color: var(--muted); }
-  .sub { margin: calc(var(--u) * 4) 0 0; font-size: calc(var(--u) * 4.6); line-height: 1.45; color: var(--muted); font-weight: 500; }
+  .headline-ta { margin: calc(var(--u) * 2.4) 0 0; font-size: calc(var(--u) * 6.4); font-weight: 600; color: var(--muted); }
+  .sub { margin: calc(var(--u) * 4) 0 0; font-size: calc(var(--u) * 5); line-height: 1.45; color: var(--muted); font-weight: 400; }
   .sub .ta { display: block; font-size: calc(var(--u) * 4); }
 
   .qr-wrap { position: relative; margin-top: calc(var(--u) * 8); padding: calc(var(--u) * 5); }
@@ -165,21 +178,21 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
   }
   .qr svg { display: block; width: 100%; height: 100%; }
   .url {
-    margin-top: calc(var(--u) * 2.5); font-size: calc(var(--u) * 4.2); font-weight: 800;
+    margin-top: calc(var(--u) * 2.5); font-size: calc(var(--u) * 4.6); font-weight: 700;
     letter-spacing: 0.02em; color: var(--ink);
   }
-  .loc { margin-top: calc(var(--u) * 1); font-size: calc(var(--u) * 3.6); color: var(--soft); font-weight: 700; }
+  .loc { margin-top: calc(var(--u) * 1); font-size: calc(var(--u) * 4); color: var(--soft); font-weight: 700; }
 
   .points {
     margin-top: calc(var(--u) * 7); display: flex; justify-content: center;
     gap: calc(var(--u) * 5); flex-wrap: wrap;
   }
   .pt { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 0.6); min-width: calc(var(--u) * 38); }
-  .pt b { font-size: calc(var(--u) * 4.1); font-weight: 800; }
-  .pt span { font-size: calc(var(--u) * 3.4); color: var(--muted); }
+  .pt b { font-size: calc(var(--u) * 4.5); font-weight: 700; }
+  .pt span { font-size: calc(var(--u) * 3.5); color: var(--muted); }
   .pt .tick {
     width: calc(var(--u) * 6.4); height: calc(var(--u) * 6.4); border-radius: 50%;
-    background: #ecfdf5; color: #059669; font-weight: 900; font-size: calc(var(--u) * 3.8);
+    background: #ecfdf5; color: #059669; font-weight: 700; font-size: calc(var(--u) * 3.8);
     display: flex; align-items: center; justify-content: center; margin-bottom: calc(var(--u) * 1);
     border: calc(var(--u) * 0.35) solid #a7f3d0;
   }
@@ -188,11 +201,12 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
     margin-top: auto; width: 100%; padding-top: calc(var(--u) * 5);
     border-top: calc(var(--u) * 0.35) solid var(--line);
     display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 2.2);
+    font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
-  .foot small { font-size: calc(var(--u) * 3.6); color: var(--soft); font-weight: 700; letter-spacing: 0.02em; }
+  .foot small { font-size: calc(var(--u) * 3.6); color: var(--soft); font-weight: 500; letter-spacing: 0.01em; }
   .bean { width: calc(var(--u) * 9.5); height: calc(var(--u) * 9.5); }
   .bean svg { display: block; width: 100%; height: 100%; }
-  .word { font-size: calc(var(--u) * 6); font-weight: 900; letter-spacing: -0.01em; }
+  .word { font-size: calc(var(--u) * 6); font-weight: 600; letter-spacing: -0.01em; }
   .word .b { color: var(--bean); }
   .word .h { color: var(--leaf); }
 </style></head>
