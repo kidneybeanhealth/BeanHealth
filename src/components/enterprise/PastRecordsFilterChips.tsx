@@ -34,6 +34,7 @@ const GROUP_OF: Record<string, GroupKey> = {
     followup_stopped: 'followup',
     weekly_report: 'reports',
     calendar: 'reports',
+    feedback: 'reports',
     dialysis: 'registers',
 };
 

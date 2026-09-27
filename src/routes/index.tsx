@@ -58,6 +58,7 @@ const TermsAndConditionsModal = React.lazy(() => import('../components/modals/Te
 
 // Patient App (MR ID-based, no Supabase Auth)
 const PatientApp = React.lazy(() => import('../components/patient/PatientApp'));
+const PatientFeedbackForm = React.lazy(() => import('../components/feedback/PatientFeedbackForm'));
 
 // Loading fallback component for lazy-loaded routes
 const PageLoader: React.FC = () => (
@@ -217,6 +218,13 @@ const AppRoutes: React.FC = () => {
 
                 {/* Profile Setup */}
                 <Route path="/setup" element={<ProfileSetupRoute />} />
+
+                {/* ============ PATIENT FEEDBACK (public, opened by QR) ============
+                    Deliberately outside every guard. Whoever scans the poster has no
+                    account and never will, and the path is short because every extra
+                    character is another QR module on a sheet read across a waiting
+                    room. */}
+                <Route path="/f/:code" element={<PatientFeedbackForm />} />
 
                 {/* ============ PATIENT APP (MR ID Login) ============ */}
                 <Route path="/patient-app" element={<PatientApp />} />

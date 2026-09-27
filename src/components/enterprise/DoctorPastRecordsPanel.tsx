@@ -28,6 +28,7 @@ const WeeklyOverdueReportPanel = lazy(() =>
     import('./ReceptionActivityPanels').then(m => ({ default: m.WeeklyOverdueReportPanel }))
 );
 const DialysisRegisterPanel = lazy(() => import('./DialysisRegisterPanel'));
+const FeedbackRegisterPanel = lazy(() => import('./FeedbackRegisterPanel'));
 const ReceptionCalendarPanel = lazy(() =>
     import('./ReceptionActivityPanels').then(m => ({ default: m.ReceptionCalendarPanel }))
 );
@@ -88,7 +89,8 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
     const [reviewFilter, setReviewFilter] = useState<PastRecordsView>('all');
     const [reviewDateFilter, setReviewDateFilter] = useState('');
     // Report views replace the patient list; list fetches fall back to 'all'
-    const isPanelView = reviewFilter === 'weekly_report' || reviewFilter === 'calendar' || reviewFilter === 'dialysis';
+    const isPanelView = reviewFilter === 'weekly_report' || reviewFilter === 'calendar'
+        || reviewFilter === 'dialysis' || reviewFilter === 'feedback';
     const activeListFilter: ReceptionReviewFilter = isPanelView ? 'all' : (reviewFilter as ReceptionReviewFilter);
     const [pastRecordsPage, setPastRecordsPage] = useState(0);
     const [hasMorePastRecords, setHasMorePastRecords] = useState(true);
@@ -692,7 +694,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
 
                     <div className="flex flex-wrap items-center gap-2">
 <PastRecordsFilterChips
-                            views={['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'review_completed', 'followup_stopped', 'weekly_report', 'calendar', 'dialysis']}
+                            views={['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'review_completed', 'followup_stopped', 'weekly_report', 'calendar', 'feedback', 'dialysis']}
                             value={reviewFilter}
                             onChange={setReviewFilter}
                         />
@@ -757,7 +759,15 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     )}
                 </div>
 
-                {reviewFilter === 'dialysis' ? (
+                {reviewFilter === 'feedback' ? (
+                    <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading feedback…</div>}>
+                        <FeedbackRegisterPanel
+                            hospitalId={doctor.hospital_id}
+                            doctorId={doctor.id}
+                            doctorName={doctor.name}
+                        />
+                    </Suspense>
+                ) : reviewFilter === 'dialysis' ? (
                     <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading register…</div>}>
                         <DialysisRegisterPanel
                             hospitalId={doctor.hospital_id}

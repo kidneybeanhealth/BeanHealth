@@ -29,7 +29,7 @@ import type {
  * "is this patient due"; dialysis answers "what kind of visit was this". Putting
  * a visit type on the review axis would make every bucket match special-case it.
  */
-export type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar' | 'dialysis';
+export type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar' | 'dialysis' | 'feedback';
 
 // Lives in pastRecordsPrint so the print builder pulls in no React.
 import { formatDoctorLabel } from './pastRecordsPrint';
@@ -47,6 +47,7 @@ export const getReviewFilterLabel = (filterKey: PastRecordsView): string => {
     if (filterKey === 'weekly_report') return 'Overdue Weekly Report';
     if (filterKey === 'calendar') return 'Calendar';
     if (filterKey === 'dialysis') return 'Dialysis';
+    if (filterKey === 'feedback') return 'Patient Feedback';
     return 'Not Completed';
 };
 
