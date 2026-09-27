@@ -1,22 +1,26 @@
 /**
- * FeedbackPosterModal — the printable QR
+ * FeedbackPosterModal — see the poster, print the poster
  *
- * The hospital has to be able to make the poster themselves. A QR they have to
- * ask us to regenerate is a QR that never gets replaced when it fades, gets
- * covered, or moves to a different wall.
+ * One view, one print, used by both Reception and the Doctor dashboard through
+ * FeedbackRegisterPanel. The preview is not a picture of the poster: it is the
+ * poster, an iframe holding the exact document buildFeedbackPosterHtml produces,
+ * and Print prints that same iframe. What the receptionist checks is what the
+ * printer gets.
  *
- * Printed on ordinary A5 from the office printer, not the label printer: this
- * is a sheet in a stand, not a sticker, so none of the TSC dot-alignment
- * arithmetic applies. The QR is drawn at 70mm, which a phone reads from about
- * an arm and a half away — the distance from a dialysis chair to the wall.
+ * The hospital has to be able to make this themselves. A QR they have to ask us
+ * to regenerate never gets replaced when it fades, gets covered, or moves wall.
  *
- * Error correction is M. H would survive more damage but costs modules, and
- * modules cost physical size at a fixed sheet width; a laminated indoor poster
- * is not getting scuffed the way a parcel label does.
+ * Everything the page needs is inlined before it is shown — the QR as SVG, the
+ * BeanHealth mark as SVG, the hospital logo as a data: URL — so a print never
+ * fires before an image has arrived. Fonts are the one network dependency, and
+ * printing waits for them.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import type { FeedbackLocation } from '../../services/feedbackService';
+import { toast } from 'react-hot-toast';
+import { getProxiedUrl } from '../../lib/supabase';
+import { resolveFeedbackLocation, fetchHospitalLogo, type FeedbackLocation } from '../../services/feedbackService';
+import { buildFeedbackPosterHtml, POSTER_PAGE_MM, type PosterSize } from '../feedback/feedbackPoster';
 
 /**
  * The permanent address a poster points at — never the address the dashboard
@@ -30,16 +34,56 @@ import type { FeedbackLocation } from '../../services/feedbackService';
 const PUBLIC_APP_URL = String(import.meta.env.VITE_PUBLIC_APP_URL || 'https://beanhealth.in').replace(/\/+$/, '');
 const feedbackUrl = (code: string) => `${PUBLIC_APP_URL}/f/${encodeURIComponent(code)}`;
 
+const PX_PER_MM = 96 / 25.4;
+
+/** Read a URL into a data: URL, or null. A logo that will not load must not block the poster. */
+async function toDataUrl(url: string): Promise<string | null> {
+    try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        if (!blob.type.startsWith('image/')) return null;
+        return await new Promise<string | null>(resolve => {
+            const r = new FileReader();
+            r.onload = () => resolve(typeof r.result === 'string' ? r.result : null);
+            r.onerror = () => resolve(null);
+            r.readAsDataURL(blob);
+        });
+    } catch {
+        return null;
+    }
+}
+
+let beanLogoCache: string | null = null;
+async function beanLogoSvg(): Promise<string> {
+    if (beanLogoCache) return beanLogoCache;
+    try {
+        const res = await fetch('/logo.svg');
+        if (res.ok) {
+            const text = await res.text();
+            if (text.includes('<svg')) { beanLogoCache = text; return text; }
+        }
+    } catch { /* fall through to an empty mark rather than failing the poster */ }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"></svg>';
+}
+
 export interface FeedbackPosterModalProps {
+    hospitalId: string;
     locations: FeedbackLocation[];
     onClose: () => void;
 }
 
-const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ locations, onClose }) => {
+const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ hospitalId, locations, onClose }) => {
     const active = useMemo(() => locations.filter(l => l.isActive), [locations]);
     const [selected, setSelected] = useState<string>(active[0]?.code || '');
-    const [svg, setSvg] = useState<string>('');
+    const [size, setSize] = useState<PosterSize>('A4');
+    const [html, setHtml] = useState<string>('');
     const [err, setErr] = useState<string | null>(null);
+    const [printing, setPrinting] = useState(false);
+
+    const frameRef = useRef<HTMLIFrameElement | null>(null);
+    const boxRef = useRef<HTMLDivElement | null>(null);
+    const [boxW, setBoxW] = useState(360);
 
     useEffect(() => {
         if (!selected && active[0]) setSelected(active[0].code);
@@ -48,141 +92,183 @@ const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ locations, on
     const loc = active.find(l => l.code === selected) || active[0] || null;
     const url = loc ? feedbackUrl(loc.code) : '';
 
+    // Assemble the poster. The header comes from the same RPC the patient's form
+    // uses, so the poster names the hospital exactly as the page it opens does.
     useEffect(() => {
-        if (!url) { setSvg(''); return; }
+        if (!loc) { setHtml(''); return; }
         let cancelled = false;
-        QRCode.toString(url, {
-            type: 'svg',
-            errorCorrectionLevel: 'M',
-            margin: 2,              // quiet zone, in modules. Below 2 scanners struggle.
-            color: { dark: '#111827', light: '#ffffff' },
-        })
-            .then(s => { if (!cancelled) { setSvg(s); setErr(null); } })
-            .catch(e => { if (!cancelled) setErr(e?.message || 'Could not draw the QR code'); });
+        setErr(null);
+        (async () => {
+            try {
+                const [resolved, ownLogo, qrSvg, bean] = await Promise.all([
+                    resolveFeedbackLocation(loc.code).catch(() => null),
+                    fetchHospitalLogo(hospitalId),
+                    QRCode.toString(url, {
+                        type: 'svg',
+                        errorCorrectionLevel: 'M',
+                        margin: 2,   // quiet zone, in modules — the margin the decode test passed at
+                        color: { dark: '#111827', light: '#ffffff' },
+                    }),
+                    beanLogoSvg(),
+                ]);
+                const logoSrc = ownLogo || resolved?.hospitalLogo || null;
+                const logo = logoSrc ? await toDataUrl(getProxiedUrl(logoSrc)) : null;
+                if (cancelled) return;
+                setHtml(buildFeedbackPosterHtml({
+                    hospitalName: resolved?.hospitalName || loc.label,
+                    hospitalLogoDataUrl: logo,
+                    locationLabel: loc.label,
+                    url,
+                    qrSvg,
+                    beanLogoSvg: bean,
+                    size,
+                }));
+            } catch (e: any) {
+                if (!cancelled) setErr(e?.message || 'Could not build the poster');
+            }
+        })();
         return () => { cancelled = true; };
-    }, [url]);
+    }, [loc?.code, loc?.label, url, size, hospitalId]);
 
-    const print = () => {
-        if (!loc || !svg) return;
-        // Same approach as the patient label: a hidden same-origin frame, so the
-        // receptionist never leaves the dashboard and pop-up blocking cannot
-        // silently swallow the print.
-        const frame = document.createElement('iframe');
-        frame.setAttribute('aria-hidden', 'true');
-        frame.style.cssText = 'position:fixed;left:-10000px;top:0;border:0;width:148mm;height:210mm;';
-        document.body.appendChild(frame);
-        const doc = frame.contentWindow?.document;
-        if (!doc) { frame.remove(); return; }
+    // Fit the real-size page into the preview box.
+    useEffect(() => {
+        const el = boxRef.current;
+        if (!el) return;
+        const measure = () => setBoxW(el.clientWidth);
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
-        doc.open();
-        doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Feedback poster</title>
-<style>
-  @page { size: A5 portrait; margin: 0; }
-  :root { color-scheme: only light; }
-  html,body { margin:0; padding:0; background:#fff; color:#111827;
-              font-family: Helvetica, Arial, 'Liberation Sans', sans-serif; }
-  .sheet { width:148mm; height:210mm; padding:14mm 12mm; box-sizing:border-box;
-           display:flex; flex-direction:column; align-items:center; text-align:center; }
-  h1 { font-size:9mm; line-height:1.15; margin:0 0 3mm; }
-  h2 { font-size:5.5mm; line-height:1.3; margin:0 0 2mm; font-weight:700; color:#374151; }
-  .ta { font-size:5mm; color:#4b5563; margin:0 0 7mm; }
-  .qr { width:70mm; height:70mm; }
-  .qr svg { width:100%; height:100%; display:block; }
-  .url { margin-top:5mm; font-size:4mm; letter-spacing:.02em; color:#6b7280; }
-  .foot { margin-top:auto; font-size:3.6mm; line-height:1.5; color:#6b7280; }
-  .rule { width:30mm; height:0.6mm; background:#f97316; margin:6mm auto; }
-  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-</style></head><body><div class="sheet">
-  <h1>How was your visit?</h1>
-  <h2>உங்கள் வருகை எப்படி இருந்தது?</h2>
-  <div class="rule"></div>
-  <p class="ta">Scan with your phone camera · உங்கள் ஃபோன் காமிராவால் ஸ்கேன் செய்யுங்கள்</p>
-  <div class="qr">${svg}</div>
-  <p class="url">${url.replace(/^https?:\/\//, '')}</p>
-  <p class="foot">
-    ${loc.label}<br/>
-    Takes under a minute. No app, no login.<br/>
-    Answers are anonymous unless you choose to add your MR number.
-  </p>
-</div></body></html>`);
-        doc.close();
+    const page = POSTER_PAGE_MM[size];
+    const pageWpx = page.w * PX_PER_MM;
+    const pageHpx = page.h * PX_PER_MM;
+    const scale = Math.min(1, boxW / pageWpx);
 
-        const go = () => {
-            try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch { /* the browser reports its own refusal */ }
-            window.setTimeout(() => frame.remove(), 1000);
-        };
-        if (doc.readyState === 'complete') window.setTimeout(go, 60);
-        else frame.onload = () => window.setTimeout(go, 60);
+    const print = async () => {
+        const win = frameRef.current?.contentWindow;
+        const doc = frameRef.current?.contentDocument;
+        if (!win || !doc) { toast.error('The poster has not finished loading'); return; }
+        setPrinting(true);
+        try {
+            // Printing before the webfonts arrive prints the fallback font; wait,
+            // but not forever — an offline PC still gets a poster.
+            const fonts = (doc as any).fonts?.ready as Promise<unknown> | undefined;
+            if (fonts) await Promise.race([fonts, new Promise(r => setTimeout(r, 3000))]);
+            win.focus();
+            win.print();
+        } catch {
+            toast.error('Could not start the print');
+        } finally {
+            setPrinting(false);
+        }
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-3 sm:p-6" onClick={onClose}>
             <div
-                className="max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl bg-white p-5 shadow-xl"
+                className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-5 py-4">
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900">Feedback QR</h3>
-                        <p className="text-xs text-gray-500">Print it, laminate it, put it where patients wait.</p>
+                        <h3 className="text-lg font-bold text-gray-900">Feedback QR poster</h3>
+                        <p className="text-xs text-gray-500">This is exactly what prints. Laminate it and put it where patients wait.</p>
                     </div>
                     <button type="button" onClick={onClose} className="px-1 text-2xl leading-none text-gray-400 hover:text-gray-700">×</button>
                 </div>
 
                 {active.length === 0 ? (
-                    <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                    <p className="m-5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
                         No feedback poster is set up yet. Run <code className="font-mono text-xs">sql/20260927_patient_feedback.sql</code>,
                         which creates one covering the whole hospital.
                     </p>
                 ) : (
-                    <>
-                        {active.length > 1 && (
-                            <div className="mb-4">
-                                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Poster</label>
-                                <select
-                                    value={selected}
-                                    onChange={e => setSelected(e.target.value)}
-                                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
-                                >
-                                    {active.map(l => <option key={l.code} value={l.code}>{l.label} · {l.code}</option>)}
-                                </select>
+                    <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 overflow-auto p-5 md:grid-cols-[minmax(0,1fr)_260px]">
+                        {/* The poster itself */}
+                        <div ref={boxRef} className="min-w-0">
+                            <div
+                                className="mx-auto overflow-hidden rounded-lg bg-white shadow-[0_2px_14px_rgba(0,0,0,0.16)] ring-1 ring-gray-200"
+                                style={{ width: pageWpx * scale, height: pageHpx * scale }}
+                            >
+                                {err ? (
+                                    <p className="p-6 text-sm text-rose-700">{err}</p>
+                                ) : html ? (
+                                    <iframe
+                                        ref={frameRef}
+                                        title="Feedback poster"
+                                        srcDoc={html}
+                                        style={{
+                                            width: pageWpx, height: pageHpx, border: 0,
+                                            transform: `scale(${scale})`, transformOrigin: 'top left',
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="h-full w-full animate-pulse bg-gray-100" />
+                                )}
                             </div>
-                        )}
-
-                        <div className="mb-4 flex flex-col items-center rounded-xl border border-gray-200 bg-gray-50 p-5">
-                            {err ? (
-                                <p className="py-10 text-sm text-rose-700">{err}</p>
-                            ) : svg ? (
-                                <div className="h-48 w-48 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
-                            ) : (
-                                <div className="h-48 w-48 animate-pulse rounded-lg bg-gray-200" />
-                            )}
-                            <p className="mt-3 break-all text-center font-mono text-[11px] text-gray-500">{url}</p>
                         </div>
 
-                        {!url.startsWith(window.location.origin) && (
-                            <p className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] leading-5 text-sky-900">
-                                This poster opens <strong>{PUBLIC_APP_URL.replace(/^https?:\/\//, '')}</strong>, not the address
-                                you are on now. That is intended: the poster stays on a wall long after this link changes.
+                        {/* Controls */}
+                        <div className="space-y-4">
+                            {active.length > 1 && (
+                                <div>
+                                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Poster</label>
+                                    <select
+                                        value={selected}
+                                        onChange={e => setSelected(e.target.value)}
+                                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
+                                    >
+                                        {active.map(l => <option key={l.code} value={l.code}>{l.label} · {l.code}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Paper</label>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    {(['A4', 'A5'] as PosterSize[]).map(s => (
+                                        <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => setSize(s)}
+                                            className={`rounded-xl border px-3 py-2 text-left transition-colors ${size === s ? 'border-orange-300 bg-orange-50' : 'border-gray-200 bg-white hover:border-orange-200'}`}
+                                        >
+                                            <span className={`block text-sm font-bold ${size === s ? 'text-orange-700' : 'text-gray-800'}`}>{s}</span>
+                                            <span className="block text-[10px] text-gray-500">{s === 'A4' ? 'Wall poster' : 'Table stand'}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={print}
+                                disabled={!html || printing}
+                                className="min-h-[48px] w-full rounded-xl bg-orange-500 text-sm font-bold text-white hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400"
+                            >
+                                {printing ? 'Preparing…' : `Print ${size} poster`}
+                            </button>
+
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Opens</p>
+                                <p className="mt-0.5 break-all font-mono text-[11px] text-gray-700">{url}</p>
+                            </div>
+
+                            {!url.startsWith(window.location.origin) && (
+                                <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] leading-5 text-sky-900">
+                                    This poster opens <strong>{PUBLIC_APP_URL.replace(/^https?:\/\//, '')}</strong>, not the
+                                    address you are on now. That is intended: a poster stays on a wall long after this link changes.
+                                </p>
+                            )}
+
+                            <p className="text-[11px] leading-5 text-gray-400">
+                                In the print dialog, set margins to <strong>None</strong> and turn off headers and footers.
+                                Scan the printed copy once with a phone before putting it up.
                             </p>
-                        )}
-
-                        <button
-                            type="button"
-                            onClick={print}
-                            disabled={!svg}
-                            className="min-h-[48px] w-full rounded-xl bg-orange-500 text-sm font-bold text-white hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400"
-                        >
-                            Print A5 poster
-                        </button>
-
-                        <p className="mt-3 text-[11px] leading-5 text-gray-400">
-                            One poster covers the whole hospital today. To tell dialysis stations or wards
-                            apart later, add a row to <code className="font-mono">hospital_feedback_locations</code> and
-                            print its own poster — every response then records which one it came from, and
-                            nothing in the app changes.
-                        </p>
-                    </>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

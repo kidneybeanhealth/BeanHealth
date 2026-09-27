@@ -318,3 +318,27 @@ export async function fetchFeedbackLocations(hospitalId: string): Promise<Feedba
         id: r.id, code: r.code, label: r.label, area: r.area, isActive: r.is_active !== false,
     }));
 }
+
+/**
+ * The hospital's logo for the poster header.
+ *
+ * `hospital_logo` is what the patient app reads, but it is empty at KKC; the
+ * logo reception and the doctors actually print on the Past Records sheet lives
+ * in `avatar_url`. Selecting `*` rather than naming both, because hospital_logo
+ * was added to this table outside the migration files and naming a column a
+ * site does not have fails the whole read.
+ */
+export async function fetchHospitalLogo(hospitalId: string): Promise<string | null> {
+    if (!hospitalId) return null;
+    try {
+        const res = await withTimeout(
+            ((supabase as any).from('hospital_profiles').select('*').eq('id', hospitalId).maybeSingle()) as any,
+            10000,
+            'Timed out while loading the hospital logo'
+        ) as { data: any; error: any };
+        if (res.error || !res.data) return null;
+        return res.data.hospital_logo || res.data.avatar_url || null;
+    } catch {
+        return null;
+    }
+}

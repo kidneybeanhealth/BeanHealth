@@ -386,6 +386,7 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
 
             {posterOpen && (
                 <FeedbackPosterModal
+                    hospitalId={hospitalId}
                     locations={locations}
                     onClose={() => setPosterOpen(false)}
                 />
