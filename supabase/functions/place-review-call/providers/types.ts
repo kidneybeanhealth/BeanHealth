@@ -16,6 +16,11 @@ export interface PlaceCallInput {
     languageName: string
     /** Exactly the variables the agent script declares. Empty string = "we don't know". */
     agentVariables: Record<string, string>
+    /**
+     * A different agent for this call — BeanHealth Connect's missed-session and
+     * lab-reminder scripts. Absent means the default review-reminder agent.
+     */
+    agentOverride?: { appId: string; appVersion: number }
 }
 
 export type PlaceCallResult =

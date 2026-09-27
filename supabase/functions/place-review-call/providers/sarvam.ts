@@ -15,12 +15,14 @@ export const sarvamProvider: VoiceProvider = {
     async placeCall(input: PlaceCallInput): Promise<PlaceCallResult> {
         const orgId = Deno.env.get('SARVAM_ORG_ID')
         const workspaceId = Deno.env.get('SARVAM_WORKSPACE_ID')
-        const appId = Deno.env.get('SARVAM_APP_ID')
+        // A purpose with its own script (Connect) brings its own agent; the env
+        // pair is the review-reminder agent every KKC call has always used.
+        const appId = input.agentOverride?.appId ?? Deno.env.get('SARVAM_APP_ID')
         const apiKey = Deno.env.get('SARVAM_API_KEY')
         const connectionId = Deno.env.get('SARVAM_CONNECTION_ID')
         const agentPhone = Deno.env.get('SARVAM_AGENT_PHONE_NUMBER')
         const webhookBase = Deno.env.get('SARVAM_WEBHOOK_BASE_URL')
-        const appVersionRaw = Deno.env.get('SARVAM_APP_VERSION')
+        const appVersionRaw = input.agentOverride ? String(input.agentOverride.appVersion) : Deno.env.get('SARVAM_APP_VERSION')
 
         for (const [k, v] of Object.entries({ SARVAM_ORG_ID: orgId, SARVAM_WORKSPACE_ID: workspaceId, SARVAM_APP_ID: appId, SARVAM_API_KEY: apiKey, SARVAM_CONNECTION_ID: connectionId, SARVAM_AGENT_PHONE_NUMBER: agentPhone, SARVAM_WEBHOOK_BASE_URL: webhookBase })) {
             if (!v) return { ok: false, status: 503, notConfigured: true, detail: `${k} is unset.` }

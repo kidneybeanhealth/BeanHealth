@@ -91,6 +91,35 @@ serve(async (req) => {
         const requestedLanguage: string | null = typeof body?.language === 'string' && body.language.trim() ? body.language.trim() : null
         if (!patientId) return json({ error: 'patientId is required' }, 400)
 
+        // ── Why this call is being made ──────────────────────────────────────
+        // 'review' is every call KKC has ever placed and remains the default, so
+        // a request without a purpose behaves exactly as before. BeanHealth
+        // Connect adds two more, each with its OWN agent script: a review
+        // reminder cannot tell somebody they missed Wednesday's dialysis.
+        const PURPOSES = ['review', 'missed_session', 'lab_due'] as const
+        type Purpose = typeof PURPOSES[number]
+        const purpose: Purpose = body?.purpose === undefined || body?.purpose === null ? 'review' : body.purpose
+        if (!PURPOSES.includes(purpose)) return json({ error: `Unknown call purpose "${body?.purpose}"` }, 400)
+        const purposeDetail = typeof body?.purposeDetail === 'string' ? body.purposeDetail.trim().slice(0, 240) : ''
+
+        // A purpose other than review is dialled ONLY through its own agent. There
+        // is deliberately no fallback to the review agent: a patient who missed a
+        // session and is read the review script has been given a wrong call,
+        // which is worse than no call. Checked before anything is reserved.
+        let agentOverride: { appId: string; appVersion: number } | undefined
+        if (purpose !== 'review') {
+            const key = purpose.toUpperCase()
+            const appId = Deno.env.get(`SARVAM_APP_ID_${key}`)
+            const appVersion = Number(Deno.env.get(`SARVAM_APP_VERSION_${key}`))
+            if (!appId || !Number.isFinite(appVersion) || appVersion <= 0) {
+                return json({
+                    error: `The voice agent is not set up for ${purpose === 'missed_session' ? 'missed-session' : 'lab-reminder'} calls yet.`,
+                    detail: `Set SARVAM_APP_ID_${key} and SARVAM_APP_VERSION_${key} once that agent is committed in the Sarvam console. See docs/CONNECT.md.`,
+                }, 503)
+            }
+            agentOverride = { appId, appVersion }
+        }
+
         const admin = createClient(supabaseUrl, serviceRoleKey)
 
         // ── Resolve the patient, scoped to the caller's hospital ─────────────
@@ -299,6 +328,10 @@ serve(async (req) => {
                 webhook_token: webhookToken,
                 status: 'placing',
                 requested_by_name: requestedByName,
+                // Written only for the Connect purposes, so a review call still
+                // succeeds on a database that predates the purpose column. The
+                // app reads NULL as 'review'.
+                ...(purpose !== 'review' ? { purpose } : {}),
             })
             .select('id')
             .single()
@@ -330,7 +363,13 @@ serve(async (req) => {
                 hospital_name: hospital?.name ?? '',
                 hospital_address: hospitalAddress,
                 front_desk_number: frontDeskNumber,
+                // The tenth variable, declared only on the Connect agents: what
+                // the call is about, pre-written for speech ("Missed Fri 25 Sep ·
+                // next scheduled Mon 28 Sep"). Never sent to the review agent,
+                // which would reject an undeclared variable.
+                ...(purpose !== 'review' ? { purpose_detail: purposeDetail } : {}),
             },
+            agentOverride,
         })
 
         if (!result.ok) {
