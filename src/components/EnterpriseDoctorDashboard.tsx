@@ -7,6 +7,7 @@ import PrescriptionModal from './modals/PrescriptionModal';
 import ManageDrugsModal from './modals/ManageDrugsModal';
 import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
 import DoctorTeamAuditModal from './modals/DoctorTeamAuditModal';
+import FeedbackRegisterModal from './enterprise/FeedbackRegisterModal';
 import TwoStepConfirmModal from './common/TwoStepConfirmModal';
 import EnterpriseCKDSnapshotView from './EnterpriseCKDSnapshotView';
 import DoctorPastRecordsPanel from './enterprise/DoctorPastRecordsPanel';
@@ -195,6 +196,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [showManageDrugsModal, setShowManageDrugsModal] = useState(false);
     const [showManageDiagnosesModal, setShowManageDiagnosesModal] = useState(false);
     const [showTeamAuditModal, setShowTeamAuditModal] = useState(false);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     // Local doctor state to handle updates (e.g. after signature upload)
     const [currentDoctor, setCurrentDoctor] = useState<DoctorProfile>(doctor);
     const isSendingToPharmacyRef = useRef(false);
@@ -1894,6 +1896,18 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
                         {/* Settings & Reload — always a tight horizontal row */}
                         <div className="flex items-center gap-2 flex-shrink-0">
+                            {/* Every doctor, not only the chief: unlike Team & Audit this
+                                is not an admin tool. Same register as Past Records ▸
+                                Reports ▸ Patient Feedback, one click instead of three. */}
+                            <button
+                                onClick={() => setShowFeedbackModal(true)}
+                                className="px-3 py-2 bg-white text-gray-700 hover:text-orange-700 rounded-2xl border border-gray-200 hover:border-orange-200 transition-all shadow-sm text-xs sm:text-sm font-bold whitespace-nowrap"
+                                title="Patient Feedback"
+                            >
+                                {/* Shorter on a phone, where this row also holds Team & Audit and two icons. */}
+                                <span className="sm:hidden">Feedback</span>
+                                <span className="hidden sm:inline">Patient Feedback</span>
+                            </button>
                             {canManageTeamAudit && (
                                 <button
                                     onClick={() => setShowTeamAuditModal(true)}
@@ -3021,6 +3035,14 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     onClose={() => setShowManageDiagnosesModal(false)}
                 />
             )}
+
+            <FeedbackRegisterModal
+                isOpen={showFeedbackModal}
+                onClose={() => setShowFeedbackModal(false)}
+                hospitalId={currentDoctor.hospital_id}
+                doctorId={currentDoctor.id}
+                doctorName={currentDoctor.name}
+            />
 
             {showTeamAuditModal && canManageTeamAudit && actorSession?.sessionToken && (
                 <DoctorTeamAuditModal
