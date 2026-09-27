@@ -5,6 +5,10 @@
             "destination": "https://ektevcxubbtuxnaapyam.supabase.co/:path*"
         },
         {
+            "source": "/f/:code*",
+            "destination": "/feedback.html"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
