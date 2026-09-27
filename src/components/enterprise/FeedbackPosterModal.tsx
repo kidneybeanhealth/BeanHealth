@@ -18,7 +18,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import type { FeedbackLocation } from '../../services/feedbackService';
 
-const feedbackUrl = (code: string) => `${window.location.origin}/f/${encodeURIComponent(code)}`;
+/**
+ * The permanent address a poster points at — never the address the dashboard
+ * happens to be open on.
+ *
+ * This used to be `window.location.origin`, so a poster printed from a Vercel
+ * preview link or from localhost carried that URL in its QR. Preview URLs are
+ * replaced on every push; a laminated poster is on the wall for a year. Set
+ * VITE_PUBLIC_APP_URL to change the domain, e.g. for a hospital on its own.
+ */
+const PUBLIC_APP_URL = String(import.meta.env.VITE_PUBLIC_APP_URL || 'https://beanhealth.in').replace(/\/+$/, '');
+const feedbackUrl = (code: string) => `${PUBLIC_APP_URL}/f/${encodeURIComponent(code)}`;
 
 export interface FeedbackPosterModalProps {
     locations: FeedbackLocation[];
@@ -149,6 +159,13 @@ const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ locations, on
                             )}
                             <p className="mt-3 break-all text-center font-mono text-[11px] text-gray-500">{url}</p>
                         </div>
+
+                        {!url.startsWith(window.location.origin) && (
+                            <p className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] leading-5 text-sky-900">
+                                This poster opens <strong>{PUBLIC_APP_URL.replace(/^https?:\/\//, '')}</strong>, not the address
+                                you are on now. That is intended: the poster stays on a wall long after this link changes.
+                            </p>
+                        )}
 
                         <button
                             type="button"
