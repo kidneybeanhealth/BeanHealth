@@ -57,7 +57,44 @@ function feedbackPageHtml(): Plugin {
         return;
       }
       this.emitFile({ type: 'asset', fileName: 'feedback.html', source: html });
+
+      // BeanHealth Connect never registers the main app's service worker either.
+      // On beanhealth.in/connect it shares an origin with the main app, and a
+      // worker there would answer Connect navigations with the main app's cached
+      // shell. Done here, not in connectRoutes: this hook runs after the PWA
+      // plugin injects its tag, and an earlier one strips nothing.
+      const connect = bundle['connect.html'];
+      if (connect && connect.type === 'asset') {
+        connect.source = String(connect.source)
+          .replace(/\s*<script id="vite-plugin-pwa:register-sw"[^>]*><\/script>/, '')
+          .replace(/\s*<link rel="manifest"[^>]*>/g, '');
+        if (/register-sw|rel="manifest"/.test(String(connect.source))) {
+          this.error('connect.html: could not remove the service-worker registration');
+        }
+      }
     },
+  };
+}
+
+/**
+ * BeanHealth Connect is a second HTML entry (connect.html → src/connect/main.tsx).
+ * In production vercel.json sends connect.beanhealth.in, and /connect on any
+ * host, to connect.html. The dev and preview servers need the same rewrite, or
+ * /connect/login falls through to the main app's index.html.
+ */
+function connectRoutes(): Plugin {
+  const rewrite = (req: { url?: string }) => {
+    const url = req.url || '';
+    if (url === '/connect' || url.startsWith('/connect/') || url.startsWith('/connect?')) {
+      // Only page navigations: a real file under /connect/ would have a dot.
+      const path = url.split('?')[0];
+      if (!path.slice('/connect'.length).includes('.')) req.url = '/connect.html';
+    }
+  };
+  return {
+    name: 'beanhealth-connect-routes',
+    configureServer(server) { server.middlewares.use((req, _res, next) => { rewrite(req); next(); }); },
+    configurePreviewServer(server) { server.middlewares.use((req, _res, next) => { rewrite(req); next(); }); },
   };
 }
 
@@ -70,6 +107,7 @@ export default defineConfig({
   plugins: [
     react(),
     feedbackPageHtml(),
+    connectRoutes(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.svg', 'logo.png'],
@@ -102,7 +140,7 @@ export default defineConfig({
         // saved before a route existed sends the patient to the home page; the
         // form is small and always wanted fresh, so it always comes from the
         // network (vercel.json serves it as feedback.html).
-        navigateFallbackDenylist: [/^\/f\//],
+        navigateFallbackDenylist: [/^\/f\//, /^\/connect(\/|$)/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
           {
@@ -128,6 +166,11 @@ export default defineConfig({
   // Build config for production SPA routing with code splitting
   build: {
     rollupOptions: {
+      // Two front ends from one build: the main app, and BeanHealth Connect.
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        connect: path.resolve(__dirname, 'connect.html'),
+      },
       output: {
         manualChunks: {
           // Split vendor chunks for better caching

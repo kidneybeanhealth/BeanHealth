@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BeanHealth Connect — follow-up calls for dialysis and kidney care centres, in the patient's language." />
+  <meta name="theme-color" content="#3A2524" />
+  <meta name="robots" content="noindex" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="BeanHealth" />
+  <meta property="og:title" content="BeanHealth Connect" />
+  <meta property="og:description" content="Follow-up calls for dialysis and kidney care centres, in the patient's language." />
+  <title>BeanHealth Connect</title>
+  <!--
+    BeanHealth Connect — a separate front end. It shares the design system and
+    the Supabase client with the main app and nothing else: no AuthProvider, no
+    role routing, no service worker. It is served at connect.beanhealth.in (and
+    at /connect for preview deployments) by vercel.json.
+  -->
+</head>
+
+<body>
+  <div id="connect-root"></div>
+  <script type="module" src="/src/connect/main.tsx"></script>
+</body>
+
+</html>

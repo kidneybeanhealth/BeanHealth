@@ -5,6 +5,24 @@
             "destination": "https://ektevcxubbtuxnaapyam.supabase.co/:path*"
         },
         {
+            "source": "/(.*)",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "connect.beanhealth.in"
+                }
+            ],
+            "destination": "/connect.html"
+        },
+        {
+            "source": "/connect",
+            "destination": "/connect.html"
+        },
+        {
+            "source": "/connect/:path*",
+            "destination": "/connect.html"
+        },
+        {
             "source": "/f/:code*",
             "destination": "/feedback.html"
         },

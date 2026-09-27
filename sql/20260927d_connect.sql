@@ -28,6 +28,7 @@
 --   connect_lab_records            when each test was last done
 --   connect_alerts                 red flags and callback requests, raised by a
 --                                  TRIGGER on the call-attempt row
+--   hospital_voice_call_attempts.purpose   why each call was made
 --
 -- ── Why alerts come from a trigger ───────────────────────────────────────
 -- sarvam-call-webhook already writes the agent's final variables onto
@@ -75,6 +76,14 @@ ALTER TABLE public.hospital_patients
 ALTER TABLE public.hospital_patients
     ADD CONSTRAINT hospital_patients_dialysis_days_check
     CHECK (dialysis_days IS NULL OR dialysis_days <@ ARRAY[1,2,3,4,5,6,7]::SMALLINT[]);
+
+-- ── Why each call was made ────────────────────────────────────────────────
+-- 'review' | 'missed_session' | 'lab_due'. NULL on every call placed before
+-- this column existed — all of those were review reminders, and the app reads
+-- NULL as 'review'. The monthly report needs it to say which reason a call
+-- served and whether it worked.
+ALTER TABLE public.hospital_voice_call_attempts
+    ADD COLUMN IF NOT EXISTS purpose TEXT NULL;
 
 -- ── Dialysis sessions ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.connect_dialysis_sessions (
@@ -181,7 +190,9 @@ BEGIN
 
     v_disposition := UPPER(TRIM(COALESCE(v_vars ->> 'disposition', '')));
     v_reason      := NULLIF(TRIM(COALESCE(v_vars ->> 'reason_text', v_vars ->> 'call_summary', '')), '');
-    v_spoke_to    := NULLIF(TRIM(COALESCE(v_vars ->> 'spoke_to', '')), '');
+    -- The agent reports who answered as an uppercase enum (PATIENT, FAMILY);
+    -- it reads in a sentence, so lowercase it.
+    v_spoke_to    := NULLIF(LOWER(TRIM(COALESCE(v_vars ->> 'spoke_to', ''))), '');
     -- The one lowercase enum the agent emits; compared case-insensitively, as
     -- the webhook does, so a normalisation on the provider's side cannot turn
     -- every callback request into a no.

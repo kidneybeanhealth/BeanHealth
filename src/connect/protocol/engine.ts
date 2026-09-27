@@ -264,7 +264,8 @@ export function buildWorklist(input: EngineInput): WorklistResult {
         const calledToday = attempts.some(a => a.createdAt.slice(0, 10) === today && a.status !== 'failed');
         const hasPhone = !!(p.phoneE164 || p.attenderPhoneE164);
 
-        raw.forEach((r, i) => {
+        // Pass 1 — each reason's OWN block: things true of this reason alone.
+        const own = raw.map(r => {
             const purpose = PURPOSE_OF[r.reason];
             // A reminder is placed BEFORE its date — "your review is tomorrow" —
             // so for the ahead-of-time reasons the attempts that count start
@@ -290,16 +291,28 @@ export function buildWorklist(input: EngineInput): WorklistResult {
             else if (forThis.some(a => a.connected)) blocked = 'Already reached about this';
             else if (unanswered.length >= settings.calls.maxAttemptsPerItem) blocked = `No answer after ${unanswered.length} calls — ring by hand`;
             else if (recent) blocked = `Called ${Math.max(1, Math.round((now.getTime() - recent) / 3_600_000))}h ago`;
-            else if (i > 0 || calledToday) blocked = i > 0 ? `One call a day — ${raw[0].title.toLowerCase()} first` : 'Already called today';
+            return { r, purpose, blocked };
+        });
 
+        // Pass 2 — one call a day. The day's call goes to the most important
+        // reason that can ACTUALLY be dialled. Giving it to a reason that is
+        // itself blocked (say, a lab reminder whose script does not exist yet)
+        // would leave the patient with no call at all while a review reminder
+        // that could have gone out sits behind it.
+        const primary = calledToday ? null : own.find(o => o.blocked === null) || null;
+        for (const o of own) {
+            let blocked = o.blocked;
+            if (blocked === null && o !== primary) {
+                blocked = calledToday ? 'Already called today' : `One call a day — ${primary!.r.title.toLowerCase()} first`;
+            }
             items.push({
-                ...r,
-                key: `${p.id}:${r.reason}:${r.since}`,
-                purpose,
+                ...o.r,
+                key: `${p.id}:${o.r.reason}:${o.r.since}`,
+                purpose: o.purpose,
                 callable: blocked === null,
                 blockedReason: blocked,
             });
-        });
+        }
     }
 
     // Sort by PATIENT, then keep each patient's own items together in the order

@@ -204,6 +204,31 @@ describe('who can be called', () => {
         expect(second.blockedReason).toMatch(/One call a day/);
     });
 
+    it('gives the day\'s one call to a reason that can actually be dialled', () => {
+        // Labs rank above a review reminder, but the lab script does not exist
+        // yet — the review reminder must still go out, not wait behind it.
+        const r = run({
+            patients: gen({ programme: 'ckd' }),
+            reviews: [{ patientId: 'p1', reviewDate: '2026-09-29' }],
+            labs: [{ patientId: 'p1', testCode: 'rft_ckd', doneOn: '2026-07-01' }],
+        });
+        const lab = r.items.find(i => i.reason === 'lab_due')!;
+        const review = r.items.find(i => i.reason === 'review_due')!;
+        expect(lab.blockedReason).toMatch(/not set up/);
+        expect(review.callable).toBe(true);
+    });
+
+    it('still allows only one call when both reasons are dialable', () => {
+        const r = run({
+            settings: settings(s => { s.calls.purposesReady = ['review', 'lab_due']; }),
+            patients: gen({ programme: 'ckd' }),
+            reviews: [{ patientId: 'p1', reviewDate: '2026-09-29' }],
+            labs: [{ patientId: 'p1', testCode: 'rft_ckd', doneOn: '2026-07-01' }],
+        });
+        expect(r.items.filter(i => i.callable).map(i => i.reason)).toEqual(['lab_due']);
+        expect(r.items.find(i => i.reason === 'review_due')!.blockedReason).toMatch(/One call a day/);
+    });
+
     it('waits before retrying an unanswered call', () => {
         const r = run({ ...due, patients: gen(), attempts: [
             { patientId: 'p1', purpose: 'review', createdAt: '2026-09-28T07:00:00Z', status: 'completed', connected: false },

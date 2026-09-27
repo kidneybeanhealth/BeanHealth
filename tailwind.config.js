@@ -9,6 +9,9 @@ module.exports = {
     "./src/contexts/**/*.{js,ts,jsx,tsx}",
     "./src/hooks/**/*.{js,ts,jsx,tsx}",
     "./src/services/**/*.{js,ts,jsx,tsx}",
+    // BeanHealth Connect is its own entry; without these its classes are purged.
+    "./connect.html",
+    "./src/connect/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
