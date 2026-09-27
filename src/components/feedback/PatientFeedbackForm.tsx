@@ -15,12 +15,13 @@
  * It renders outside ProtectedRoute and asks nothing of AuthContext.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { getProxiedUrl } from '../../lib/supabase';
 import {
     resolveFeedbackLocation, submitFeedback, FeedbackCodeError,
-    type ResolvedLocation,
+    type ResolvedLocation, type VoiceNote,
 } from '../../services/feedbackService';
+import VoiceNoteRecorder from './VoiceNoteRecorder';
 import {
     VISIT_TYPES, SCALE, questionsFor,
     type Lang, type VisitTypeId,
@@ -34,6 +35,8 @@ const T = {
         visitQ: 'What brought you in today?',
         rateQ: 'How would you rate these?',
         commentQ: 'Anything else you want to tell us?',
+        commentSub: 'Speak it or type it — whichever is easier.',
+        orType: 'Or type it',
         commentPh: 'Optional — write in Tamil or English',
         share: 'Share this with my doctor',
         shareOn: 'Your name and MR number will be shown to your doctor with this feedback.',
@@ -46,10 +49,12 @@ const T = {
         thanksNamed: 'Your doctor will see it at your next visit.',
         dupe: 'You have already sent feedback from this phone today. Thank you again.',
         again: 'Send another response',
-        needOne: 'Please rate at least one thing, or write a comment.',
+        nextPatient: 'Next patient',
+        desk: 'Clinic device',
+        needOne: 'Please rate something, record a voice note, or write a comment.',
         closed: 'This feedback form is not available.',
         loading: 'Opening…',
-        privacy: 'We store your ratings and comment. We do not store your phone number, your location, or anything that identifies your device.',
+        privacy: 'We store your ratings, comment and any voice note, for the hospital only. We do not store your phone number, your location, or anything that identifies your device.',
     },
     ta: {
         heading: 'உங்கள் வருகை எப்படி இருந்தது?',
@@ -57,6 +62,8 @@ const T = {
         visitQ: 'இன்று எதற்காக வந்தீர்கள்?',
         rateQ: 'இவற்றை எப்படி மதிப்பிடுவீர்கள்?',
         commentQ: 'வேறு ஏதாவது சொல்ல விரும்புகிறீர்களா?',
+        commentSub: 'பேசலாம் அல்லது தட்டச்சு செய்யலாம் — எது எளிதோ அது.',
+        orType: 'அல்லது தட்டச்சு செய்யுங்கள்',
         commentPh: 'விருப்பம் — தமிழிலோ ஆங்கிலத்திலோ எழுதலாம்',
         share: 'இதை என் மருத்துவரிடம் பகிரவும்',
         shareOn: 'உங்கள் பெயரும் MR எண்ணும் உங்கள் மருத்துவருக்குத் தெரியும்.',
@@ -69,10 +76,12 @@ const T = {
         thanksNamed: 'அடுத்த வருகையின்போது உங்கள் மருத்துவர் இதைப் பார்ப்பார்.',
         dupe: 'இன்று இந்த ஃபோனிலிருந்து ஏற்கனவே கருத்து அனுப்பப்பட்டுள்ளது. மீண்டும் நன்றி.',
         again: 'மற்றொரு கருத்து அனுப்பு',
-        needOne: 'குறைந்தது ஒன்றையாவது மதிப்பிடுங்கள், அல்லது கருத்து எழுதுங்கள்.',
+        nextPatient: 'அடுத்த நோயாளர்',
+        desk: 'மருத்துவமனை சாதனம்',
+        needOne: 'ஏதாவது மதிப்பிடுங்கள், குரல் பதிவு செய்யுங்கள், அல்லது கருத்து எழுதுங்கள்.',
         closed: 'இந்த படிவம் இப்போது கிடைக்கவில்லை.',
         loading: 'திறக்கிறது…',
-        privacy: 'உங்கள் மதிப்பீடுகளும் கருத்தும் சேமிக்கப்படும். உங்கள் ஃபோன் எண், இருப்பிடம் அல்லது சாதன விவரம் எதுவும் சேமிக்கப்படாது.',
+        privacy: 'உங்கள் மதிப்பீடுகள், கருத்து மற்றும் குரல் பதிவு மருத்துவமனைக்கு மட்டும் சேமிக்கப்படும். உங்கள் ஃபோன் எண், இருப்பிடம் அல்லது சாதன விவரம் எதுவும் சேமிக்கப்படாது.',
     },
 } as const;
 
@@ -89,6 +98,9 @@ const SCORE_TONE: Record<number, string> = {
 
 const PatientFeedbackForm: React.FC = () => {
     const { code = '' } = useParams<{ code: string }>();
+    // Opened from a dashboard on a clinic tablet, handed from patient to patient.
+    const [search] = useSearchParams();
+    const desk = search.get('desk') === '1';
     const [lang, setLang] = useState<Lang>('en');
     const t = T[lang];
 
@@ -98,6 +110,7 @@ const PatientFeedbackForm: React.FC = () => {
     const [visitType, setVisitType] = useState<VisitTypeId | null>(null);
     const [ratings, setRatings] = useState<Record<string, number>>({});
     const [comment, setComment] = useState('');
+    const [voice, setVoice] = useState<VoiceNote | null>(null);
     const [share, setShare] = useState(false);
     const [mrNumber, setMrNumber] = useState('');
 
@@ -134,7 +147,7 @@ const PatientFeedbackForm: React.FC = () => {
     }, [visitType]);
 
     const answered = Object.keys(ratings).length;
-    const canSend = answered > 0 || comment.trim().length > 0;
+    const canSend = answered > 0 || comment.trim().length > 0 || !!voice;
 
     const send = async () => {
         if (!canSend) { setError(t.needOne); return; }
@@ -142,7 +155,7 @@ const PatientFeedbackForm: React.FC = () => {
         setError(null);
         try {
             const res = await submitFeedback({
-                code, visitType, ratings, comment,
+                code, visitType, ratings, comment, voice, desk,
                 mrNumber, shareWithDoctor: share && mrNumber.trim().length > 0,
                 language: lang,
             });
@@ -194,8 +207,11 @@ const PatientFeedbackForm: React.FC = () => {
             )}
             <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-bold leading-tight text-gray-900">{loc.hospitalName}</p>
-                {loc.locationLabel && loc.locationLabel !== loc.hospitalName && (
+                {loc.locationLabel && loc.locationLabel.toLowerCase() !== loc.hospitalName.toLowerCase() && (
                     <p className="truncate text-xs text-gray-500">{loc.locationLabel}</p>
+                )}
+                {desk && (
+                    <span className="mt-0.5 inline-block rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">{t.desk}</span>
                 )}
             </div>
             <div className="flex shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white">
@@ -235,10 +251,16 @@ const PatientFeedbackForm: React.FC = () => {
                 </div>
                 <button
                     type="button"
-                    onClick={() => { setDone(null); setRatings({}); setComment(''); setShare(false); setMrNumber(''); }}
-                    className="mx-auto mt-5 block text-xs font-semibold text-gray-400 hover:text-gray-700"
+                    onClick={() => {
+                        setDone(null); setRatings({}); setComment(''); setVoice(null);
+                        setShare(false); setMrNumber(''); setVisitType(null); setError(null);
+                        window.scrollTo({ top: 0 });
+                    }}
+                    className={desk
+                        ? 'mt-5 min-h-[56px] w-full rounded-2xl bg-orange-500 text-base font-bold text-white hover:bg-orange-600'
+                        : 'mx-auto mt-5 block text-xs font-semibold text-gray-400 hover:text-gray-700'}
                 >
-                    {t.again}
+                    {desk ? t.nextPatient : t.again}
                 </button>
             </>
         );
@@ -327,12 +349,16 @@ const PatientFeedbackForm: React.FC = () => {
 
             {/* Comment */}
             <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <label className="mb-2 block text-sm font-bold text-gray-900" htmlFor="fb-comment">{t.commentQ}</label>
+                <p className="text-sm font-bold text-gray-900">{t.commentQ}</p>
+                <p className="mb-3 text-xs text-gray-500">{t.commentSub}</p>
+                {/* Voice first: most patients will say far more than they would type. */}
+                <VoiceNoteRecorder lang={lang} value={voice} onChange={setVoice} />
+                <label className="mb-2 mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-400" htmlFor="fb-comment">{t.orType}</label>
                 <textarea
                     id="fb-comment"
                     value={comment}
                     onChange={e => setComment(e.target.value.slice(0, 1000))}
-                    rows={4}
+                    rows={3}
                     placeholder={t.commentPh}
                     className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-3 text-sm text-gray-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                 />

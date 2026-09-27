@@ -21,18 +21,9 @@ import { toast } from 'react-hot-toast';
 import { getProxiedUrl } from '../../lib/supabase';
 import { resolveFeedbackLocation, fetchHospitalLogo, type FeedbackLocation } from '../../services/feedbackService';
 import { buildFeedbackPosterHtml, POSTER_PAGE_MM, type PosterSize } from '../feedback/feedbackPoster';
+import { PUBLIC_APP_URL, feedbackUrl } from '../feedback/feedbackLinks';
 
-/**
- * The permanent address a poster points at — never the address the dashboard
- * happens to be open on.
- *
- * This used to be `window.location.origin`, so a poster printed from a Vercel
- * preview link or from localhost carried that URL in its QR. Preview URLs are
- * replaced on every push; a laminated poster is on the wall for a year. Set
- * VITE_PUBLIC_APP_URL to change the domain, e.g. for a hospital on its own.
- */
-const PUBLIC_APP_URL = String(import.meta.env.VITE_PUBLIC_APP_URL || 'https://beanhealth.in').replace(/\/+$/, '');
-const feedbackUrl = (code: string) => `${PUBLIC_APP_URL}/f/${encodeURIComponent(code)}`;
+// The address itself lives in feedbackLinks, shared with the dashboards' Open form button.
 
 const PX_PER_MM = 96 / 25.4;
 

@@ -11,6 +11,11 @@
  * happens to have is noise dressed up as a metric; the useful frame is "the
  * restroom has been 2.2 for eleven days", not "my three patients said 4".
  *
+ * ── Delete, not "seen" ────────────────────────────────────────────────────
+ * The hospital works this list by deleting a response once it has been dealt
+ * with. Delete is permanent and takes the voice note with it (see
+ * deleteFeedback for why the recording goes first), so it asks once to confirm.
+ *
  * ── Anonymity is structural, not cosmetic ─────────────────────────────────
  * A response carries a name only when the patient typed an MR number AND ticked
  * the box. The service resolves that; this file renders what it is given and
@@ -22,11 +27,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
-    fetchFeedbackRegister, acknowledgeFeedback, fetchFeedbackLocations,
+    fetchFeedbackRegister, deleteFeedback, getFeedbackAudioUrl, fetchFeedbackLocations,
     type FeedbackRegister, type FeedbackResponse, type FeedbackLocation,
 } from '../../services/feedbackService';
 import { visitTypeLabel, questionLabel, NEEDS_ATTENTION_AT } from '../feedback/feedbackQuestions';
 import FeedbackPosterModal from './FeedbackPosterModal';
+import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
+import { feedbackUrl } from '../feedback/feedbackLinks';
 
 type Period = 'week' | 'month' | 'year' | 'all' | 'custom';
 
@@ -90,6 +97,49 @@ const ScoreChip: React.FC<{ value: number | null; label?: string }> = ({ value, 
     </span>
 );
 
+const fmtSecs = (s: number | null) => {
+    const n = Math.max(0, Math.round(s || 0));
+    return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+};
+
+/**
+ * Plays a voice note. The signed link is fetched on the first tap rather than
+ * for every row up front: most rows are never played, and each link is a
+ * storage request.
+ */
+const VoicePlayer: React.FC<{ path: string; seconds: number | null }> = ({ path, seconds }) => {
+    const [url, setUrl] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    if (url) return <audio controls autoPlay src={url} className="h-10 w-full max-w-md" />;
+
+    return (
+        <button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+                setBusy(true);
+                try { setUrl(await getFeedbackAudioUrl(path)); }
+                catch (e: any) { toast.error(e?.message || 'Could not load the voice note'); }
+                finally { setBusy(false); }
+            }}
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 text-xs font-bold text-violet-800 hover:bg-violet-100 disabled:opacity-60"
+        >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+            {busy ? 'Loading…' : `Play voice note · ${fmtSecs(seconds)}`}
+        </button>
+    );
+};
+
+const MicBadge: React.FC<{ seconds: number | null }> = ({ seconds }) => (
+    <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">
+        <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3zM19 11a7 7 0 01-14 0M12 18v3" />
+        </svg>
+        {fmtSecs(seconds)}
+    </span>
+);
+
 export interface FeedbackRegisterPanelProps {
     hospitalId: string;
     /** When set, the response list narrows to this doctor's own patients. */
@@ -112,6 +162,8 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
     const [error, setError] = useState<string | null>(null);
     const [expanded, setExpanded] = useState<string | null>(null);
     const [posterOpen, setPosterOpen] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<FeedbackResponse | null>(null);
+    const [deleting, setDeleting] = useState(false);
     const [locations, setLocations] = useState<FeedbackLocation[]>([]);
 
     const range = useMemo(() => resolveRange(period, cFrom, cTo), [period, cFrom, cTo]);
@@ -139,14 +191,29 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
         fetchFeedbackLocations(hospitalId).then(setLocations).catch(() => setLocations([]));
     }, [hospitalId]);
 
-    const ack = async (r: FeedbackResponse) => {
+    const confirmDelete = async () => {
+        const r = pendingDelete;
+        if (!r || deleting) return;
+        setDeleting(true);
         try {
-            await acknowledgeFeedback(hospitalId, r.id, '');
-            toast.success('Marked as seen');
+            await deleteFeedback(hospitalId, r.id, r.audioPath);
+            toast.success('Response deleted');
+            setPendingDelete(null);
+            if (expanded === r.id) setExpanded(null);
             load();
         } catch (e: any) {
-            toast.error(e?.message || 'Could not save');
+            toast.error(e?.message || 'Could not delete');
+        } finally {
+            setDeleting(false);
         }
+    };
+
+    // Open the form on this device for a patient standing at the desk. Desk
+    // mode, so handing the tablet to the next patient is not throttled away.
+    const openForm = () => {
+        const loc = locations.find(l => l.isActive);
+        if (!loc) { toast.error('No feedback form is set up yet'); return; }
+        window.open(feedbackUrl(loc.code, { desk: true }), '_blank', 'noopener');
     };
 
     const rows = data?.responses || [];
@@ -181,6 +248,14 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                         className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50"
                     >
                         Refresh
+                    </button>
+                    <button
+                        type="button"
+                        onClick={openForm}
+                        title="Opens the patient form on this device, for a patient at the desk"
+                        className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-100"
+                    >
+                        Open form
                     </button>
                     <button
                         type="button"
@@ -232,15 +307,30 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                         <span className="text-[11px] font-semibold text-gray-500">{fmtWhen(r.submittedAt)}</span>
                                         <span className="text-[11px] text-gray-400">{visitTypeLabel(r.visitType)}</span>
                                         <ScoreChip value={r.lowestRating} label="lowest" />
+                                        {r.audioPath && <MicBadge seconds={r.audioSeconds} />}
                                         {r.comment && (
                                             <span className="min-w-0 flex-1 truncate text-xs text-gray-800">“{r.comment}”</span>
                                         )}
                                         <button
                                             type="button"
-                                            onClick={() => ack(r)}
-                                            className="ml-auto shrink-0 rounded-lg border border-rose-300 bg-white px-2.5 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-50"
+                                            onClick={() => {
+                                                // The row lives in the Responses tab; on "By question"
+                                                // expanding it alone would do nothing visible.
+                                                setTab('responses');
+                                                setExpanded(r.id);
+                                                window.setTimeout(() => document.getElementById(`fb-${r.id}`)
+                                                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+                                            }}
+                                            className="ml-auto shrink-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-bold text-gray-700 hover:bg-gray-50"
                                         >
-                                            Mark seen
+                                            Open
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPendingDelete(r)}
+                                            className="shrink-0 rounded-lg border border-rose-300 bg-white px-2.5 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-50"
+                                        >
+                                            Delete
                                         </button>
                                     </div>
                                 ))}
@@ -319,7 +409,7 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                 const open = expanded === r.id;
                                 const entries = Object.entries(r.ratings);
                                 return (
-                                    <div key={r.id} className="border-b border-gray-100 last:border-b-0">
+                                    <div key={r.id} id={`fb-${r.id}`} className="border-b border-gray-100 last:border-b-0">
                                         <button
                                             type="button"
                                             onClick={() => setExpanded(open ? null : r.id)}
@@ -339,12 +429,13 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                                     Anonymous
                                                 </span>
                                             )}
-                                            <ScoreChip value={r.lowestRating} label="lowest" />
+                                            {r.lowestRating !== null && <ScoreChip value={r.lowestRating} label="lowest" />}
+                                            {r.audioPath && <MicBadge seconds={r.audioSeconds} />}
+                                            {r.source === 'desk' && (
+                                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">At desk</span>
+                                            )}
                                             {r.comment && (
                                                 <span className="min-w-0 flex-1 truncate text-xs text-gray-700">“{r.comment}”</span>
-                                            )}
-                                            {r.status !== 'new' && (
-                                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Seen</span>
                                             )}
                                             <span className={`ml-auto shrink-0 text-gray-300 transition-transform ${open ? 'rotate-90' : ''}`}>›</span>
                                         </button>
@@ -358,22 +449,25 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <p className="text-xs text-gray-400">No ratings — comment only.</p>
+                                                    <p className="text-xs text-gray-400">No ratings given.</p>
+                                                )}
+                                                {r.audioPath && (
+                                                    <div className="mt-3">
+                                                        <VoicePlayer path={r.audioPath} seconds={r.audioSeconds} />
+                                                    </div>
                                                 )}
                                                 {r.comment && (
                                                     <p className="mt-3 whitespace-pre-wrap rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm leading-6 text-gray-800">
                                                         {r.comment}
                                                     </p>
                                                 )}
-                                                {r.status === 'new' && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => ack(r)}
-                                                        className="mt-3 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-50"
-                                                    >
-                                                        Mark seen
-                                                    </button>
-                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPendingDelete(r)}
+                                                    className="mt-3 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-[11px] font-bold text-rose-700 hover:bg-rose-50"
+                                                >
+                                                    Delete response
+                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -383,6 +477,18 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                     )}
                 </>
             )}
+
+            <TwoStepConfirmModal
+                isOpen={!!pendingDelete}
+                singleStep
+                title="Delete this response?"
+                description={pendingDelete?.audioPath
+                    ? 'The ratings, comment and voice note are removed permanently. This cannot be undone.'
+                    : 'The ratings and comment are removed permanently. This cannot be undone.'}
+                confirmLabel={deleting ? 'Deleting…' : 'Delete'}
+                onCancel={() => { if (!deleting) setPendingDelete(null); }}
+                onConfirm={confirmDelete}
+            />
 
             {posterOpen && (
                 <FeedbackPosterModal

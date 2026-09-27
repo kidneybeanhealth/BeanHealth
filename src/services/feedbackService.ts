@@ -58,6 +58,12 @@ export async function resolveFeedbackLocation(code: string): Promise<ResolvedLoc
     };
 }
 
+export interface VoiceNote {
+    blob: Blob;
+    seconds: number;
+    mimeType: string;
+}
+
 export interface FeedbackSubmission {
     code: string;
     visitType: VisitTypeId | null;
@@ -66,6 +72,42 @@ export interface FeedbackSubmission {
     mrNumber: string;
     shareWithDoctor: boolean;
     language: string;
+    voice?: VoiceNote | null;
+    /** A clinic tablet handed from patient to patient. See feedbackLinks. */
+    desk?: boolean;
+}
+
+const AUDIO_BUCKET = 'feedback-audio';
+
+/** The container type without codec parameters — what the bucket's audio/* check sees. */
+const baseMime = (m: string) => (m || 'audio/webm').split(';')[0].trim() || 'audio/webm';
+const extFor = (m: string): string => {
+    const b = baseMime(m);
+    if (b.includes('mp4') || b.includes('m4a') || b.includes('aac')) return 'm4a';
+    if (b.includes('ogg')) return 'ogg';
+    if (b.includes('mpeg')) return 'mp3';
+    if (b.includes('wav')) return 'wav';
+    return 'webm';
+};
+
+/**
+ * Upload a recording into the bucket's `incoming/` folder, the only place an
+ * unsigned-in phone is allowed to write. Upload happens at Send, not at Stop, so
+ * a patient who records and then walks away leaves nothing behind.
+ */
+async function uploadVoiceNote(v: VoiceNote): Promise<string> {
+    const id = (crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const path = `incoming/${id}.${extFor(v.mimeType)}`;
+    const res = await withTimeout(
+        (supabase as any).storage.from(AUDIO_BUCKET).upload(path, v.blob, {
+            contentType: baseMime(v.mimeType),
+            upsert: false,
+        }) as any,
+        45000,
+        'Timed out while uploading your voice note'
+    ) as { error: any };
+    if (res.error) throw new Error('Could not upload your voice note');
+    return path;
 }
 
 const DEVICE_KEY_STORAGE = 'bh_feedback_device';
@@ -99,17 +141,33 @@ export interface SubmitResult {
 }
 
 export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResult> {
+    const audioPath = s.voice ? await uploadVoiceNote(s.voice) : null;
+
+    const params: Record<string, unknown> = {
+        p_code: (s.code || '').trim(),
+        p_visit_type: s.visitType,
+        p_ratings: s.ratings,
+        p_comment: (s.comment || '').trim() || null,
+        p_mr_number: s.shareWithDoctor ? (s.mrNumber || '').trim() || null : null,
+        p_share_with_doctor: !!s.shareWithDoctor,
+        p_language: s.language || 'en',
+        // One tablet, many patients: the per-phone throttle would drop every
+        // desk response after the first.
+        p_device_key: s.desk ? null : deviceKey(),
+    };
+    // The three newer arguments are sent ONLY when used. A plain poster
+    // response then matches the function's original eight-argument signature
+    // too, so a build that reaches production before
+    // sql/20260927c_feedback_voice_and_delete.sql has run still accepts
+    // ordinary feedback instead of rejecting every submission.
+    if (audioPath) {
+        params.p_audio_path = audioPath;
+        params.p_audio_seconds = Math.round(s.voice!.seconds);
+    }
+    if (s.desk) params.p_source = 'desk';
+
     const res = await withTimeout(
-        (supabase as any).rpc('submit_hospital_feedback', {
-            p_code: (s.code || '').trim(),
-            p_visit_type: s.visitType,
-            p_ratings: s.ratings,
-            p_comment: (s.comment || '').trim() || null,
-            p_mr_number: s.shareWithDoctor ? (s.mrNumber || '').trim() || null : null,
-            p_share_with_doctor: !!s.shareWithDoctor,
-            p_language: s.language || 'en',
-            p_device_key: deviceKey(),
-        }) as any,
+        (supabase as any).rpc('submit_hospital_feedback', params) as any,
         15000,
         'Timed out while sending your feedback'
     ) as { data: any; error: any };
@@ -118,7 +176,7 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
     const d = res.data || {};
     if (!d.ok) {
         if (d.reason === 'unknown_code') throw new FeedbackCodeError('This code does not match any hospital');
-        if (d.reason === 'empty') throw new Error('Please rate at least one thing, or write a comment');
+        if (d.reason === 'empty') throw new Error('Please rate at least one thing, write a comment, or record a voice note');
         throw new Error('Could not send your feedback');
     }
     return { duplicate: !!d.duplicate, identified: !!d.identified };
@@ -140,10 +198,12 @@ export interface FeedbackResponse {
     patientName: string | null;
     mrNumber: string | null;
     doctorId: string | null;
-    status: string;
-    acknowledgedAt: string | null;
-    actionNote: string | null;
-    /** The lowest score given, or null if they only left a comment. */
+    /** Storage path of the voice note, if they recorded one. */
+    audioPath: string | null;
+    audioSeconds: number | null;
+    /** 'qr' from the poster, 'desk' from a clinic tablet. */
+    source: string;
+    /** The lowest score given, or null if they only left a comment or voice note. */
     lowestRating: number | null;
 }
 
@@ -201,7 +261,7 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
             .from('hospital_feedback' as any)
             .select(`
                 id, submitted_at, visit_type, ratings, comment, patient_id, doctor_id,
-                shared_with_doctor, status, acknowledged_at, action_note, location_id,
+                shared_with_doctor, audio_path, audio_seconds, source, location_id,
                 hospital_feedback_locations ( id, label ),
                 hospital_patients ( id, name, mr_number )
             `)
@@ -233,9 +293,9 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
             patientName: identified ? (r.hospital_patients?.name ?? null) : null,
             mrNumber: identified ? (r.hospital_patients?.mr_number ?? null) : null,
             doctorId: identified ? (r.doctor_id ?? null) : null,
-            status: r.status || 'new',
-            acknowledgedAt: r.acknowledged_at ?? null,
-            actionNote: r.action_note ?? null,
+            audioPath: r.audio_path ?? null,
+            audioSeconds: r.audio_seconds ?? null,
+            source: r.source || 'qr',
             lowestRating: scores.length ? Math.min(...scores) : null,
         };
     });
@@ -268,7 +328,7 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
     return {
         responses: visible,
         total: rows.length,
-        needsAttention: visible.filter(r => r.lowestRating !== null && r.lowestRating <= NEEDS_ATTENTION_AT && r.status === 'new'),
+        needsAttention: visible.filter(r => r.lowestRating !== null && r.lowestRating <= NEEDS_ATTENTION_AT),
         overall: mean(rows.flatMap(responseScores)),
         byQuestion,
         byVisitType: group(r => (r.visitType ? { key: r.visitType, label: r.visitType } as any : null)),
@@ -276,21 +336,49 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
     };
 }
 
-/** Mark a response as seen, so the attention strip empties as it is worked. */
-export async function acknowledgeFeedback(hospitalId: string, id: string, note: string): Promise<void> {
+/**
+ * Delete a response for good — the hospital's way of saying "dealt with".
+ *
+ * The recording goes FIRST. The storage policy authorises deleting a file only
+ * while a feedback row of this hospital still points at it, so deleting the row
+ * first would leave a voice recording that nothing references and nobody can
+ * reach or remove. If the file will not go, the row stays and the error says so.
+ */
+export async function deleteFeedback(hospitalId: string, id: string, audioPath: string | null): Promise<void> {
+    if (!hospitalId || !id) throw new Error('Missing hospital or response identifier');
+
+    if (audioPath) {
+        const rm = await withTimeout(
+            (supabase as any).storage.from(AUDIO_BUCKET).remove([audioPath]) as any,
+            15000,
+            'Timed out while deleting the voice note'
+        ) as { error: any };
+        if (rm.error) throw new Error('Could not delete the voice note, so the response was kept');
+    }
+
     const res = await withTimeout(
         ((supabase.from('hospital_feedback') as any)
-            .update({
-                status: 'acknowledged',
-                acknowledged_at: new Date().toISOString(),
-                action_note: (note || '').trim() || null,
-            })
+            .delete()
             .eq('hospital_id', hospitalId)
             .eq('id', id)) as any,
         10000,
-        'Timed out while saving'
+        'Timed out while deleting'
     ) as { error: any };
     if (res.error) throw res.error;
+}
+
+/**
+ * A short-lived link to play a voice note. Signed rather than public: the
+ * bucket is private, and a recording is somebody's voice.
+ */
+export async function getFeedbackAudioUrl(path: string): Promise<string> {
+    const res = await withTimeout(
+        (supabase as any).storage.from(AUDIO_BUCKET).createSignedUrl(path, 60 * 60) as any,
+        10000,
+        'Timed out while loading the voice note'
+    ) as { data: { signedUrl?: string } | null; error: any };
+    if (res.error || !res.data?.signedUrl) throw new Error('Could not load the voice note');
+    return res.data.signedUrl;
 }
 
 export interface FeedbackLocation {
