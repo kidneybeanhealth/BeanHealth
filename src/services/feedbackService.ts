@@ -15,7 +15,7 @@
  */
 import { supabase } from '../lib/supabase';
 import { withTimeout } from '../utils/requestUtils';
-import { ALL_QUESTIONS, NEEDS_ATTENTION_AT, type VisitTypeId } from '../components/feedback/feedbackQuestions';
+import { ALL_QUESTIONS, DOCTOR_QUESTION_IDS, NEEDS_ATTENTION_AT, doctorDisplayName, type VisitTypeId } from '../components/feedback/feedbackQuestions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IN — the public form
@@ -27,6 +27,8 @@ export interface ResolvedLocation {
     area: string;
     hospitalName: string;
     hospitalLogo: string | null;
+    /** For "Which doctor did you see?". Empty before 20261008 has run. */
+    doctors: { id: string; name: string }[];
 }
 
 export class FeedbackCodeError extends Error {
@@ -55,6 +57,9 @@ export async function resolveFeedbackLocation(code: string): Promise<ResolvedLoc
         area: d.area || 'hospital',
         hospitalName: d.hospital_name || 'Hospital',
         hospitalLogo: d.hospital_logo || null,
+        doctors: Array.isArray(d.doctors)
+            ? d.doctors.filter((x: any) => x && x.id && x.name).map((x: any) => ({ id: String(x.id), name: String(x.name) }))
+            : [],
     };
 }
 
@@ -75,6 +80,8 @@ export interface FeedbackSubmission {
     voice?: VoiceNote | null;
     /** A clinic tablet handed from patient to patient. See feedbackLinks. */
     desk?: boolean;
+    /** The doctor the patient says they saw, from the picker. */
+    ratedDoctorId?: string | null;
 }
 
 const AUDIO_BUCKET = 'feedback-audio';
@@ -165,12 +172,23 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
         params.p_audio_seconds = Math.round(s.voice!.seconds);
     }
     if (s.desk) params.p_source = 'desk';
+    if (s.ratedDoctorId) params.p_rated_doctor_id = s.ratedDoctorId;
 
-    const res = await withTimeout(
-        (supabase as any).rpc('submit_hospital_feedback', params) as any,
+    const call = (p: Record<string, unknown>) => withTimeout(
+        (supabase as any).rpc('submit_hospital_feedback', p) as any,
         15000,
         'Timed out while sending your feedback'
-    ) as { data: any; error: any };
+    ) as Promise<{ data: any; error: any }>;
+
+    let res = await call(params);
+    // PGRST202 = no function with these arguments: this build is live but
+    // sql/20261008_feedback_places_and_doctors.sql has not run yet. Send the
+    // response without the doctor rather than losing it — the ratings matter
+    // more than who they are filed under.
+    if (res.error?.code === 'PGRST202' && 'p_rated_doctor_id' in params) {
+        const { p_rated_doctor_id: _drop, ...rest } = params;
+        res = await call(rest);
+    }
 
     if (res.error) throw res.error;
     const d = res.data || {};
@@ -198,6 +216,9 @@ export interface FeedbackResponse {
     patientName: string | null;
     mrNumber: string | null;
     doctorId: string | null;
+    /** The doctor the patient picked. Recorded for anonymous responses too. */
+    ratedDoctorId: string | null;
+    ratedDoctorName: string | null;
     /** Storage path of the voice note, if they recorded one. */
     audioPath: string | null;
     audioSeconds: number | null;
@@ -214,6 +235,16 @@ export interface QuestionAverage {
     count: number;
 }
 
+export interface DoctorScore {
+    id: string;
+    name: string;
+    /** Responses that picked this doctor. */
+    count: number;
+    /** Mean of the doctor-section ratings only, not the whole visit. */
+    average: number | null;
+    byQuestion: { id: string; average: number | null; count: number }[];
+}
+
 export interface FeedbackRegister {
     responses: FeedbackResponse[];
     total: number;
@@ -223,6 +254,7 @@ export interface FeedbackRegister {
     byQuestion: QuestionAverage[];
     byVisitType: { id: string; label: string; count: number; average: number | null }[];
     byLocation: { id: string; label: string; count: number; average: number | null }[];
+    byDoctor: DoctorScore[];
 }
 
 const mean = (xs: number[]): number | null =>
@@ -236,8 +268,14 @@ export interface FeedbackQuery {
     hospitalId: string;
     from: string;
     to: string;
-    /** When set, the Responses list narrows to this doctor's own patients. */
+    /** With `doctorScope`, narrows the Responses list to one doctor. */
     doctorId?: string | null;
+    /**
+     * 'about'  — responses where the patient picked this doctor
+     * 'shared' — named patients who shared their feedback with this doctor
+     * Ignored without `doctorId`.
+     */
+    doctorScope?: 'all' | 'about' | 'shared';
     limit?: number;
 }
 
@@ -252,19 +290,19 @@ export interface FeedbackQuery {
 export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackRegister> {
     const empty: FeedbackRegister = {
         responses: [], total: 0, needsAttention: [], overall: null,
-        byQuestion: [], byVisitType: [], byLocation: [],
+        byQuestion: [], byVisitType: [], byLocation: [], byDoctor: [],
     };
     if (!q.hospitalId) return empty;
 
-    const res = await withTimeout(
+    const BASE = `
+        id, submitted_at, visit_type, ratings, comment, patient_id, doctor_id,
+        shared_with_doctor, audio_path, audio_seconds, source, location_id,
+        hospital_feedback_locations ( id, label ),
+        hospital_patients ( id, name, mr_number )`;
+    const read = (cols: string) => withTimeout(
         (supabase
             .from('hospital_feedback' as any)
-            .select(`
-                id, submitted_at, visit_type, ratings, comment, patient_id, doctor_id,
-                shared_with_doctor, audio_path, audio_seconds, source, location_id,
-                hospital_feedback_locations ( id, label ),
-                hospital_patients ( id, name, mr_number )
-            `)
+            .select(cols)
             .eq('hospital_id', q.hospitalId)
             .gte('submitted_at', q.from)
             .lte('submitted_at', q.to)
@@ -272,7 +310,17 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
             .limit(q.limit ?? 1000)) as any,
         15000,
         'Timed out while loading feedback'
-    ) as { data: any[] | null; error: any };
+    ) as Promise<{ data: any[] | null; error: any }>;
+
+    let res = await read(`${BASE},
+        rated_doctor_id,
+        rated_doctor:hospital_doctors!hospital_feedback_rated_doctor_id_fkey ( id, name )`);
+    // Before sql/20261008 the column and its relationship do not exist, and
+    // asking for them fails the whole read. The register still opens without
+    // the per-doctor view rather than not opening at all.
+    if (res.error && ['42703', 'PGRST200', 'PGRST100'].includes(res.error.code)) {
+        res = await read(BASE);
+    }
 
     if (res.error) throw res.error;
 
@@ -293,6 +341,8 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
             patientName: identified ? (r.hospital_patients?.name ?? null) : null,
             mrNumber: identified ? (r.hospital_patients?.mr_number ?? null) : null,
             doctorId: identified ? (r.doctor_id ?? null) : null,
+            ratedDoctorId: r.rated_doctor_id ?? null,
+            ratedDoctorName: r.rated_doctor?.name ? doctorDisplayName(r.rated_doctor.name) : null,
             audioPath: r.audio_path ?? null,
             audioSeconds: r.audio_seconds ?? null,
             source: r.source || 'qr',
@@ -323,7 +373,37 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
             .sort((a, b) => b.count - a.count);
     };
 
-    const visible = q.doctorId ? rows.filter(r => r.doctorId === q.doctorId) : rows;
+    // Per doctor: only the doctor-section answers, so a cold ward meal does not
+    // count against the consultant who saw them.
+    const doctorAcc = new Map<string, { name: string; count: number; byQ: Map<string, number[]> }>();
+    for (const r of rows) {
+        if (!r.ratedDoctorId) continue;
+        const cur = doctorAcc.get(r.ratedDoctorId)
+            || { name: r.ratedDoctorName || 'Doctor', count: 0, byQ: new Map<string, number[]>() };
+        cur.count += 1;
+        for (const id of DOCTOR_QUESTION_IDS) {
+            const v = r.ratings[id];
+            if (typeof v === 'number') cur.byQ.set(id, [...(cur.byQ.get(id) || []), v]);
+        }
+        doctorAcc.set(r.ratedDoctorId, cur);
+    }
+    const byDoctor: DoctorScore[] = [...doctorAcc.entries()]
+        .map(([id, v]) => ({
+            id,
+            name: v.name,
+            count: v.count,
+            average: mean([...v.byQ.values()].flat()),
+            byQuestion: DOCTOR_QUESTION_IDS.map(qid => {
+                const vals = v.byQ.get(qid) || [];
+                return { id: qid, average: mean(vals), count: vals.length };
+            }),
+        }))
+        .sort((a, b) => b.count - a.count);
+
+    const scope = q.doctorId ? (q.doctorScope || 'all') : 'all';
+    const visible = scope === 'about' ? rows.filter(r => r.ratedDoctorId === q.doctorId)
+        : scope === 'shared' ? rows.filter(r => r.doctorId === q.doctorId)
+        : rows;
 
     return {
         responses: visible,
@@ -333,6 +413,7 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
         byQuestion,
         byVisitType: group(r => (r.visitType ? { key: r.visitType, label: r.visitType } as any : null)),
         byLocation: group(r => (r.locationLabel ? { key: r.locationLabel, label: r.locationLabel } as any : null)),
+        byDoctor,
     };
 }
 

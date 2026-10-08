@@ -23,14 +23,20 @@ import {
 } from '../../services/feedbackService';
 import VoiceNoteRecorder from './VoiceNoteRecorder';
 import {
-    VISIT_TYPES, SCALE, questionsFor,
-    type Lang, type VisitTypeId,
+    VISIT_TYPES, SCALE, SECTIONS, DOCTOR_VISITS, questionsFor, optionalFor, fixedVisitTypeFor, doctorDisplayName,
+    type Lang, type VisitTypeId, type FeedbackQuestion, type SectionId,
 } from './feedbackQuestions';
 
 /** UI chrome. Question wording lives in the catalogue, next to the ids. */
 const T = {
     en: {
         heading: 'How was your visit?',
+        headingRestroom: 'How is this restroom?',
+        headingReception: 'How was the reception desk?',
+        doctorQ: 'Which doctor did you see?',
+        notSure: 'Not sure',
+        alsoUsedQ: 'Did you also use any of these today?',
+        alsoUsedSub: 'Tap the ones you used and rate them below.',
         sub: 'A minute of your time helps us fix what is not working.',
         visitQ: 'What brought you in today?',
         rateQ: 'How would you rate these?',
@@ -58,6 +64,12 @@ const T = {
     },
     ta: {
         heading: 'உங்கள் வருகை எப்படி இருந்தது?',
+        headingRestroom: 'இந்தக் கழிப்பறை எப்படி இருக்கிறது?',
+        headingReception: 'வரவேற்பு மேசை எப்படி இருந்தது?',
+        doctorQ: 'எந்த மருத்துவரைப் பார்த்தீர்கள்?',
+        notSure: 'தெரியவில்லை',
+        alsoUsedQ: 'இன்று இவற்றில் எதையாவது பயன்படுத்தினீர்களா?',
+        alsoUsedSub: 'பயன்படுத்தியவற்றைத் தொட்டு, கீழே மதிப்பிடுங்கள்.',
         sub: 'உங்கள் ஒரு நிமிடம், சரி செய்ய வேண்டியதை எங்களுக்குக் காட்டும்.',
         visitQ: 'இன்று எதற்காக வந்தீர்கள்?',
         rateQ: 'இவற்றை எப்படி மதிப்பிடுவீர்கள்?',
@@ -108,6 +120,10 @@ const PatientFeedbackForm: React.FC = () => {
     const [loadError, setLoadError] = useState<string | null>(null);
 
     const [visitType, setVisitType] = useState<VisitTypeId | null>(null);
+    // Optional questions the patient said apply ("I used the lab today").
+    const [used, setUsed] = useState<Set<string>>(new Set());
+    // A doctor id, 'unsure', or null for not answered.
+    const [ratedDoctor, setRatedDoctor] = useState<string | null>(null);
     const [ratings, setRatings] = useState<Record<string, number>>({});
     const [comment, setComment] = useState('');
     const [voice, setVoice] = useState<VoiceNote | null>(null);
@@ -127,24 +143,54 @@ const PatientFeedbackForm: React.FC = () => {
         setLoc(null);
         setLoadError(null);
         resolveFeedbackLocation(code)
-            .then(r => { if (!cancelled) setLoc(r); })
+            .then(r => {
+                if (cancelled) return;
+                setLoc(r);
+                // A place QR (OP, IP, Reception, Restroom) already knows the visit.
+                setVisitType(fixedVisitTypeFor(r.area));
+            })
             .catch(e => { if (!cancelled) setLoadError(e instanceof FeedbackCodeError ? e.message : 'Could not open the form'); });
         return () => { cancelled = true; };
     }, [code]);
 
-    const questions = useMemo(() => questionsFor(visitType), [visitType]);
+    const fixedVisit = fixedVisitTypeFor(loc?.area);
+    const questions = useMemo(() => questionsFor(visitType, used), [visitType, used]);
+    const optional = useMemo(() => optionalFor(visitType), [visitType]);
+    const seesDoctor = !!visitType && DOCTOR_VISITS.includes(visitType);
+    const doctors = loc?.doctors || [];
 
     // Answers to questions that no longer apply are dropped when the visit type
     // changes, so a patient who taps Dialysis then Admitted does not silently
-    // submit a rating for a chair they never sat in.
+    // submit a rating for a chair they never sat in. Same when they untick
+    // "I used the lab".
     useEffect(() => {
         setRatings(prev => {
-            const allowed = new Set(questionsFor(visitType).map(q => q.id));
+            const allowed = new Set(questionsFor(visitType, used).map(q => q.id));
             const next: Record<string, number> = {};
             for (const [k, v] of Object.entries(prev)) if (allowed.has(k)) next[k] = v;
             return next;
         });
+    }, [visitType, used]);
+
+    useEffect(() => {
+        setUsed(prev => {
+            const offered = new Set(optionalFor(visitType).map(q => q.id));
+            const next = new Set([...prev].filter(id => offered.has(id)));
+            return next.size === prev.size ? prev : next;
+        });
+        if (!visitType || !DOCTOR_VISITS.includes(visitType)) setRatedDoctor(null);
     }, [visitType]);
+
+    // Questions in section order, with a heading wherever the section changes.
+    const sections = useMemo(() => {
+        const out: { id: SectionId; questions: FeedbackQuestion[] }[] = [];
+        for (const q of questions) {
+            const last = out[out.length - 1];
+            if (last && last.id === q.section) last.questions.push(q);
+            else out.push({ id: q.section, questions: [q] });
+        }
+        return out;
+    }, [questions]);
 
     const answered = Object.keys(ratings).length;
     const canSend = answered > 0 || comment.trim().length > 0 || !!voice;
@@ -156,6 +202,7 @@ const PatientFeedbackForm: React.FC = () => {
         try {
             const res = await submitFeedback({
                 code, visitType, ratings, comment, voice, desk,
+                ratedDoctorId: seesDoctor && ratedDoctor && ratedDoctor !== 'unsure' ? ratedDoctor : null,
                 mrNumber, shareWithDoctor: share && mrNumber.trim().length > 0,
                 language: lang,
             });
@@ -253,7 +300,8 @@ const PatientFeedbackForm: React.FC = () => {
                     type="button"
                     onClick={() => {
                         setDone(null); setRatings({}); setComment(''); setVoice(null);
-                        setShare(false); setMrNumber(''); setVisitType(null); setError(null);
+                        setShare(false); setMrNumber(''); setVisitType(fixedVisit); setError(null);
+                        setUsed(new Set()); setRatedDoctor(null);
                         window.scrollTo({ top: 0 });
                     }}
                     className={desk
@@ -271,11 +319,15 @@ const PatientFeedbackForm: React.FC = () => {
             {header}
 
             <div className="mb-5">
-                <h1 className="text-2xl font-bold leading-tight text-gray-900">{t.heading}</h1>
+                <h1 className="text-2xl font-bold leading-tight text-gray-900">
+                    {visitType === 'restroom' ? t.headingRestroom : visitType === 'reception' ? t.headingReception : t.heading}
+                </h1>
                 <p className="mt-1 text-sm text-gray-500">{t.sub}</p>
             </div>
 
-            {/* Visit type. First, because it decides what is worth asking. */}
+            {/* Visit type. First, because it decides what is worth asking. A
+                place QR already knows it, so the step is skipped there. */}
+            {!fixedVisit && (
             <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <p className="mb-3 text-sm font-bold text-gray-900">{t.visitQ}</p>
                 <div className="grid gap-2">
@@ -301,51 +353,122 @@ const PatientFeedbackForm: React.FC = () => {
                     })}
                 </div>
             </section>
+            )}
 
-            {/* Ratings */}
+            {/* Ratings, by section. Nothing until the visit is known: every
+                question now belongs to some kind of visit or place. */}
+            {visitType && (
             <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <p className="mb-1 text-sm font-bold text-gray-900">{t.rateQ}</p>
                 <p className="mb-4 text-xs text-gray-400">
                     {lang === 'ta' ? 'ஒவ்வொன்றும் விருப்பம்' : 'Every one of these is optional'}
                 </p>
-                <div className="divide-y divide-gray-100">
-                    {questions.map(q => (
-                        <div key={q.id} className="py-3 first:pt-0 last:pb-0">
-                            <p className="text-sm font-semibold text-gray-800">{lang === 'ta' ? q.labelTa : q.label}</p>
-                            {(lang === 'ta' ? q.hintTa : q.hint) && (
-                                <p className="mt-0.5 text-xs text-gray-400">{lang === 'ta' ? q.hintTa : q.hint}</p>
+
+                {/* "I also used…" — the lab, TPA desk and pharmacy are only asked
+                    about once the patient says they went there. */}
+                {optional.length > 0 && (
+                    <div className="mb-5 rounded-xl bg-gray-50 p-3">
+                        <p className="text-sm font-semibold text-gray-800">{t.alsoUsedQ}</p>
+                        <p className="mb-2.5 text-xs text-gray-500">{t.alsoUsedSub}</p>
+                        <div className="flex flex-wrap gap-2">
+                            {optional.map(q => {
+                                const on = used.has(q.id);
+                                return (
+                                    <button
+                                        key={q.id}
+                                        type="button"
+                                        aria-pressed={on}
+                                        onClick={() => setUsed(prev => {
+                                            const next = new Set(prev);
+                                            if (next.has(q.id)) next.delete(q.id); else next.add(q.id);
+                                            return next;
+                                        })}
+                                        className={`min-h-[44px] rounded-full border px-4 text-sm font-bold transition-colors ${on ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-300 bg-white text-gray-700 hover:border-orange-300'}`}
+                                    >
+                                        {on ? '✓ ' : '+ '}{lang === 'ta' ? q.labelTa : q.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {sections.map(sec => {
+                    const meta = SECTIONS.find(x => x.id === sec.id);
+                    return (
+                        <div key={sec.id} className="mt-5 first:mt-0">
+                            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-orange-600">
+                                {lang === 'ta' ? meta?.labelTa : meta?.label}
+                            </p>
+
+                            {/* Which doctor — so each doctor sees their own. */}
+                            {sec.id === 'doctor' && seesDoctor && doctors.length > 0 && (
+                                <div className="mb-3">
+                                    <p className="mb-2 text-sm font-semibold text-gray-800">{t.doctorQ}</p>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {[...doctors.map(d => ({ id: d.id, label: doctorDisplayName(d.name) })), { id: 'unsure', label: t.notSure }].map(d => {
+                                            const on = ratedDoctor === d.id;
+                                            return (
+                                                <button
+                                                    key={d.id}
+                                                    type="button"
+                                                    aria-pressed={on}
+                                                    onClick={() => setRatedDoctor(on ? null : d.id)}
+                                                    className={`flex min-h-[52px] items-center gap-3 rounded-xl border px-4 text-left text-sm font-bold transition-colors ${on ? 'border-orange-400 bg-orange-50 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:border-orange-200'} ${d.id === 'unsure' ? 'sm:col-span-2' : ''}`}
+                                                >
+                                                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${on ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`}>
+                                                        {on && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                                                    </span>
+                                                    {d.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             )}
-                            <div className="mt-2.5 flex items-stretch gap-1.5">
-                                {SCALE.map(s => {
-                                    const on = ratings[q.id] === s.value;
-                                    return (
-                                        <button
-                                            key={s.value}
-                                            type="button"
-                                            aria-label={lang === 'ta' ? s.labelTa : s.label}
-                                            aria-pressed={on}
-                                            onClick={() => setRatings(prev => {
-                                                const next = { ...prev };
-                                                // Tapping the same face again clears it — the only
-                                                // way back to "no answer" once one is given.
-                                                if (next[q.id] === s.value) delete next[q.id];
-                                                else next[q.id] = s.value;
-                                                return next;
+
+                            <div className="divide-y divide-gray-100">
+                                {sec.questions.map(q => (
+                                    <div key={q.id} className="py-3 first:pt-0 last:pb-0">
+                                        <p className="text-sm font-semibold text-gray-800">{lang === 'ta' ? q.labelTa : q.label}</p>
+                                        {(lang === 'ta' ? q.hintTa : q.hint) && (
+                                            <p className="mt-0.5 text-xs text-gray-400">{lang === 'ta' ? q.hintTa : q.hint}</p>
+                                        )}
+                                        <div className="mt-2.5 flex items-stretch gap-1.5">
+                                            {SCALE.map(sc => {
+                                                const on = ratings[q.id] === sc.value;
+                                                return (
+                                                    <button
+                                                        key={sc.value}
+                                                        type="button"
+                                                        aria-label={lang === 'ta' ? sc.labelTa : sc.label}
+                                                        aria-pressed={on}
+                                                        onClick={() => setRatings(prev => {
+                                                            const next = { ...prev };
+                                                            // Tapping the same face again clears it — the only
+                                                            // way back to "no answer" once one is given.
+                                                            if (next[q.id] === sc.value) delete next[q.id];
+                                                            else next[q.id] = sc.value;
+                                                            return next;
+                                                        })}
+                                                        className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl border transition-colors ${on ? SCORE_TONE[sc.value] : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                                    >
+                                                        <span className="text-xl leading-none">{FACES[sc.value - 1]}</span>
+                                                        <span className={`text-[9px] font-bold leading-tight ${on ? 'text-white/90' : 'text-gray-400'}`}>
+                                                            {lang === 'ta' ? sc.labelTa : sc.label}
+                                                        </span>
+                                                    </button>
+                                                );
                                             })}
-                                            className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl border transition-colors ${on ? SCORE_TONE[s.value] : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                                        >
-                                            <span className="text-xl leading-none">{FACES[s.value - 1]}</span>
-                                            <span className={`text-[9px] font-bold leading-tight ${on ? 'text-white/90' : 'text-gray-400'}`}>
-                                                {lang === 'ta' ? s.labelTa : s.label}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    ))}
-                </div>
+                    );
+                })}
             </section>
+            )}
 
             {/* Comment */}
             <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -365,7 +488,10 @@ const PatientFeedbackForm: React.FC = () => {
                 <p className="mt-1 text-right text-[11px] text-gray-400">{comment.length}/1000</p>
             </section>
 
-            {/* Identity — off by default, and it says so in words, not in a hint. */}
+            {/* Identity — off by default, and it says so in words, not in a hint.
+                Not offered on the restroom form: there is nothing for a doctor
+                to follow up. */}
+            {visitType !== 'restroom' && (
             <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <button
                     type="button"
@@ -398,6 +524,7 @@ const PatientFeedbackForm: React.FC = () => {
                     {share ? t.shareOn : t.shareOff}
                 </p>
             </section>
+            )}
 
             {error && (
                 <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm font-medium text-rose-800">{error}</p>

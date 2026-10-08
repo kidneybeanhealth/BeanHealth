@@ -30,7 +30,7 @@ import {
     fetchFeedbackRegister, deleteFeedback, getFeedbackAudioUrl, fetchFeedbackLocations,
     type FeedbackRegister, type FeedbackResponse, type FeedbackLocation,
 } from '../../services/feedbackService';
-import { visitTypeLabel, questionLabel, NEEDS_ATTENTION_AT } from '../feedback/feedbackQuestions';
+import { visitTypeLabel, questionLabel, questionSection, SECTIONS, NEEDS_ATTENTION_AT } from '../feedback/feedbackQuestions';
 import FeedbackPosterModal from './FeedbackPosterModal';
 import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 import { feedbackUrl } from '../feedback/feedbackLinks';
@@ -152,10 +152,10 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
     const [cFrom, setCFrom] = useState('');
     const [cTo, setCTo] = useState('');
     const [tab, setTab] = useState<'responses' | 'questions'>('responses');
-    // Off by default: a doctor opening this wants to see what the hospital is
-    // hearing. Scoping to their own named responses is a question they ask
-    // second, and on most days the answer is an empty list.
-    const [mineOnly, setMineOnly] = useState(false);
+    // 'all' by default: a doctor opening this wants to see what the hospital is
+    // hearing. "About me" (patients who picked this doctor) and "Shared with
+    // me" (named patients) are questions they ask second.
+    const [scope, setScope] = useState<'all' | 'about' | 'shared'>('all');
 
     const [data, setData] = useState<FeedbackRegister | null>(null);
     const [loading, setLoading] = useState(true);
@@ -176,7 +176,8 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                 hospitalId,
                 from: range.from,
                 to: range.to,
-                doctorId: mineOnly ? doctorId : null,
+                doctorId: doctorId || null,
+                doctorScope: scope,
             });
             setData(r);
         } catch (e: any) {
@@ -184,7 +185,7 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
         } finally {
             setLoading(false);
         }
-    }, [hospitalId, range.from, range.to, mineOnly, doctorId]);
+    }, [hospitalId, range.from, range.to, scope, doctorId]);
 
     useEffect(() => { load(); }, [load]);
     useEffect(() => {
@@ -210,8 +211,10 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
 
     // Open the form on this device for a patient standing at the desk. Desk
     // mode, so handing the tablet to the next patient is not throttled away.
-    const openForm = () => {
-        const loc = locations.find(l => l.isActive);
+    // With one QR per place, the desk picks which place's form to open.
+    const activeLocations = locations.filter(l => l.isActive);
+    const openForm = (code?: string) => {
+        const loc = code ? activeLocations.find(l => l.code === code) : activeLocations[0];
         if (!loc) { toast.error('No feedback form is set up yet'); return; }
         window.open(feedbackUrl(loc.code, { desk: true }), '_blank', 'noopener');
     };
@@ -249,14 +252,26 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                     >
                         Refresh
                     </button>
-                    <button
-                        type="button"
-                        onClick={openForm}
-                        title="Opens the patient form on this device, for a patient at the desk"
-                        className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-100"
-                    >
-                        Open form
-                    </button>
+                    {activeLocations.length > 1 ? (
+                        <select
+                            value=""
+                            onChange={e => { if (e.target.value) openForm(e.target.value); }}
+                            title="Opens that place's patient form on this device, for a patient at the desk"
+                            className="rounded-lg border border-orange-200 bg-orange-50 px-2 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-100"
+                        >
+                            <option value="">Open form…</option>
+                            {activeLocations.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+                        </select>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => openForm()}
+                            title="Opens the patient form on this device, for a patient at the desk"
+                            className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-100"
+                        >
+                            Open form
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => setPosterOpen(true)}
@@ -351,55 +366,115 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                             </button>
                         ))}
                         {doctorId && tab === 'responses' && (
-                            <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-gray-600">
-                                <input type="checkbox" checked={mineOnly} onChange={e => setMineOnly(e.target.checked)} />
-                                Only patients shared with {doctorName || 'me'}
-                            </label>
+                            <span className="ml-auto inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
+                                {([
+                                    ['all', 'Everyone'],
+                                    ['about', `About ${doctorName || 'me'}`],
+                                    ['shared', 'Shared with me'],
+                                ] as const).map(([k, label]) => (
+                                    <button
+                                        key={k}
+                                        type="button"
+                                        onClick={() => setScope(k)}
+                                        title={k === 'about' ? 'Patients who said they saw you' : k === 'shared' ? 'Named patients who chose to share their feedback with you' : undefined}
+                                        className={`px-2.5 py-1 text-[11px] font-bold ${scope === k ? 'bg-sky-100 text-sky-800' : 'text-gray-600 hover:bg-gray-50'}`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </span>
                         )}
                     </div>
 
                     {tab === 'questions' ? (
-                        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-                            {(data?.byQuestion.length ?? 0) === 0 ? (
-                                <p className="px-4 py-10 text-center text-sm text-gray-400">Nothing rated in this period yet.</p>
-                            ) : (
-                                [...(data?.byQuestion || [])]
-                                    .sort((a, b) => a.average - b.average)
-                                    .map(q => (
-                                        <div key={q.id} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
-                                            <span className="w-44 shrink-0 text-sm font-semibold text-gray-800">{q.label}</span>
-                                            <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-gray-100">
-                                                <span
-                                                    className={`block h-full rounded-full ${barFor(q.average)}`}
-                                                    style={{ width: `${(q.average / 5) * 100}%` }}
-                                                />
-                                            </span>
-                                            <ScoreChip value={q.average} />
-                                            <span className="w-12 shrink-0 text-right text-[11px] text-gray-400">{q.count}</span>
+                        <div className="space-y-4">
+                            {/* By doctor — the doctor-section ratings only, so a ward
+                                meal does not count against the consultant. */}
+                            {(data?.byDoctor.length ?? 0) > 0 && (
+                                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+                                    <p className="border-b border-gray-100 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">By doctor</p>
+                                    {data!.byDoctor.map(d => (
+                                        <div key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-gray-100 px-4 py-3 last:border-b-0">
+                                            <span className="w-44 shrink-0 text-sm font-semibold text-gray-800">{d.name}</span>
+                                            <ScoreChip value={d.average} />
+                                            {d.byQuestion.filter(x => x.count > 0).map(x => (
+                                                <ScoreChip key={x.id} value={x.average} label={questionLabel(x.id)} />
+                                            ))}
+                                            <span className="ml-auto text-[11px] text-gray-400">{d.count} response{d.count === 1 ? '' : 's'}</span>
                                         </div>
-                                    ))
-                            )}
-                            {(data?.byVisitType.length ?? 0) > 0 && (
-                                <div className="border-t border-gray-200 bg-gray-50/70 px-4 py-3">
-                                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">By visit type</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {data?.byVisitType.map(v => (
-                                            <span key={v.id} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5">
-                                                <span className="text-xs font-semibold text-gray-700">{visitTypeLabel(v.id)}</span>
-                                                <ScoreChip value={v.average} />
-                                                <span className="text-[11px] text-gray-400">{v.count}</span>
-                                            </span>
-                                        ))}
-                                    </div>
+                                    ))}
                                 </div>
                             )}
+
+                            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+                                {(data?.byQuestion.length ?? 0) === 0 ? (
+                                    <p className="px-4 py-10 text-center text-sm text-gray-400">Nothing rated in this period yet.</p>
+                                ) : (
+                                    [...SECTIONS.map(sec => ({ id: sec.id as string | null, label: sec.label })), { id: null, label: 'Earlier questions' }]
+                                        .map(sec => ({
+                                            ...sec,
+                                            items: (data?.byQuestion || [])
+                                                .filter(q => questionSection(q.id) === sec.id)
+                                                .sort((a, b) => a.average - b.average),
+                                        }))
+                                        .filter(sec => sec.items.length > 0)
+                                        .map(sec => (
+                                            <div key={sec.id ?? 'retired'}>
+                                                <p className="border-b border-gray-100 bg-gray-50/70 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">{sec.label}</p>
+                                                {sec.items.map(q => (
+                                                    <div key={q.id} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
+                                                        <span className="w-44 shrink-0 text-sm font-semibold text-gray-800">{q.label}</span>
+                                                        <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                                            <span
+                                                                className={`block h-full rounded-full ${barFor(q.average)}`}
+                                                                style={{ width: `${(q.average / 5) * 100}%` }}
+                                                            />
+                                                        </span>
+                                                        <ScoreChip value={q.average} />
+                                                        <span className="w-12 shrink-0 text-right text-[11px] text-gray-400">{q.count}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ))
+                                )}
+                                {(data?.byLocation.length ?? 0) > 1 && (
+                                    <div className="border-t border-gray-200 bg-gray-50/70 px-4 py-3">
+                                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">By QR / place</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {data?.byLocation.map(v => (
+                                                <span key={v.id} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5">
+                                                    <span className="text-xs font-semibold text-gray-700">{v.label}</span>
+                                                    <ScoreChip value={v.average} />
+                                                    <span className="text-[11px] text-gray-400">{v.count}</span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {(data?.byVisitType.length ?? 0) > 0 && (
+                                    <div className="border-t border-gray-200 bg-gray-50/70 px-4 py-3">
+                                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">By visit type</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {data?.byVisitType.map(v => (
+                                                <span key={v.id} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5">
+                                                    <span className="text-xs font-semibold text-gray-700">{visitTypeLabel(v.id)}</span>
+                                                    <ScoreChip value={v.average} />
+                                                    <span className="text-[11px] text-gray-400">{v.count}</span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     ) : rows.length === 0 ? (
                         <div className="rounded-xl border border-gray-200 bg-white px-4 py-16 text-center">
                             <p className="text-sm font-semibold text-gray-600">No responses in this period</p>
                             <p className="mt-1 text-xs text-gray-400">
-                                {mineOnly
-                                    ? 'Nobody has shared feedback with you yet. Untick the filter to see the whole hospital.'
+                                {scope !== 'all'
+                                    ? (scope === 'about'
+                                        ? 'No patient has picked you on the form in this period. Choose Everyone to see the whole hospital.'
+                                        : 'Nobody has shared feedback with you yet. Choose Everyone to see the whole hospital.')
                                     : 'Print the QR poster and put it where patients wait.'}
                             </p>
                         </div>
@@ -419,6 +494,11 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
                                                 {visitTypeLabel(r.visitType)}
                                             </span>
+                                            {r.ratedDoctorName && (
+                                                <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-800">
+                                                    {r.ratedDoctorName}
+                                                </span>
+                                            )}
                                             {r.patientId ? (
                                                 <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-800">
                                                     {r.patientName || 'Patient'}
