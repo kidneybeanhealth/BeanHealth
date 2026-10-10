@@ -163,11 +163,10 @@ const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ hospitalId, l
     // The reliable path on a phone, whose print dialog may ignore the poster's
     // portrait page size (see feedbackPosterPdf).
     const downloadPdf = async () => {
-        const frame = frameRef.current;
-        if (!frame || !loc) { toast.error('The poster has not finished loading'); return; }
+        if (!html || !loc) { toast.error('The poster has not finished loading'); return; }
         setDownloading(true);
         try {
-            await downloadPosterPdf(frame, size, `${posterTitleFor(loc.area).en} - ${loc.code} - ${size}.pdf`);
+            await downloadPosterPdf(html, frameRef.current, size, `${posterTitleFor(loc.area).en} - ${loc.code} - ${size}.pdf`);
         } catch (e: any) {
             toast.error(e?.message || 'Could not make the PDF');
         } finally {

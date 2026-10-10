@@ -77,6 +77,14 @@ export const POSTER_PAGE_MM: Record<PosterSize, { w: number; h: number }> = {
     A5: { w: 148, h: 210 },
 };
 
+/**
+ * The tick, drawn rather than typed. A "✓" character comes from whichever font
+ * a device has for it — Android's Tinos has none — so its size and baseline
+ * moved from device to device, and in the PDF it sat on the bottom of its
+ * circle. A path is the same everywhere.
+ */
+const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 12.5l4.2 4.2L18.5 7.8"/></svg>';
+
 export function buildFeedbackPosterHtml(p: PosterInput): string {
     const unit = p.size === 'A5' ? `${(1 / Math.SQRT2).toFixed(5)}mm` : '1mm';
     const page = POSTER_PAGE_MM[p.size];
@@ -193,6 +201,7 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
     display: flex; align-items: center; justify-content: center; margin-bottom: calc(var(--u) * 1);
     border: calc(var(--u) * 0.35) solid #a7f3d0;
   }
+  .pt .tick svg { display: block; width: 66%; height: 66%; }
 
   .foot {
     margin-top: auto; width: 100%; padding-top: calc(var(--u) * 5);
@@ -229,9 +238,9 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
   ${showLocation ? `<div class="loc">${esc(p.locationLabel)}</div>` : ''}
 
   <div class="points">
-    <div class="pt"><div class="tick">✓</div><b>No app needed</b><span class="ta">ஆப் தேவையில்லை</span></div>
-    <div class="pt"><div class="tick">✓</div><b>No login</b><span class="ta">உள்நுழைவு இல்லை</span></div>
-    <div class="pt"><div class="tick">✓</div><b>Anonymous by default</b><span class="ta">இயல்பாக பெயர் இல்லாமல்</span></div>
+    <div class="pt"><div class="tick">${TICK}</div><b>No app needed</b><span class="ta">ஆப் தேவையில்லை</span></div>
+    <div class="pt"><div class="tick">${TICK}</div><b>No login</b><span class="ta">உள்நுழைவு இல்லை</span></div>
+    <div class="pt"><div class="tick">${TICK}</div><b>Anonymous by default</b><span class="ta">இயல்பாக பெயர் இல்லாமல்</span></div>
   </div>
 
   <div class="foot">
