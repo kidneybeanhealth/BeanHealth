@@ -18,17 +18,22 @@ describe('feedback questions', () => {
         expect(fixedVisitTypeFor(null)).toBeNull();
     });
 
-    it('asks OP about the doctor first and overall last', () => {
+    it('asks OP about the doctor first, the lab and pharmacy outright, and overall last', () => {
         expect(ids('opd')).toEqual([
             'doctor_listened', 'doctor_explained', 'doctor_answered',
-            'nursing', 'reception', 'waiting_time', 'overall',
+            'nursing', 'reception', 'waiting_time', 'laboratory', 'pharmacy', 'overall',
         ]);
     });
 
-    it('only asks about the lab, TPA and pharmacy once the patient says they used them', () => {
-        expect(optionalFor('opd').map(q => q.id)).toEqual(['laboratory', 'insurance_tpa', 'pharmacy']);
-        expect(ids('opd', ['laboratory'])).toContain('laboratory');
-        expect(ids('opd')).not.toContain('laboratory');
+    it('leaves only Insurance / TPA as opt-in for OP', () => {
+        expect(optionalFor('opd').map(q => q.id)).toEqual(['insurance_tpa']);
+        expect(ids('opd', ['insurance_tpa'])).toContain('insurance_tpa');
+        expect(ids('opd')).not.toContain('insurance_tpa');
+    });
+
+    it('still offers the lab and pharmacy as opt-in for admitted and dialysis patients', () => {
+        expect(optionalFor('inpatient').map(q => q.id)).toEqual(['laboratory', 'insurance_tpa', 'pharmacy']);
+        expect(ids('dialysis')).not.toContain('laboratory');
     });
 
     it('gives dialysis its own five and no general overall', () => {

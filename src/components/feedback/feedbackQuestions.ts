@@ -18,9 +18,9 @@
  *   - `askedFor`   shown to everybody on that visit, or
  *   - `offeredFor` shown only once the patient says they used it today
  *                  ("Did you also use: Laboratory · Insurance / TPA · Pharmacy").
- * The second is what keeps an OP form at seven rows instead of ten: most OP
- * patients never go near the lab or the TPA desk, and a row they cannot answer
- * is a row that makes them stop.
+ * The second keeps rows a patient cannot answer off the form. For OP, KKC asked
+ * (Oct 2026) for laboratory and pharmacy to be asked outright — nearly every OP
+ * visit passes through both — so only Insurance / TPA stays opt-in there.
  *
  * ── The question set ─────────────────────────────────────────────────────
  * Laid out by KKC (Oct 2026): doctor consultation, nursing, reception,
@@ -196,13 +196,13 @@ export const ALL_QUESTIONS: FeedbackQuestion[] = [
     { id: 'waiting_time', section: 'services', askedFor: ['opd', 'reception'],
       label: 'Waiting time', labelTa: 'காத்திருப்பு நேரம்',
       hint: 'How long until you were seen', hintTa: 'பார்க்கப்படும் வரை எவ்வளவு நேரம்' },
-    { id: 'laboratory', section: 'services', askedFor: ['other'], offeredFor: ['opd', 'dialysis', 'inpatient'],
+    { id: 'laboratory', section: 'services', askedFor: ['opd', 'other'], offeredFor: ['dialysis', 'inpatient'],
       label: 'Laboratory', labelTa: 'ஆய்வகம்',
       hint: 'Waiting time, sample collection and the report', hintTa: 'காத்திருப்பு, மாதிரி சேகரிப்பு, ரிப்போர்ட்' },
     { id: 'insurance_tpa', section: 'services', askedFor: [], offeredFor: ['opd', 'dialysis', 'inpatient', 'other', 'reception'],
       label: 'Insurance / TPA', labelTa: 'காப்பீடு / TPA',
       hint: 'Guidance, communication and the claim process', hintTa: 'வழிகாட்டல், தொடர்பு, க்ளெய்ம் நடைமுறை' },
-    { id: 'pharmacy', section: 'services', askedFor: ['pharmacy'], offeredFor: ['opd', 'dialysis', 'inpatient'],
+    { id: 'pharmacy', section: 'services', askedFor: ['opd', 'pharmacy'], offeredFor: ['dialysis', 'inpatient'],
       label: 'Pharmacy', labelTa: 'மருந்தகம்',
       hint: 'Medicines available, waiting, how to take them', hintTa: 'மருந்து கிடைப்பு, காத்திருப்பு, எப்படி எடுப்பது' },
 

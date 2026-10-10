@@ -635,6 +635,8 @@ Use Tailwind `dark:` classes. Theme state comes from `ThemeContext`.
 
 | 2026-10-10 | **Feedback posters carry their place's title.** The headline read "How was your visit?" on every poster. It now comes from `posterTitleFor(area)` in `feedbackQuestions.ts`: Outpatient / Inpatient / Reception / Restroom / Dialysis / Pharmacy Feedback, or **Patient Feedback** for the hospital-wide QR, with Tamil (UNVERIFIED) underneath. It is keyed off the same `area` as `fixedVisitTypeFor()`, so a poster cannot promise one form and open another. The "Patient Review" pill above the headline was removed, because it now repeats the headline. So was the small location label under the QR on place posters, which repeated the place name; it still shows for a non-place location. The printed document's `<title>` (print header, saved file name) uses the same title. The phone form's own heading is unchanged | `src/components/feedback/feedbackQuestions.ts`, `feedbackPoster.ts`, `feedbackQuestions.test.ts`, `src/components/enterprise/FeedbackPosterModal.tsx`, `CLAUDE.md` |
 
+| 2026-10-10 | **The OP feedback form asks about the laboratory and pharmacy outright.** KKC asked for both to be on the outpatient list rather than behind "Did you also use any of these today?". For `opd` they moved from `offeredFor` to `askedFor`, so an OP form is now 9 rows. **Insurance / TPA** stays opt-in there. Admitted and dialysis forms are unchanged: the lab and pharmacy are still opt-in for them | `src/components/feedback/feedbackQuestions.ts`, `feedbackQuestions.test.ts`, `CLAUDE.md` |
+
 ---
 
 ## Review Assignment Map — every writer of `hospital_patient_reviews`
