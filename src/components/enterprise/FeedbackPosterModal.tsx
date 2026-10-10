@@ -22,6 +22,8 @@ import { getProxiedUrl } from '../../lib/supabase';
 import { resolveFeedbackLocation, fetchHospitalLogo, type FeedbackLocation } from '../../services/feedbackService';
 import { buildFeedbackPosterHtml, POSTER_PAGE_MM, type PosterSize } from '../feedback/feedbackPoster';
 import { PUBLIC_APP_URL, feedbackUrl } from '../feedback/feedbackLinks';
+import { downloadPosterPdf } from '../feedback/feedbackPosterPdf';
+import { posterTitleFor } from '../feedback/feedbackQuestions';
 
 // The address itself lives in feedbackLinks, shared with the dashboards' Open form button.
 
@@ -71,6 +73,7 @@ const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ hospitalId, l
     const [html, setHtml] = useState<string>('');
     const [err, setErr] = useState<string | null>(null);
     const [printing, setPrinting] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     const frameRef = useRef<HTMLIFrameElement | null>(null);
     const boxRef = useRef<HTMLDivElement | null>(null);
@@ -157,6 +160,21 @@ const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ hospitalId, l
         }
     };
 
+    // The reliable path on a phone, whose print dialog may ignore the poster's
+    // portrait page size (see feedbackPosterPdf).
+    const downloadPdf = async () => {
+        const frame = frameRef.current;
+        if (!frame || !loc) { toast.error('The poster has not finished loading'); return; }
+        setDownloading(true);
+        try {
+            await downloadPosterPdf(frame, size, `${posterTitleFor(loc.area).en} - ${loc.code} - ${size}.pdf`);
+        } catch (e: any) {
+            toast.error(e?.message || 'Could not make the PDF');
+        } finally {
+            setDownloading(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-3 sm:p-6" onClick={onClose}>
             <div
@@ -236,9 +254,17 @@ const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ hospitalId, l
 
                             <button
                                 type="button"
+                                onClick={downloadPdf}
+                                disabled={!html || downloading}
+                                className="min-h-[48px] w-full rounded-xl bg-orange-500 text-sm font-bold text-white hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400"
+                            >
+                                {downloading ? 'Making PDF…' : `Download ${size} PDF`}
+                            </button>
+                            <button
+                                type="button"
                                 onClick={print}
                                 disabled={!html || printing}
-                                className="min-h-[48px] w-full rounded-xl bg-orange-500 text-sm font-bold text-white hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400"
+                                className="min-h-[44px] w-full rounded-xl border border-gray-300 bg-white text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:text-gray-300"
                             >
                                 {printing ? 'Preparing…' : `Print ${size} poster`}
                             </button>
@@ -256,7 +282,8 @@ const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ hospitalId, l
                             )}
 
                             <p className="text-[11px] leading-5 text-gray-400">
-                                In the print dialog, set margins to <strong>None</strong> and turn off headers and footers.
+                                <strong>On a phone, use Download PDF</strong> — a phone's print dialog can turn the page sideways.
+                                Printing from a computer: set margins to <strong>None</strong> and turn off headers and footers.
                                 Scan the printed copy once with a phone before putting it up.
                             </p>
                         </div>
