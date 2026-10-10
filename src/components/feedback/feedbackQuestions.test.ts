@@ -58,3 +58,14 @@ describe('feedback questions', () => {
         expect(doctorDisplayName('A. Divakar')).toBe('Dr. A. Divakar');
     });
 });
+
+describe('poster titles', () => {
+    it('names each place, and calls the hospital-wide poster Patient Feedback', async () => {
+        const { posterTitleFor } = await import('./feedbackQuestions');
+        expect(posterTitleFor('opd').en).toBe('Outpatient Feedback');
+        expect(posterTitleFor('ward').en).toBe('Inpatient Feedback');
+        expect(posterTitleFor('reception').en).toBe('Reception Feedback');
+        expect(posterTitleFor('restroom').en).toBe('Restroom Feedback');
+        expect(posterTitleFor('hospital')).toEqual({ en: 'Patient Feedback', ta: 'நோயாளர் கருத்து', isPlace: false });
+    });
+});

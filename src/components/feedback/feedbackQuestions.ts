@@ -90,6 +90,24 @@ export function fixedVisitTypeFor(area: string | null | undefined): VisitTypeId 
     }
 }
 
+/**
+ * The poster's headline for a place, in English and Tamil. Keyed off the same
+ * `area` as `fixedVisitTypeFor`, so a poster can never promise one form and
+ * open another. Anything that is not a known place — the hospital-wide QR —
+ * is "Patient Feedback". Tamil UNVERIFIED, like the rest of this file.
+ */
+export function posterTitleFor(area: string | null | undefined): { en: string; ta: string; isPlace: boolean } {
+    switch (fixedVisitTypeFor(area)) {
+        case 'opd': return { en: 'Outpatient Feedback', ta: 'வெளிநோயாளர் கருத்து', isPlace: true };
+        case 'inpatient': return { en: 'Inpatient Feedback', ta: 'உள்நோயாளர் கருத்து', isPlace: true };
+        case 'dialysis': return { en: 'Dialysis Feedback', ta: 'டயாலிசிஸ் கருத்து', isPlace: true };
+        case 'pharmacy': return { en: 'Pharmacy Feedback', ta: 'மருந்தகம் கருத்து', isPlace: true };
+        case 'reception': return { en: 'Reception Feedback', ta: 'வரவேற்பு கருத்து', isPlace: true };
+        case 'restroom': return { en: 'Restroom Feedback', ta: 'கழிப்பறை கருத்து', isPlace: true };
+        default: return { en: 'Patient Feedback', ta: 'நோயாளர் கருத்து', isPlace: false };
+    }
+}
+
 /** Visits where the patient saw a doctor, so the doctor section applies. */
 export const DOCTOR_VISITS: VisitTypeId[] = ['opd', 'dialysis', 'inpatient'];
 

@@ -40,6 +40,8 @@
  * hospital read it before the first poster goes up.
  */
 
+import { posterTitleFor } from './feedbackQuestions';
+
 export type PosterSize = 'A4' | 'A5';
 
 export interface PosterInput {
@@ -48,6 +50,11 @@ export interface PosterInput {
     hospitalLogoDataUrl: string | null;
     /** Printed small under the QR when it differs from the hospital name. */
     locationLabel: string;
+    /**
+     * The location's area. Decides the headline — "Outpatient Feedback",
+     * "Restroom Feedback", or "Patient Feedback" for the hospital-wide QR.
+     */
+    area?: string | null;
     url: string;
     qrSvg: string;
     beanLogoSvg: string;
@@ -78,12 +85,16 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
     // location row "Kongunad Kidney Centre", which are the same place and must
     // not print twice. Only a genuinely different spot (a station, a ward) shows.
     const norm = (v: string) => (v || '').trim().replace(/\s+/g, ' ').toLowerCase();
-    const showLocation = !!p.locationLabel && norm(p.locationLabel) !== norm(p.hospitalName);
+    const title = posterTitleFor(p.area);
+    // A place poster already names the place in its headline, so the small label
+    // under the QR would only repeat it. It stays for anything else, e.g. a
+    // future "Dialysis Station 2" filed under the hospital-wide area.
+    const showLocation = !title.isPlace && !!p.locationLabel && norm(p.locationLabel) !== norm(p.hospitalName);
     const initial = esc((p.hospitalName || 'H').trim().charAt(0).toUpperCase());
 
     return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
-<title>${esc(p.hospitalName)} — Patient Review</title>
+<title>${esc(p.hospitalName)} — ${esc(title.en)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Tinos:wght@400;700&family=Noto+Serif+Tamil:wght@400;600;700&family=Inter:wght@500;600&display=block" rel="stylesheet" />
@@ -139,22 +150,8 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
     letter-spacing: 0.03em; margin: 0;
   }
 
-  .kicker {
-    margin-top: calc(var(--u) * 5.5);
-    display: inline-flex; align-items: center; gap: calc(var(--u) * 2.4);
-    padding: calc(var(--u) * 1.8) calc(var(--u) * 5);
-    border-radius: 999px; background: var(--accent-soft);
-    border: calc(var(--u) * 0.35) solid #fed7aa;
-  }
-  .kicker b {
-    font-size: calc(var(--u) * 4.4); font-weight: 700; letter-spacing: 0.16em;
-    text-transform: uppercase; color: #c2410c;
-  }
-  .kicker span { font-size: calc(var(--u) * 4); font-weight: 700; color: #c2410c; }
-  .kicker i { width: calc(var(--u) * 1.3); height: calc(var(--u) * 1.3); border-radius: 50%; background: #fdba74; }
-
   .headline {
-    margin: calc(var(--u) * 8) 0 0; font-size: calc(var(--u) * 14); font-weight: 700;
+    margin: calc(var(--u) * 11) 0 0; font-size: calc(var(--u) * 14); font-weight: 700;
     line-height: 1.05; letter-spacing: 0;
   }
   .headline-ta { margin: calc(var(--u) * 2.4) 0 0; font-size: calc(var(--u) * 6.4); font-weight: 600; color: var(--muted); }
@@ -218,10 +215,8 @@ export function buildFeedbackPosterHtml(p: PosterInput): string {
     <h1 class="hosp-name">${esc(p.hospitalName)}</h1>
   </div>
 
-  <div class="kicker"><b>Patient Review</b><i></i><span class="ta">நோயாளர் கருத்து</span></div>
-
-  <h2 class="headline">How was your visit?</h2>
-  <p class="headline-ta ta">உங்கள் வருகை எப்படி இருந்தது?</p>
+  <h2 class="headline">${esc(title.en)}</h2>
+  <p class="headline-ta ta">${esc(title.ta)}</p>
   <p class="sub">
     Scan with your phone camera. It takes under a minute.
     <span class="ta">உங்கள் ஃபோன் காமிராவால் ஸ்கேன் செய்யுங்கள் — ஒரு நிமிடம் போதும்.</span>

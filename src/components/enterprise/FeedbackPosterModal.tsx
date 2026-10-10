@@ -109,6 +109,7 @@ const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ hospitalId, l
                     hospitalName: resolved?.hospitalName || loc.label,
                     hospitalLogoDataUrl: logo,
                     locationLabel: loc.label,
+                    area: loc.area,
                     url,
                     qrSvg,
                     beanLogoSvg: bean,
@@ -119,7 +120,7 @@ const FeedbackPosterModal: React.FC<FeedbackPosterModalProps> = ({ hospitalId, l
             }
         })();
         return () => { cancelled = true; };
-    }, [loc?.code, loc?.label, url, size, hospitalId]);
+    }, [loc?.code, loc?.label, loc?.area, url, size, hospitalId]);
 
     // Fit the real-size page into the preview box.
     useEffect(() => {
