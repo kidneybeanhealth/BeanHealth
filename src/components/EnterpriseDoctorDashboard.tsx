@@ -9,6 +9,8 @@ import ManageDiagnosesModal from './modals/ManageDiagnosesModal';
 import DoctorTeamAuditModal from './modals/DoctorTeamAuditModal';
 import FeedbackRegisterModal from './enterprise/FeedbackRegisterModal';
 import TwoStepConfirmModal from './common/TwoStepConfirmModal';
+import { withTimeout } from '../utils/requestUtils';
+import { asRxTemplate, summariseDialysisHistory } from '../utils/dialysisRx';
 import EnterpriseCKDSnapshotView from './EnterpriseCKDSnapshotView';
 import DoctorPastRecordsPanel from './enterprise/DoctorPastRecordsPanel';
 import {
@@ -1524,7 +1526,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     // Edit & Resend state
     const [editResendItem, setEditResendItem] = useState<any>(null);
     const [prescriptionPickerItems, setPrescriptionPickerItems] = useState<any[]>([]);
-    const [prescriptionPickerMode, setPrescriptionPickerMode] = useState<'view' | 'edit' | 'queue-prescribe'>('view');
+    const [prescriptionPickerMode, setPrescriptionPickerMode] = useState<'view' | 'edit' | 'queue-prescribe' | 'dialysis-prescribe'>('view');
 
     // Past Rx for queue item state
     const [pastRxQueueItem, setPastRxQueueItem] = useState<any>(null);
@@ -1540,6 +1542,14 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const [dialysisSearching, setDialysisSearching] = useState(false);
     const [dialysisSearched, setDialysisSearched] = useState(false);
     const [dialysisPatient, setDialysisPatient] = useState<any>(null);
+    // A previous dialysis Rx loaded as the starting point for a NEW one — the
+    // live queue's Past Rx, for dialysis. The old prescription is never touched.
+    const [dialysisPrefill, setDialysisPrefill] = useState<any>(null);
+    // The patient the "which previous Rx?" picker is choosing for.
+    const [dialysisLoadPatient, setDialysisLoadPatient] = useState<any>(null);
+    const [dialysisLoadingFor, setDialysisLoadingFor] = useState<string | null>(null);
+    // patient id -> how many dialysis Rx they have had, and when the last was.
+    const [dialysisHistory, setDialysisHistory] = useState<Record<string, { count: number; lastAt: string }>>({});
 
     // Inline registration inside the Dialysis picker (saves a trip to reception)
     const emptyDialysisForm = { name: '', dob: '', age: '', gender: '', mrNumber: 'KNH/', fatherHusbandName: '', place: '', phone: '' };
@@ -1602,6 +1612,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             if (insertErr) throw insertErr;
 
             toast.success(`${created.name} registered`);
+            setDialysisPrefill(null);
             setDialysisPatient(created);   // straight into the prescription
             resetDialysisPicker();
         } catch (err: any) {
@@ -1627,7 +1638,41 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                 .order('name', { ascending: true })
                 .limit(25);
             if (error) throw error;
-            setDialysisResults((data as any[]) || []);
+            const rows = (data as any[]) || [];
+            setDialysisResults(rows);
+
+            // Mark which results have had a dialysis Rx before, so the PA can see
+            // at a glance who has one to load. Best-effort: a failure here only
+            // hides the badges — New Rx and Load previous still work.
+            const ids = rows.map(r => r.id).filter(Boolean);
+            if (ids.length) {
+                try {
+                    const hist = await withTimeout(
+                        (supabase
+                            .from('hospital_prescriptions' as any)
+                            .select('patient_id, created_at')
+                            .eq('hospital_id', doctor.hospital_id)
+                            .in('patient_id', ids)
+                            .eq('metadata->>visitType', 'dialysis')
+                            .order('created_at', { ascending: false })
+                            .limit(1000)) as any,
+                        10000,
+                        'Timed out loading dialysis history'
+                    ) as { data: any[] | null; error: any };
+                    if (hist.error) throw hist.error;
+                    const summary = summariseDialysisHistory(hist.data || []);
+                    setDialysisHistory(prev => {
+                        const next = { ...prev };
+                        for (const id of ids) {
+                            if (summary[id]) next[id] = summary[id];
+                            else delete next[id];
+                        }
+                        return next;
+                    });
+                } catch (histErr) {
+                    console.warn('Dialysis history summary failed (badges hidden):', histErr);
+                }
+            }
         } catch (err) {
             console.error('Dialysis patient search failed:', err);
             toast.error('Could not search patients');
@@ -1637,6 +1682,62 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             setDialysisSearched(true);
         }
     }, [doctor.hospital_id]);
+
+    const startNewDialysisRx = (p: any) => {
+        setDialysisPrefill(null);
+        setDialysisPatient(p);
+        resetDialysisPicker();
+    };
+
+    /**
+     * Load one of the patient's previous dialysis Rx into a NEW prescription —
+     * the same thing Past Rx does for the live queue. Every doctor's dialysis Rx
+     * for the patient is offered (the PA writes under the chief), newest first;
+     * with only one there is nothing to choose, so it opens straight away.
+     */
+    const loadPreviousDialysisRx = async (p: any) => {
+        if (dialysisLoadingFor) return;
+        setDialysisLoadingFor(p.id);
+        try {
+            const res = await withTimeout(
+                (supabase
+                    .from('hospital_prescriptions' as any)
+                    .select('*, patient:hospital_patients(*), doctor:hospital_doctors(name)')
+                    .eq('hospital_id', doctor.hospital_id)
+                    .eq('patient_id', p.id)
+                    .eq('metadata->>visitType', 'dialysis')
+                    .order('created_at', { ascending: false })
+                    .limit(20)) as any,
+                12000,
+                'Timed out loading previous dialysis prescriptions'
+            ) as { data: any[] | null; error: any };
+            if (res.error) throw res.error;
+            const rows = res.data || [];
+            if (rows.length === 0) {
+                toast.error('No previous dialysis prescription for this patient — start a new one');
+                return;
+            }
+            resetDialysisPicker();
+            if (rows.length === 1) {
+                setDialysisPrefill(asRxTemplate(rows[0]));
+                setDialysisPatient(p);
+            } else {
+                setDialysisLoadPatient(p);
+                setPrescriptionPickerMode('dialysis-prescribe');
+                setPrescriptionPickerItems(rows);
+            }
+        } catch (err: any) {
+            console.error('Load previous dialysis Rx failed:', err);
+            toast.error(err?.message || 'Could not load previous dialysis prescriptions');
+        } finally {
+            setDialysisLoadingFor(null);
+        }
+    };
+
+    const closePrescriptionPicker = () => {
+        setPrescriptionPickerItems([]);
+        setDialysisLoadPatient(null);
+    };
 
     // Debounced search while the picker is open
     useEffect(() => {
@@ -1674,6 +1775,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     actorDisplayName,
                     documentType: 'prescription',
                     visitType: 'dialysis',
+                    // Which earlier Rx this one was started from, if any. Not
+                    // resent_from: that means "replaces", and this replaces nothing.
+                    ...(dialysisPrefill?.id ? { loaded_from: dialysisPrefill.id } : {}),
                 },
             };
 
@@ -1725,6 +1829,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
             toast.success('Dialysis prescription sent to Pharmacy!', { id: toastId });
             setDialysisPatient(null);
+            setDialysisPrefill(null);
             if (viewMode === 'history') fetchHistory(true);
             else if (viewMode === 'past_records') fetchPastRecords(true);
         } catch (error: any) {
@@ -2596,7 +2701,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
             {/* Prescription Picker Modal */}
             {prescriptionPickerItems.length > 0 && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setPrescriptionPickerItems([])}>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={closePrescriptionPicker}>
                     <div
                         className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-scale-in"
                         onClick={e => e.stopPropagation()}
@@ -2608,8 +2713,11 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-white">Multiple Prescriptions Found</h3>
-                                <p className="text-blue-100 text-sm">{prescriptionPickerItems.length} prescriptions — {prescriptionPickerMode === 'queue-prescribe' ? 'select one to load into new prescription' : prescriptionPickerMode === 'view' ? 'select one to view' : 'select one to edit & resend'}</p>
+                                <h3 className="text-lg font-bold text-white">{prescriptionPickerMode === 'dialysis-prescribe' ? 'Previous Dialysis Prescriptions' : 'Multiple Prescriptions Found'}</h3>
+                                <p className="text-blue-100 text-sm">
+                                    {prescriptionPickerMode === 'dialysis-prescribe' && dialysisLoadPatient?.name ? `${dialysisLoadPatient.name} · ` : ''}
+                                    {prescriptionPickerItems.length} prescriptions — {prescriptionPickerMode === 'dialysis-prescribe' ? 'select one to load into a new dialysis prescription' : prescriptionPickerMode === 'queue-prescribe' ? 'select one to load into new prescription' : prescriptionPickerMode === 'view' ? 'select one to view' : 'select one to edit & resend'}
+                                </p>
                             </div>
                         </div>
 
@@ -2617,7 +2725,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                             {prescriptionPickerItems.map((rx: any, idx: number) => {
                                 const meds = Array.isArray(rx.medications) ? rx.medications : [];
                                 const medSummary = meds.slice(0, 3).map((m: any) => m.name || '').filter(Boolean).join(', ');
-                                const isResent = !rx.queue_id;
+                                // A real resend carries resent_from. "No queue visit" alone is
+                                // not one: every dialysis Rx and discharge card has none.
+                                const isResent = !!rx.metadata?.resent_from;
+                                const isDialysis = rx.metadata?.visitType === 'dialysis';
                                 return (
                                     <div key={rx.id} className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between gap-4"
                                         onClick={() => {
@@ -2627,6 +2738,14 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                             } else if (prescriptionPickerMode === 'edit') {
                                                 setPrescriptionPickerItems([]);
                                                 setEditResendItem(rx);
+                                            } else if (prescriptionPickerMode === 'dialysis-prescribe') {
+                                                // New dialysis Rx started from this one; the old one stays as it is
+                                                const forPatient = dialysisLoadPatient;
+                                                closePrescriptionPicker();
+                                                if (forPatient) {
+                                                    setDialysisPrefill(asRxTemplate(rx));
+                                                    setDialysisPatient(forPatient);
+                                                }
                                             } else {
                                                 // 'queue-prescribe' mode
                                                 setPrescriptionPickerItems([]);
@@ -2642,6 +2761,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                 <span className="text-xs text-gray-500">
                                                     {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                 </span>
+                                                {isDialysis && (
+                                                    <span className="text-[10px] font-bold text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200">Dialysis</span>
+                                                )}
                                                 {isResent && (
                                                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Resent</span>
                                                 )}
@@ -2652,6 +2774,9 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                                     <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">✓ Dispensed</span>
                                                 )}
                                             </div>
+                                            {prescriptionPickerMode === 'dialysis-prescribe' && rx.doctor?.name && (
+                                                <p className="text-[11px] text-gray-400 mt-0.5">By {rx.doctor.name}</p>
+                                            )}
                                             {medSummary && (
                                                 <p className="text-xs text-gray-500 mt-1 truncate">
                                                     💊 {medSummary}{meds.length > 3 ? ` +${meds.length - 3} more` : ''}
@@ -2659,8 +2784,8 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                             )}
                                         </div>
                                         <div className="shrink-0">
-                                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${prescriptionPickerMode === 'view' ? 'bg-purple-50 text-purple-600' : prescriptionPickerMode === 'queue-prescribe' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}`}>
-                                                {prescriptionPickerMode === 'view' ? 'View' : prescriptionPickerMode === 'queue-prescribe' ? 'Load' : 'Edit'} →
+                                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${prescriptionPickerMode === 'view' ? 'bg-purple-50 text-purple-600' : (prescriptionPickerMode === 'queue-prescribe' || prescriptionPickerMode === 'dialysis-prescribe') ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                {prescriptionPickerMode === 'view' ? 'View' : (prescriptionPickerMode === 'queue-prescribe' || prescriptionPickerMode === 'dialysis-prescribe') ? 'Load' : 'Edit'} →
                                             </span>
                                         </div>
                                     </div>
@@ -2670,7 +2795,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
                         <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
                             <button
-                                onClick={() => setPrescriptionPickerItems([])}
+                                onClick={closePrescriptionPicker}
                                 className="w-full px-4 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-300 transition-colors"
                             >
                                 Cancel
@@ -2913,26 +3038,57 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                                 </div>
                             ) : (
                                 <div className="space-y-1.5">
-                                    {dialysisResults.map((p: any) => (
-                                        <button
-                                            key={p.id}
-                                            onClick={() => { setDialysisPatient(p); resetDialysisPicker(); }}
-                                            className="w-full text-left px-3.5 py-2.5 rounded-xl border border-gray-200 hover:border-cyan-300 hover:bg-cyan-50/40 transition-all"
-                                        >
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-sm font-bold text-gray-900">{p.name}</span>
-                                                {p.mr_number && <span className="text-[11px] font-mono font-bold text-gray-500">{p.mr_number}</span>}
-                                                {p.age != null && p.age !== '' && (
-                                                    <span className="text-[11px] text-gray-400">
-                                                        {/[a-zA-Z]/.test(String(p.age)) ? String(p.age) : `${p.age} yrs`}
-                                                    </span>
+                                    {dialysisResults.map((p: any) => {
+                                        const hist = dialysisHistory[p.id];
+                                        const loading = dialysisLoadingFor === p.id;
+                                        return (
+                                            <div
+                                                key={p.id}
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 hover:border-cyan-300 hover:bg-cyan-50/30 transition-all"
+                                            >
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="text-sm font-bold text-gray-900">{p.name}</span>
+                                                    {p.mr_number && <span className="text-[11px] font-mono font-bold text-gray-500">{p.mr_number}</span>}
+                                                    {p.age != null && p.age !== '' && (
+                                                        <span className="text-[11px] text-gray-400">
+                                                            {/[a-zA-Z]/.test(String(p.age)) ? String(p.age) : `${p.age} yrs`}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {p.father_husband_name && (
+                                                    <p className="text-[11px] text-gray-500 mt-0.5">{p.gender === 'F' ? 'W/o' : 'S/o'} {p.father_husband_name}</p>
                                                 )}
+                                                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                                    {hist ? (
+                                                        <span className="text-[11px] font-bold text-cyan-800 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full">
+                                                            {hist.count} dialysis Rx · last {new Date(hist.lastAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[11px] font-semibold text-gray-400">No previous dialysis Rx</span>
+                                                    )}
+                                                    <span className="ml-auto flex items-center gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => startNewDialysisRx(p)}
+                                                            className="px-3 py-1.5 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                                                        >
+                                                            New Rx
+                                                        </button>
+                                                        {hist && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => loadPreviousDialysisRx(p)}
+                                                                disabled={!!dialysisLoadingFor}
+                                                                className="px-3 py-1.5 text-xs font-bold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 disabled:opacity-60"
+                                                            >
+                                                                {loading ? 'Loading…' : 'Load previous Rx'}
+                                                            </button>
+                                                        )}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            {p.father_husband_name && (
-                                                <p className="text-[11px] text-gray-500 mt-0.5">{p.gender === 'F' ? 'W/o' : 'S/o'} {p.father_husband_name}</p>
-                                            )}
-                                        </button>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -2969,8 +3125,10 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     // Blank the token — a dialysis visit has no OP token, and the
                     // patient's stored one belongs to an earlier queue visit.
                     patient={{ ...dialysisPatient, token_number: '' }}
-                    onClose={() => setDialysisPatient(null)}
+                    onClose={() => { setDialysisPatient(null); setDialysisPrefill(null); }}
                     readOnly={false}
+                    // A loaded previous Rx pre-fills the form; sending still creates a NEW one
+                    existingData={dialysisPrefill || undefined}
                     onSendToPharmacy={handleSendDialysisToPharmacy}
                     clinicLogo={hospitalLogo || undefined}
                     actorAttribution={{ actorType, actorDisplayName }}
