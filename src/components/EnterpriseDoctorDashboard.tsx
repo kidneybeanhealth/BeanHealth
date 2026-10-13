@@ -765,8 +765,61 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
         await fetchPrescriptionsForItem(historyItem, 'view');
     };
 
+    // History tab only: its rows are queue VISITS, so prescriptions are found by queue_id.
     const handleEditResend = async (historyItem: any) => {
         await fetchPrescriptionsForItem(historyItem, 'edit');
+    };
+
+    /**
+     * Edit & Resend for a specific prescription — the button on each row of the
+     * Visit History window (Past Records, Admitted Patients, Dialysis register).
+     *
+     * These used to go through handleEditResend, which expects a queue visit: it
+     * looked for prescriptions whose queue_id was this PRESCRIPTION's id, found
+     * none, and fell back to "this doctor's last 5" — a second picker for the Rx
+     * already chosen, "No prescription found" for the other doctor's Rx, and an
+     * older Rx missing from the list altogether. A dialysis Rx has no queue visit,
+     * so it always took that path. Now it loads exactly the row that was clicked.
+     *
+     * Still only the logged-in doctor's own prescriptions — resending puts the new
+     * document under this doctor and cancels the original, which is not something
+     * to do to a colleague's Rx. That rule was always there; it now says so.
+     */
+    const handleEditResendPrescription = async (rx: any) => {
+        if (!rx?.id) return;
+        const toastId = toast.loading('Loading prescription...');
+        try {
+            const res = await withTimeout(
+                ((supabase as any)
+                    .from('hospital_prescriptions')
+                    .select('*, patient:hospital_patients(*), prescribed_by:hospital_doctors(name)')
+                    .eq('id', rx.id)
+                    .eq('hospital_id', doctor.hospital_id)
+                    .maybeSingle()) as any,
+                12000,
+                'Timed out while loading the prescription'
+            ) as { data: any; error: any };
+            if (res.error) throw res.error;
+            if (!res.data) {
+                toast.error('This prescription could not be found', { id: toastId });
+                return;
+            }
+            const { prescribed_by, ...full } = res.data;
+            if (full.doctor_id && full.doctor_id !== doctor.id) {
+                const isDialysis = full.metadata?.visitType === 'dialysis';
+                toast.error(
+                    `Written by ${prescribed_by?.name || 'another doctor'} — Edit & Resend only corrects your own prescriptions.`
+                    + (isDialysis ? ' To repeat it, use Dialysis Rx ▸ Load previous Rx.' : ''),
+                    { id: toastId, duration: 7000 }
+                );
+                return;
+            }
+            toast.dismiss(toastId);
+            setEditResendItem(full);
+        } catch (err: any) {
+            console.error('Edit & Resend load failed:', err);
+            toast.error(err?.message || 'Could not load the prescription', { id: toastId });
+        }
     };
 
     const handlePastRxForQueueItem = async (item: any) => {
@@ -2066,7 +2119,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     doctor={currentDoctor}
                     onBack={() => setViewMode('queue')}
                     onViewPrescription={handleViewPrescription}
-                    onEditResend={handleEditResend}
+                    onEditResend={handleEditResendPrescription}
                 />
             ) : viewMode === 'admitted' ? (
                 <AdmittedPatientsPanel
@@ -2078,7 +2131,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     enableDischargeCard={true}
                     onPrescribe={handlePrescribeAdmitted}
                     onDischargeCard={handleDischargeCardAdmitted}
-                    onEditResend={handleEditResend}
+                    onEditResend={handleEditResendPrescription}
                     onReturnedToQueue={() => fetchQueue(true)}
                     actorDisplayName={actorDisplayName}
                     clinicLogo={hospitalLogo || undefined}

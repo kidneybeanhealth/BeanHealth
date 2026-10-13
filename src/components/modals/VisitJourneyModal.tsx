@@ -85,6 +85,12 @@ const VisitJourneyModal: React.FC<VisitJourneyModalProps> = ({
     // from the parent past-records list query).
     const [fullPrescriptions, setFullPrescriptions] = useState<ReceptionVisitRecord[] | null>(null);
     const [loadingPrescriptions, setLoadingPrescriptions] = useState(true);
+    // A failed load must not look like an empty history. Several callers open
+    // this window with an empty list and rely on the fetch below, so on failure
+    // the old code fell back to that empty list and said "No visit history found
+    // for this patient" — exactly what "the Rx isn't loading" sounds like.
+    const [prescriptionsError, setPrescriptionsError] = useState<string | null>(null);
+    const [reloadToken, setReloadToken] = useState(0);
     const [activeRx, setActiveRx] = useState<ReceptionVisitRecord | null>(null);
 
     useEffect(() => {
@@ -100,12 +106,17 @@ const VisitJourneyModal: React.FC<VisitJourneyModalProps> = ({
     useEffect(() => {
         let mounted = true;
         setLoadingPrescriptions(true);
+        setPrescriptionsError(null);
         fetchAllPatientPrescriptions(hospitalId, patient.id)
             .then(rxs => { if (mounted) setFullPrescriptions(rxs); })
-            .catch(() => { if (mounted) setFullPrescriptions(null); })
+            .catch((err: any) => {
+                if (!mounted) return;
+                setFullPrescriptions(null);
+                setPrescriptionsError(err?.message || 'Could not load the prescriptions');
+            })
             .finally(() => { if (mounted) setLoadingPrescriptions(false); });
         return () => { mounted = false; };
-    }, [hospitalId, patient?.id]);
+    }, [hospitalId, patient?.id, reloadToken]);
 
     const effectivePrescriptions = fullPrescriptions ?? prescriptions ?? [];
 
@@ -201,9 +212,26 @@ const VisitJourneyModal: React.FC<VisitJourneyModalProps> = ({
                     </div>
 
                     <div className="p-5 overflow-y-auto flex-1">
+                        {prescriptionsError && (
+                            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                                <span className="min-w-0 flex-1">
+                                    <strong>Couldn't load this patient's prescriptions.</strong>{' '}
+                                    {events.length > 0 ? 'What is shown below may be incomplete.' : 'They have not been lost — try again.'}
+                                    <span className="block text-xs text-rose-600/80 mt-0.5">{prescriptionsError}</span>
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setReloadToken(t => t + 1)}
+                                    disabled={loadingPrescriptions}
+                                    className="shrink-0 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                                >
+                                    {loadingPrescriptions ? 'Retrying…' : 'Retry'}
+                                </button>
+                            </div>
+                        )}
                         {(loadingPrescriptions || loadingAdmissions) && events.length === 0 ? (
                             <p className="text-sm text-gray-500 text-center py-8">Loading visit history…</p>
-                        ) : events.length === 0 ? (
+                        ) : events.length === 0 && prescriptionsError ? null : events.length === 0 ? (
                             <p className="text-sm text-gray-500 text-center py-8">No visit history found for this patient.</p>
                         ) : (
                             <ol className="relative border-l-2 border-gray-200 ml-3 space-y-4">

@@ -98,6 +98,11 @@ const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospit
     const [error, setError] = useState<string | null>(null);
     const [loadedAt, setLoadedAt] = useState<number | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    // All-time register, fetched only when somebody types a search on a narrower
+    // period. A name is a lookup of a person, not a question about this month.
+    const [allTime, setAllTime] = useState<DialysisRegister | null>(null);
+    const [allTimeLoading, setAllTimeLoading] = useState(false);
+    const [allTimeError, setAllTimeError] = useState<string | null>(null);
 
     const range = useMemo(
         () => resolveRange(period, customFrom, customTo),
@@ -110,6 +115,9 @@ const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospit
         if (period === 'custom' && !(customFrom && customTo)) { setLoading(false); return; }
         setLoading(true);
         setError(null);
+        // Refresh means refresh everything, including an all-time search set.
+        setAllTime(null);
+        setAllTimeError(null);
         try {
             const res = await fetchDialysisRegister({ hospitalId, from: range.from, to: range.to });
             setData(res);
@@ -124,17 +132,45 @@ const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospit
 
     useEffect(() => { load(); }, [load]);
 
-    // Search filters what is already loaded. Refetching per keystroke would re-run
-    // three queries for a list the browser already holds — the same mistake the
-    // campaign cohort search made.
+    /**
+     * A typed name or MR searches ALL TIME, whatever period is selected. With the
+     * search confined to the period, a monthly patient searched under "This month"
+     * before their visit simply was not there (MR.RAJU.K, early Oct) — and an
+     * empty result reads as "the prescription is missing", not "wrong filter".
+     * Past Records' search learned the same lesson on 19 Sep.
+     *
+     * The all-time set is fetched once, on the first keystroke, and then filtered
+     * in the browser like the period list — no query per keystroke.
+     */
+    const searchTerm = search.trim().toLowerCase();
+    const searchingAllTime = searchTerm.length > 0 && period !== 'all';
+
+    const loadAllTime = useCallback(async () => {
+        if (!hospitalId) return;
+        setAllTimeLoading(true);
+        setAllTimeError(null);
+        try {
+            const all = resolveRange('all', '', '');
+            setAllTime(await fetchDialysisRegister({ hospitalId, from: all.from, to: all.to }));
+        } catch (e: any) {
+            setAllTimeError(e?.message || 'Could not search all dialysis sessions');
+        } finally {
+            setAllTimeLoading(false);
+        }
+    }, [hospitalId]);
+
+    useEffect(() => {
+        if (searchingAllTime && !allTime && !allTimeLoading && !allTimeError) loadAllTime();
+    }, [searchingAllTime, allTime, allTimeLoading, allTimeError, loadAllTime]);
+
     const visible: DialysisPatientRow[] = useMemo(() => {
-        const rows = data?.patients || [];
-        const q = search.trim().toLowerCase();
-        if (!q) return rows;
+        const source = searchingAllTime ? allTime : data;
+        const rows = source?.patients || [];
+        if (!searchTerm) return rows;
         return rows.filter(p =>
-            (p.name || '').toLowerCase().includes(q) || (p.mrNumber || '').toLowerCase().includes(q)
+            (p.name || '').toLowerCase().includes(searchTerm) || (p.mrNumber || '').toLowerCase().includes(searchTerm)
         );
-    }, [data, search]);
+    }, [data, allTime, searchingAllTime, searchTerm]);
 
     const toggle = (id: string) => setExpanded(prev => {
         const next = new Set(prev);
@@ -151,7 +187,10 @@ const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospit
         w.document.write(buildDialysisRegisterHtml({
             patients: visible,
             orgLabel,
-            periodLabel: fmtRangeLabel(period, range.from, range.to),
+            // Printed under the label that matches what is on screen.
+            periodLabel: searchingAllTime
+                ? `All time · matching "${search.trim()}"`
+                : fmtRangeLabel(period, range.from, range.to),
             totalSessions: sessions,
             totalPatients: visible.length,
             includeDates: true,
@@ -221,8 +260,27 @@ const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospit
                 </div>
             </div>
 
+            {searchingAllTime && (
+                <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm text-sky-900">
+                    <span>
+                        Searching <strong>all time</strong>, not only {fmtRangeLabel(period, range.from, range.to)} — so a patient
+                        is found whenever they last came. Session counts below are all-time.
+                    </span>
+                    <button type="button" onClick={() => setSearch('')} className="ml-auto text-xs font-bold text-sky-700 hover:underline">
+                        Clear search
+                    </button>
+                </div>
+            )}
+
             {/* Body */}
-            {error ? (
+            {searchingAllTime && allTimeError ? (
+                <div className="p-10 text-center bg-white rounded-2xl border border-rose-200">
+                    <p className="text-rose-700 font-semibold text-sm">{allTimeError}</p>
+                    <button type="button" onClick={loadAllTime} className="mt-3 px-4 py-2 rounded-xl text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200">Try again</button>
+                </div>
+            ) : searchingAllTime && (allTimeLoading || !allTime) ? (
+                <div className="p-16 text-center text-gray-400 text-sm bg-white rounded-2xl border border-gray-200">Searching all dialysis sessions…</div>
+            ) : error ? (
                 <div className="p-10 text-center bg-white rounded-2xl border border-rose-200">
                     <p className="text-rose-700 font-semibold text-sm">{error}</p>
                     <button type="button" onClick={load} className="mt-3 px-4 py-2 rounded-xl text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200">Try again</button>
@@ -235,9 +293,13 @@ const DialysisRegisterPanel: React.FC<Props> = ({ hospitalId, orgLabel = 'Hospit
                 </div>
             ) : visible.length === 0 ? (
                 <div className="p-16 text-center bg-white rounded-2xl border border-dashed border-gray-300">
-                    <p className="text-gray-700 font-medium">No dialysis sessions in this period</p>
+                    <p className="text-gray-700 font-medium">
+                        {searchTerm ? `No dialysis patient matches “${search.trim()}”` : 'No dialysis sessions in this period'}
+                    </p>
                     <p className="text-gray-400 text-sm mt-1">
-                        A session appears here when a doctor sends a Dialysis Rx for the patient.
+                        {searchTerm
+                            ? 'Searched every dialysis session on record. A patient appears once a doctor has sent a Dialysis Rx for them.'
+                            : 'A session appears here when a doctor sends a Dialysis Rx for the patient.'}
                     </p>
                 </div>
             ) : (
