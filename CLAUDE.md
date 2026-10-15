@@ -112,6 +112,8 @@ BeanHealth-V7/
 
 **Important:** `index.html` loads `src/index.tsx` → `src/App.tsx`.
 
+**`suggestions.md` is the security and fixes backlog.** Every vulnerability or fix that is found but not done goes there, with the date it was verified and how. When one is done, move it to its Done table with the commit. As of 15 Oct 2026 it holds three **Critical** items: the public `medical-records` storage bucket, the anon-open patient vitals/intake tables, and the anon-callable `debug_doctor_login`.
+
 **BeanHealth Connect is a second front end in the same build.** `connect.html` → `src/connect/main.tsx`, served at `connect.beanhealth.in` (host rewrite in `vercel.json`) and at `/connect` on any host. It shares only the design system and `lib/supabase.ts` — no AuthProvider, no role routing, no service worker (the `beanhealth-feedback-page-html` build plugin strips the PWA registration from `connect.html`, and the SW denylists `/connect`). Structure: `src/connect/protocol/` (pure engine + report + settings, with vitest tests — run `npx vitest run src/connect`), `src/connect/services/` (all Supabase access, through `db.ts`'s `run()` with timeouts and a `SetupRequiredError` for a missing migration), `src/connect/screens/`, `src/connect/ui/kit.tsx`. Tailwind's `content` must list `src/connect/**` and `connect.html` or Connect's classes are purged. Runbook: `docs/CONNECT.md`. All components live exclusively under `src/components/`. There is no root-level `components/` or `App.tsx` — those were stale duplicates and have been deleted.
 
 ---
