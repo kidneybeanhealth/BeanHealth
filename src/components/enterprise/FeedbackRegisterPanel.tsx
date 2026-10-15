@@ -523,6 +523,11 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                                     {r.ratedDoctorName}
                                                 </span>
                                             )}
+                                            {!r.ratedDoctorName && r.ratedDoctorOther && (
+                                                <span className="rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[10px] font-bold text-violet-800">
+                                                    Other: {r.ratedDoctorOther}
+                                                </span>
+                                            )}
                                             {r.patientId ? (
                                                 <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-800">
                                                     {r.patientName || 'Patient'}

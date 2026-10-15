@@ -91,3 +91,12 @@ describe('room number', () => {
         expect(normalizeRoomNumber('x'.repeat(40))).toHaveLength(20);
     });
 });
+
+describe('other doctor name', () => {
+    it('is trimmed and keeps its case', async () => {
+        const { normalizeOtherDoctorName } = await import('./feedbackQuestions');
+        expect(normalizeOtherDoctorName('  Dr.  Kumar ')).toBe('Dr. Kumar');
+        expect(normalizeOtherDoctorName('')).toBe('');
+        expect(normalizeOtherDoctorName('a'.repeat(80))).toHaveLength(60);
+    });
+});

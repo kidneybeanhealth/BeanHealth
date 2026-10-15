@@ -15,7 +15,7 @@
  */
 import { supabase } from '../lib/supabase';
 import { withTimeout } from '../utils/requestUtils';
-import { ALL_QUESTIONS, DOCTOR_QUESTION_IDS, NEEDS_ATTENTION_AT, doctorDisplayName, normalizeRoomNumber, type VisitTypeId } from '../components/feedback/feedbackQuestions';
+import { ALL_QUESTIONS, DOCTOR_QUESTION_IDS, NEEDS_ATTENTION_AT, doctorDisplayName, normalizeRoomNumber, normalizeOtherDoctorName, type VisitTypeId } from '../components/feedback/feedbackQuestions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IN — the public form
@@ -84,6 +84,8 @@ export interface FeedbackSubmission {
     ratedDoctorId?: string | null;
     /** Admitted patients: the room they are in. Required by the form there. */
     roomNumber?: string | null;
+    /** "Others": a doctor not on the list, by name. Optional. */
+    ratedDoctorOther?: string | null;
 }
 
 const AUDIO_BUCKET = 'feedback-audio';
@@ -177,6 +179,8 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
     if (s.ratedDoctorId) params.p_rated_doctor_id = s.ratedDoctorId;
     const room = normalizeRoomNumber(s.roomNumber);
     if (room) params.p_room_number = room;
+    const otherDoctor = s.ratedDoctorId ? '' : normalizeOtherDoctorName(s.ratedDoctorOther);
+    if (otherDoctor) params.p_rated_doctor_other = otherDoctor;
 
     const call = (p: Record<string, unknown>) => withTimeout(
         (supabase as any).rpc('submit_hospital_feedback', p) as any,
@@ -186,19 +190,21 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
 
     let res = await call(params);
     // PGRST202 = no function with these arguments: this build is live but the
-    // matching SQL has not run yet. Step back one argument at a time rather than
-    // lose the response.
-    //   - The room (sql/20261015_feedback_room_number.sql) is required on the
-    //     inpatient form, so it is not dropped: it moves to the front of the
-    //     comment, where the register still shows it.
-    //   - The rated doctor (sql/20261008_feedback_places_and_doctors.sql) is
-    //     dropped — the ratings matter more than who they are filed under.
-    if (res.error?.code === 'PGRST202' && 'p_room_number' in params) {
-        const { p_room_number: roomArg, ...rest } = params;
-        const roomNote = `Room ${roomArg}`;
-        rest.p_comment = rest.p_comment ? `${roomNote} — ${rest.p_comment}` : roomNote;
-        Object.keys(params).forEach(k => delete params[k]);
-        Object.assign(params, rest);
+    // matching SQL has not run yet. Step back rather than lose the response:
+    //   - The room and an "Others" doctor name
+    //     (sql/20261015_feedback_room_and_other_doctor.sql) are not dropped:
+    //     they move to the front of the comment, where the register shows them.
+    //     The room is required on the inpatient form, so losing it is not an option.
+    //   - The rated doctor id (sql/20261008_feedback_places_and_doctors.sql) is
+    //     dropped; the ratings matter more than who they are filed under.
+    const moveToComment = (key: string, label: string) => {
+        const note = `${label} ${params[key]}`;
+        delete params[key];
+        params.p_comment = params.p_comment ? `${note} — ${params.p_comment}` : note;
+    };
+    if (res.error?.code === 'PGRST202' && ('p_room_number' in params || 'p_rated_doctor_other' in params)) {
+        if ('p_rated_doctor_other' in params) moveToComment('p_rated_doctor_other', 'Doctor:');
+        if ('p_room_number' in params) moveToComment('p_room_number', 'Room');
         res = await call(params);
     }
     if (res.error?.code === 'PGRST202' && 'p_rated_doctor_id' in params) {
@@ -237,6 +243,8 @@ export interface FeedbackResponse {
     ratedDoctorName: string | null;
     /** Admitted patients' room, as they typed it (tidied). */
     roomNumber: string | null;
+    /** "Others": a doctor not on the list, by the name the patient typed. */
+    ratedDoctorOther: string | null;
     /** Storage path of the voice note, if they recorded one. */
     audioPath: string | null;
     audioSeconds: number | null;
@@ -338,7 +346,7 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
     const RATED = `,
         rated_doctor_id,
         rated_doctor:hospital_doctors!hospital_feedback_rated_doctor_id_fkey ( id, name )`;
-    const variants = [`${BASE}${RATED}, room_number`, `${BASE}${RATED}`, BASE];
+    const variants = [`${BASE}${RATED}, room_number, rated_doctor_other`, `${BASE}${RATED}`, BASE];
     let res = await read(variants[0]);
     for (let i = 1; i < variants.length && res.error && ['42703', 'PGRST200', 'PGRST100'].includes(res.error.code); i++) {
         res = await read(variants[i]);
@@ -366,6 +374,7 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
             ratedDoctorId: r.rated_doctor_id ?? null,
             ratedDoctorName: r.rated_doctor?.name ? doctorDisplayName(r.rated_doctor.name) : null,
             roomNumber: r.room_number ?? null,
+            ratedDoctorOther: r.rated_doctor_other ?? null,
             audioPath: r.audio_path ?? null,
             audioSeconds: r.audio_seconds ?? null,
             source: r.source || 'qr',
@@ -400,15 +409,18 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
     // count against the consultant who saw them.
     const doctorAcc = new Map<string, { name: string; count: number; byQ: Map<string, number[]> }>();
     for (const r of rows) {
-        if (!r.ratedDoctorId) continue;
-        const cur = doctorAcc.get(r.ratedDoctorId)
-            || { name: r.ratedDoctorName || 'Doctor', count: 0, byQ: new Map<string, number[]>() };
+        // A listed doctor by id; an "Others" doctor by the typed name, so two
+        // patients naming the same visiting doctor land on one line.
+        const key = r.ratedDoctorId || (r.ratedDoctorOther ? `other:${r.ratedDoctorOther.toLowerCase()}` : null);
+        if (!key) continue;
+        const cur = doctorAcc.get(key)
+            || { name: r.ratedDoctorId ? (r.ratedDoctorName || 'Doctor') : `Other · ${r.ratedDoctorOther}`, count: 0, byQ: new Map<string, number[]>() };
         cur.count += 1;
         for (const id of DOCTOR_QUESTION_IDS) {
             const v = r.ratings[id];
             if (typeof v === 'number') cur.byQ.set(id, [...(cur.byQ.get(id) || []), v]);
         }
-        doctorAcc.set(r.ratedDoctorId, cur);
+        doctorAcc.set(key, cur);
     }
     const byDoctor: DoctorScore[] = [...doctorAcc.entries()]
         .map(([id, v]) => ({

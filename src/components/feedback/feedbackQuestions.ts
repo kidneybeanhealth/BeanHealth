@@ -126,6 +126,13 @@ export const needsRoomNumber = (visitType: VisitTypeId | null): boolean =>
 export const normalizeRoomNumber = (raw: string | null | undefined): string =>
     String(raw || '').trim().replace(/\s+/g, ' ').toUpperCase().slice(0, 20);
 
+/**
+ * A doctor not on the list, by the name the patient typed ("Others"). Optional;
+ * trimmed and capped at 60 like the database. Case is kept — it is a name.
+ */
+export const normalizeOtherDoctorName = (raw: string | null | undefined): string =>
+    String(raw || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+
 /** Visits where the patient saw a doctor, so the doctor section applies. */
 export const DOCTOR_VISITS: VisitTypeId[] = ['opd', 'dialysis', 'inpatient'];
 

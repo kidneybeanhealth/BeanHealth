@@ -24,7 +24,7 @@ import {
 import VoiceNoteRecorder from './VoiceNoteRecorder';
 import {
     VISIT_TYPES, SCALE, SECTIONS, DOCTOR_VISITS, questionsFor, optionalFor, fixedVisitTypeFor, doctorDisplayName,
-    needsRoomNumber, normalizeRoomNumber,
+    needsRoomNumber, normalizeRoomNumber, normalizeOtherDoctorName,
     type Lang, type VisitTypeId, type FeedbackQuestion, type SectionId,
 } from './feedbackQuestions';
 
@@ -35,7 +35,8 @@ const T = {
         headingRestroom: 'How is this restroom?',
         headingReception: 'How was the reception desk?',
         doctorQ: 'Which doctor did you see?',
-        notSure: 'Not sure',
+        others: 'Others',
+        otherDoctorName: "Doctor's name (optional)",
         alsoUsedQ: 'Did you also use any of these today?',
         alsoUsedSub: 'Tap the ones you used and rate them below.',
         sub: 'A minute of your time helps us fix what is not working.',
@@ -50,8 +51,6 @@ const T = {
         shareOff: 'Sent anonymously. The hospital sees the ratings, not who gave them.',
         shareOffRoom: 'Your name is not sent. Your room number is, so the hospital knows which room this is about.',
         roomQ: 'Your room number',
-        roomHint: 'As written on your room door',
-        roomPh: 'e.g. 14',
         needRoom: 'Please enter your room number.',
         required: 'Required',
         mr: 'MR number',
@@ -74,7 +73,8 @@ const T = {
         headingRestroom: 'இந்தக் கழிப்பறை எப்படி இருக்கிறது?',
         headingReception: 'வரவேற்பு மேசை எப்படி இருந்தது?',
         doctorQ: 'எந்த மருத்துவரைப் பார்த்தீர்கள்?',
-        notSure: 'தெரியவில்லை',
+        others: 'மற்றவர்',
+        otherDoctorName: 'மருத்துவர் பெயர் (விருப்பம்)',
         alsoUsedQ: 'இன்று இவற்றில் எதையாவது பயன்படுத்தினீர்களா?',
         alsoUsedSub: 'பயன்படுத்தியவற்றைத் தொட்டு, கீழே மதிப்பிடுங்கள்.',
         sub: 'உங்கள் ஒரு நிமிடம், சரி செய்ய வேண்டியதை எங்களுக்குக் காட்டும்.',
@@ -89,8 +89,6 @@ const T = {
         shareOff: 'பெயர் இல்லாமல் அனுப்பப்படும். மதிப்பீடுகள் மட்டுமே மருத்துவமனைக்குத் தெரியும்.',
         shareOffRoom: 'உங்கள் பெயர் அனுப்பப்படாது. அறை எண் அனுப்பப்படும், எந்த அறை என்று மருத்துவமனைக்குத் தெரியும்.',
         roomQ: 'உங்கள் அறை எண்',
-        roomHint: 'அறைக் கதவில் உள்ளபடி',
-        roomPh: 'எ.கா. 14',
         needRoom: 'உங்கள் அறை எண்ணை உள்ளிடுங்கள்.',
         required: 'அவசியம்',
         mr: 'MR எண்',
@@ -135,8 +133,10 @@ const PatientFeedbackForm: React.FC = () => {
     const [visitType, setVisitType] = useState<VisitTypeId | null>(null);
     // Optional questions the patient said apply ("I used the lab today").
     const [used, setUsed] = useState<Set<string>>(new Set());
-    // A doctor id, 'unsure', or null for not answered.
+    // A listed doctor's id, 'other', or null for not answered.
     const [ratedDoctor, setRatedDoctor] = useState<string | null>(null);
+    // "Others": the doctor's name if the patient types one. Optional.
+    const [otherDoctorName, setOtherDoctorName] = useState('');
     const [ratings, setRatings] = useState<Record<string, number>>({});
     const [comment, setComment] = useState('');
     const [voice, setVoice] = useState<VoiceNote | null>(null);
@@ -195,7 +195,7 @@ const PatientFeedbackForm: React.FC = () => {
             const next = new Set([...prev].filter(id => offered.has(id)));
             return next.size === prev.size ? prev : next;
         });
-        if (!visitType || !DOCTOR_VISITS.includes(visitType)) setRatedDoctor(null);
+        if (!visitType || !DOCTOR_VISITS.includes(visitType)) { setRatedDoctor(null); setOtherDoctorName(''); }
     }, [visitType]);
 
     // Questions in section order, with a heading wherever the section changes.
@@ -226,7 +226,8 @@ const PatientFeedbackForm: React.FC = () => {
         try {
             const res = await submitFeedback({
                 code, visitType, ratings, comment, voice, desk,
-                ratedDoctorId: seesDoctor && ratedDoctor && ratedDoctor !== 'unsure' ? ratedDoctor : null,
+                ratedDoctorId: seesDoctor && ratedDoctor && ratedDoctor !== 'other' ? ratedDoctor : null,
+                ratedDoctorOther: seesDoctor && ratedDoctor === 'other' ? normalizeOtherDoctorName(otherDoctorName) || null : null,
                 roomNumber: roomNeeded ? roomNumber : null,
                 mrNumber, shareWithDoctor: share && mrNumber.trim().length > 0,
                 language: lang,
@@ -326,7 +327,7 @@ const PatientFeedbackForm: React.FC = () => {
                     onClick={() => {
                         setDone(null); setRatings({}); setComment(''); setVoice(null);
                         setShare(false); setMrNumber(''); setRoomNumber(''); setVisitType(fixedVisit); setError(null);
-                        setUsed(new Set()); setRatedDoctor(null);
+                        setUsed(new Set()); setRatedDoctor(null); setOtherDoctorName('');
                         window.scrollTo({ top: 0 });
                     }}
                     className={desk
@@ -384,17 +385,15 @@ const PatientFeedbackForm: React.FC = () => {
                 after the visit, so it cannot be scrolled past and forgotten. */}
             {roomNeeded && (
                 <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <label htmlFor="fb-room" className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                    <label htmlFor="fb-room" className="mb-2.5 flex items-center gap-2 text-sm font-bold text-gray-900">
                         {t.roomQ}
                         <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-700">{t.required}</span>
                     </label>
-                    <p className="mt-0.5 mb-2.5 text-xs text-gray-500">{t.roomHint}</p>
                     <input
                         id="fb-room"
                         ref={roomInputRef}
                         value={roomNumber}
                         onChange={e => { setRoomNumber(e.target.value.slice(0, 20)); if (error === t.needRoom) setError(null); }}
-                        placeholder={t.roomPh}
                         autoComplete="off"
                         autoCapitalize="characters"
                         enterKeyHint="done"
@@ -455,7 +454,7 @@ const PatientFeedbackForm: React.FC = () => {
                                 <div className="mb-3">
                                     <p className="mb-2 text-sm font-semibold text-gray-800">{t.doctorQ}</p>
                                     <div className="grid gap-2 sm:grid-cols-2">
-                                        {[...doctors.map(d => ({ id: d.id, label: doctorDisplayName(d.name) })), { id: 'unsure', label: t.notSure }].map(d => {
+                                        {[...doctors.map(d => ({ id: d.id, label: doctorDisplayName(d.name) })), { id: 'other', label: t.others }].map(d => {
                                             const on = ratedDoctor === d.id;
                                             return (
                                                 <button
@@ -463,7 +462,7 @@ const PatientFeedbackForm: React.FC = () => {
                                                     type="button"
                                                     aria-pressed={on}
                                                     onClick={() => setRatedDoctor(on ? null : d.id)}
-                                                    className={`flex min-h-[52px] items-center gap-3 rounded-xl border px-4 text-left text-sm font-bold transition-colors ${on ? 'border-orange-400 bg-orange-50 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:border-orange-200'} ${d.id === 'unsure' ? 'sm:col-span-2' : ''}`}
+                                                    className={`flex min-h-[52px] items-center gap-3 rounded-xl border px-4 text-left text-sm font-bold transition-colors ${on ? 'border-orange-400 bg-orange-50 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:border-orange-200'} ${d.id === 'other' ? 'sm:col-span-2' : ''}`}
                                                 >
                                                     <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${on ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`}>
                                                         {on && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
@@ -473,6 +472,18 @@ const PatientFeedbackForm: React.FC = () => {
                                             );
                                         })}
                                     </div>
+                                    {ratedDoctor === 'other' && (
+                                        <div className="mt-2.5">
+                                            <label htmlFor="fb-other-doctor" className="mb-1.5 block text-xs font-semibold text-gray-600">{t.otherDoctorName}</label>
+                                            <input
+                                                id="fb-other-doctor"
+                                                value={otherDoctorName}
+                                                onChange={e => setOtherDoctorName(e.target.value.slice(0, 60))}
+                                                autoComplete="off"
+                                                className="min-h-[48px] w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 text-sm text-gray-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
