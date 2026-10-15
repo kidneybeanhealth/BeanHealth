@@ -46,6 +46,8 @@ interface DoctorPastRecordsPanelProps {
     onBack: () => void;
     onViewPrescription: (prescription: any) => void;
     onEditResend?: (prescription: any) => void;
+    /** Patient Feedback is shown to the chief doctor only; a PA or junior does not see it. */
+    canViewFeedback?: boolean;
 }
 
 type CallLogStatus = 'picked' | 'not_picked';
@@ -83,7 +85,7 @@ const toLocalISODate = (date: Date): string => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
-const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor, onBack, onViewPrescription, onEditResend }) => {
+const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor, onBack, onViewPrescription, onEditResend, canViewFeedback = false }) => {
     const [pastRecords, setPastRecords] = useState<ReceptionPastRecordPatient[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [reviewFilter, setReviewFilter] = useState<PastRecordsView>('all');
@@ -694,7 +696,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
 
                     <div className="flex flex-wrap items-center gap-2">
 <PastRecordsFilterChips
-                            views={['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'review_completed', 'followup_stopped', 'weekly_report', 'calendar', 'feedback', 'dialysis']}
+                            views={['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'review_completed', 'followup_stopped', 'weekly_report', 'calendar', ...(canViewFeedback ? ['feedback' as const] : []), 'dialysis']}
                             value={reviewFilter}
                             onChange={setReviewFilter}
                         />
@@ -759,7 +761,7 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     )}
                 </div>
 
-                {reviewFilter === 'feedback' ? (
+                {reviewFilter === 'feedback' && canViewFeedback ? (
                     <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading feedback…</div>}>
                         <FeedbackRegisterPanel
                             hospitalId={doctor.hospital_id}

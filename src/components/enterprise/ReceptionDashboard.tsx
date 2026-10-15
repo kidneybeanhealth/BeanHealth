@@ -42,7 +42,6 @@ const WeeklyOverdueReportPanel = lazy(() =>
     import('./ReceptionActivityPanels').then(m => ({ default: m.WeeklyOverdueReportPanel }))
 );
 const DialysisRegisterPanel = lazy(() => import('./DialysisRegisterPanel'));
-const FeedbackRegisterPanel = lazy(() => import('./FeedbackRegisterPanel'));
 const LabelDesignerModal = lazy(() => import('./LabelDesignerModal'));
 const ReceptionCalendarPanel = lazy(() =>
     import('./ReceptionActivityPanels').then(m => ({ default: m.ReceptionCalendarPanel }))
@@ -2345,7 +2344,8 @@ const ReceptionDashboard: React.FC = () => {
                                 </div>
                                     <div className="flex flex-wrap items-center gap-2">
                                     <PastRecordsFilterChips
-                                        views={['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'review_completed', 'followup_stopped', 'weekly_report', 'calendar', 'feedback', 'dialysis']}
+                                        // No 'feedback': patient feedback is for the chief doctors only (Oct 2026).
+                                        views={['all', 'due_today', 'due_tomorrow', 'upcoming', 'overdue', 'review_completed', 'followup_stopped', 'weekly_report', 'calendar', 'dialysis']}
                                         value={reviewFilter}
                                         onChange={setReviewFilter}
                                     />
@@ -2441,12 +2441,6 @@ const ReceptionDashboard: React.FC = () => {
                             {reviewFilter === 'weekly_report' ? (
                                 <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading report…</div>}>
                                     <WeeklyOverdueReportPanel hospitalId={profile?.id || ''} />
-                                </Suspense>
-                            ) : reviewFilter === 'feedback' ? (
-                                // Same panel as the doctor dashboard, with no doctor to scope
-                                // to: reception sees every response, and prints the same poster.
-                                <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading feedback…</div>}>
-                                    <FeedbackRegisterPanel hospitalId={profile?.id || ''} />
                                 </Suspense>
                             ) : reviewFilter === 'dialysis' ? (
                                 <Suspense fallback={<div className="p-16 text-center text-gray-400 text-sm">Loading register…</div>}>

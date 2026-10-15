@@ -210,6 +210,13 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
     const actorType = actorSession?.actorType || 'chief';
     const actorDisplayName = actorSession?.actorDisplayName || formatDoctorName(doctor.name);
     const canManageTeamAudit = Boolean(paActorAuthEnabled && actorSession?.actorType === 'chief' && actorSession?.sessionToken);
+    /**
+     * Patient feedback is for the chief doctors themselves (KKC, Oct 2026): not
+     * reception, not a PA or junior working under the chief. Same chief check as
+     * Team & Audit. A hospital without PA logins has only the doctor's own login,
+     * so there it stays visible.
+     */
+    const canViewFeedback = !paActorAuthEnabled || Boolean(actorSession?.actorType === 'chief' && actorSession?.sessionToken);
 
     const logViewEvent = useCallback(async (
         eventType: string,
@@ -2054,18 +2061,19 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
 
                         {/* Settings & Reload — always a tight horizontal row */}
                         <div className="flex items-center gap-2 flex-shrink-0">
-                            {/* Every doctor, not only the chief: unlike Team & Audit this
-                                is not an admin tool. Same register as Past Records ▸
-                                Reports ▸ Patient Feedback, one click instead of three. */}
-                            <button
-                                onClick={() => setShowFeedbackModal(true)}
-                                className="px-3 py-2 bg-white text-gray-700 hover:text-orange-700 rounded-2xl border border-gray-200 hover:border-orange-200 transition-all shadow-sm text-xs sm:text-sm font-bold whitespace-nowrap"
-                                title="Patient Feedback"
-                            >
-                                {/* Shorter on a phone, where this row also holds Team & Audit and two icons. */}
-                                <span className="sm:hidden">Feedback</span>
-                                <span className="hidden sm:inline">Patient Feedback</span>
-                            </button>
+                            {/* Chief doctors only — see canViewFeedback. Same register as
+                                Past Records ▸ Reports ▸ Patient Feedback, one click instead of three. */}
+                            {canViewFeedback && (
+                                <button
+                                    onClick={() => setShowFeedbackModal(true)}
+                                    className="px-3 py-2 bg-white text-gray-700 hover:text-orange-700 rounded-2xl border border-gray-200 hover:border-orange-200 transition-all shadow-sm text-xs sm:text-sm font-bold whitespace-nowrap"
+                                    title="Patient Feedback"
+                                >
+                                    {/* Shorter on a phone, where this row also holds Team & Audit and two icons. */}
+                                    <span className="sm:hidden">Feedback</span>
+                                    <span className="hidden sm:inline">Patient Feedback</span>
+                                </button>
+                            )}
                             {canManageTeamAudit && (
                                 <button
                                     onClick={() => setShowTeamAuditModal(true)}
@@ -2117,6 +2125,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             ) : viewMode === 'past_records' ? (
                 <DoctorPastRecordsPanel
                     doctor={currentDoctor}
+                    canViewFeedback={canViewFeedback}
                     onBack={() => setViewMode('queue')}
                     onViewPrescription={handleViewPrescription}
                     onEditResend={handleEditResendPrescription}
@@ -3248,7 +3257,7 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
             )}
 
             <FeedbackRegisterModal
-                isOpen={showFeedbackModal}
+                isOpen={showFeedbackModal && canViewFeedback}
                 onClose={() => setShowFeedbackModal(false)}
                 hospitalId={currentDoctor.hospital_id}
                 doctorId={currentDoctor.id}
