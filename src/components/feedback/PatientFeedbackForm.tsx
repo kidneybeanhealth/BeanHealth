@@ -24,6 +24,7 @@ import {
 import VoiceNoteRecorder from './VoiceNoteRecorder';
 import {
     VISIT_TYPES, SCALE, SECTIONS, DOCTOR_VISITS, questionsFor, optionalFor, fixedVisitTypeFor, doctorDisplayName,
+    needsRoomNumber, normalizeRoomNumber,
     type Lang, type VisitTypeId, type FeedbackQuestion, type SectionId,
 } from './feedbackQuestions';
 
@@ -47,6 +48,12 @@ const T = {
         share: 'Share this with my doctor',
         shareOn: 'Your name and MR number will be shown to your doctor with this feedback.',
         shareOff: 'Sent anonymously. The hospital sees the ratings, not who gave them.',
+        shareOffRoom: 'Your name is not sent. Your room number is, so the hospital knows which room this is about.',
+        roomQ: 'Your room number',
+        roomHint: 'As written on your room door',
+        roomPh: 'e.g. 14',
+        needRoom: 'Please enter your room number.',
+        required: 'Required',
         mr: 'MR number',
         submit: 'Send feedback',
         sending: 'Sending…',
@@ -80,6 +87,12 @@ const T = {
         share: 'இதை என் மருத்துவரிடம் பகிரவும்',
         shareOn: 'உங்கள் பெயரும் MR எண்ணும் உங்கள் மருத்துவருக்குத் தெரியும்.',
         shareOff: 'பெயர் இல்லாமல் அனுப்பப்படும். மதிப்பீடுகள் மட்டுமே மருத்துவமனைக்குத் தெரியும்.',
+        shareOffRoom: 'உங்கள் பெயர் அனுப்பப்படாது. அறை எண் அனுப்பப்படும், எந்த அறை என்று மருத்துவமனைக்குத் தெரியும்.',
+        roomQ: 'உங்கள் அறை எண்',
+        roomHint: 'அறைக் கதவில் உள்ளபடி',
+        roomPh: 'எ.கா. 14',
+        needRoom: 'உங்கள் அறை எண்ணை உள்ளிடுங்கள்.',
+        required: 'அவசியம்',
         mr: 'MR எண்',
         submit: 'கருத்தை அனுப்பு',
         sending: 'அனுப்புகிறது…',
@@ -129,6 +142,10 @@ const PatientFeedbackForm: React.FC = () => {
     const [voice, setVoice] = useState<VoiceNote | null>(null);
     const [share, setShare] = useState(false);
     const [mrNumber, setMrNumber] = useState('');
+    // Admitted patients: which room. Every ward room carries the same generic
+    // sticker, so this is the only place the room can come from (KKC, Oct 2026).
+    const [roomNumber, setRoomNumber] = useState('');
+    const roomInputRef = React.useRef<HTMLInputElement>(null);
 
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -194,15 +211,23 @@ const PatientFeedbackForm: React.FC = () => {
 
     const answered = Object.keys(ratings).length;
     const canSend = answered > 0 || comment.trim().length > 0 || !!voice;
+    const roomNeeded = needsRoomNumber(visitType);
 
     const send = async () => {
         if (!canSend) { setError(t.needOne); return; }
+        if (roomNeeded && !normalizeRoomNumber(roomNumber)) {
+            setError(t.needRoom);
+            roomInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            roomInputRef.current?.focus({ preventScroll: true });
+            return;
+        }
         setSending(true);
         setError(null);
         try {
             const res = await submitFeedback({
                 code, visitType, ratings, comment, voice, desk,
                 ratedDoctorId: seesDoctor && ratedDoctor && ratedDoctor !== 'unsure' ? ratedDoctor : null,
+                roomNumber: roomNeeded ? roomNumber : null,
                 mrNumber, shareWithDoctor: share && mrNumber.trim().length > 0,
                 language: lang,
             });
@@ -300,7 +325,7 @@ const PatientFeedbackForm: React.FC = () => {
                     type="button"
                     onClick={() => {
                         setDone(null); setRatings({}); setComment(''); setVoice(null);
-                        setShare(false); setMrNumber(''); setVisitType(fixedVisit); setError(null);
+                        setShare(false); setMrNumber(''); setRoomNumber(''); setVisitType(fixedVisit); setError(null);
                         setUsed(new Set()); setRatedDoctor(null);
                         window.scrollTo({ top: 0 });
                     }}
@@ -353,6 +378,30 @@ const PatientFeedbackForm: React.FC = () => {
                     })}
                 </div>
             </section>
+            )}
+
+            {/* Room — admitted patients only, and required there. First thing
+                after the visit, so it cannot be scrolled past and forgotten. */}
+            {roomNeeded && (
+                <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <label htmlFor="fb-room" className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                        {t.roomQ}
+                        <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-700">{t.required}</span>
+                    </label>
+                    <p className="mt-0.5 mb-2.5 text-xs text-gray-500">{t.roomHint}</p>
+                    <input
+                        id="fb-room"
+                        ref={roomInputRef}
+                        value={roomNumber}
+                        onChange={e => { setRoomNumber(e.target.value.slice(0, 20)); if (error === t.needRoom) setError(null); }}
+                        placeholder={t.roomPh}
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        enterKeyHint="done"
+                        aria-required="true"
+                        className={`min-h-[52px] w-full rounded-xl border bg-gray-50 px-4 text-lg font-bold tracking-wide text-gray-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500 ${error === t.needRoom ? 'border-rose-400' : 'border-gray-200'}`}
+                    />
+                </section>
             )}
 
             {/* Ratings, by section. Nothing until the visit is known: every
@@ -521,7 +570,7 @@ const PatientFeedbackForm: React.FC = () => {
                     </div>
                 )}
                 <p className={`mt-3 rounded-lg px-3 py-2 text-xs leading-5 ${share ? 'bg-amber-50 text-amber-900' : 'bg-gray-50 text-gray-600'}`}>
-                    {share ? t.shareOn : t.shareOff}
+                    {share ? t.shareOn : roomNeeded ? t.shareOffRoom : t.shareOff}
                 </p>
             </section>
             )}

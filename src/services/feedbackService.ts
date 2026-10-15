@@ -15,7 +15,7 @@
  */
 import { supabase } from '../lib/supabase';
 import { withTimeout } from '../utils/requestUtils';
-import { ALL_QUESTIONS, DOCTOR_QUESTION_IDS, NEEDS_ATTENTION_AT, doctorDisplayName, type VisitTypeId } from '../components/feedback/feedbackQuestions';
+import { ALL_QUESTIONS, DOCTOR_QUESTION_IDS, NEEDS_ATTENTION_AT, doctorDisplayName, normalizeRoomNumber, type VisitTypeId } from '../components/feedback/feedbackQuestions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IN — the public form
@@ -82,6 +82,8 @@ export interface FeedbackSubmission {
     desk?: boolean;
     /** The doctor the patient says they saw, from the picker. */
     ratedDoctorId?: string | null;
+    /** Admitted patients: the room they are in. Required by the form there. */
+    roomNumber?: string | null;
 }
 
 const AUDIO_BUCKET = 'feedback-audio';
@@ -173,6 +175,8 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
     }
     if (s.desk) params.p_source = 'desk';
     if (s.ratedDoctorId) params.p_rated_doctor_id = s.ratedDoctorId;
+    const room = normalizeRoomNumber(s.roomNumber);
+    if (room) params.p_room_number = room;
 
     const call = (p: Record<string, unknown>) => withTimeout(
         (supabase as any).rpc('submit_hospital_feedback', p) as any,
@@ -181,10 +185,22 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
     ) as Promise<{ data: any; error: any }>;
 
     let res = await call(params);
-    // PGRST202 = no function with these arguments: this build is live but
-    // sql/20261008_feedback_places_and_doctors.sql has not run yet. Send the
-    // response without the doctor rather than losing it — the ratings matter
-    // more than who they are filed under.
+    // PGRST202 = no function with these arguments: this build is live but the
+    // matching SQL has not run yet. Step back one argument at a time rather than
+    // lose the response.
+    //   - The room (sql/20261015_feedback_room_number.sql) is required on the
+    //     inpatient form, so it is not dropped: it moves to the front of the
+    //     comment, where the register still shows it.
+    //   - The rated doctor (sql/20261008_feedback_places_and_doctors.sql) is
+    //     dropped — the ratings matter more than who they are filed under.
+    if (res.error?.code === 'PGRST202' && 'p_room_number' in params) {
+        const { p_room_number: roomArg, ...rest } = params;
+        const roomNote = `Room ${roomArg}`;
+        rest.p_comment = rest.p_comment ? `${roomNote} — ${rest.p_comment}` : roomNote;
+        Object.keys(params).forEach(k => delete params[k]);
+        Object.assign(params, rest);
+        res = await call(params);
+    }
     if (res.error?.code === 'PGRST202' && 'p_rated_doctor_id' in params) {
         const { p_rated_doctor_id: _drop, ...rest } = params;
         res = await call(rest);
@@ -219,6 +235,8 @@ export interface FeedbackResponse {
     /** The doctor the patient picked. Recorded for anonymous responses too. */
     ratedDoctorId: string | null;
     ratedDoctorName: string | null;
+    /** Admitted patients' room, as they typed it (tidied). */
+    roomNumber: string | null;
     /** Storage path of the voice note, if they recorded one. */
     audioPath: string | null;
     audioSeconds: number | null;
@@ -254,6 +272,8 @@ export interface FeedbackRegister {
     byQuestion: QuestionAverage[];
     byVisitType: { id: string; label: string; count: number; average: number | null }[];
     byLocation: { id: string; label: string; count: number; average: number | null }[];
+    /** Admitted patients, per room. Empty until rooms are being recorded. */
+    byRoom: { id: string; label: string; count: number; average: number | null }[];
     byDoctor: DoctorScore[];
 }
 
@@ -290,7 +310,7 @@ export interface FeedbackQuery {
 export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackRegister> {
     const empty: FeedbackRegister = {
         responses: [], total: 0, needsAttention: [], overall: null,
-        byQuestion: [], byVisitType: [], byLocation: [], byDoctor: [],
+        byQuestion: [], byVisitType: [], byLocation: [], byRoom: [], byDoctor: [],
     };
     if (!q.hospitalId) return empty;
 
@@ -312,14 +332,16 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
         'Timed out while loading feedback'
     ) as Promise<{ data: any[] | null; error: any }>;
 
-    let res = await read(`${BASE},
+    // Newest columns first. A column that does not exist yet (its SQL not run)
+    // fails the whole read, so step back to the next variant rather than leave
+    // the register unopenable: room (20261015), rated doctor (20261008), base.
+    const RATED = `,
         rated_doctor_id,
-        rated_doctor:hospital_doctors!hospital_feedback_rated_doctor_id_fkey ( id, name )`);
-    // Before sql/20261008 the column and its relationship do not exist, and
-    // asking for them fails the whole read. The register still opens without
-    // the per-doctor view rather than not opening at all.
-    if (res.error && ['42703', 'PGRST200', 'PGRST100'].includes(res.error.code)) {
-        res = await read(BASE);
+        rated_doctor:hospital_doctors!hospital_feedback_rated_doctor_id_fkey ( id, name )`;
+    const variants = [`${BASE}${RATED}, room_number`, `${BASE}${RATED}`, BASE];
+    let res = await read(variants[0]);
+    for (let i = 1; i < variants.length && res.error && ['42703', 'PGRST200', 'PGRST100'].includes(res.error.code); i++) {
+        res = await read(variants[i]);
     }
 
     if (res.error) throw res.error;
@@ -343,6 +365,7 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
             doctorId: identified ? (r.doctor_id ?? null) : null,
             ratedDoctorId: r.rated_doctor_id ?? null,
             ratedDoctorName: r.rated_doctor?.name ? doctorDisplayName(r.rated_doctor.name) : null,
+            roomNumber: r.room_number ?? null,
             audioPath: r.audio_path ?? null,
             audioSeconds: r.audio_seconds ?? null,
             source: r.source || 'qr',
@@ -413,6 +436,7 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
         byQuestion,
         byVisitType: group(r => (r.visitType ? { key: r.visitType, label: r.visitType } as any : null)),
         byLocation: group(r => (r.locationLabel ? { key: r.locationLabel, label: r.locationLabel } as any : null)),
+        byRoom: group(r => (r.roomNumber ? { key: r.roomNumber, label: `Room ${r.roomNumber}` } as any : null)),
         byDoctor,
     };
 }

@@ -321,6 +321,9 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                     <div key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
                                         <span className="text-[11px] font-semibold text-gray-500">{fmtWhen(r.submittedAt)}</span>
                                         <span className="text-[11px] text-gray-400">{visitTypeLabel(r.visitType)}</span>
+                                        {r.roomNumber && (
+                                            <span className="rounded-full border border-indigo-200 bg-white px-2 py-0.5 text-[10px] font-bold text-indigo-700">Room {r.roomNumber}</span>
+                                        )}
                                         <ScoreChip value={r.lowestRating} label="lowest" />
                                         {r.audioPath && <MicBadge seconds={r.audioSeconds} />}
                                         {r.comment && (
@@ -437,6 +440,22 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                             </div>
                                         ))
                                 )}
+                                {(data?.byRoom.length ?? 0) > 0 && (
+                                    <div className="border-t border-gray-200 bg-gray-50/70 px-4 py-3">
+                                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">By room · admitted patients</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[...(data?.byRoom || [])]
+                                                .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
+                                                .map(v => (
+                                                    <span key={v.id} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5">
+                                                        <span className="text-xs font-semibold text-gray-700">{v.label}</span>
+                                                        <ScoreChip value={v.average} />
+                                                        <span className="text-[11px] text-gray-400">{v.count}</span>
+                                                    </span>
+                                                ))}
+                                        </div>
+                                    </div>
+                                )}
                                 {(data?.byLocation.length ?? 0) > 1 && (
                                     <div className="border-t border-gray-200 bg-gray-50/70 px-4 py-3">
                                         <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">By QR / place</p>
@@ -494,6 +513,11 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
                                                 {visitTypeLabel(r.visitType)}
                                             </span>
+                                            {r.roomNumber && (
+                                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-800">
+                                                    Room {r.roomNumber}
+                                                </span>
+                                            )}
                                             {r.ratedDoctorName && (
                                                 <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-800">
                                                     {r.ratedDoctorName}

@@ -74,3 +74,20 @@ describe('poster titles', () => {
         expect(posterTitleFor('hospital')).toEqual({ en: 'Patient Feedback', ta: 'நோயாளர் கருத்து', isPlace: false });
     });
 });
+
+describe('room number', () => {
+    it('is required for admitted patients only', async () => {
+        const { needsRoomNumber } = await import('./feedbackQuestions');
+        expect(needsRoomNumber('inpatient')).toBe(true);
+        for (const v of ['opd', 'dialysis', 'pharmacy', 'other', 'reception', 'restroom'] as const) expect(needsRoomNumber(v)).toBe(false);
+        expect(needsRoomNumber(null)).toBe(false);
+    });
+
+    it('is tidied the same way the database tidies it', async () => {
+        const { normalizeRoomNumber } = await import('./feedbackQuestions');
+        expect(normalizeRoomNumber('  ward 2 /  14 ')).toBe('WARD 2 / 14');
+        expect(normalizeRoomNumber('icu')).toBe('ICU');
+        expect(normalizeRoomNumber('   ')).toBe('');
+        expect(normalizeRoomNumber('x'.repeat(40))).toHaveLength(20);
+    });
+});

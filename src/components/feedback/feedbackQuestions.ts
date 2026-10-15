@@ -108,6 +108,24 @@ export function posterTitleFor(area: string | null | undefined): { en: string; t
     }
 }
 
+/**
+ * Visits that must say which room the patient is in. KKC (Oct 2026): every ward
+ * room carries the same generic IP sticker, so the form is the only place the
+ * room can come from. Asked of admitted patients only.
+ */
+export const ROOM_REQUIRED_FOR: VisitTypeId[] = ['inpatient'];
+
+export const needsRoomNumber = (visitType: VisitTypeId | null): boolean =>
+    !!visitType && ROOM_REQUIRED_FOR.includes(visitType);
+
+/**
+ * "  ward 2 /  14 " → "WARD 2 / 14". Free text, because rooms are not all
+ * numbers (ICU, A12); capped at 20 like the database. Mirrors the cleanup in
+ * submit_hospital_feedback, so what the patient sees is what gets stored.
+ */
+export const normalizeRoomNumber = (raw: string | null | undefined): string =>
+    String(raw || '').trim().replace(/\s+/g, ' ').toUpperCase().slice(0, 20);
+
 /** Visits where the patient saw a doctor, so the doctor section applies. */
 export const DOCTOR_VISITS: VisitTypeId[] = ['opd', 'dialysis', 'inpatient'];
 
