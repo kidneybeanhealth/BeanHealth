@@ -2135,7 +2135,6 @@ const EnterpriseDoctorDashboard: React.FC<EnterpriseDoctorDashboardProps> = ({
                     key={`admitted-${admittedRefreshToken}`}
                     hospitalId={currentDoctor.hospital_id}
                     doctor={currentDoctor}
-                    doctorId={currentDoctor.id}
                     enablePrescribe={true}
                     enableDischargeCard={true}
                     onPrescribe={handlePrescribeAdmitted}
