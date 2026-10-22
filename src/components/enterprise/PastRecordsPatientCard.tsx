@@ -31,6 +31,29 @@ import type {
  */
 export type PastRecordsView = ReceptionReviewFilter | 'weekly_report' | 'calendar' | 'dialysis' | 'feedback';
 
+/** "1m 12s" reads faster than "72" when scanning a column of calls. */
+const formatCallDuration = (seconds?: number | null): string | null => {
+    if (typeof seconds !== 'number' || seconds <= 0) return null;
+    const m = Math.floor(seconds / 60);
+    const sec = seconds % 60;
+    return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+};
+
+const formatCallTimestamp = (value?: string | null): string => {
+    if (!value) return '--';
+    return new Date(value).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
+    });
+};
+
+/** Carrier result, in words reception uses rather than the provider's enum. */
+const VOICE_STATUS_LABEL: Record<string, string> = {
+    connected: 'Answered',
+    no_answer: 'No answer',
+    busy: 'Busy',
+    failed: 'Could not connect',
+};
+
 // Lives in pastRecordsPrint so the print builder pulls in no React.
 import { formatDoctorLabel } from './pastRecordsPrint';
 export { formatDoctorLabel };
@@ -90,6 +113,11 @@ export interface PastRecordsPatientCardProps {
     onCallLog: (patient: ReceptionPastRecordPatient) => void;
     /** Reception only — omit to hide the delete action entirely. */
     onDelete?: (patient: ReceptionPastRecordPatient) => void;
+    /** Optional AI voice call. Omit to hide the action entirely (e.g. before the
+     *  Sarvam agent is configured for this hospital). */
+    onVoiceCall?: (patient: ReceptionPastRecordPatient) => void;
+    /** True while a call is being placed for THIS patient. */
+    isVoiceCallPlacing?: boolean;
     /** Correct the patient's own details. Optional, like onDelete. */
     onEdit?: (patient: ReceptionPastRecordPatient) => void;
     /** Print the case-record sticker. Reception only, like onDelete. */
@@ -114,6 +142,8 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
     onStopFollowup,
     onCallLog,
     onDelete,
+    onVoiceCall,
+    isVoiceCallPlacing = false,
     onEdit,
     onPrintLabel,
     isAppAccessUpdating,
@@ -131,6 +161,13 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
         patient.followupStoppedAt || stopFollowupOverrides[patient.id]?.followupStoppedAt || null;
 
     const callHistory = patient.callHistory || [];
+    const voiceCalls = patient.voiceCalls || [];
+    // Which transcripts are open. Card-local: it is pure display state, and
+    // lifting it would mean every panel threading a Set through for no reason.
+    const [openTranscripts, setOpenTranscripts] = React.useState<Record<string, boolean>>({});
+    // Collapsed by default. Most cards have no AI call, and on a Missed Followup
+    // list of 40 an always-open block pushes the patient details off screen.
+    const [isVoiceHistoryOpen, setIsVoiceHistoryOpen] = React.useState(false);
     // Why is this patient a missed follow-up?
     //
     // "A date went past" is not an answer reception can act on. The useful facts
@@ -156,6 +193,20 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
     const visibleCallHistory = isCallHistoryExpanded ? callHistory : callHistory.slice(0, 2);
     const hiddenCallCount = Math.max(callHistory.length - 2, 0);
 
+    // Reachability, for the reminder pipeline.
+    //
+    // `phone_e164` is a generated column: a string means dialable, null means the
+    // stored number can't be used. UNDEFINED means the migration hasn't been
+    // applied yet — treating that as "unreachable" would paint every patient in
+    // the clinic with a warning chip, so it stays silent instead.
+    //
+    // Nothing is shown for a reachable patient. This chip exists to surface a gap
+    // that can be closed at the next visit, not to decorate the ones that are fine.
+    const reachabilityKnown = patient.phone_e164 !== undefined;
+    const isUnreachable = reachabilityKnown && !patient.phone_e164;
+    // A patient who will never be messaged doesn't need a chip nagging about it.
+    const showReachabilityChip = isUnreachable && !patient.isDeceased && !isFollowupStopped;
+    const hasRawPhone = Boolean((patient.phone || '').trim());
 
     return (
         <div className="px-4 sm:px-5 py-4">
@@ -251,6 +302,21 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                             <span className="text-[11px] text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded-full border border-orange-100">
                                 Visits: {patient.prescriptions?.length || 0}
                             </span>
+                            {showReachabilityChip && (
+                                <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
+                                    title={
+                                        hasRawPhone
+                                            ? `"${patient.phone}" is not a usable mobile number — this patient cannot be sent reminders.`
+                                            : 'No phone number on file — this patient cannot be sent reminders.'
+                                    }
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18.364 5.636L5.636 18.364M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                                    </svg>
+                                    {hasRawPhone ? 'Phone not usable' : 'No phone'}
+                                </span>
+                            )}
                         </div>
 
                         {followupReason && !patient.isDeceased && !isFollowupStopped && (
@@ -313,6 +379,35 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                                     {isFollowupStopped ? 'Follow-up Stopped' : 'Stop Follow-up'}
                                 </button>
                             )}
+                            {onVoiceCall && (() => {
+                                // Mirror the Edge Function's refusals so the button
+                                // explains itself instead of failing after a round trip.
+                                const blockedReason = isUnreachable
+                                    ? (hasRawPhone ? 'This number cannot be dialled' : 'No phone number on file')
+                                    : patient.isDeceased
+                                        ? 'Patient is deceased'
+                                        : isFollowupStopped
+                                            ? 'Follow-up has been stopped'
+                                            : null;
+                                return (
+                                    <button
+                                        type="button"
+                                        onClick={() => { if (!blockedReason && !isVoiceCallPlacing) onVoiceCall(patient); }}
+                                        disabled={Boolean(blockedReason) || isVoiceCallPlacing}
+                                        title={blockedReason || 'Have the AI agent call this patient about their review'}
+                                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border transition-colors ${
+                                            blockedReason
+                                                ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                                                : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+                                        }`}
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0-15a3 3 0 013 3v4a3 3 0 11-6 0V6a3 3 0 013-3z" />
+                                        </svg>
+                                        {isVoiceCallPlacing ? 'Calling…' : 'AI Call'}
+                                    </button>
+                                );
+                            })()}
                             <button
                                 type="button"
                                 onClick={() => onCallLog(patient)}
@@ -395,6 +490,135 @@ const PastRecordsPatientCard: React.FC<PastRecordsPatientCardProps> = ({
                             )}
                         </div>
                     </div>
+
+                        {onVoiceCall && (
+                            <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-3.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsVoiceHistoryOpen((v) => !v)}
+                                    className="w-full flex items-center justify-between gap-2 text-left"
+                                >
+                                    <span className="text-[11px] font-bold uppercase tracking-wide text-violet-700">
+                                        AI Call History
+                                        {/* The count is the whole point of a collapsed header — it has to
+                                            say whether there is anything inside without being opened. */}
+                                        {voiceCalls.length > 0 && (
+                                            <span className="ml-1.5 font-bold text-violet-900">({voiceCalls.length})</span>
+                                        )}
+                                    </span>
+                                    <span className="text-xs font-semibold text-violet-700">
+                                        {isVoiceHistoryOpen ? 'Hide' : 'Show'}
+                                    </span>
+                                </button>
+                                {!isVoiceHistoryOpen ? null : voiceCalls.length === 0 ? (
+                                    <p className="text-xs text-gray-500 mt-1.5">No AI calls yet.</p>
+                                ) : (
+                                    <div className="space-y-2 mt-2">
+                                        {voiceCalls.map((call) => {
+                                            const isOpen = !!openTranscripts[call.id];
+                                            const duration = formatCallDuration(call.durationSeconds);
+                                            // 'placed' means Sarvam accepted the call but no outcome has
+                                            // come back. Showing it as a plain entry would read as "we
+                                            // called and they said nothing" — the opposite of the truth.
+                                            const inFlight = call.status === 'placing' || call.status === 'placed';
+                                            // Staleness is derived from the clock, not from the stored
+                                            // status. The server-side sweep runs at the START of the next
+                                            // place-review-call — so if nobody rings anyone else, a row
+                                            // sits at 'placed' indefinitely and the card would keep
+                                            // promising an outcome that is never coming.
+                                            const ageMinutes = (Date.now() - new Date(call.createdAt).getTime()) / 60000;
+                                            const outcomeLost = inFlight && ageMinutes > 30;
+                                            const awaitingOutcome = inFlight && !outcomeLost;
+                                            return (
+                                                <div key={call.id} className="text-xs bg-white border border-violet-100 rounded-lg px-2.5 py-2">
+                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                        <span className="font-semibold text-gray-700">{formatCallTimestamp(call.createdAt)}</span>
+                                                        {awaitingOutcome ? (
+                                                            <span className="font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">Waiting for outcome</span>
+                                                        ) : outcomeLost ? (
+                                                            <span className="font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-800">No outcome received</span>
+                                                        ) : call.status === 'failed' ? (
+                                                            <span className="font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700">Failed</span>
+                                                        ) : (
+                                                            <span className={`font-bold px-1.5 py-0.5 rounded ${call.providerStatus === 'connected' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                {VOICE_STATUS_LABEL[call.providerStatus || ''] || 'Completed'}
+                                                            </span>
+                                                        )}
+                                                        {duration && <span className="text-gray-500">{duration}</span>}
+                                                        {call.disposition && (
+                                                            <span className={`font-bold px-1.5 py-0.5 rounded ${call.disposition === 'RED_FLAG_REPORTED' ? 'bg-red-100 text-red-800' : 'bg-violet-100 text-violet-800'}`}>
+                                                                {call.disposition.replace(/_/g, ' ')}
+                                                            </span>
+                                                        )}
+                                                        {call.callbackRequested && (
+                                                            <span className="font-bold px-1.5 py-0.5 rounded bg-sky-50 text-sky-700">Callback asked</span>
+                                                        )}
+                                                    </div>
+
+                                                    {awaitingOutcome && (
+                                                        <p className="mt-1 text-amber-700 leading-relaxed">
+                                                            The call was placed. The result usually lands within a few minutes of it ending.
+                                                        </p>
+                                                    )}
+                                                    {outcomeLost && (
+                                                        <p className="mt-1 text-orange-800 leading-relaxed">
+                                                            The call was placed, but no result was ever reported back — so we cannot say
+                                                            whether it was answered or what was said. Check with the patient before assuming.
+                                                        </p>
+                                                    )}
+                                                    {call.status === 'failed' && call.failureReason && (
+                                                        <p className="mt-1 text-red-700 leading-relaxed break-words">{call.failureReason}</p>
+                                                    )}
+                                                    {call.reasonText && (
+                                                        <p className="mt-1 text-gray-700 leading-relaxed">Summary: {call.reasonText}</p>
+                                                    )}
+                                                    {call.callSummary && (
+                                                        <div className="mt-1.5 rounded-md bg-gray-50 border border-gray-100 px-2 py-1.5">
+                                                            {/* Labelled explicitly. This is the agent's own account of the
+                                                                call, not a transcript — a paraphrase must never be read as
+                                                                a verbatim record of what a patient said. */}
+                                                            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Agent's account of the call</p>
+                                                            <p className="mt-0.5 text-gray-700 leading-relaxed whitespace-pre-line">{call.callSummary}</p>
+                                                        </div>
+                                                    )}
+                                                    {(call.spokeTo || call.preferredDay) && (
+                                                        <p className="mt-1 text-gray-500">
+                                                            {call.spokeTo ? `Spoke to ${call.spokeTo}` : ''}
+                                                            {call.spokeTo && call.preferredDay ? ' · ' : ''}
+                                                            {call.preferredDay ? `Prefers ${call.preferredDay}` : ''}
+                                                        </p>
+                                                    )}
+
+                                                    {call.transcript.length > 0 && (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setOpenTranscripts((prev) => ({ ...prev, [call.id]: !prev[call.id] }))}
+                                                                className="mt-1.5 text-xs font-semibold text-violet-700 hover:text-violet-900"
+                                                            >
+                                                                {isOpen ? 'Hide conversation' : `Show conversation (${call.transcript.length} turns)`}
+                                                            </button>
+                                                            {isOpen && (
+                                                                <div className="mt-1.5 space-y-1 max-h-64 overflow-y-auto rounded-md bg-gray-50 border border-gray-100 p-2">
+                                                                    {call.transcript.map((turn, i) => (
+                                                                        <p key={i} className="leading-relaxed">
+                                                                            <span className={`font-bold ${turn.role === 'agent' ? 'text-violet-700' : 'text-gray-700'}`}>
+                                                                                {turn.role === 'agent' ? 'Agent' : 'Patient'}:
+                                                                            </span>{' '}
+                                                                            <span className="text-gray-700">{turn.text}</span>
+                                                                        </p>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                 </div>
 
                 <PastRecordsMetricsSection

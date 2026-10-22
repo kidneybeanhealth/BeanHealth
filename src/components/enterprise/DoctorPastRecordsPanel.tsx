@@ -9,6 +9,7 @@ import {
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
 
+import { placeReviewCall, voiceCallsEnabled } from '../../services/voiceCallService';
 import AddFollowupModal from './AddFollowupModal';
 import StopFollowupModal from './StopFollowupModal';
 import MissedFollowupMonths, { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
@@ -225,6 +226,11 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
     };
 
 
+    // ── AI voice call ────────────────────────────────────────────────────────
+    // Only starts the call. The outcome arrives on Sarvam's webhook minutes later
+    // and is written into hospital_patient_followups server-side, so it lands in
+    // Call History like any other call. Nothing here touches the review date.
+    const [voiceCallPatientId, setVoiceCallPatientId] = useState<string | null>(null);
 
     // ── Missed Followup, grouped by month ────────────────────────────────────
     // Same as Reception, but scoped through belongsToThisDoctor so the counts are
@@ -276,6 +282,22 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
         return missedAll.filter(p => (missedReviewDate(p) || '').slice(0, 7) === missedMonth);
     }, [reviewFilter, missedMonth, missedAll]);
 
+    const handleVoiceCall = async (patient: ReceptionPastRecordPatient) => {
+        if (voiceCallPatientId) return;
+        setVoiceCallPatientId(patient.id);
+        const toastId = toast.loading(`Calling ${patient.name}…`);
+        try {
+            const result = await placeReviewCall({
+                patientId: patient.id,
+                requestedByName: doctor.name || 'Doctor',
+            });
+            toast.success(`Calling ${patient.name} on ${result.dialedNumber}. The outcome will appear in Call History.`, { id: toastId, duration: 7000 });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not place the call', { id: toastId, duration: 7000 });
+        } finally {
+            setVoiceCallPatientId(null);
+        }
+    };
 
     const handlePrintPastRecordsList = async () => {
         // A specific review date is a printable cohort in its own right —
@@ -819,6 +841,8 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                                 isAppAccessUpdating={updatingAccessPatientIds.has(patient.id)}
                                 isCallHistoryExpanded={expandedCallHistoryPatientIds.has(patient.id)}
                                 onToggleCallHistory={togglePatientCallHistory}
+                                onVoiceCall={voiceCallsEnabled() ? handleVoiceCall : undefined}
+                                isVoiceCallPlacing={voiceCallPatientId === patient.id}
                                 locallyStoppedFollowupIds={locallyStoppedFollowupIds}
                                 stopFollowupOverrides={stopFollowupOverrides}
                             />

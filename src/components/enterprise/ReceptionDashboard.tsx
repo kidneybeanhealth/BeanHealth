@@ -12,6 +12,7 @@ import { getReceiptBytes } from '../../utils/receipts/receiptGeneratorSelector';
 import PrinterPreview from '../PrinterPreview';
 import { useTenant } from '../../contexts/TenantContext';
 import { BeanhealthIdService } from '../../services/beanhealthIdService';
+import { describePhoneInput } from '../../utils/phoneUtils';
 const VisitJourneyModal = lazy(() => import('../modals/VisitJourneyModal'));
 import {
     fetchReceptionPastRecords,
@@ -22,6 +23,8 @@ import {
 } from '../../services/enterpriseReviewService';
 import AdmittedPatientsPanel from './AdmittedPatientsPanel';
 import { resolvePatientDoctorSpecialty } from './PastRecordsMetricsSection';
+import { placeReviewCall, voiceCallsEnabled } from '../../services/voiceCallService';
+import AICallCampaignPage from './AICallCampaignPage';
 import AddFollowupModal from './AddFollowupModal';
 import EditPatientModal from './EditPatientModal';
 import StopFollowupModal from './StopFollowupModal';
@@ -170,6 +173,35 @@ const compareQueueTokens = (a: any, b: any, dir: 'asc' | 'desc'): number => {
     if (aMissing) return 1;   // no token → always last
     if (bMissing) return -1;
     return dir === 'asc' ? na - nb : nb - na;
+};
+
+/**
+ * Inline reachability feedback under the registration phone field.
+ *
+ * Deliberately NOT a validation gate. Reception must always be able to register
+ * a patient — someone standing at the desk with an unusual number is not a
+ * reason to refuse them a token. The number is saved either way; this only makes
+ * the consequence visible at the moment it can still be corrected, rather than
+ * weeks later when a reminder silently isn't sent.
+ */
+const PhoneFieldHint: React.FC<{ value: string }> = ({ value }) => {
+    const verdict = describePhoneInput(value);
+
+    if (verdict.kind === 'valid') {
+        return (
+            <p className="mt-1.5 text-[11px] font-semibold text-emerald-600">
+                Reachable · {verdict.e164}
+            </p>
+        );
+    }
+    if (verdict.kind === 'invalid') {
+        return (
+            <p className="mt-1.5 text-[11px] font-semibold text-amber-600">
+                {verdict.message} Saved either way, but reminders won't reach this patient.
+            </p>
+        );
+    }
+    return null;
 };
 
 const ReceptionDashboard: React.FC = () => {
@@ -490,6 +522,11 @@ const ReceptionDashboard: React.FC = () => {
     };
 
 
+    // ── AI voice call ────────────────────────────────────────────────────────
+    // Only starts the call. The outcome arrives on Sarvam's webhook minutes later
+    // and is written into hospital_patient_followups server-side, so it lands in
+    // Call History like any other call. Nothing here touches the review date.
+    const [voiceCallPatientId, setVoiceCallPatientId] = useState<string | null>(null);
 
     // ── Missed Followup, grouped by month ────────────────────────────────────
     // Counts must come from the FULL filtered set: the list pages 50 at a time, so
@@ -501,6 +538,8 @@ const ReceptionDashboard: React.FC = () => {
     const [missedMonth, setMissedMonth] = useState<string | null>(null);
 
     const [showAddFollowup, setShowAddFollowup] = useState(false);
+    const [showAICampaign, setShowAICampaign] = useState(false);
+    const [reviewAlertCount, setReviewAlertCount] = useState(0);
     const [editPastPatient, setEditPastPatient] = useState<ReceptionPastRecordPatient | null>(null);
 
     useEffect(() => {
@@ -542,6 +581,22 @@ const ReceptionDashboard: React.FC = () => {
         return missedAll.filter(p => (missedReviewDate(p) || '').slice(0, 7) === missedMonth);
     }, [reviewFilter, missedMonth, missedAll]);
 
+    const handleVoiceCall = async (patient: ReceptionPastRecordPatient) => {
+        if (voiceCallPatientId) return;
+        setVoiceCallPatientId(patient.id);
+        const toastId = toast.loading(`Calling ${patient.name}…`);
+        try {
+            const result = await placeReviewCall({
+                patientId: patient.id,
+                requestedByName: profile?.name || 'Reception',
+            });
+            toast.success(`Calling ${patient.name} on ${result.dialedNumber}. The outcome will appear in Call History.`, { id: toastId, duration: 7000 });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not place the call', { id: toastId, duration: 7000 });
+        } finally {
+            setVoiceCallPatientId(null);
+        }
+    };
 
     const handlePrintPastRecordsList = async () => {
         // A specific review date is a printable cohort in its own right —
@@ -2145,6 +2200,20 @@ const ReceptionDashboard: React.FC = () => {
                             </svg>
                             <span className="hidden sm:inline text-sm font-medium text-gray-600">Label</span>
                         </button>
+                        {voiceCallsEnabled() && (
+                            <button
+                                onClick={() => setShowAICampaign(true)}
+                                className="px-4 py-3 rounded-xl border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:border-violet-300 font-semibold shadow-sm transition-all text-sm whitespace-nowrap flex items-center gap-2"
+                                title="Place AI reminder calls to patients who have missed a review"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 10v2a7 7 0 01-14 0v-2M12 19v4" />
+                                </svg>
+                                <span className="hidden sm:inline">AI Call Campaign</span>
+                                <span className="inline sm:hidden">AI Calls</span>
+                            </button>
+                        )}
                         <button
                             onClick={() => fetchQueue()}
                             className="p-3 bg-white text-gray-400 hover:text-gray-900 rounded-xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
@@ -2491,6 +2560,8 @@ const ReceptionDashboard: React.FC = () => {
                                                 isAppAccessUpdating={updatingAccessPatientIds.has(patient.id)}
                                                 isCallHistoryExpanded={expandedCallHistoryPatientIds.has(patient.id)}
                                                 onToggleCallHistory={togglePatientCallHistory}
+                                onVoiceCall={voiceCallsEnabled() ? handleVoiceCall : undefined}
+                                isVoiceCallPlacing={voiceCallPatientId === patient.id}
                                                 locallyStoppedFollowupIds={locallyStoppedFollowupIds}
                                                 stopFollowupOverrides={stopFollowupOverrides}
                                             />
@@ -2663,6 +2734,7 @@ const ReceptionDashboard: React.FC = () => {
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Phone</label>
                                     <input type="text" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
                                         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                                    <PhoneFieldHint value={editForm.phone} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Place</label>
@@ -2911,6 +2983,7 @@ const ReceptionDashboard: React.FC = () => {
                                                 </div>
                                             )}
                                         </div>
+                                        <PhoneFieldHint value={walkInForm.phone} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Second Phone</label>
@@ -3396,6 +3469,12 @@ const ReceptionDashboard: React.FC = () => {
                             </div>
                         )}
                     </div>
+                </div>
+            )}
+
+            {showAICampaign && profile?.id && (
+                <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
+                    <AICallCampaignPage hospitalId={profile.id} onBack={() => setShowAICampaign(false)} />
                 </div>
             )}
 

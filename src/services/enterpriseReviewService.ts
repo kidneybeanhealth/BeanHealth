@@ -24,6 +24,42 @@ export interface ReceptionVisitRecord {
     };
 }
 
+/**
+ * One AI voice call attempt, flattened for display.
+ *
+ * Kept separate from ReceptionCallHistoryEntry rather than folded into it: a
+ * human call log is a receptionist's own note, while this carries a machine
+ * outcome, a verbatim transcript, and — importantly — a state where the call was
+ * placed but nothing ever came back. Collapsing the two would hide that state,
+ * and "we rang and don't know what happened" is exactly what someone needs to
+ * see before ringing again.
+ */
+export interface VoiceCallHistoryEntry {
+    id: string;
+    createdAt: string;
+    completedAt: string | null;
+    /** placing | placed | completed | failed */
+    status: string;
+    /** Carrier result: connected / no_answer / busy / failed */
+    providerStatus: string | null;
+    durationSeconds: number | null;
+    failureReason: string | null;
+    /** The agent's own conclusion, e.g. WILL_ATTEND, PATIENT_DECEASED */
+    disposition: string | null;
+    /** What the patient actually said, in their words */
+    reasonText: string | null;
+    spokeTo: string | null;
+    callbackRequested: boolean;
+    preferredDay: string | null;
+    /** Verbatim turns, agent and patient. Empty on the on_end path — Sarvam
+     *  exposes no transcript variable, so the agent cannot send one. */
+    transcript: { role: string; text: string }[];
+    /** The agent's own account of the call, written into a declared output
+     *  variable. A paraphrase, not evidence — labelled as such in the UI. */
+    callSummary: string | null;
+    requestedByName: string | null;
+}
+
 export interface ReceptionCallHistoryEntry {
     id: string;
     called_at: string;
@@ -59,6 +95,12 @@ export interface ReceptionPastRecordPatient {
     age: number | string | null;
     gender?: string | null;
     phone?: string | null;
+    /**
+     * Generated E.164 form of `phone` — null when the stored number can't be
+     * dialled. Undefined (not null) when the migration hasn't been applied, so
+     * callers must distinguish the two before reporting "unreachable".
+     */
+    phone_e164?: string | null;
     mr_number?: string | null;
     beanhealth_id?: string | null;
     father_husband_name?: string | null;
@@ -76,6 +118,7 @@ export interface ReceptionPastRecordPatient {
     lastVisitAt: string | null;
     prescriptions: ReceptionVisitRecord[];
     callHistory: ReceptionCallHistoryEntry[];
+    voiceCalls: VoiceCallHistoryEntry[];
     /**
      * NEW: Multi-doctor support
      * Array of reviews grouped by doctor when patient has multiple doctors
@@ -162,6 +205,67 @@ type FollowupRow = {
     call_status?: string | null;
     called_at?: string | null;
     patient_response?: string | null;
+};
+
+/**
+ * Columns on hospital_patients that only exist once their migration has been
+ * applied. Migrations here are run by hand in the Supabase SQL editor, so a
+ * select naming a column that isn't there yet doesn't degrade — it 400s and
+ * takes the whole Past Records screen with it.
+ */
+export interface OptionalPatientColumns {
+    /** Deceased + follow-up continuity — sql/20260424_*.sql */
+    lifecycle: boolean;
+    /** Generated E.164 phone — sql/20260814_phone_e164.sql */
+    phoneE164: boolean;
+}
+
+const BASE_PATIENT_COLUMNS = [
+    'id', 'name', 'age', 'gender', 'phone', 'mr_number', 'beanhealth_id',
+    'father_husband_name', 'app_access_enabled', 'created_at',
+];
+
+/** Each group is dropped as a unit when its columns turn out to be missing. */
+const OPTIONAL_PATIENT_COLUMN_GROUPS: {
+    key: keyof OptionalPatientColumns;
+    columns: string[];
+}[] = [
+        {
+            key: 'lifecycle',
+            columns: ['is_deceased', 'deceased_at', 'continuity_status', 'followup_stopped_at', 'followup_stop_reason'],
+        },
+        {
+            key: 'phoneE164',
+            columns: ['phone_e164'],
+        },
+    ];
+
+const buildPatientSelect = (cols: OptionalPatientColumns): string => {
+    const selected = [...BASE_PATIENT_COLUMNS];
+    for (const group of OPTIONAL_PATIENT_COLUMN_GROUPS) {
+        if (cols[group.key]) selected.push(...group.columns);
+    }
+    return selected.join(', ');
+};
+
+/**
+ * Given a failed query, drop the ONE still-enabled group the error blames.
+ * Returns null when the error isn't about a missing column, so a genuine
+ * failure (auth, timeout, network) propagates instead of being retried into
+ * a silently emptier result set.
+ */
+const dropMissingColumnGroup = (
+    cols: OptionalPatientColumns,
+    error: any
+): OptionalPatientColumns | null => {
+    const message = String(error?.message || '').toLowerCase();
+    for (const group of OPTIONAL_PATIENT_COLUMN_GROUPS) {
+        if (!cols[group.key]) continue;
+        if (group.columns.some((column) => message.includes(column))) {
+            return { ...cols, [group.key]: false };
+        }
+    }
+    return null;
 };
 
 const normalizeDateOnly = (value?: string | null): string | null => {
@@ -642,10 +746,8 @@ export async function fetchReceptionPastRecords(
     }
     const candidateList = candidateIds ? Array.from(candidateIds) : null;
 
-    const buildPatientsQuery = (includeDeceasedFields: boolean, idChunk?: string[]): any => {
-        const selectClause = includeDeceasedFields
-            ? 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, is_deceased, deceased_at, continuity_status, followup_stopped_at, followup_stop_reason, created_at'
-            : 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at';
+    const buildPatientsQuery = (cols: OptionalPatientColumns, idChunk?: string[]): any => {
+        const selectClause = buildPatientSelect(cols);
 
         let query: any = (supabase
             .from('hospital_patients') as any)
@@ -662,7 +764,7 @@ export async function fetchReceptionPastRecords(
         // Stopped patients are deliberately invisible to every review bucket —
         // latestReviewDate is forced null for them — so the only way to list them
         // is off continuity_status directly.
-        if (reviewFilter === 'followup_stopped' && includeDeceasedFields) {
+        if (reviewFilter === 'followup_stopped' && cols.lifecycle) {
             // Deceased patients belong here too. markPatientDeceased writes
             // is_deceased and cancels the reviews, but never touches
             // continuity_status — so filtering on that column alone made every
@@ -683,11 +785,11 @@ export async function fetchReceptionPastRecords(
     };
 
     /** Fetch the candidate patients in chunks so the IN() list never oversizes the URL. */
-    const fetchCandidatePatients = async (includeDeceasedFields: boolean): Promise<SupabaseResult<any[]>> => {
+    const fetchCandidatePatients = async (cols: OptionalPatientColumns): Promise<SupabaseResult<any[]>> => {
         const rows: any[] = [];
         for (const chunk of chunkArray(candidateList as string[], 100)) {
             const res = await withTimeout(
-                buildPatientsQuery(includeDeceasedFields, chunk),
+                buildPatientsQuery(cols, chunk),
                 10000,
                 'Timed out while loading patient records'
             ) as SupabaseResult<any[]>;
@@ -697,31 +799,28 @@ export async function fetchReceptionPastRecords(
         return { data: rows, error: null, count: rows.length };
     };
 
-    let patientsResult = candidateList
-        ? await fetchCandidatePatients(true)
-        : await withTimeout(
-            buildPatientsQuery(true),
-            10000,
-            'Timed out while loading patient records'
-        ) as SupabaseResult<any[]>;
+    const runPatientsQuery = (cols: OptionalPatientColumns): Promise<SupabaseResult<any[]>> =>
+        candidateList
+            ? fetchCandidatePatients(cols)
+            : withTimeout(
+                buildPatientsQuery(cols),
+                10000,
+                'Timed out while loading patient records'
+            ) as Promise<SupabaseResult<any[]>>;
 
-    if (patientsResult.error) {
-        const message = String(patientsResult.error.message || '').toLowerCase();
-        const missingLifecycleColumns =
-            message.includes('is_deceased') ||
-            message.includes('deceased_at') ||
-            message.includes('continuity_status') ||
-            message.includes('followup_stopped_at') ||
-            message.includes('followup_stop_reason');
-        if (missingLifecycleColumns) {
-            patientsResult = candidateList
-                ? await fetchCandidatePatients(false)
-                : await withTimeout(
-                    buildPatientsQuery(false),
-                    10000,
-                    'Timed out while loading patient records'
-                ) as SupabaseResult<any[]>;
-        }
+    // Optional column groups are dropped ONE GROUP AT A TIME. Collapsing to a
+    // single "minimal" select instead would mean a site that has the lifecycle
+    // columns but not phone_e164 (i.e. every site until the phone migration is
+    // applied) silently loses deceased/continuity data from Past Records —
+    // a regression that looks like data loss rather than a missing migration.
+    let cols: OptionalPatientColumns = { lifecycle: true, phoneE164: true };
+    let patientsResult = await runPatientsQuery(cols);
+
+    for (let attempt = 0; attempt < OPTIONAL_PATIENT_COLUMN_GROUPS.length && patientsResult.error; attempt++) {
+        const dropped = dropMissingColumnGroup(cols, patientsResult.error);
+        if (!dropped) break;
+        cols = dropped;
+        patientsResult = await runPatientsQuery(cols);
     }
 
     if (patientsResult.error) {
@@ -743,9 +842,15 @@ export async function fetchReceptionPastRecords(
     const prescriptions: ReceptionVisitRecord[] = [];
     const reviews: ReviewRow[] = [];
     const followups: FollowupRow[] = [];
+    const voiceAttempts: any[] = [];
 
     for (const idChunk of idChunks) {
-        const [prescriptionsChunkResult, reviewsChunkResult, followupsChunkResult] = await Promise.all([
+        const [
+            prescriptionsChunkResult,
+            reviewsChunkResult,
+            followupsChunkResult,
+            voiceChunkResult,
+        ] = await Promise.all([
             withTimeout(
                 (supabase
                     .from('hospital_prescriptions' as any)
@@ -780,7 +885,17 @@ export async function fetchReceptionPastRecords(
                 10000,
                 'Timed out while loading follow-up status'
             ),
-        ]) as [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>, SupabaseResult<FollowupRow[]>];
+            withTimeout(
+                (supabase
+                    .from('hospital_voice_call_attempts' as any)
+                    .select('id, patient_id, status, provider_status, duration_seconds, failure_reason, transcript, final_agent_variables, requested_by_name, created_at, completed_at')
+                    .eq('hospital_id', hospitalId)
+                    .in('patient_id', idChunk)
+                    .order('created_at', { ascending: false })) as any,
+                10000,
+                'Timed out while loading AI call history'
+            ),
+        ]) as [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>, SupabaseResult<FollowupRow[]>, SupabaseResult<any[]>];
 
         if (prescriptionsChunkResult.error) {
             throw prescriptionsChunkResult.error;
@@ -799,6 +914,17 @@ export async function fetchReceptionPastRecords(
                 throw followupsChunkResult.error;
             }
         }
+
+        // The voice-call table ships with the Sarvam feature; a hospital running
+        // without it must still see its Past Records, so a missing table is not
+        // an error here.
+        if (voiceChunkResult?.error) {
+            const message = String(voiceChunkResult.error.message || '').toLowerCase();
+            if (!message.includes('hospital_voice_call_attempts')) {
+                throw voiceChunkResult.error;
+            }
+        }
+        voiceAttempts.push(...((voiceChunkResult?.data || []) as any[]));
 
         prescriptions.push(...((prescriptionsChunkResult.data || []) as ReceptionVisitRecord[]));
         reviews.push(...((reviewsChunkResult.data || []) as ReviewRow[]));
@@ -828,6 +954,53 @@ export async function fetchReceptionPastRecords(
     const latestFollowupStatusByPatient = new Map<string, string | null>();
     const latestFollowupAtByPatient = new Map<string, string | null>();
     const latestFollowupStatusByDoctorPerPatient = new Map<string, Map<string | null, { status: string | null; calledAt: string | null }>>();
+    // AI call attempts, newest first. final_agent_variables is the agent's own
+    // output block; reading it here keeps the JSONB shape in one place instead of
+    // spread across every component that wants a disposition.
+    // The agent fills every declared output variable, using placeholders where it
+    // has nothing — so 'NA' arrives as a value and renders as "Summary: NA" and
+    // "Prefers NA". Those are absences, not answers, and showing them as text
+    // makes a card look populated when nothing was learned.
+    const VOID_VALUES = new Set(['na', 'n/a', 'none', 'null', 'nil', '-', '--', 'unknown', 'not applicable']);
+    const readVar = (vars: any, key: string): string | null => {
+        const raw = vars && typeof vars === 'object' ? vars[key] : null;
+        if (typeof raw !== 'string') return null;
+        const trimmed = raw.trim();
+        if (!trimmed || VOID_VALUES.has(trimmed.toLowerCase())) return null;
+        return trimmed;
+    };
+    const voiceCallsByPatient = new Map<string, VoiceCallHistoryEntry[]>();
+    for (const attempt of voiceAttempts) {
+        const vars = attempt.final_agent_variables || null;
+        const rawTranscript = Array.isArray(attempt.transcript) ? attempt.transcript : [];
+        const entry: VoiceCallHistoryEntry = {
+            id: attempt.id,
+            createdAt: attempt.created_at,
+            completedAt: attempt.completed_at || null,
+            status: attempt.status || 'placing',
+            providerStatus: attempt.provider_status || null,
+            durationSeconds: typeof attempt.duration_seconds === 'number' ? attempt.duration_seconds : null,
+            failureReason: attempt.failure_reason || null,
+            disposition: readVar(vars, 'disposition'),
+            reasonText: readVar(vars, 'reason_text'),
+            spokeTo: readVar(vars, 'spoke_to'),
+            // Lowercase yes/no is the one exception in an otherwise uppercase enum
+            // set, so compare case-insensitively — a future normalisation upstream
+            // must not silently turn every callback request into a no.
+            callbackRequested: (readVar(vars, 'callback_requested') || '').toLowerCase() === 'yes',
+            preferredDay: readVar(vars, 'preferred_day'),
+            callSummary: readVar(vars, 'call_summary'),
+            transcript: rawTranscript
+                .filter((t: any) => t && typeof t.text === 'string' && t.text.trim())
+                .map((t: any) => ({ role: String(t.role || ''), text: String(t.text).trim() })),
+            requestedByName: attempt.requested_by_name || null,
+        };
+        if (!voiceCallsByPatient.has(attempt.patient_id)) {
+            voiceCallsByPatient.set(attempt.patient_id, []);
+        }
+        voiceCallsByPatient.get(attempt.patient_id)!.push(entry);
+    }
+
     const followupsByPatient = new Map<string, ReceptionCallHistoryEntry[]>();
 
     for (const followup of followups) {
@@ -956,6 +1129,7 @@ export async function fetchReceptionPastRecords(
                 lastVisitAt: latestPrescription?.created_at || p.created_at || null,
                 prescriptions: visitHistory,
                 callHistory: (followupsByPatient.get(p.id) || []).slice(0, 3),
+                voiceCalls: (voiceCallsByPatient.get(p.id) || []).slice(0, 5),
                 doctorReviews,
             } as ReceptionPastRecordPatient;
         })
