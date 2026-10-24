@@ -222,6 +222,9 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [missedMonth, setMissedMonth] = useState<string | null>(null);
     const [patientType, setPatientType] = useState<PatientType>('all');
+    // Most patients registered Apr–Sep 2026 have no number on file (the field was
+    // hidden at registration), so the first runs work from those who do.
+    const [phoneOnly, setPhoneOnly] = useState(false);
     const [cohort, setCohort] = useState<CohortFilter>('overdue');
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
@@ -288,11 +291,15 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
         return counts;
     }, [monthBase]);
 
+    const typeBase = useMemo(
+        () => (patientType === 'all' ? monthBase : monthBase.filter((p) => patientTypeOf(p.mr_number) === patientType)),
+        [monthBase, patientType]
+    );
+    const phoneCount = useMemo(() => typeBase.filter((p) => !!toE164(p.phone || '')).length, [typeBase]);
+
     const visible = useMemo(() => {
         const q = search.trim().toLowerCase();
-        let base = patientType === 'all'
-            ? monthBase
-            : monthBase.filter((p) => patientTypeOf(p.mr_number) === patientType);
+        let base = phoneOnly ? typeBase.filter((p) => !!toE164(p.phone || '')) : typeBase;
         if (q) {
             base = base.filter((p) =>
                 (p.name || '').toLowerCase().includes(q) ||
@@ -308,7 +315,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
         const rest: ReceptionPastRecordPatient[] = [];
         for (const p of base) (selectedIds.has(p.id) ? picked : rest).push(p);
         return [...picked, ...rest];
-    }, [monthBase, patientType, cohort, selectedIds, search]);
+    }, [typeBase, phoneOnly, cohort, selectedIds, search]);
 
     const allVisibleSelected = visible.length > 0 && visible.every((p) => selectedIds.has(p.id));
 
@@ -634,6 +641,11 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                     {label}
                                 </button>
                             ))}
+                            <span className="mx-1 w-px self-stretch bg-gray-200" aria-hidden="true" />
+                            <button type="button" onClick={() => setPhoneOnly((v) => !v)} aria-pressed={phoneOnly}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${phoneOnly ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                                Has phone number ({phoneCount})
+                            </button>
                         </div>
                     </div>
 
@@ -657,7 +669,14 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                 <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggle(p.id)}
                                     className="w-4 h-4 accent-violet-600" />
                                 <span className="flex-1 min-w-0">
-                                    <span className="block font-semibold text-gray-900 text-sm truncate">{p.name}</span>
+                                    <span className="flex items-center gap-2 min-w-0">
+                                        <span className="font-semibold text-gray-900 text-sm truncate">{p.name}</span>
+                                        {p.phone && (
+                                            toE164(p.phone)
+                                                ? <span className="shrink-0 text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded tabular-nums">{p.phone}</span>
+                                                : <span className="shrink-0 text-xs font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded tabular-nums" title="Not a valid mobile number, so this patient cannot be dialled until it is corrected">{p.phone} · check</span>
+                                        )}
+                                    </span>
                                     <span className="block text-xs text-gray-500">
                                         {p.mr_number || '—'} · Age {p.age ?? '--'}
                                         {patientTypeOf(p.mr_number) && (
