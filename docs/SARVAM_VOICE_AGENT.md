@@ -45,7 +45,7 @@ psql "$DATABASE_URL" -f sql/20260817_voice_call_attempts.sql
 
 ### 2. Commit the agent in the Sarvam console
 
-Committed on `app_id: Conversatio-aaae688f-7e96`. **Pin `SARVAM_APP_VERSION=10`** once version 10 below is committed; until then, 9.
+Committed on `app_id: Conversatio-aaae688f-7e96`. **Pinned `SARVAM_APP_VERSION=11`** (set 24 Oct 2026).
 
 Version history, because pinning the wrong one silently changes the call:
 
@@ -57,7 +57,8 @@ Version history, because pinning the wrong one silently changes the call:
 | **7** | v5 + the `callback_token` guard line + `LANGUAGE_BARRIER`, with v6's language and greeting reverted |
 | 8 | v7 + `call_summary` output variable, wired into the on_end tool payload |
 | 9 | v8 + the patient-identity lock and a wider `reason_text` |
-| **10** | v9 + a short opener that waits for the patient, patient nudges, and the "why did you miss" question with a `missed_reason` code. See below |
+| 10 | v9 + the short opener that waits for the patient, and the "why did you miss" question with a `missed_reason` code (saved by Genie, 24 Oct). Genie also dropped the instruction telling the agent to switch language itself; the platform rejected it, and Sarvam switches language on its own |
+| **11** | v10 + the call settings: two nudges at 6 s and 6 s, hang up only after both, Eagerness Patient, sound sensitivity Medium. **Current pin** |
 
 `SARVAM_APP_VERSION` is **required**, not optional. Leaving it unset does not
 track the newest commit — `version_filter` defaults to `specific`, so the API
