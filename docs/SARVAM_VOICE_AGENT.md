@@ -45,7 +45,7 @@ psql "$DATABASE_URL" -f sql/20260817_voice_call_attempts.sql
 
 ### 2. Commit the agent in the Sarvam console
 
-Committed on `app_id: Conversatio-aaae688f-7e96`. **Pin `SARVAM_APP_VERSION=8`.**
+Committed on `app_id: Conversatio-aaae688f-7e96`. **Pin `SARVAM_APP_VERSION=10`** once version 10 below is committed; until then, 9.
 
 Version history, because pinning the wrong one silently changes the call:
 
@@ -55,7 +55,9 @@ Version history, because pinning the wrong one silently changes the call:
 | 5 | Adds the on_end webhook tool and declares `callback_token` |
 | 6 | English-only, inbound-style greeting. **Do not use** — both were mistaken: English-only strands most of a Coimbatore patient list in `LANGUAGE_BARRIER`, and "thank you for calling" is false on an outbound call |
 | **7** | v5 + the `callback_token` guard line + `LANGUAGE_BARRIER`, with v6's language and greeting reverted |
-| **8** | v7 + `call_summary` output variable, wired into the on_end tool payload |
+| 8 | v7 + `call_summary` output variable, wired into the on_end tool payload |
+| 9 | v8 + the patient-identity lock and a wider `reason_text` |
+| **10** | v9 + a short opener that waits for the patient, patient nudges, and the "why did you miss" question with a `missed_reason` code. See below |
 
 `SARVAM_APP_VERSION` is **required**, not optional. Leaving it unset does not
 track the newest commit — `version_filter` defaults to `specific`, so the API
@@ -69,6 +71,91 @@ rejects the call:
 round-tripping an upstream error that names a parameter we never send. After
 editing the agent in the console, commit it and repin this to the new number —
 otherwise production keeps running the old script.
+
+### Version 10 — what to change in the console
+
+Asked for by KKC on 24 Oct 2026, before the first 50 calls (25 old patients and
+25 new patients from Missed Followup). Two problems with v9:
+
+1. **The opening is lost.** The agent speaks the moment the call connects. On an
+   Indian mobile call the first second or two of audio often never reaches the
+   patient, so the introduction is half-heard, the patient says nothing, the agent
+   nudges ("irukeengala?") and then hangs up.
+2. **The reason for missing is not asked.** The agent states the review date and
+   asks when they can come. The doctor most wants to know *why* they did not come,
+   especially from patients who will not come back.
+
+**There is no "wait N seconds before greeting" setting** in Sarvam's documented
+agent settings, and the outbound API takes no delay either (its only per-call
+overrides are `initial_bot_message`, `initial_state_name` and
+`initial_language_name`). The fix is to make the first line expendable and then
+wait. If Sarvam support offers a delay before the greeting, set it to 2 s as well.
+
+**A. Call settings** (Agent → Settings → call settings)
+
+| Setting | Value |
+|---|---|
+| Nudge quiet callers | On. Nudge 1 after **6 s**: "ஹலோ, கேக்குதுங்களா? கொங்குநாடு கிட்னி சென்டர்ல இருந்து பேசுறோம்." Nudge 2 after **6 s** more: "ஹலோ? நான் ஆஷா, கொங்குநாடு கிட்னி சென்டர்ல இருந்து." |
+| Hang up after unanswered nudges | On, but only after both nudges (about 12 s of silence, not 3) |
+| Eagerness to respond | **Patient** |
+| Detect when the caller stops talking | On |
+| Let callers interrupt | On |
+| Sound sensitivity | Medium (Low if KKC's patients are often on noisy roads) |
+
+**B. Greeting** (Canvas → instruction → greeting): only `ஹலோ, வணக்கம்!`
+
+**C. Add to the instruction** (above the existing flow; keep everything else,
+including the identity lock, red flags and "never move the appointment"). In the
+canvas, insert each `@variable` from the `@` picker rather than typing it:
+
+```
+OPENING
+- Your greeting is only "Hello, vanakkam". The first seconds of a mobile call are often
+  cut off, so after the greeting say nothing more and wait for the person to reply.
+- When they reply (hello, yes, who is this), introduce yourself: you are Asha from
+  @hospital_name, and ask whether you are speaking with @patient_name or a family member.
+- If they seem not to have heard you, repeat the introduction once, slowly.
+- Do not ask "are you there?" yourself; the call settings handle silence.
+
+WHY THEY MISSED: ask on every call
+- After saying their review was due on @review_date, ask why they could not come that
+  day, before asking when they can come. Say the doctor would like to know.
+- Let them finish. Do not argue, judge, lecture or give medical advice.
+- If the answer is vague ("busy", "later", "no time"), ask one gentle follow-up:
+  "Was it the travel, the cost, your health, or something else?" Only one follow-up.
+- If they say they will not come back, the reason is the most important thing to bring
+  back to the doctor. Make sure you have it before the call ends, then ask:
+  "Is there anything the hospital could do that would help you come?"
+- If they now go to another hospital, accept it. Ask which one only if they offer it.
+- Then continue as before: when can they come (no appointment needed, OP hours).
+
+RECORDING
+- reason_text: one short English sentence with the patient's reason in their own
+  meaning, e.g. "Son works weekdays, no one to bring him" or "Feels fine, thinks the
+  review is not needed". If they said what would help, add "Would help: ...". Fill it
+  whenever they gave any reason; leave it empty only if they would not say.
+- missed_reason: exactly one of TRAVEL_DISTANCE, COST, FEELING_BETTER,
+  UNWELL_OR_ADMITTED, NO_ESCORT, WORK_OR_FAMILY, FORGOT, TREATED_ELSEWHERE,
+  NOT_SATISFIED, OTHER, NOT_SHARED.
+```
+
+**D. Variables** (Variables tab → Output variables).
+- New: `missed_reason`, data type **Enum**, values TRAVEL_DISTANCE, COST,
+  FEELING_BETTER, UNWELL_OR_ADMITTED, NO_ESCORT, WORK_OR_FAMILY, FORGOT,
+  TREATED_ELSEWHERE, NOT_SATISFIED, OTHER, NOT_SHARED. Extraction prompt: "Why the
+  patient did not come for their review on the date given, as one category. NOT_SHARED
+  if they were not asked or would not say."
+- Change `reason_text`'s extraction prompt to: "The patient's reason for not coming to
+  their review, in one short English sentence in their own meaning. Add 'Would help: …'
+  if they said what would help them come. Empty if they gave no reason."
+- Add `missed_reason` to the `post_call_outcome_webhook` on_end tool's payload next to
+  `reason_text`. The
+webhook stores every variable it receives in
+`hospital_voice_call_attempts.final_agent_variables`, so no deploy is needed for it
+to be kept; the AI Call Campaign page reads it and shows "Why they missed".
+
+**E. Commit as version 10**, place one test call to your own phone, then repin
+`SARVAM_APP_VERSION=10`. Until the repin, every call still runs v9.
 
 ### 3. Secrets
 

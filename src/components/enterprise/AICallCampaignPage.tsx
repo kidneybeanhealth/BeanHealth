@@ -118,6 +118,20 @@ const COHORTS: { key: CohortFilter; label: string }[] = [
     { key: 'all', label: 'All' },
 ];
 
+/**
+ * Old or new patient, read from the year in the MR number (KNH/25/012345 → 25).
+ * New means the MR was issued this year: a patient who first came to the
+ * hospital recently. Entries carry stray spaces and missing prefixes, so the
+ * match is loose; anything unreadable is neither, and shows only under All.
+ */
+type PatientType = 'all' | 'old' | 'new';
+const THIS_YEAR_YY = String(new Date().getFullYear()).slice(2);
+export const patientTypeOf = (mr: string | null | undefined): 'old' | 'new' | null => {
+    const yy = (mr || '').match(/^\s*(?:[A-Za-z]+\s*\/)?\s*(\d\d)\/\d{4,}/)?.[1];
+    if (!yy || yy > THIS_YEAR_YY) return null;
+    return yy === THIS_YEAR_YY ? 'new' : 'old';
+};
+
 /** Mirrors the Edge Function's toE164 so the UI refuses the same numbers it would. */
 const toE164 = (raw: string): string | null => {
     const digits = (raw || '').replace(/\D/g, '');
@@ -139,6 +153,7 @@ interface PlacedCall {
     dialedNumber: string | null;
     summary: string | null;
     disposition: string | null;
+    missedReason: MissedReason | null;
 }
 
 interface Row {
@@ -148,8 +163,50 @@ interface Row {
     attemptRef: string | null;
     summary: string | null;
     disposition: string | null;
+    missedReason: MissedReason | null;
     error: string | null;
 }
+
+/**
+ * Why the patient missed their review — the question the doctor cares about
+ * most. From agent version 10 the agent returns `missed_reason` (one of the
+ * codes below) alongside `reason_text`, the patient's own reason in a line.
+ * Earlier calls have only `reason_text`, which is still shown.
+ */
+const MISSED_REASON_LABELS: Record<string, string> = {
+    TRAVEL_DISTANCE: 'Travel or distance',
+    COST: 'Cost',
+    FEELING_BETTER: 'Felt better',
+    UNWELL_OR_ADMITTED: 'Unwell or admitted elsewhere',
+    NO_ESCORT: 'No one to bring them',
+    WORK_OR_FAMILY: 'Work or family',
+    FORGOT: 'Forgot the date',
+    TREATED_ELSEWHERE: 'Treated elsewhere',
+    NOT_SATISFIED: 'Not satisfied with care',
+    OTHER: 'Other',
+    NOT_SHARED: 'Did not say',
+};
+
+interface MissedReason { label: string | null; text: string | null }
+
+const readMissedReason = (vars: any): MissedReason | null => {
+    const code = typeof vars?.missed_reason === 'string' ? vars.missed_reason.trim().toUpperCase() : '';
+    const text = typeof vars?.reason_text === 'string' ? vars.reason_text.trim() : '';
+    if (!code && !text) return null;
+    return { label: code ? (MISSED_REASON_LABELS[code] || code.replace(/_/g, ' ').toLowerCase()) : null, text: text || null };
+};
+
+const MissedReasonLine: React.FC<{ reason: MissedReason | null }> = ({ reason }) => {
+    if (!reason) return null;
+    return (
+        <p className="mt-1 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 leading-relaxed">
+            <span className="font-bold">Why they missed:</span>{' '}
+            {reason.label && <span className="font-semibold">{reason.label}</span>}
+            {reason.label && reason.text && ' — '}
+            {reason.text}
+        </p>
+    );
+};
 
 interface Props {
     hospitalId: string;
@@ -164,6 +221,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
 
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [missedMonth, setMissedMonth] = useState<string | null>(null);
+    const [patientType, setPatientType] = useState<PatientType>('all');
     const [cohort, setCohort] = useState<CohortFilter>('overdue');
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
@@ -215,11 +273,26 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
         [cohort, candidates]
     );
 
+    const monthBase = useMemo(
+        () => (cohort === 'overdue' && missedMonth
+            ? candidates.filter((p) => (missedReviewDate(p) || '').slice(0, 7) === missedMonth)
+            : candidates),
+        [candidates, cohort, missedMonth]
+    );
+    const typeCounts = useMemo(() => {
+        const counts = { all: monthBase.length, old: 0, new: 0 };
+        for (const p of monthBase) {
+            const t = patientTypeOf(p.mr_number);
+            if (t) counts[t]++;
+        }
+        return counts;
+    }, [monthBase]);
+
     const visible = useMemo(() => {
         const q = search.trim().toLowerCase();
-        let base = cohort === 'overdue' && missedMonth
-            ? candidates.filter((p) => (missedReviewDate(p) || '').slice(0, 7) === missedMonth)
-            : candidates;
+        let base = patientType === 'all'
+            ? monthBase
+            : monthBase.filter((p) => patientTypeOf(p.mr_number) === patientType);
         if (q) {
             base = base.filter((p) =>
                 (p.name || '').toLowerCase().includes(q) ||
@@ -235,7 +308,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
         const rest: ReceptionPastRecordPatient[] = [];
         for (const p of base) (selectedIds.has(p.id) ? picked : rest).push(p);
         return [...picked, ...rest];
-    }, [candidates, cohort, missedMonth, selectedIds, search]);
+    }, [monthBase, patientType, cohort, selectedIds, search]);
 
     const allVisibleSelected = visible.length > 0 && visible.every((p) => selectedIds.has(p.id));
 
@@ -269,6 +342,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
             dialedNumber: r.dialed_number || null,
             summary: typeof r.final_agent_variables?.call_summary === 'string' ? r.final_agent_variables.call_summary : null,
             disposition: typeof r.final_agent_variables?.disposition === 'string' ? r.final_agent_variables.disposition : null,
+            missedReason: readMissedReason(r.final_agent_variables),
         })));
     }, [hospitalId]);
 
@@ -287,7 +361,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
             // Clear it from the run column too, so a deleted call cannot keep
             // showing a summary that no longer exists anywhere.
             setRows((prev) => prev.map((r) => r.attemptRef === call.id
-                ? { ...r, state: 'idle', attemptRef: null, summary: null, disposition: null, error: null }
+                ? { ...r, state: 'idle', attemptRef: null, summary: null, disposition: null, missedReason: null, error: null }
                 : r));
             toast.success('Call record deleted');
         } catch (err: any) {
@@ -310,7 +384,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
             patient,
             // Prefill only what the hospital already holds. Everyone else is typed.
             phone: patient.phone || '',
-            state: 'idle', attemptRef: null, summary: null, disposition: null, error: null,
+            state: 'idle', attemptRef: null, summary: null, disposition: null, missedReason: null, error: null,
         })));
         setStep(2);
     };
@@ -350,6 +424,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                 state: data?.status === 'completed' ? 'done' : 'failed',
                 summary: typeof vars.call_summary === 'string' ? vars.call_summary : null,
                 disposition: typeof vars.disposition === 'string' ? vars.disposition : null,
+                missedReason: readMissedReason(vars),
                 error: timedOut && !settled
                     ? 'No outcome came back within 10 minutes.'
                     : (data?.failure_reason || null),
@@ -469,8 +544,9 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                                     </span>
                                                 )}
                                             </div>
+                                            <MissedReasonLine reason={call.missedReason} />
                                             {call.summary
-                                                ? <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">{call.summary}</p>
+                                                ? <p className="mt-1 text-xs text-gray-700 leading-relaxed whitespace-pre-line">{call.summary}</p>
                                                 : <p className="text-xs text-gray-400">No summary recorded.</p>}
                                         </div>
                                         <button type="button" onClick={() => setPendingDelete(call)} disabled={deletingId === call.id}
@@ -514,7 +590,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                     )}
                     <div className="flex flex-wrap gap-2 mb-3">
                         {COHORTS.map((c) => (
-                            <button key={c.key} type="button" onClick={() => { setCohort(c.key); setSelectedIds(new Set()); setMissedMonth(null); }}
+                            <button key={c.key} type="button" onClick={() => { setCohort(c.key); setSelectedIds(new Set()); setMissedMonth(null); setPatientType('all'); }}
                                 className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${cohort === c.key ? 'bg-orange-50 text-orange-700 border-orange-300' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
                                 {c.label}
                             </button>
@@ -543,6 +619,24 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                         </div>
                     )}
 
+                    <div className="mb-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1.5">
+                            Old or new patient — from the year in the MR number
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {([
+                                ['all', `All patients (${typeCounts.all})`],
+                                ['old', `Old patients (${typeCounts.old})`],
+                                ['new', `New patients (${typeCounts.new})`],
+                            ] as const).map(([key, label]) => (
+                                <button key={key} type="button" onClick={() => setPatientType(key)}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${patientType === key ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     <div className="flex items-center justify-between mb-2 text-sm">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible}
@@ -564,7 +658,14 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                     className="w-4 h-4 accent-violet-600" />
                                 <span className="flex-1 min-w-0">
                                     <span className="block font-semibold text-gray-900 text-sm truncate">{p.name}</span>
-                                    <span className="block text-xs text-gray-500">{p.mr_number || '—'} · Age {p.age ?? '--'}</span>
+                                    <span className="block text-xs text-gray-500">
+                                        {p.mr_number || '—'} · Age {p.age ?? '--'}
+                                        {patientTypeOf(p.mr_number) && (
+                                            <span className={`ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${patientTypeOf(p.mr_number) === 'new' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'}`}>
+                                                {patientTypeOf(p.mr_number) === 'new' ? 'New' : 'Old'}
+                                            </span>
+                                        )}
+                                    </span>
                                 </span>
                                 {cohort === 'priority' ? (
                                     <span className="flex flex-wrap justify-end gap-1 max-w-[55%]">
@@ -696,6 +797,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                                 {current.disposition.replace(/_/g, ' ')}
                                             </span>
                                         )}
+                                        <MissedReasonLine reason={current.missedReason} />
                                         <p className="mt-1 text-sm text-gray-700 leading-relaxed whitespace-pre-line">{current.summary}</p>
                                     </div>
                                 )}
@@ -986,7 +1088,16 @@ const StateChip: React.FC<{ state: RunState }> = ({ state }) => {
  */
 const SCRIPT_STEPS = [
     {
-        label: 'Greeting',
+        // A short opener, then silence until the person answers. The first second
+        // of an Indian mobile call is often lost while audio connects, so the full
+        // introduction must not be spent there (agent v10).
+        label: 'Opening — then waits',
+        ta: 'ஹலோ, வணக்கம்!',
+        hi: 'हैलो, नमस्ते!',
+        en: 'Hello, good day!',
+    },
+    {
+        label: 'Introduction',
         ta: 'வணக்கம், நான் ஆஷா, {hospital_name}-லிருந்து பேசுகிறேன். {patient_name} பேசுகிறீர்களா, அல்லது குடும்பத்தினரா?',
         hi: 'नमस्ते, मैं आशा बोल रही हूँ, {hospital_name} से। क्या मैं {patient_name} से बात कर रही हूँ, या परिवार के किसी सदस्य से?',
         en: 'Hello, this is Asha calling from {hospital_name}. Am I speaking with {patient_name}, or a family member?',
@@ -996,6 +1107,14 @@ const SCRIPT_STEPS = [
         ta: 'உங்கள் மறு பரிசோதனை தேதி {review_date}. அது முடிந்து {days_overdue} நாட்கள் ஆகிவிட்டன.',
         hi: 'आपकी जाँच की तारीख़ {review_date} थी। उसे {days_overdue} दिन हो चुके हैं।',
         en: 'Your review was due on {review_date} — that was {days_overdue} days ago.',
+    },
+    {
+        // Asked on every call, before "when can you come" (agent v10). The doctor
+        // wants this most when the patient is not willing to come back.
+        label: 'Why they missed',
+        ta: 'அன்று ஏன் வர முடியவில்லை என்று சொல்ல முடியுமா? டாக்டர் அதைத் தெரிந்து கொள்ள விரும்புகிறார்.',
+        hi: 'उस दिन आप क्यों नहीं आ पाए, बता सकते हैं? डॉक्टर यह जानना चाहते हैं।',
+        en: 'May I ask why you could not come that day? The doctor would like to know.',
     },
     {
         label: 'The ask',
@@ -1021,7 +1140,7 @@ const CallScript: React.FC = () => (
     <div className="rounded-2xl border border-violet-200 bg-white p-4">
         <div className="flex items-baseline justify-between gap-2 mb-2">
             <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700">Call script — what the patient hears</p>
-            <p className="text-[11px] text-gray-400">Agent “Asha” · Sarvam app_version 9</p>
+            <p className="text-[11px] text-gray-400">Agent “Asha” · Sarvam app_version 10</p>
         </div>
         <p className="text-xs text-gray-500 mb-4">
             Summary of the flow, not the agent's prompt — that lives in the Sarvam console. The call opens in the
