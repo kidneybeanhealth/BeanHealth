@@ -177,6 +177,32 @@ interface FetchReceptionPastRecordsParams {
     searchQuery?: string;
     reviewFilter?: ReceptionReviewFilter;
     reviewDate?: string;
+    /**
+     * Load only what decides a patient's follow-up state, not the full visit
+     * history (medicines, notes). For whole-cohort screens like the AI call
+     * campaign, where thousands of patients load and nobody opens an Rx.
+     */
+    lean?: boolean;
+}
+
+/**
+ * PostgREST returns at most this many rows per request and says nothing when it
+ * stops. A query that comes back with exactly this many may have been cut short.
+ */
+const POSTGREST_ROW_CAP = 1000;
+
+/** Run `fn` over `items`, `limit` at a time, keeping the results in item order. */
+async function mapInBatches<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+    const results: R[] = new Array(items.length);
+    let next = 0;
+    const worker = async () => {
+        while (next < items.length) {
+            const i = next++;
+            results[i] = await fn(items[i]);
+        }
+    };
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+    return results;
 }
 
 interface SupabaseResult<T = any> {
@@ -621,7 +647,9 @@ const fetchFilterCandidatePatientIds = async (
             let q = (supabase.from('hospital_patient_reviews' as any) as any)
                 .select('patient_id')
                 .eq('hospital_id', hospitalId);
-            q = build(q).range(from, from + PAGE - 1);
+            // Paging needs a fixed order: without one Postgres may return the same
+            // row on two pages and skip another, so a patient silently drops out.
+            q = build(q).order('id', { ascending: true }).range(from, from + PAGE - 1);
             const res = await withTimeout(q as any, 10000, 'Timed out while resolving filter candidates') as SupabaseResult<any[]>;
             if (res.error) {
                 const msg = String(res.error.message || '').toLowerCase();
@@ -652,6 +680,7 @@ const fetchFilterCandidatePatientIds = async (
                     .select('patient_id')
                     .eq('hospital_id', hospitalId)
                     .eq('next_review_date', targetDate)
+                    .order('id', { ascending: true })
                     .range(from, from + PAGE - 1)) as any,
                 10000,
                 'Timed out while resolving prescription-dated candidates'
@@ -702,6 +731,7 @@ const fetchFilterCandidatePatientIds = async (
                     .select('patient_id')
                     .eq('hospital_id', hospitalId)
                     .eq('call_status', 'not_picked')
+                    .order('id', { ascending: true })
                     .range(from, from + PAGE - 1)) as any,
                 10000,
                 'Timed out while resolving follow-up candidates'
@@ -731,6 +761,7 @@ export async function fetchReceptionPastRecords(
         searchQuery = '',
         reviewFilter = 'all',
         reviewDate = '',
+        lean = false,
     } = params;
 
     const from = page * pageSize;
@@ -746,19 +777,22 @@ export async function fetchReceptionPastRecords(
     }
     const candidateList = candidateIds ? Array.from(candidateIds) : null;
 
-    const buildPatientsQuery = (cols: OptionalPatientColumns, idChunk?: string[]): any => {
+    const buildPatientsQuery = (cols: OptionalPatientColumns, idChunk?: string[], range: [number, number] = [from, to]): any => {
         const selectClause = buildPatientSelect(cols);
 
         let query: any = (supabase
             .from('hospital_patients') as any)
             .select(selectClause, { count: 'exact' })
             .eq('hospital_id', hospitalId)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            // Tie-break so pages never overlap: patients imported together
+            // share a created_at.
+            .order('id', { ascending: true });
 
         if (idChunk) {
             query = query.in('id', idChunk);
         } else if (!needsDerivedFiltering) {
-            query = query.range(from, to);
+            query = query.range(range[0], range[1]);
         }
 
         // Stopped patients are deliberately invisible to every review bucket —
@@ -786,27 +820,54 @@ export async function fetchReceptionPastRecords(
 
     /** Fetch the candidate patients in chunks so the IN() list never oversizes the URL. */
     const fetchCandidatePatients = async (cols: OptionalPatientColumns): Promise<SupabaseResult<any[]>> => {
-        const rows: any[] = [];
-        for (const chunk of chunkArray(candidateList as string[], 100)) {
-            const res = await withTimeout(
+        // Four at a time: a whole cohort is thousands of patients, and one chunk
+        // after another was most of the wait.
+        const results = await mapInBatches(chunkArray(candidateList as string[], 100), 4, (chunk) =>
+            withTimeout(
                 buildPatientsQuery(cols, chunk),
+                10000,
+                'Timed out while loading patient records'
+            ) as Promise<SupabaseResult<any[]>>
+        );
+        const failed = results.find((res) => res.error);
+        if (failed) return failed;
+        const rows = results.flatMap((res) => res.data || []);
+        return { data: rows, error: null, count: rows.length };
+    };
+
+    /**
+     * A page wider than the row cap (the AI call campaign asks for thousands)
+     * would come back silently cut at 1000, so it is fetched cap-sized slice by
+     * slice and joined. The first slice's count is the true total.
+     */
+    const fetchPagedPatients = async (cols: OptionalPatientColumns): Promise<SupabaseResult<any[]>> => {
+        const rows: any[] = [];
+        let total: number | null = null;
+        for (let start = from; start <= to; start += POSTGREST_ROW_CAP) {
+            const end = Math.min(to, start + POSTGREST_ROW_CAP - 1);
+            const res = await withTimeout(
+                buildPatientsQuery(cols, undefined, [start, end]),
                 10000,
                 'Timed out while loading patient records'
             ) as SupabaseResult<any[]>;
             if (res.error) return res;
+            if (total === null) total = res.count ?? null;
             rows.push(...(res.data || []));
+            if ((res.data || []).length < end - start + 1) break;
         }
-        return { data: rows, error: null, count: rows.length };
+        return { data: rows, error: null, count: total ?? rows.length };
     };
 
     const runPatientsQuery = (cols: OptionalPatientColumns): Promise<SupabaseResult<any[]>> =>
         candidateList
             ? fetchCandidatePatients(cols)
-            : withTimeout(
-                buildPatientsQuery(cols),
-                10000,
-                'Timed out while loading patient records'
-            ) as Promise<SupabaseResult<any[]>>;
+            : (!needsDerivedFiltering && to - from + 1 > POSTGREST_ROW_CAP)
+                ? fetchPagedPatients(cols)
+                : withTimeout(
+                    buildPatientsQuery(cols),
+                    10000,
+                    'Timed out while loading patient records'
+                ) as Promise<SupabaseResult<any[]>>;
 
     // Optional column groups are dropped ONE GROUP AT A TIME. Collapsing to a
     // single "minimal" select instead would mean a site that has the lifecycle
@@ -838,65 +899,89 @@ export async function fetchReceptionPastRecords(
         };
     }
 
-    const idChunks = chunkArray(patientIds, 120);
     const prescriptions: ReceptionVisitRecord[] = [];
     const reviews: ReviewRow[] = [];
     const followups: FollowupRow[] = [];
     const voiceAttempts: any[] = [];
 
-    for (const idChunk of idChunks) {
-        const [
-            prescriptionsChunkResult,
-            reviewsChunkResult,
-            followupsChunkResult,
-            voiceChunkResult,
-        ] = await Promise.all([
-            withTimeout(
-                (supabase
-                    .from('hospital_prescriptions' as any)
-                    .select(`
-                        id, patient_id, token_number, status, created_at, next_review_date,
+    // A lean load skips what only the visit history shows (medicines, notes,
+    // signatures). Nothing that decides the follow-up state is dropped.
+    const prescriptionColumns = lean
+        ? 'id, patient_id, token_number, status, created_at, next_review_date, metadata, dispensed_at, doctor:hospital_doctors(id, name, specialty)'
+        : `id, patient_id, token_number, status, created_at, next_review_date,
                         tests_to_review, specialists_to_review, medications, notes, metadata, dispensed_at,
-                        doctor:hospital_doctors(id, name, specialty, signature_url)
-                    `)
-                    .eq('hospital_id', hospitalId)
-                    .in('patient_id', idChunk)
-                    .order('created_at', { ascending: false })) as any,
-                12000,
-                'Timed out while loading prescription history'
-            ),
-            withTimeout(
-                (supabase
-                    .from('hospital_patient_reviews' as any)
-                    .select('id, patient_id, doctor_id, status, next_review_date, source_prescription_id, completed_at, created_at, updated_at, review_reason')
-                    .eq('hospital_id', hospitalId)
-                    .in('patient_id', idChunk)
-                    .order('updated_at', { ascending: false })) as any,
-                10000,
-                'Timed out while loading review status'
-            ),
-            withTimeout(
-                (supabase
-                    .from('hospital_patient_followups' as any)
-                    .select('id, patient_id, doctor_id, call_status, called_at, patient_response')
-                    .eq('hospital_id', hospitalId)
-                    .in('patient_id', idChunk)
-                    .order('called_at', { ascending: false })) as any,
-                10000,
-                'Timed out while loading follow-up status'
-            ),
-            withTimeout(
-                (supabase
-                    .from('hospital_voice_call_attempts' as any)
-                    .select('id, patient_id, status, provider_status, duration_seconds, failure_reason, transcript, final_agent_variables, requested_by_name, created_at, completed_at')
-                    .eq('hospital_id', hospitalId)
-                    .in('patient_id', idChunk)
-                    .order('created_at', { ascending: false })) as any,
-                10000,
-                'Timed out while loading AI call history'
-            ),
-        ]) as [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>, SupabaseResult<FollowupRow[]>, SupabaseResult<any[]>];
+                        doctor:hospital_doctors(id, name, specialty, signature_url)`;
 
+    type ChunkResults = [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>, SupabaseResult<FollowupRow[]>, SupabaseResult<any[]>];
+
+    const queryChunk = (idChunk: string[]) => Promise.all([
+        withTimeout(
+            (supabase
+                .from('hospital_prescriptions' as any)
+                .select(prescriptionColumns)
+                .eq('hospital_id', hospitalId)
+                .in('patient_id', idChunk)
+                .order('created_at', { ascending: false })) as any,
+            12000,
+            'Timed out while loading prescription history'
+        ),
+        withTimeout(
+            (supabase
+                .from('hospital_patient_reviews' as any)
+                .select('id, patient_id, doctor_id, status, next_review_date, source_prescription_id, completed_at, created_at, updated_at, review_reason')
+                .eq('hospital_id', hospitalId)
+                .in('patient_id', idChunk)
+                .order('updated_at', { ascending: false })) as any,
+            10000,
+            'Timed out while loading review status'
+        ),
+        withTimeout(
+            (supabase
+                .from('hospital_patient_followups' as any)
+                .select('id, patient_id, doctor_id, call_status, called_at, patient_response')
+                .eq('hospital_id', hospitalId)
+                .in('patient_id', idChunk)
+                .order('called_at', { ascending: false })) as any,
+            10000,
+            'Timed out while loading follow-up status'
+        ),
+        withTimeout(
+            (supabase
+                .from('hospital_voice_call_attempts' as any)
+                .select('id, patient_id, status, provider_status, duration_seconds, failure_reason, transcript, final_agent_variables, requested_by_name, created_at, completed_at')
+                .eq('hospital_id', hospitalId)
+                .in('patient_id', idChunk)
+                .order('created_at', { ascending: false })) as any,
+            10000,
+            'Timed out while loading AI call history'
+        ),
+    ]) as Promise<ChunkResults>;
+
+    /**
+     * One chunk's rows, split in two and fetched again whenever any table comes
+     * back at the row cap. Long-standing patients carry dozens of prescriptions,
+     * and a truncated chunk dropped the newest reviews of whoever sorted last,
+     * which moved them out of Missed Followup without any error.
+     */
+    const loadChunk = async (idChunk: string[]): Promise<ChunkResults[]> => {
+        const results = await queryChunk(idChunk);
+        const capped = results.some((res) => (res?.data?.length || 0) >= POSTGREST_ROW_CAP);
+        if (capped && idChunk.length > 1) {
+            const half = Math.ceil(idChunk.length / 2);
+            const [a, b] = await Promise.all([loadChunk(idChunk.slice(0, half)), loadChunk(idChunk.slice(half))]);
+            return [...a, ...b];
+        }
+        return [results];
+    };
+
+    const chunkResults = (await mapInBatches(chunkArray(patientIds, 120), 3, loadChunk)).flat();
+
+    for (const [
+        prescriptionsChunkResult,
+        reviewsChunkResult,
+        followupsChunkResult,
+        voiceChunkResult,
+    ] of chunkResults) {
         if (prescriptionsChunkResult.error) {
             throw prescriptionsChunkResult.error;
         }

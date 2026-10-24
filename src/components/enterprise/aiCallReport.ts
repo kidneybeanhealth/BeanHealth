@@ -42,7 +42,8 @@ export const MISSED_REASON_LABELS: Record<string, string> = {
 
 const DISPOSITION_LABELS: Record<string, string> = {
     WILL_COME: 'Will come',
-    NOT_REACHABLE: 'Answered, did not talk',
+    // Said by the call result instead ("Picked up, no conversation").
+    NOT_REACHABLE: '',
     WRONG_NUMBER: 'Wrong number',
     PATIENT_HOSPITALISED: 'In hospital now',
     PATIENT_DECEASED: 'Patient deceased',
@@ -57,7 +58,7 @@ const titleCase = (code: string): string =>
 export const dispositionLabel = (code: string | null | undefined): string => {
     if (!code) return '';
     const key = code.trim().toUpperCase();
-    if (DISPOSITION_LABELS[key]) return DISPOSITION_LABELS[key];
+    if (key in DISPOSITION_LABELS) return DISPOSITION_LABELS[key];
     // REFUSED_COST, REFUSED_DISTANCE …: the agent invents the suffix.
     if (key.startsWith('REFUSED_')) return `Will not come (${titleCase(key.slice(8))})`;
     return titleCase(key);
@@ -77,6 +78,7 @@ export interface AiCallReportInput {
     createdAt: string;
     status: string;
     providerStatus: string | null;
+    durationSeconds?: number | null;
     vars: Record<string, unknown> | null;
 }
 
@@ -87,6 +89,7 @@ export interface AiCallReportRow {
     calledAt: string;
     answered: boolean;
     callResult: string;
+    duration: string;
     spokeTo: string;
     outcome: string;
     outcomeCode: string;
@@ -102,17 +105,50 @@ export interface AiCallReportRow {
  */
 export const NO_CONVERSATION = new Set(['NOT_REACHABLE', 'WRONG_NUMBER', 'LANGUAGE_BARRIER']);
 
-/** How the carrier ended the call. Only `connected` means somebody answered. */
-export const callResultLabel = (status: string, providerStatus: string | null): string => {
+/**
+ * Did anybody actually talk? The agent marks a call it could not get going as
+ * NOT_REACHABLE, and a call cut off at once comes back with every output empty.
+ * Both connected, but neither is an answered call.
+ */
+const hadConversation = (vars: Record<string, unknown> | null | undefined): boolean => {
+    if (vars === undefined) return true; // caller has no outputs to judge by
+    const v = vars || {};
+    const disposition = (str(v.disposition) || '').toUpperCase();
+    if (disposition === 'NOT_REACHABLE') return false;
+    return Boolean(disposition || str(v.call_summary) || str(v.reason_text));
+};
+
+export const NO_CONVERSATION_LABEL = 'Picked up, no conversation';
+
+/**
+ * How the call ended, in words. Only a connected call where somebody spoke is
+ * "Answered"; pass the call's outputs (`vars`) so a pick-up with nothing said
+ * reads as such.
+ */
+export const callResultLabel = (
+    status: string,
+    providerStatus: string | null,
+    vars?: Record<string, unknown> | null,
+): string => {
+    let carrier: string;
     switch ((providerStatus || '').toLowerCase()) {
-        case 'connected': return 'Answered';
+        case 'connected': carrier = 'Answered'; break;
         case 'no_answer': return 'Not answered';
         case 'busy': return 'Busy';
         case 'failed': return 'Could not connect';
+        default:
+            if (status === 'failed') return 'Could not place';
+            if (status !== 'completed') return 'Waiting for result';
+            carrier = 'Answered';
     }
-    if (status === 'failed') return 'Could not place';
-    if (status === 'completed') return 'Answered';
-    return 'Waiting for result';
+    return hadConversation(vars) ? carrier : NO_CONVERSATION_LABEL;
+};
+
+/** 134 → "2:14". Blank when the platform never reported a length. */
+export const formatCallDuration = (seconds: number | null | undefined): string => {
+    if (seconds == null || !Number.isFinite(seconds)) return '';
+    const s = Math.max(0, Math.round(seconds));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
 /**
@@ -125,7 +161,9 @@ export const withPatientName = (summary: string | null, name: string): string | 
 
 export const toReportRow = (c: AiCallReportInput): AiCallReportRow => {
     const v = c.vars || {};
-    const answered = callResultLabel(c.status, c.providerStatus) === 'Answered';
+    const callResult = callResultLabel(c.status, c.providerStatus, c.vars);
+    const answered = callResult === 'Answered';
+    const pickedUp = answered || callResult === NO_CONVERSATION_LABEL;
     const disposition = str(v.disposition);
     const rawCode = (str(v.missed_reason) || '').toUpperCase();
     const code = rawCode === 'NOT_SHARED' && NO_CONVERSATION.has((disposition || '').toUpperCase()) ? '' : rawCode;
@@ -146,14 +184,15 @@ export const toReportRow = (c: AiCallReportInput): AiCallReportRow => {
             day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
         }),
         answered,
-        callResult: callResultLabel(c.status, c.providerStatus),
+        callResult,
+        duration: formatCallDuration(c.durationSeconds),
         spokeTo: answered && spoke && spoke.toUpperCase() !== 'UNKNOWN' ? titleCase(spoke) : '',
         outcome: answered ? dispositionLabel(disposition) : '',
         outcomeCode: (disposition || '').toUpperCase(),
         reasonLabel: answered && code ? (MISSED_REASON_LABELS[code] || titleCase(code)) : '',
         reasonText: answered ? (str(v.reason_text) || '') : '',
         nextStep: answered ? next : '',
-        summary: answered ? (withPatientName(str(v.call_summary), c.name) || '') : '',
+        summary: pickedUp ? (withPatientName(str(v.call_summary), c.name) || '') : '',
     };
 };
 
@@ -174,7 +213,10 @@ export function buildAiCallReportHtml({ calls, hospitalName, periodLabel }: AiCa
     const answered = rows.filter((r) => r.answered);
     const willCome = answered.filter((r) => r.outcomeCode === 'WILL_COME').length;
     const wontCome = answered.filter((r) => r.outcomeCode.startsWith('REFUSED')).length;
-    const notAnswered = rows.length - answered.length;
+    const noTalk = rows.filter((r) => r.callResult === NO_CONVERSATION_LABEL).length;
+    const notAnswered = rows.length - answered.length - noTalk;
+    const talkSeconds = calls.reduce((n, c) => n + (c.durationSeconds || 0), 0);
+    const timed = calls.filter((c) => c.durationSeconds != null).length;
     const reasons = count(answered.filter((r) => r.reasonLabel && r.reasonLabel !== 'Did not say'), (r) => r.reasonLabel);
     const outcomes = count(answered, (r) => r.outcome);
     const old = rows.filter((r) => r.patientType === 'Old').length;
@@ -193,7 +235,7 @@ export function buildAiCallReportHtml({ calls, hospitalName, periodLabel }: AiCa
                 <div class="mr">${escapeHtml(r.calledAt)}</div>
             </td>
             <td>
-                <div class="${r.answered ? 'ok' : 'no'}">${escapeHtml(r.callResult)}</div>
+                <div class="${r.answered ? 'ok' : 'no'}">${escapeHtml(r.callResult)}${r.duration ? ` · ${escapeHtml(r.duration)}` : ''}</div>
                 ${r.spokeTo ? `<div class="mr">Spoke to: ${escapeHtml(r.spokeTo)}</div>` : ''}
                 ${r.outcome ? `<div class="out">${escapeHtml(r.outcome)}</div>` : ''}
             </td>
@@ -248,7 +290,9 @@ export function buildAiCallReportHtml({ calls, hospitalName, periodLabel }: AiCa
   <div class="totals">
     <div><b>${rows.length}</b> calls placed</div>
     <div><b>${answered.length}</b> answered</div>
+    <div><b>${noTalk}</b> picked up, no conversation</div>
     <div><b>${notAnswered}</b> not answered or busy</div>
+    <div><b>${timed ? formatCallDuration(talkSeconds) : '—'}</b> total call time${timed && timed < calls.length ? ` (${timed} of ${calls.length} calls timed)` : ''}</div>
     <div><b>${willCome}</b> will come</div>
     <div><b>${wontCome}</b> will not come</div>
     <div><b>${old}</b> old · <b style="display:inline">${fresh}</b> new patients</div>
@@ -267,7 +311,8 @@ export function buildAiCallReportHtml({ calls, hospitalName, periodLabel }: AiCa
   </table>
   <footer>
     Printed ${escapeHtml(new Date().toLocaleString('en-IN'))} from BeanHealth. Calls were placed by the AI assistant;
-    the reason and the account are the assistant's summary of what was said, not a recording. Old or new is read from the
+    the reason and the account are the assistant's summary of what was said, not a recording. Call time is as reported by
+    the calling platform; a call with no time shown had none reported. Old or new is read from the
     year in the MR number. No appointment was changed by these calls.
   </footer>
   <script>window.onload = function () { window.print(); };</script>
@@ -278,10 +323,10 @@ const csvCell = (v: string): string => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '
 
 /** Excel opens this directly; the BOM keeps Tamil and ₹ readable. */
 export function buildAiCallReportCsv(calls: AiCallReportInput[]): string {
-    const header = ['#', 'Patient', 'MR number', 'Old / New', 'Called at', 'Call result', 'Spoke to', 'Outcome',
+    const header = ['#', 'Patient', 'MR number', 'Old / New', 'Called at', 'Call result', 'Duration (m:ss)', 'Spoke to', 'Outcome',
         'Why they missed', "Patient's reason", 'Next step', "Agent's account of the call"];
     const lines = calls.map(toReportRow).map((r, i) => [
-        String(i + 1), r.name, r.mrNumber, r.patientType, r.calledAt, r.callResult, r.spokeTo, r.outcome,
+        String(i + 1), r.name, r.mrNumber, r.patientType, r.calledAt, r.callResult, r.duration, r.spokeTo, r.outcome,
         r.reasonLabel, r.reasonText, r.nextStep, r.summary,
     ].map(csvCell).join(','));
     return '﻿' + [header.join(','), ...lines].join('\r\n');

@@ -79,6 +79,23 @@ const wantsCallback = (vars: unknown): boolean =>
     (readVar(vars, 'callback_requested') || '').toLowerCase() === 'yes'
 
 /** Flatten the transcript into something readable in the Call History card. */
+/** Sarvam documents `duration` as seconds, a number or null; accept a numeric string too. */
+const readDuration = (payload: any): number | null => {
+    const raw = payload?.duration
+    const n = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() ? Number(raw) : NaN
+    return Number.isFinite(n) && n >= 0 ? Math.round(n) : null
+}
+
+/**
+ * Shape A, the platform's own report: it always carries `status` (connected,
+ * no_answer, busy, failed) and usually `attempt_id` and `channel_info`. The
+ * agent's on_end payload carries none of these.
+ */
+const isPlatformReport = (payload: any): boolean =>
+    typeof payload?.attempt_id === 'string'
+    || (typeof payload?.status === 'string' && ['connected', 'no_answer', 'busy', 'failed'].includes(payload.status))
+    || payload?.channel_info != null
+
 const summariseTranscript = (transcript: unknown): string | null => {
     if (!Array.isArray(transcript) || transcript.length === 0) return null
     const lines = transcript
@@ -106,9 +123,11 @@ serve(async (req) => {
         //     variables, with callback_token echoed back from what we sent in.
         //
         // Shape B carries no call metadata (the agent does not know how long the
-        // call was or how the carrier classified it), so those fields stay null.
-        // Accepting both means the outcome lands whichever mechanism fires — and
-        // if both fire, the second is rejected as a replay by the single-use rule.
+        // call was or how the carrier classified it), so those fields stay null
+        // until shape A arrives. Accepting both means the outcome lands whichever
+        // mechanism fires first; when shape A comes second it only fills in the
+        // duration, interaction id and transcript (see below), it never writes the
+        // outcome twice.
         const token = url.searchParams.get('token')
             || payload?.webhook_config?.metadata?.token
             || payload?.callback_token
@@ -133,6 +152,38 @@ serve(async (req) => {
 
         if (attemptError) throw attemptError
         if (!attempt) {
+            // On an answered call the agent's on_end report usually lands first and
+            // completes the attempt; the platform's report follows with the call's
+            // duration, interaction id and transcript, none of which the agent can
+            // send. Merge those onto the completed attempt, once (while it has no
+            // duration and no transcript yet), without re-running dispositions or
+            // writing a second Call History entry. Anything else is still rejected.
+            if (isPlatformReport(payload)) {
+                const { data: done } = await admin
+                    .from('hospital_voice_call_attempts')
+                    .select('id, duration_seconds, transcript, final_agent_variables')
+                    .eq('webhook_token', token)
+                    .eq('status', 'completed')
+                    .maybeSingle()
+                if (done && done.duration_seconds == null && done.transcript == null) {
+                    const existing = done.final_agent_variables
+                    const hasOutputs = existing && typeof existing === 'object'
+                        && Object.values(existing as Record<string, unknown>).some((v) => typeof v === 'string' && v.trim())
+                    const { error: mergeError } = await admin
+                        .from('hospital_voice_call_attempts')
+                        .update({
+                            duration_seconds: readDuration(payload),
+                            provider_status: payload?.status ?? undefined,
+                            interaction_id: payload?.interaction_id ?? null,
+                            transcript: payload?.interaction_transcript ?? null,
+                            // Keep the agent's outputs; only fill them if the agent sent none.
+                            ...(hasOutputs || !payload?.final_agent_variables ? {} : { final_agent_variables: payload.final_agent_variables }),
+                        })
+                        .eq('id', done.id)
+                    if (mergeError) throw mergeError
+                    return json({ ok: true, merged: true })
+                }
+            }
             // Deliberately vague: don't tell an unauthenticated caller whether a
             // token was wrong, already used, or never existed.
             return json({ error: 'Unrecognised or already-completed attempt' }, 404)
@@ -184,7 +235,7 @@ serve(async (req) => {
             .update({
                 status: 'completed',
                 provider_status: sarvamStatus,
-                duration_seconds: typeof payload?.duration === 'number' ? payload.duration : null,
+                duration_seconds: readDuration(payload),
                 failure_reason: payload?.failure_reason ?? null,
                 interaction_id: payload?.interaction_id ?? null,
                 transcript,

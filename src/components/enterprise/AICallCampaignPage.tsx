@@ -29,7 +29,8 @@ import { formatPastDate } from './PastRecordsPatientCard';
 import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 import { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import {
-    patientTypeOf, MISSED_REASON_LABELS, NO_CONVERSATION, callResultLabel, withPatientName,
+    patientTypeOf, MISSED_REASON_LABELS, NO_CONVERSATION, NO_CONVERSATION_LABEL, callResultLabel, withPatientName,
+    formatCallDuration,
     buildAiCallReportHtml, buildAiCallReportCsv, type AiCallReportInput,
 } from './aiCallReport';
 
@@ -147,18 +148,106 @@ interface PlacedCall {
     disposition: string | null;
     missedReason: MissedReason | null;
     vars: Record<string, unknown> | null;
+    durationSeconds: number | null;
+}
+
+/** When this patient was last rung, by anyone. */
+interface LastCall { at: string; by: 'AI' | 'Reception' }
+
+/**
+ * The few patient fields a call needs. Saved with the call list, so the list
+ * survives leaving the page even when the patient is not in the cohort on screen.
+ */
+interface CallPatient {
+    id: string;
+    name: string;
+    mr_number: string | null;
+    age: string | number | null;
+    phone: string | null;
+    doctorName: string | null;
+    reviewDate: string | null;
+    lastVisitAt: string | null;
 }
 
 interface Row {
-    patient: ReceptionPastRecordPatient;
+    patient: CallPatient;
     phone: string;
     state: RunState;
     attemptRef: string | null;
     summary: string | null;
     disposition: string | null;
     missedReason: MissedReason | null;
+    providerStatus: string | null;
+    vars: Record<string, unknown> | null;
+    durationSeconds: number | null;
     error: string | null;
 }
+
+const toCallPatient = (p: ReceptionPastRecordPatient): CallPatient => {
+    const dr = p.doctorReviews?.[0];
+    return {
+        id: p.id,
+        name: p.name,
+        mr_number: p.mr_number || null,
+        age: (p.age as any) ?? null,
+        phone: p.phone || null,
+        doctorName: dr?.doctorName || null,
+        reviewDate: dr?.reviewDate || p.latestReviewDate || null,
+        lastVisitAt: p.lastVisitAt || null,
+    };
+};
+
+const newRow = (patient: CallPatient, phone = patient.phone || ''): Row => ({
+    patient, phone, state: 'idle', attemptRef: null, summary: null, disposition: null,
+    missedReason: null, providerStatus: null, vars: null, durationSeconds: null, error: null,
+});
+
+/**
+ * Latest call by reception or the AI. The AI's own outcome is also written to
+ * the call log (as "[AI call …]"), so either source can hold the newest one.
+ */
+const lastCallOf = (p: ReceptionPastRecordPatient): LastCall | null => {
+    let last: LastCall | null = null;
+    for (const c of p.callHistory || []) {
+        if (!c.called_at) continue;
+        const ai = /^(\[AI call|\*\*\* RED FLAG)/.test(c.patient_response || '');
+        if (!last || c.called_at > last.at) last = { at: c.called_at, by: ai ? 'AI' : 'Reception' };
+    }
+    for (const v of p.voiceCalls || []) {
+        if (v.createdAt && (!last || v.createdAt > last.at)) last = { at: v.createdAt, by: 'AI' };
+    }
+    return last;
+};
+
+const shortDay = (iso: string): string =>
+    new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+
+/**
+ * The call list is kept per hospital on this device, so reception can pick
+ * patients, leave, and come back to add, remove or reorder. Typed numbers are
+ * kept apart, in this browser tab only: the patient's own number on file is
+ * already in the record, and a typed one should not outlive the tab.
+ */
+const LIST_KEY = (hospitalId: string) => `bh.aiCallList.v1.${hospitalId}`;
+const PHONES_KEY = (hospitalId: string) => `bh.aiCallPhones.v1.${hospitalId}`;
+
+const loadSavedRows = (hospitalId: string): Row[] => {
+    try {
+        const saved = JSON.parse(localStorage.getItem(LIST_KEY(hospitalId)) || '[]');
+        const phones = JSON.parse(sessionStorage.getItem(PHONES_KEY(hospitalId)) || '{}');
+        if (!Array.isArray(saved)) return [];
+        return saved
+            .filter((r: any) => r?.patient?.id)
+            .map((r: any) => ({
+                ...newRow(r.patient as CallPatient),
+                ...r,
+                phone: typeof phones[r.patient.id] === 'string' ? phones[r.patient.id] : (r.patient.phone || ''),
+                error: null,
+            }));
+    } catch {
+        return [];
+    }
+};
 
 /**
  * Why the patient missed their review — the question the doctor cares about
@@ -197,6 +286,9 @@ interface Props {
     onBack: () => void;
 }
 
+/** A row mid-call can't be removed or cleared. */
+const isBusy = (r: Row): boolean => r.state === 'calling' || r.state === 'waiting';
+
 /** Today in the browser's own date, as YYYY-MM-DD. */
 const localDay = (d: Date = new Date()): string =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -217,10 +309,10 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
     const [candidates, setCandidates] = useState<ReceptionPastRecordPatient[]>([]);
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [rows, setRows] = useState<Row[]>([]);
-    const [locked, setLocked] = useState(false);
-    const [activeIndex, setActiveIndex] = useState(0);
+    // The call list: who will be rung, in this order. Survives leaving the page.
+    const [rows, setRows] = useState<Row[]>(() => loadSavedRows(hospitalId));
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [clearArmed, setClearArmed] = useState(false);
     const [showScript, setShowScript] = useState(false);
     // Three sections stacked as collapsibles meant opening Usage pushed the
     // patient list — the thing the page exists for — below the fold. They are
@@ -230,31 +322,51 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
     const [placedOpen, setPlacedOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [pendingDelete, setPendingDelete] = useState<PlacedCall | null>(null);
-    const pollRef = useRef<number | null>(null);
+    // One poller per call in flight, keyed by patient, so reordering or removing
+    // other rows can never point an outcome at the wrong patient.
+    const pollersRef = useRef<Map<string, number>>(new Map());
 
     // ── Cohort ────────────────────────────────────────────────────────────
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        fetchReceptionPastRecords({ hospitalId, page: 0, pageSize: CAMPAIGN_FETCH_LIMIT, reviewFilter: cohortToFilter(cohort) })
+        fetchReceptionPastRecords({ hospitalId, page: 0, pageSize: CAMPAIGN_FETCH_LIMIT, reviewFilter: cohortToFilter(cohort), lean: true })
             .then((res) => { if (!cancelled) setCandidates(res.patients); })
             .catch((err) => { if (!cancelled) toast.error(err?.message || 'Could not load patients'); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
     }, [hospitalId, cohort]);
+    const inList = useMemo(() => new Set(rows.map((r) => r.patient.id)), [rows]);
+    const lastCalls = useMemo(() => {
+        const m = new Map<string, LastCall | null>();
+        candidates.forEach((p) => m.set(p.id, lastCallOf(p)));
+        return m;
+    }, [candidates]);
+
     // NOT keyed on `search`. The cohort fetch pulls the whole list in ~40
     // sequential chunks; re-running it per keystroke left the page pinned on
     // "Loading…" and never settling. Search filters what is already in memory.
 
-    // Typed numbers exist only here. A reload throws away the operator's work.
+    // Save the list on every change. Typed numbers go to this tab's session only.
     useEffect(() => {
-        if (!locked && rows.length === 0) return;
+        try {
+            localStorage.setItem(LIST_KEY(hospitalId), JSON.stringify(rows.map(({ phone, error, ...rest }) => rest)));
+            const typed: Record<string, string> = {};
+            rows.forEach((r) => { if (r.phone && r.phone !== (r.patient.phone || '')) typed[r.patient.id] = r.phone; });
+            sessionStorage.setItem(PHONES_KEY(hospitalId), JSON.stringify(typed));
+        } catch { /* storage full or blocked: the list still works for this visit */ }
+    }, [rows, hospitalId]);
+
+    // Closing the tab loses typed numbers (not those on file), so warn first.
+    const hasTypedNumbers = rows.some((r) => r.state === 'idle' && r.phone && r.phone !== (r.patient.phone || ''));
+    useEffect(() => {
+        if (!hasTypedNumbers) return;
         const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
         window.addEventListener('beforeunload', warn);
         return () => window.removeEventListener('beforeunload', warn);
-    }, [locked, rows.length]);
+    }, [hasTypedNumbers]);
 
-    useEffect(() => () => { if (pollRef.current) window.clearInterval(pollRef.current); }, []);
+    useEffect(() => () => { pollersRef.current.forEach((t) => window.clearInterval(t)); }, []);
 
     // Month buckets, Missed Followup only. Built from the full cohort, so the
     // count on each chip is the real total for that month rather than whatever
@@ -301,19 +413,21 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
         }
         const picked: ReceptionPastRecordPatient[] = [];
         const rest: ReceptionPastRecordPatient[] = [];
-        for (const p of base) (selectedIds.has(p.id) ? picked : rest).push(p);
+        for (const p of base) (inList.has(p.id) ? picked : rest).push(p);
         return [...picked, ...rest];
-    }, [typeBase, phoneOnly, cohort, selectedIds, search]);
+    }, [typeBase, phoneOnly, cohort, inList, search]);
 
-    const allVisibleSelected = visible.length > 0 && visible.every((p) => selectedIds.has(p.id));
+    const allVisibleSelected = visible.length > 0 && visible.every((p) => inList.has(p.id));
 
     // Scoped to what is on screen. Selecting across a hidden month would queue
     // calls to patients the operator never looked at.
-    const toggleAllVisible = () => setSelectedIds((prev) => {
-        const next = new Set(prev);
-        if (allVisibleSelected) visible.forEach((p) => next.delete(p.id));
-        else visible.forEach((p) => next.add(p.id));
-        return next;
+    const toggleAllVisible = () => setRows((prev) => {
+        if (allVisibleSelected) {
+            const drop = new Set(visible.map((p) => p.id));
+            return prev.filter((r) => !drop.has(r.patient.id) || isBusy(r));
+        }
+        const have = new Set(prev.map((r) => r.patient.id));
+        return [...prev, ...visible.filter((p) => !have.has(p.id)).map((p) => newRow(toCallPatient(p)))];
     });
 
     // Every call this hospital has placed, newest first — campaign or the AI Call
@@ -321,7 +435,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
     // care which surface started it.
     const loadPlaced = useCallback(async () => {
         const { data, error } = await (supabase.from('hospital_voice_call_attempts' as any) as any)
-            .select('id, patient_id, status, provider_status, final_agent_variables, created_at, dialed_number, patient:hospital_patients(name, mr_number)')
+            .select('id, patient_id, status, provider_status, duration_seconds, final_agent_variables, created_at, dialed_number, patient:hospital_patients(name, mr_number)')
             .eq('hospital_id', hospitalId)
             .order('created_at', { ascending: false })
             .limit(200);
@@ -339,6 +453,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             disposition: typeof r.final_agent_variables?.disposition === 'string' ? r.final_agent_variables.disposition : null,
             missedReason: readMissedReason(r.final_agent_variables),
             vars: r.final_agent_variables || null,
+            durationSeconds: typeof r.duration_seconds === 'number' ? r.duration_seconds : null,
         })));
     }, [hospitalId]);
 
@@ -353,7 +468,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
         .reverse()
         .map((c) => ({
             name: c.name, mrNumber: c.mrNumber, createdAt: c.createdAt,
-            status: c.status, providerStatus: c.providerStatus, vars: c.vars,
+            status: c.status, providerStatus: c.providerStatus, vars: c.vars, durationSeconds: c.durationSeconds,
         })), [placed, reportFrom, reportTo]);
     const reportPeriod = reportFrom === reportTo
         ? new Date(`${reportFrom}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -404,43 +519,53 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
         }
     };
 
-    const toggle = (id: string) => setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.has(id) ? next.delete(id) : next.add(id);
+    const toggle = (p: ReceptionPastRecordPatient) => setRows((prev) => {
+        const existing = prev.find((r) => r.patient.id === p.id);
+        if (existing) return isBusy(existing) ? prev : prev.filter((r) => r.patient.id !== p.id);
+        return [...prev, newRow(toCallPatient(p))];
+    });
+
+    const removeRow = (id: string) => setRows((prev) => prev.filter((r) => r.patient.id !== id || isBusy(r)));
+
+    const moveRow = (id: string, dir: -1 | 1) => setRows((prev) => {
+        const i = prev.findIndex((r) => r.patient.id === id);
+        const j = i + dir;
+        if (i < 0 || j < 0 || j >= prev.length) return prev;
+        const next = [...prev];
+        [next[i], next[j]] = [next[j], next[i]];
         return next;
     });
 
-    const buildList = () => {
-        const picked = candidates.filter((p) => selectedIds.has(p.id));
-        if (picked.length === 0) { toast.error('Select at least one patient'); return; }
-        setRows(picked.map((patient) => ({
-            patient,
-            // Prefill only what the hospital already holds. Everyone else is typed.
-            phone: patient.phone || '',
-            state: 'idle', attemptRef: null, summary: null, disposition: null, missedReason: null, error: null,
-        })));
-        setStep(2);
+    /** Clear everyone not mid-call. Asks once, inline, before doing it. */
+    const clearList = () => {
+        if (!clearArmed) { setClearArmed(true); window.setTimeout(() => setClearArmed(false), 4000); return; }
+        setRows((prev) => prev.filter(isBusy));
+        setClearArmed(false);
+        setActiveId(null);
     };
+
+    const setPhone = (id: string, phone: string) =>
+        setRows((prev) => prev.map((r) => r.patient.id === id ? { ...r, phone } : r));
 
     const readyCount = useMemo(() => rows.filter((r) => toE164(r.phone)).length, [rows]);
 
-    const lockList = () => {
-        const bad = rows.filter((r) => !toE164(r.phone));
-        if (bad.length > 0) {
-            toast.error(`${bad.length} number${bad.length === 1 ? ' is' : 's are'} not a valid mobile number`);
-            return;
+    const startCalling = () => {
+        if (readyCount === 0) { toast.error('Add at least one valid mobile number first'); return; }
+        if (!activeId || !rows.some((r) => r.patient.id === activeId)) {
+            setActiveId((rows.find((r) => r.state === 'idle' && toE164(r.phone)) || rows[0]).patient.id);
         }
-        setLocked(true);
         setStep(3);
     };
 
     // ── Running ───────────────────────────────────────────────────────────
-    const pollOutcome = useCallback((index: number, attemptRef: string) => {
-        if (pollRef.current) window.clearInterval(pollRef.current);
+    const pollOutcome = useCallback((patientId: string, attemptRef: string) => {
+        const pollers = pollersRef.current;
+        const prior = pollers.get(patientId);
+        if (prior) window.clearInterval(prior);
         const startedAt = Date.now();
-        pollRef.current = window.setInterval(async () => {
+        const timer = window.setInterval(async () => {
             const { data } = await (supabase.from('hospital_voice_call_attempts' as any) as any)
-                .select('status, provider_status, final_agent_variables, failure_reason')
+                .select('status, provider_status, duration_seconds, final_agent_variables, failure_reason')
                 .eq('id', attemptRef).maybeSingle();
 
             const settled = data && (data.status === 'completed' || data.status === 'failed');
@@ -449,56 +574,115 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             const timedOut = Date.now() - startedAt > 10 * 60_000;
             if (!settled && !timedOut) return;
 
-            if (pollRef.current) window.clearInterval(pollRef.current);
-            pollRef.current = null;
+            window.clearInterval(timer);
+            pollers.delete(patientId);
             const vars = data?.final_agent_variables || {};
-            setRows((prev) => prev.map((r, i) => i !== index ? r : {
+            setRows((prev) => prev.map((r) => r.patient.id !== patientId ? r : {
                 ...r,
                 state: data?.status === 'completed' ? 'done' : 'failed',
                 summary: typeof vars.call_summary === 'string' ? vars.call_summary : null,
                 disposition: typeof vars.disposition === 'string' ? vars.disposition : null,
                 missedReason: readMissedReason(vars),
+                providerStatus: data?.provider_status ?? null,
+                vars: data?.final_agent_variables ?? null,
+                durationSeconds: data?.duration_seconds ?? null,
                 error: timedOut && !settled
                     ? 'No outcome came back within 10 minutes.'
                     : (data?.failure_reason || null),
             }));
             loadPlaced();
         }, 5000);
+        pollers.set(patientId, timer);
     }, [loadPlaced]);
 
-    const placeCall = async (index: number) => {
-        const row = rows[index];
+    // A list restored mid-call picks up where it left off.
+    useEffect(() => {
+        rows.forEach((r) => {
+            if ((r.state === 'calling' || r.state === 'waiting') && r.attemptRef && !pollersRef.current.has(r.patient.id)) {
+                pollOutcome(r.patient.id, r.attemptRef);
+            }
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const placeCall = async (patientId: string) => {
+        const row = rows.find((r) => r.patient.id === patientId);
         if (!row) return;
-        setRows((prev) => prev.map((r, i) => i === index ? { ...r, state: 'calling', error: null } : r));
+        if (!toE164(row.phone)) { toast.error('Add a valid mobile number for this patient first'); return; }
+        setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'calling', error: null } : r));
         try {
             const res = await placeReviewCall({
-                patientId: row.patient.id,
+                patientId,
                 requestedByName: 'Reception (campaign)',
                 phoneOverride: row.phone,
             });
-            setRows((prev) => prev.map((r, i) => i === index ? { ...r, state: 'waiting', attemptRef: res.attemptRef } : r));
-            pollOutcome(index, res.attemptRef);
+            setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'waiting', attemptRef: res.attemptRef } : r));
+            pollOutcome(patientId, res.attemptRef);
         } catch (err: any) {
-            setRows((prev) => prev.map((r, i) => i === index ? { ...r, state: 'failed', error: err?.message || 'Call failed' } : r));
+            setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'failed', error: err?.message || 'Call failed' } : r));
         }
     };
 
-    const current = rows[activeIndex] || null;
-    const busy = current ? current.state === 'calling' || current.state === 'waiting' : false;
+    const current = rows.find((r) => r.patient.id === activeId) || null;
+    const busy = current ? isBusy(current) : false;
+    const nextIdle = current
+        ? rows.slice(rows.findIndex((r) => r.patient.id === current.patient.id) + 1).find((r) => r.state === 'idle')
+        : undefined;
 
     // What the agent is handed. Shown before the call so reception can see the
     // patient is right and the dates make sense — a wrong doctor or a blank
     // review date is far cheaper to catch here than on the phone.
-    const agentParams = (row: Row) => {
-        const dr = row.patient.doctorReviews?.[0];
-        return [
-            ['patient_name', row.patient.name || '—'],
-            ['mr_number', row.patient.mr_number || '—'],
-            ['doctor_name', dr?.doctorName || '—'],
-            ['review_date', dr?.reviewDate ? formatPastDate(dr.reviewDate) : formatPastDate(row.patient.latestReviewDate)],
-            ['last_visit_date', row.patient.lastVisitAt ? formatPastDate(row.patient.lastVisitAt) : '—'],
-        ] as [string, string][];
-    };
+    const agentParams = (row: Row) => [
+        ['patient_name', row.patient.name || '—'],
+        ['mr_number', row.patient.mr_number || '—'],
+        ['doctor_name', row.patient.doctorName || '—'],
+        ['review_date', formatPastDate(row.patient.reviewDate)],
+        ['last_visit_date', row.patient.lastVisitAt ? formatPastDate(row.patient.lastVisitAt) : '—'],
+    ] as [string, string][];
+
+    const callListPanel = (
+        <aside className="rounded-2xl border border-violet-200 bg-white p-4 xl:sticky xl:top-4">
+            <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="text-sm font-bold text-gray-900">Call list · {rows.length}</p>
+                {rows.length > 0 && (
+                    <button type="button" onClick={clearList}
+                        className={`px-2 py-1 rounded-lg text-xs font-bold border ${clearArmed ? 'bg-red-600 text-white border-red-600' : 'text-red-700 border-red-200 bg-red-50 hover:bg-red-100'}`}>
+                        {clearArmed ? 'Tap again to clear' : 'Clear list'}
+                    </button>
+                )}
+            </div>
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                Tick patients on the left to add them. Reorder or remove them here. The list is kept on this computer,
+                so you can leave and come back to it.
+            </p>
+            {rows.length === 0 ? (
+                <p className="text-sm text-gray-400 py-6 text-center border border-dashed border-gray-200 rounded-xl">No patients yet.</p>
+            ) : (
+                <ol className="max-h-[420px] overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-xl">
+                    {rows.map((row, i) => (
+                        <li key={row.patient.id} className="flex items-center gap-2 px-2 py-2">
+                            <span className="w-5 text-xs text-gray-400 text-right shrink-0">{i + 1}</span>
+                            <span className="flex-1 min-w-0">
+                                <span className="block text-sm font-semibold text-gray-900 truncate">{row.patient.name}</span>
+                                <span className="block text-[11px] text-gray-500">
+                                    {row.patient.mr_number || '—'}{!toE164(row.phone) && <span className="text-red-600"> · no number</span>}
+                                </span>
+                            </span>
+                            {row.state !== 'idle' && <RowTag row={row} />}
+                            <MoveButtons name={row.patient.name}
+                                onUp={i > 0 ? () => moveRow(row.patient.id, -1) : undefined}
+                                onDown={i < rows.length - 1 ? () => moveRow(row.patient.id, 1) : undefined}
+                                onRemove={isBusy(row) ? undefined : () => removeRow(row.patient.id)} />
+                        </li>
+                    ))}
+                </ol>
+            )}
+            <button type="button" onClick={() => setStep(2)} disabled={rows.length === 0}
+                className="mt-3 w-full py-2.5 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300">
+                Next: check numbers ({rows.length})
+            </button>
+        </aside>
+    );
 
     return (
         <div className="p-4 sm:p-6 space-y-4">
@@ -586,15 +770,9 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                                         </div>
                                         <div className="min-w-0">
                                             <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                                                {call.status === 'completed' && callResultLabel(call.status, call.providerStatus) !== 'Answered'
-                                                    ? <span className="text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap bg-gray-100 text-gray-700">
-                                                        {callResultLabel(call.status, call.providerStatus)}
-                                                    </span>
-                                                    : <StateChip state={
-                                                        call.status === 'completed' ? 'done'
-                                                            : call.status === 'failed' ? 'failed'
-                                                                : 'waiting'
-                                                    } />}
+                                                {call.status === 'completed'
+                                                    ? <ResultTag label={callResultLabel(call.status, call.providerStatus, call.vars)} seconds={call.durationSeconds} />
+                                                    : <StateChip state={call.status === 'failed' ? 'failed' : 'waiting'} />}
                                                 {call.disposition && (
                                                     <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${call.disposition === 'RED_FLAG_REPORTED' ? 'bg-red-100 text-red-800' : 'bg-violet-100 text-violet-800'}`}>
                                                         {call.disposition.replace(/_/g, ' ')}
@@ -605,8 +783,8 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                                             {call.summary
                                                 ? <p className="mt-1 text-xs text-gray-700 leading-relaxed whitespace-pre-line">{withPatientName(call.summary, call.name)}</p>
                                                 : <p className="text-xs text-gray-400">
-                                                    {callResultLabel(call.status, call.providerStatus) === 'Answered'
-                                                        ? 'Answered, but the call ended before anything was said.'
+                                                    {callResultLabel(call.status, call.providerStatus, call.vars) === NO_CONVERSATION_LABEL
+                                                        ? 'Picked up, but the call ended before anything was said.'
                                                         : 'Nobody spoke, so there is no summary.'}
                                                 </p>}
                                         </div>
@@ -641,7 +819,8 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             </div>
 
             {step === 1 && (
-                <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-4 items-start">
+                <div className="rounded-2xl border border-gray-200 bg-white p-4 min-w-0">
                     {cohort === 'priority' && (
                         <p className="mb-3 text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 leading-relaxed">
                             <span className="font-bold">Ordered by how long the patient has been out of contact</span> — days
@@ -651,7 +830,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                     )}
                     <div className="flex flex-wrap gap-2 mb-3">
                         {COHORTS.map((c) => (
-                            <button key={c.key} type="button" onClick={() => { setCohort(c.key); setSelectedIds(new Set()); setMissedMonth(null); setPatientType('all'); }}
+                            <button key={c.key} type="button" onClick={() => { setCohort(c.key); setMissedMonth(null); setPatientType('all'); }}
                                 className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${cohort === c.key ? 'bg-orange-50 text-orange-700 border-orange-300' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
                                 {c.label}
                             </button>
@@ -714,13 +893,13 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                                 {loading ? 'Loading the full list — this takes a moment…' : `${visible.length} shown`}
                             </span>
                         </label>
-                        <span className="font-semibold text-violet-700">{selectedIds.size} selected</span>
+                        <span className="font-semibold text-violet-700">{rows.length} in call list</span>
                     </div>
 
                     <div className="max-h-[420px] overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-xl">
                         {visible.map((p) => (
                             <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-violet-50/40 cursor-pointer">
-                                <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggle(p.id)}
+                                <input type="checkbox" checked={inList.has(p.id)} onChange={() => toggle(p)}
                                     className="w-4 h-4 accent-violet-600" />
                                 <span className="flex-1 min-w-0">
                                     <span className="flex items-center gap-2 min-w-0">
@@ -730,6 +909,14 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                                                 ? <span className="shrink-0 text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded tabular-nums">{p.phone}</span>
                                                 : <span className="shrink-0 text-xs font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded tabular-nums" title="Not a valid mobile number, so this patient cannot be dialled until it is corrected">{p.phone} · check</span>
                                         )}
+                                        {(() => {
+                                            const last = lastCalls.get(p.id);
+                                            return last
+                                                ? <span className="shrink-0 text-[11px] font-semibold text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded whitespace-nowrap" title={new Date(last.at).toLocaleString('en-IN')}>
+                                                    Last call {shortDay(last.at)} · {last.by}
+                                                </span>
+                                                : <span className="shrink-0 text-[11px] text-gray-400 whitespace-nowrap">Not called yet</span>;
+                                        })()}
                                     </span>
                                     <span className="block text-xs text-gray-500">
                                         {p.mr_number || '—'} · Age {p.age ?? '--'}
@@ -760,26 +947,31 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                         )}
                     </div>
 
-                    <button type="button" onClick={buildList} disabled={selectedIds.size === 0}
-                        className="mt-3 w-full py-2.5 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300">
-                        Continue with {selectedIds.size} patient{selectedIds.size === 1 ? '' : 's'}
-                    </button>
+                </div>
+                {callListPanel}
                 </div>
             )}
 
             {step === 2 && (
                 <div className="rounded-2xl border border-gray-200 bg-white p-4">
                     <p className="text-sm text-gray-600 mb-3">
-                        Check each patient and enter the number to dial. {readyCount} of {rows.length} ready.
+                        Check each patient, put them in the order to ring, and enter the number to dial. {readyCount} of {rows.length} ready.
+                        Patients without a valid number stay on the list but are skipped until you add one.
                     </p>
+                    {rows.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">The call list is empty. Add patients first.</p>}
                     <div className="max-h-[460px] overflow-y-auto space-y-2">
                         {rows.map((row, i) => {
                             const valid = !!toE164(row.phone);
                             return (
-                                <div key={row.patient.id} className="grid grid-cols-1 md:grid-cols-[1.4fr_1.6fr_1fr] gap-3 items-start rounded-xl border border-gray-200 p-3">
+                                <div key={row.patient.id} className="grid grid-cols-1 md:grid-cols-[auto_1.3fr_1.6fr_1fr] gap-3 items-start rounded-xl border border-gray-200 p-3">
+                                    <MoveButtons name={row.patient.name}
+                                        onUp={i > 0 ? () => moveRow(row.patient.id, -1) : undefined}
+                                        onDown={i < rows.length - 1 ? () => moveRow(row.patient.id, 1) : undefined}
+                                        onRemove={isBusy(row) ? undefined : () => removeRow(row.patient.id)} />
                                     <div className="min-w-0">
-                                        <p className="font-bold text-gray-900 text-sm">{row.patient.name}</p>
+                                        <p className="font-bold text-gray-900 text-sm"><span className="text-gray-400 mr-1">{i + 1}.</span>{row.patient.name}</p>
                                         <p className="text-xs text-gray-500">{row.patient.mr_number || '—'}</p>
+                                        {row.state !== 'idle' && <div className="mt-1"><RowTag row={row} /></div>}
                                     </div>
                                     <div className="text-xs space-y-0.5">
                                         {agentParams(row).map(([k, v]) => (
@@ -790,8 +982,9 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                                     </div>
                                     <div>
                                         <input value={row.phone} inputMode="numeric" placeholder="10-digit mobile"
-                                            onChange={(e) => setRows((prev) => prev.map((r, j) => j === i ? { ...r, phone: e.target.value } : r))}
-                                            className={`w-full px-3 py-2 rounded-lg border text-sm ${row.phone && !valid ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
+                                            disabled={row.state !== 'idle'}
+                                            onChange={(e) => setPhone(row.patient.id, e.target.value)}
+                                            className={`w-full px-3 py-2 rounded-lg border text-sm disabled:bg-gray-50 ${row.phone && !valid ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
                                         {row.phone && !valid && <p className="text-[11px] text-red-600 mt-1">Not a valid mobile number</p>}
                                     </div>
                                 </div>
@@ -800,10 +993,10 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                     </div>
                     <div className="flex gap-2 mt-3">
                         <button type="button" onClick={() => setStep(1)}
-                            className="px-4 py-2.5 rounded-xl font-semibold text-gray-700 bg-white border border-gray-300">Back</button>
-                        <button type="button" onClick={lockList} disabled={readyCount !== rows.length || rows.length === 0}
+                            className="px-4 py-2.5 rounded-xl font-semibold text-gray-700 bg-white border border-gray-300">Add or remove patients</button>
+                        <button type="button" onClick={startCalling} disabled={readyCount === 0}
                             className="flex-1 py-2.5 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300">
-                            Lock list &amp; continue
+                            Start calling ({readyCount} ready)
                         </button>
                     </div>
                 </div>
@@ -812,18 +1005,32 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             {step === 3 && (
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4">
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Call queue</p>
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Call queue · {rows.length}</p>
+                            <button type="button" onClick={() => setStep(1)} className="text-xs font-semibold text-violet-700 hover:underline">
+                                + Add patients
+                            </button>
+                        </div>
                         <div className="max-h-[520px] overflow-y-auto divide-y divide-gray-100">
                             {rows.map((row, i) => (
-                                <button key={row.patient.id} type="button" onClick={() => setActiveIndex(i)}
-                                    className={`w-full text-left px-3 py-2.5 flex items-center gap-2 ${i === activeIndex ? 'bg-violet-50' : 'hover:bg-gray-50'}`}>
-                                    <span className="w-6 text-xs text-gray-400">{i + 1}</span>
-                                    <span className="flex-1 min-w-0">
-                                        <span className="block text-sm font-semibold text-gray-900 truncate">{row.patient.name}</span>
-                                        <span className="block text-xs text-gray-500">{row.patient.mr_number || '—'}</span>
-                                    </span>
-                                    <StateChip state={row.state} />
-                                </button>
+                                <div key={row.patient.id}
+                                    className={`flex items-center gap-1 pr-1 ${row.patient.id === activeId ? 'bg-violet-50' : 'hover:bg-gray-50'}`}>
+                                    <button type="button" onClick={() => setActiveId(row.patient.id)}
+                                        className="flex-1 min-w-0 text-left px-3 py-2.5 flex items-center gap-2">
+                                        <span className="w-6 text-xs text-gray-400">{i + 1}</span>
+                                        <span className="flex-1 min-w-0">
+                                            <span className="block text-sm font-semibold text-gray-900 truncate">{row.patient.name}</span>
+                                            <span className="block text-xs text-gray-500">
+                                                {row.patient.mr_number || '—'}{!toE164(row.phone) && <span className="text-red-600"> · no number</span>}
+                                            </span>
+                                        </span>
+                                        <RowTag row={row} />
+                                    </button>
+                                    <MoveButtons name={row.patient.name}
+                                        onUp={i > 0 ? () => moveRow(row.patient.id, -1) : undefined}
+                                        onDown={i < rows.length - 1 ? () => moveRow(row.patient.id, 1) : undefined}
+                                        onRemove={isBusy(row) ? undefined : () => removeRow(row.patient.id)} />
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -836,7 +1043,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                                         <p className="font-bold text-gray-900">{current.patient.name}</p>
                                         <p className="text-xs text-gray-500">{current.patient.mr_number || '—'} · dialling ••••••{current.phone.replace(/\D/g, '').slice(-2)}</p>
                                     </div>
-                                    <StateChip state={current.state} />
+                                    <RowTag row={current} />
                                 </div>
 
                                 <div className="mt-3 rounded-xl bg-gray-50 border border-gray-100 p-3 text-xs space-y-0.5">
@@ -848,12 +1055,17 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                                     ))}
                                 </div>
 
-                                {current.state === 'idle' && (
-                                    <button type="button" onClick={() => placeCall(activeIndex)}
-                                        className="mt-3 w-full py-2.5 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-700">
-                                        Place call to {current.patient.name}
-                                    </button>
-                                )}
+                                {current.state === 'idle' && (toE164(current.phone)
+                                    ? (
+                                        <button type="button" onClick={() => placeCall(current.patient.id)}
+                                            className="mt-3 w-full py-2.5 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-700">
+                                            Place call to {current.patient.name}
+                                        </button>
+                                    ) : (
+                                        <p className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                                            No valid number for this patient. Add one in step 2, or remove them from the list.
+                                        </p>
+                                    ))}
                                 {busy && (
                                     <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
                                         {current.state === 'calling' ? 'Placing the call…' : 'Call in progress — the summary appears here when it ends.'}
@@ -874,8 +1086,8 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                                         <p className="mt-1 text-sm text-gray-700 leading-relaxed whitespace-pre-line">{withPatientName(current.summary, current.patient.name)}</p>
                                     </div>
                                 )}
-                                {(current.state === 'done' || current.state === 'failed') && activeIndex < rows.length - 1 && (
-                                    <button type="button" onClick={() => setActiveIndex(activeIndex + 1)}
+                                {(current.state === 'done' || current.state === 'failed') && nextIdle && (
+                                    <button type="button" onClick={() => setActiveId(nextIdle.patient.id)}
                                         className="mt-3 w-full py-2.5 rounded-xl font-bold text-violet-700 bg-violet-50 border border-violet-200 hover:bg-violet-100">
                                         Next patient →
                                     </button>
@@ -1133,6 +1345,36 @@ const UsagePanel: React.FC<{ hospitalId: string }> = ({ hospitalId }) => {
         </div>
     );
 };
+
+/** How a finished call ended, coloured so a pick-up with no conversation never reads as answered. */
+const ResultTag: React.FC<{ label: string; seconds?: number | null }> = ({ label, seconds }) => {
+    const cls = label === 'Answered'
+        ? 'bg-emerald-100 text-emerald-800'
+        : label === NO_CONVERSATION_LABEL
+            ? 'bg-amber-100 text-amber-800'
+            : 'bg-gray-100 text-gray-700';
+    const time = formatCallDuration(seconds);
+    return (
+        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${cls}`}>
+            {label}{time ? ` · ${time}` : ''}
+        </span>
+    );
+};
+
+const RowTag: React.FC<{ row: Row }> = ({ row }) => row.state === 'done'
+    ? <ResultTag label={callResultLabel('completed', row.providerStatus, row.vars)} seconds={row.durationSeconds} />
+    : <StateChip state={row.state} />;
+
+const MoveButtons: React.FC<{ onUp?: () => void; onDown?: () => void; onRemove?: () => void; name: string }> = ({ onUp, onDown, onRemove, name }) => (
+    <span className="flex items-center gap-0.5 shrink-0">
+        <button type="button" onClick={onUp} disabled={!onUp} aria-label={`Move ${name} up`}
+            className="w-7 h-7 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30">↑</button>
+        <button type="button" onClick={onDown} disabled={!onDown} aria-label={`Move ${name} down`}
+            className="w-7 h-7 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30">↓</button>
+        <button type="button" onClick={onRemove} disabled={!onRemove} aria-label={`Remove ${name} from the call list`}
+            className="w-7 h-7 rounded-md text-red-500 hover:bg-red-50 disabled:opacity-30">✕</button>
+    </span>
+);
 
 const StateChip: React.FC<{ state: RunState }> = ({ state }) => {
     const map: Record<RunState, [string, string]> = {
