@@ -3474,7 +3474,7 @@ const ReceptionDashboard: React.FC = () => {
 
             {showAICampaign && profile?.id && (
                 <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
-                    <AICallCampaignPage hospitalId={profile.id} onBack={() => setShowAICampaign(false)} />
+                    <AICallCampaignPage hospitalId={profile.id} hospitalName={profile.name || ''} onBack={() => setShowAICampaign(false)} />
                 </div>
             )}
 

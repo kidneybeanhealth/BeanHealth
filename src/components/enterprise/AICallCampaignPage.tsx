@@ -28,6 +28,10 @@ import {
 import { formatPastDate } from './PastRecordsPatientCard';
 import TwoStepConfirmModal from '../common/TwoStepConfirmModal';
 import { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
+import {
+    patientTypeOf, MISSED_REASON_LABELS, NO_CONVERSATION, callResultLabel, withPatientName,
+    buildAiCallReportHtml, buildAiCallReportCsv, type AiCallReportInput,
+} from './aiCallReport';
 
 type CohortFilter = Extract<ReceptionReviewFilter, 'all' | 'due_today' | 'due_tomorrow' | 'overdue'> | 'priority';
 
@@ -118,19 +122,7 @@ const COHORTS: { key: CohortFilter; label: string }[] = [
     { key: 'all', label: 'All' },
 ];
 
-/**
- * Old or new patient, read from the year in the MR number (KNH/25/012345 → 25).
- * New means the MR was issued this year: a patient who first came to the
- * hospital recently. Entries carry stray spaces and missing prefixes, so the
- * match is loose; anything unreadable is neither, and shows only under All.
- */
 type PatientType = 'all' | 'old' | 'new';
-const THIS_YEAR_YY = String(new Date().getFullYear()).slice(2);
-export const patientTypeOf = (mr: string | null | undefined): 'old' | 'new' | null => {
-    const yy = (mr || '').match(/^\s*(?:[A-Za-z]+\s*\/)?\s*(\d\d)\/\d{4,}/)?.[1];
-    if (!yy || yy > THIS_YEAR_YY) return null;
-    return yy === THIS_YEAR_YY ? 'new' : 'old';
-};
 
 /** Mirrors the Edge Function's toE164 so the UI refuses the same numbers it would. */
 const toE164 = (raw: string): string | null => {
@@ -154,6 +146,7 @@ interface PlacedCall {
     summary: string | null;
     disposition: string | null;
     missedReason: MissedReason | null;
+    vars: Record<string, unknown> | null;
 }
 
 interface Row {
@@ -173,25 +166,14 @@ interface Row {
  * codes below) alongside `reason_text`, the patient's own reason in a line.
  * Earlier calls have only `reason_text`, which is still shown.
  */
-const MISSED_REASON_LABELS: Record<string, string> = {
-    TRAVEL_DISTANCE: 'Travel or distance',
-    COST: 'Cost',
-    FEELING_BETTER: 'Felt better',
-    UNWELL_OR_ADMITTED: 'Unwell or admitted elsewhere',
-    NO_ESCORT: 'No one to bring them',
-    WORK_OR_FAMILY: 'Work or family',
-    FORGOT: 'Forgot the date',
-    TREATED_ELSEWHERE: 'Treated elsewhere',
-    NOT_SATISFIED: 'Not satisfied with care',
-    OTHER: 'Other',
-    NOT_SHARED: 'Did not say',
-};
-
 interface MissedReason { label: string | null; text: string | null }
 
 const readMissedReason = (vars: any): MissedReason | null => {
-    const code = typeof vars?.missed_reason === 'string' ? vars.missed_reason.trim().toUpperCase() : '';
-    const text = typeof vars?.reason_text === 'string' ? vars.reason_text.trim() : '';
+    let code = typeof vars?.missed_reason === 'string' ? vars.missed_reason.trim().toUpperCase() : '';
+    let text = typeof vars?.reason_text === 'string' ? vars.reason_text.trim() : '';
+    if (/^(n\/?a|none|null|nil|-)$/i.test(text)) text = '';
+    const disposition = typeof vars?.disposition === 'string' ? vars.disposition.trim().toUpperCase() : '';
+    if (code === 'NOT_SHARED' && NO_CONVERSATION.has(disposition)) code = '';
     if (!code && !text) return null;
     return { label: code ? (MISSED_REASON_LABELS[code] || code.replace(/_/g, ' ').toLowerCase()) : null, text: text || null };
 };
@@ -210,10 +192,16 @@ const MissedReasonLine: React.FC<{ reason: MissedReason | null }> = ({ reason })
 
 interface Props {
     hospitalId: string;
+    /** Printed at the top of the call report. */
+    hospitalName?: string;
     onBack: () => void;
 }
 
-const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
+/** Today in the browser's own date, as YYYY-MM-DD. */
+const localDay = (d: Date = new Date()): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', onBack }) => {
     // The campaign works a whole cohort, so it must not be paginated. Missed
     // Followup at KKC runs to thousands across years, and a 200-row page hid
     // most of them behind a count that read as complete.
@@ -350,10 +338,48 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
             summary: typeof r.final_agent_variables?.call_summary === 'string' ? r.final_agent_variables.call_summary : null,
             disposition: typeof r.final_agent_variables?.disposition === 'string' ? r.final_agent_variables.disposition : null,
             missedReason: readMissedReason(r.final_agent_variables),
+            vars: r.final_agent_variables || null,
         })));
     }, [hospitalId]);
 
     useEffect(() => { loadPlaced(); }, [loadPlaced]);
+
+    // ── Report for the hospital ───────────────────────────────────────────
+    const [reportFrom, setReportFrom] = useState(localDay());
+    const [reportTo, setReportTo] = useState(localDay());
+    const reportCalls = useMemo<AiCallReportInput[]>(() => placed
+        .filter((c) => { const d = localDay(new Date(c.createdAt)); return d >= reportFrom && d <= reportTo; })
+        .slice()
+        .reverse()
+        .map((c) => ({
+            name: c.name, mrNumber: c.mrNumber, createdAt: c.createdAt,
+            status: c.status, providerStatus: c.providerStatus, vars: c.vars,
+        })), [placed, reportFrom, reportTo]);
+    const reportPeriod = reportFrom === reportTo
+        ? new Date(`${reportFrom}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+        : `${new Date(`${reportFrom}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${new Date(`${reportTo}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+
+    const printReport = () => {
+        if (reportCalls.length === 0) { toast.error('No calls in these dates'); return; }
+        const w = window.open('', '_blank', 'width=1200,height=800');
+        if (!w) { toast.error('Pop-up blocked — allow pop-ups to print'); return; }
+        w.document.open();
+        w.document.write(buildAiCallReportHtml({ calls: reportCalls, hospitalName, periodLabel: reportPeriod }));
+        w.document.close();
+    };
+
+    const downloadReport = () => {
+        if (reportCalls.length === 0) { toast.error('No calls in these dates'); return; }
+        const blob = new Blob([buildAiCallReportCsv(reportCalls)], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `AI calls ${reportFrom}${reportTo !== reportFrom ? ` to ${reportTo}` : ''}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    };
 
     const deletePlaced = async () => {
         const call = pendingDelete;
@@ -519,8 +545,28 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
 
             {view === 'placed' && (
             <div className="rounded-2xl border border-gray-200 bg-white">
-                <div className="px-4 pt-4">
+                <div className="px-4 pt-4 pb-3 flex flex-wrap items-end justify-between gap-3">
                     <p className="text-sm font-bold text-gray-900">Placed Call List</p>
+                    <div className="flex flex-wrap items-end gap-2">
+                        <label className="text-[11px] font-semibold text-gray-500">
+                            From
+                            <input type="date" value={reportFrom} max={reportTo} onChange={(e) => setReportFrom(e.target.value)}
+                                className="block mt-0.5 px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-800" />
+                        </label>
+                        <label className="text-[11px] font-semibold text-gray-500">
+                            To
+                            <input type="date" value={reportTo} min={reportFrom} onChange={(e) => setReportTo(e.target.value)}
+                                className="block mt-0.5 px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-800" />
+                        </label>
+                        <button type="button" onClick={printReport}
+                            className="px-3 py-2 rounded-lg text-xs font-bold text-white bg-violet-600 hover:bg-violet-700">
+                            Report for the hospital ({reportCalls.length})
+                        </button>
+                        <button type="button" onClick={downloadReport}
+                            className="px-3 py-2 rounded-lg text-xs font-bold text-violet-700 bg-violet-50 border border-violet-200 hover:bg-violet-100">
+                            Download for Excel
+                        </button>
+                    </div>
                 </div>
                 {(
                     <div className="px-4 pb-4">
@@ -540,11 +586,15 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                         </div>
                                         <div className="min-w-0">
                                             <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                                                <StateChip state={
-                                                    call.status === 'completed' ? 'done'
-                                                        : call.status === 'failed' ? 'failed'
-                                                            : 'waiting'
-                                                } />
+                                                {call.status === 'completed' && callResultLabel(call.status, call.providerStatus) !== 'Answered'
+                                                    ? <span className="text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap bg-gray-100 text-gray-700">
+                                                        {callResultLabel(call.status, call.providerStatus)}
+                                                    </span>
+                                                    : <StateChip state={
+                                                        call.status === 'completed' ? 'done'
+                                                            : call.status === 'failed' ? 'failed'
+                                                                : 'waiting'
+                                                    } />}
                                                 {call.disposition && (
                                                     <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${call.disposition === 'RED_FLAG_REPORTED' ? 'bg-red-100 text-red-800' : 'bg-violet-100 text-violet-800'}`}>
                                                         {call.disposition.replace(/_/g, ' ')}
@@ -553,8 +603,12 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                             </div>
                                             <MissedReasonLine reason={call.missedReason} />
                                             {call.summary
-                                                ? <p className="mt-1 text-xs text-gray-700 leading-relaxed whitespace-pre-line">{call.summary}</p>
-                                                : <p className="text-xs text-gray-400">No summary recorded.</p>}
+                                                ? <p className="mt-1 text-xs text-gray-700 leading-relaxed whitespace-pre-line">{withPatientName(call.summary, call.name)}</p>
+                                                : <p className="text-xs text-gray-400">
+                                                    {callResultLabel(call.status, call.providerStatus) === 'Answered'
+                                                        ? 'Answered, but the call ended before anything was said.'
+                                                        : 'Nobody spoke, so there is no summary.'}
+                                                </p>}
                                         </div>
                                         <button type="button" onClick={() => setPendingDelete(call)} disabled={deletingId === call.id}
                                             className="px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 whitespace-nowrap">
@@ -817,7 +871,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, onBack }) => {
                                             </span>
                                         )}
                                         <MissedReasonLine reason={current.missedReason} />
-                                        <p className="mt-1 text-sm text-gray-700 leading-relaxed whitespace-pre-line">{current.summary}</p>
+                                        <p className="mt-1 text-sm text-gray-700 leading-relaxed whitespace-pre-line">{withPatientName(current.summary, current.patient.name)}</p>
                                     </div>
                                 )}
                                 {(current.state === 'done' || current.state === 'failed') && activeIndex < rows.length - 1 && (
