@@ -33,6 +33,7 @@ import {
     formatCallDuration,
     buildAiCallReportHtml, buildAiCallReportCsv, type AiCallReportInput,
 } from './aiCallReport';
+import { retryReason, parseKeywords, type RetryRules } from './aiCallRetry';
 
 type CohortFilter = Extract<ReceptionReviewFilter, 'all' | 'due_today' | 'due_tomorrow' | 'overdue'> | 'priority';
 
@@ -181,6 +182,14 @@ interface Row {
     vars: Record<string, unknown> | null;
     durationSeconds: number | null;
     error: string | null;
+    /** Calls placed to this patient from this list. */
+    attempts: number;
+    lastAttemptAt: number | null;
+    /** The retry rules want this patient rung again; `retryNote` says why. */
+    retryPending: boolean;
+    retryNote: string | null;
+    /** Taken out of the run by reception without removing them from the list. */
+    skipped: boolean;
 }
 
 const toCallPatient = (p: ReceptionPastRecordPatient): CallPatient => {
@@ -200,7 +209,65 @@ const toCallPatient = (p: ReceptionPastRecordPatient): CallPatient => {
 const newRow = (patient: CallPatient, phone = patient.phone || ''): Row => ({
     patient, phone, state: 'idle', attemptRef: null, summary: null, disposition: null,
     missedReason: null, providerStatus: null, vars: null, durationSeconds: null, error: null,
+    attempts: 0, lastAttemptAt: null, retryPending: false, retryNote: null, skipped: false,
 });
+
+/**
+ * How a run behaves. Manual: reception presses Call for each patient.
+ * Automatic: the page rings the list in order, one call at a time, and rings
+ * again whoever the retry rules say should be.
+ */
+interface CampaignSettings {
+    mode: 'manual' | 'auto';
+    retryNotAnswered: boolean;
+    retryBusy: boolean;
+    retryCouldNotConnect: boolean;
+    retryNoConversation: boolean;
+    retryKeywords: string;
+    maxRetries: number;
+    /** 'end': after everyone else has had a first call. 'soon': as soon as the gap allows. */
+    retryWhen: 'end' | 'soon';
+    pauseSeconds: number;
+}
+
+const DEFAULT_SETTINGS: CampaignSettings = {
+    mode: 'manual',
+    retryNotAnswered: true,
+    retryBusy: true,
+    retryCouldNotConnect: false,
+    retryNoConversation: true,
+    retryKeywords: '',
+    maxRetries: 1,
+    retryWhen: 'end',
+    pauseSeconds: 15,
+};
+
+const toRules = (s: CampaignSettings): RetryRules => ({
+    notAnswered: s.retryNotAnswered,
+    busy: s.retryBusy,
+    couldNotConnect: s.retryCouldNotConnect,
+    noConversation: s.retryNoConversation,
+    keywords: parseKeywords(s.retryKeywords),
+    maxRetries: s.maxRetries,
+});
+
+/** Never ring the same patient twice within this long, whatever the settings. */
+const MIN_RETRY_GAP_MS = 2 * 60_000;
+
+/** One calling session: from the first call placed off a list until "Start a new list". */
+interface CallSession { startedAt: string; attemptRefs: string[] }
+
+const SETTINGS_KEY = (hospitalId: string) => `bh.aiCallSettings.v1.${hospitalId}`;
+const SESSION_KEY = (hospitalId: string) => `bh.aiCallSession.v1.${hospitalId}`;
+
+const readStored = <T,>(key: string, fallback: T): T => {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+    } catch {
+        return fallback;
+    }
+};
 
 /**
  * Latest call by reception or the AI. The AI's own outcome is also written to
@@ -313,6 +380,19 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
     const [rows, setRows] = useState<Row[]>(() => loadSavedRows(hospitalId));
     const [activeId, setActiveId] = useState<string | null>(null);
     const [clearArmed, setClearArmed] = useState(false);
+    const [settings, setSettings] = useState<CampaignSettings>(() => readStored(SETTINGS_KEY(hospitalId), DEFAULT_SETTINGS));
+    const settingsRef = useRef(settings);
+    settingsRef.current = settings;
+    const [session, setSession] = useState<CallSession | null>(() => {
+        const saved = readStored<CallSession | null>(SESSION_KEY(hospitalId), null as any);
+        return saved && Array.isArray(saved.attemptRefs) ? saved : null;
+    });
+    // Automatic calling never resumes on its own: reception starts it each time.
+    const [autoRunning, setAutoRunning] = useState(false);
+    const [autoNote, setAutoNote] = useState<string | null>(null);
+    const [tick, setTick] = useState(0);
+    const failStreakRef = useRef(0);
+    const [showSettings, setShowSettings] = useState(false);
     const [showScript, setShowScript] = useState(false);
     // Three sections stacked as collapsibles meant opening Usage pushed the
     // patient list — the thing the page exists for — below the fold. They are
@@ -337,6 +417,8 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
         return () => { cancelled = true; };
     }, [hospitalId, cohort]);
     const inList = useMemo(() => new Set(rows.map((r) => r.patient.id)), [rows]);
+    const rowsRef = useRef(rows);
+    rowsRef.current = rows;
     const lastCalls = useMemo(() => {
         const m = new Map<string, LastCall | null>();
         candidates.forEach((p) => m.set(p.id, lastCallOf(p)));
@@ -356,6 +438,18 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             sessionStorage.setItem(PHONES_KEY(hospitalId), JSON.stringify(typed));
         } catch { /* storage full or blocked: the list still works for this visit */ }
     }, [rows, hospitalId]);
+
+    useEffect(() => {
+        try { localStorage.setItem(SETTINGS_KEY(hospitalId), JSON.stringify(settings)); } catch { /* blocked storage */ }
+    }, [settings, hospitalId]);
+    useEffect(() => {
+        try {
+            if (session) localStorage.setItem(SESSION_KEY(hospitalId), JSON.stringify(session));
+            else localStorage.removeItem(SESSION_KEY(hospitalId));
+        } catch { /* blocked storage */ }
+    }, [session, hospitalId]);
+
+    const updateSettings = (patch: Partial<CampaignSettings>) => setSettings((prev) => ({ ...prev, ...patch }));
 
     // Closing the tab loses typed numbers (not those on file), so warn first.
     const hasTypedNumbers = rows.some((r) => r.state === 'idle' && r.phone && r.phone !== (r.patient.phone || ''));
@@ -577,8 +671,18 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             window.clearInterval(timer);
             pollers.delete(patientId);
             const vars = data?.final_agent_variables || {};
+            const retry = settled
+                ? retryReason(
+                    { status: data.status, providerStatus: data?.provider_status ?? null, vars: data?.final_agent_variables ?? null },
+                    // `attempts` already counts this call.
+                    (rowsRef.current.find((r) => r.patient.id === patientId)?.attempts) || 1,
+                    toRules(settingsRef.current),
+                )
+                : null;
             setRows((prev) => prev.map((r) => r.patient.id !== patientId ? r : {
                 ...r,
+                retryPending: !!retry,
+                retryNote: retry,
                 state: data?.status === 'completed' ? 'done' : 'failed',
                 summary: typeof vars.call_summary === 'string' ? vars.call_summary : null,
                 disposition: typeof vars.disposition === 'string' ? vars.disposition : null,
@@ -605,11 +709,19 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const placeCall = async (patientId: string) => {
-        const row = rows.find((r) => r.patient.id === patientId);
-        if (!row) return;
-        if (!toE164(row.phone)) { toast.error('Add a valid mobile number for this patient first'); return; }
-        setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'calling', error: null } : r));
+    /**
+     * Place one call. Says how it went so automatic calling can decide whether to
+     * carry on: 'capped' is the daily limit (stop), 'refused' is the server
+     * declining this patient (move on), 'error' is anything else.
+     */
+    const placeCall = async (patientId: string): Promise<'placed' | 'refused' | 'capped' | 'error'> => {
+        const row = rowsRef.current.find((r) => r.patient.id === patientId);
+        if (!row) return 'error';
+        if (!toE164(row.phone)) { toast.error('Add a valid mobile number for this patient first'); return 'refused'; }
+        setRows((prev) => prev.map((r) => r.patient.id === patientId ? {
+            ...r, state: 'calling', error: null, retryPending: false, retryNote: null, skipped: false,
+            attempts: r.attempts + 1, lastAttemptAt: Date.now(),
+        } : r));
         try {
             const res = await placeReviewCall({
                 patientId,
@@ -617,10 +729,150 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                 phoneOverride: row.phone,
             });
             setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'waiting', attemptRef: res.attemptRef } : r));
+            setSession((prev) => ({
+                startedAt: prev?.startedAt || new Date().toISOString(),
+                attemptRefs: [...(prev?.attemptRefs || []), res.attemptRef],
+            }));
             pollOutcome(patientId, res.attemptRef);
+            return 'placed';
         } catch (err: any) {
-            setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'failed', error: err?.message || 'Call failed' } : r));
+            const message: string = err?.message || 'Call failed';
+            setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'failed', error: message } : r));
+            if (/daily limit/i.test(message)) return 'capped';
+            // The server's own refusals: deceased, stopped, do-not-call, on hold,
+            // a call already running, no review to call about.
+            if (/deceased|stopped|asked not to be called|in progress|on hold|no upcoming review|review/i.test(message)) return 'refused';
+            return 'error';
         }
+    };
+
+    const skipRow = (id: string) => setRows((prev) => prev.map((r) => r.patient.id === id ? { ...r, retryPending: false, skipped: true } : r));
+
+    // ── Automatic calling ────────────────────────────────────────────────
+    // One call at a time: wait for the one in progress, pause, ring the next.
+    // First calls go in list order; retries go after them, or as soon as the
+    // two-minute gap allows, as chosen. Stops on the daily limit, after three
+    // calls in a row could not be placed, or when the list runs out.
+    useEffect(() => {
+        if (!autoRunning) return;
+        if (rows.some(isBusy)) { setAutoNote('Call in progress…'); return; }
+        const now = Date.now();
+        const callable = (r: Row) => !r.skipped && !!toE164(r.phone);
+        const fresh = rows.find((r) => r.state === 'idle' && r.attempts === 0 && callable(r));
+        const retries = rows.filter((r) => r.retryPending && callable(r));
+        const dueRetry = retries.find((r) => (r.lastAttemptAt || 0) + MIN_RETRY_GAP_MS <= now);
+        const next = settings.retryWhen === 'soon' ? (dueRetry || fresh) : (fresh || dueRetry);
+
+        if (!next) {
+            if (retries.length > 0) {
+                const wait = Math.max(1000, Math.min(...retries.map((r) => (r.lastAttemptAt || 0) + MIN_RETRY_GAP_MS - now)));
+                setAutoNote(`Waiting ${Math.ceil(wait / 1000)} s before calling ${retries.length === 1 ? retries[0].patient.name : `${retries.length} patients`} again…`);
+                const t = window.setTimeout(() => setTick((n) => n + 1), wait);
+                return () => window.clearTimeout(t);
+            }
+            setAutoRunning(false);
+            setAutoNote('The list is finished.');
+            return;
+        }
+
+        setAutoNote(`Next: ${next.patient.name}${next.attempts > 0 ? ` (attempt ${next.attempts + 1})` : ''} in ${settings.pauseSeconds} s`);
+        const t = window.setTimeout(async () => {
+            setActiveId(next.patient.id);
+            const result = await placeCall(next.patient.id);
+            if (result === 'capped') {
+                setAutoRunning(false);
+                setAutoNote('Stopped: the daily call limit has been reached.');
+            } else if (result === 'error') {
+                failStreakRef.current += 1;
+                if (failStreakRef.current >= 3) {
+                    setAutoRunning(false);
+                    setAutoNote('Stopped: three calls in a row could not be placed. The error is shown on the patient.');
+                }
+            } else {
+                failStreakRef.current = 0;
+            }
+        }, settings.pauseSeconds * 1000);
+        return () => window.clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoRunning, rows, settings, tick]);
+
+    const startAuto = () => {
+        if (readyCount === 0) { toast.error('No patient on the list has a valid number'); return; }
+        failStreakRef.current = 0;
+        setAutoNote(null);
+        setAutoRunning(true);
+    };
+
+    // ── This session ─────────────────────────────────────────────────────
+    const listFinished = rows.length > 0 && !rows.some(isBusy) && !!session?.attemptRefs.length
+        && rows.every((r) => r.skipped || !toE164(r.phone) || ((r.state === 'done' || r.state === 'failed') && !r.retryPending));
+
+    /** One row per patient: their latest call this session, with every call counted. */
+    const sessionReport = useMemo(() => {
+        if (!session?.attemptRefs.length) return null;
+        const refs = new Set(session.attemptRefs);
+        const calls = placed.filter((c) => refs.has(c.id)); // newest first
+        const byPatient = new Map<string, { latest: PlacedCall; attempts: number }>();
+        for (const c of calls) {
+            const seen = byPatient.get(c.patientId);
+            if (seen) seen.attempts += 1;
+            else byPatient.set(c.patientId, { latest: c, attempts: 1 });
+        }
+        const inputs: AiCallReportInput[] = [...byPatient.values()]
+            .sort((a, b) => a.latest.createdAt.localeCompare(b.latest.createdAt))
+            .map(({ latest: c, attempts }) => ({
+                name: c.name, mrNumber: c.mrNumber, createdAt: c.createdAt, status: c.status,
+                providerStatus: c.providerStatus, vars: c.vars, durationSeconds: c.durationSeconds, attempts,
+            }));
+        const timed = calls.filter((c) => c.durationSeconds != null);
+        return {
+            inputs,
+            totals: {
+                callsPlaced: session.attemptRefs.length,
+                callSeconds: timed.reduce((n, c) => n + (c.durationSeconds || 0), 0),
+                timedCalls: timed.length,
+            },
+            answered: inputs.filter((c) => callResultLabel(c.status, c.providerStatus, c.vars) === 'Answered').length,
+        };
+    }, [session, placed]);
+
+    const sessionLabel = session
+        ? `Calling session from ${new Date(session.startedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}`
+        : '';
+
+    const printSessionReport = () => {
+        if (!sessionReport || sessionReport.inputs.length === 0) { toast.error('No calls in this session have come back yet'); return; }
+        const w = window.open('', '_blank', 'width=1200,height=800');
+        if (!w) { toast.error('Pop-up blocked — allow pop-ups to print'); return; }
+        w.document.open();
+        w.document.write(buildAiCallReportHtml({
+            calls: sessionReport.inputs, hospitalName, periodLabel: sessionLabel,
+            totals: sessionReport.totals, title: 'AI follow-up calls · session report',
+        }));
+        w.document.close();
+    };
+
+    const downloadSessionReport = () => {
+        if (!sessionReport || sessionReport.inputs.length === 0) { toast.error('No calls in this session have come back yet'); return; }
+        const blob = new Blob([buildAiCallReportCsv(sessionReport.inputs)], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `AI call session ${localDay(new Date(session!.startedAt))}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    /** Clear the finished list and start counting a new session. */
+    const startNewList = () => {
+        setAutoRunning(false);
+        setRows((prev) => prev.filter(isBusy));
+        setSession(null);
+        setActiveId(null);
+        setAutoNote(null);
+        setStep(1);
     };
 
     const current = rows.find((r) => r.patient.id === activeId) || null;
@@ -683,6 +935,145 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             </button>
         </aside>
     );
+
+    const callControls = (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex rounded-xl bg-gray-100 p-1" role="group" aria-label="Calling mode">
+                    {([
+                        ['manual', 'Manual: I press Call for each'],
+                        ['auto', 'Automatic: call the whole list'],
+                    ] as const).map(([key, label]) => (
+                        <button key={key} type="button" aria-pressed={settings.mode === key}
+                            onClick={() => { if (key === 'manual') setAutoRunning(false); updateSettings({ mode: key }); }}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${settings.mode === key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600'}`}>
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                {settings.mode === 'auto' && (
+                    autoRunning ? (
+                        <button type="button" onClick={() => { setAutoRunning(false); setAutoNote('Stopped. The call in progress, if any, will finish.'); }}
+                            className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700">
+                            Stop
+                        </button>
+                    ) : (
+                        <button type="button" onClick={startAuto} disabled={readyCount === 0}
+                            className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300">
+                            Start automatic calling
+                        </button>
+                    )
+                )}
+                <button type="button" onClick={() => setShowSettings((v) => !v)}
+                    className="ml-auto text-xs font-semibold text-violet-700 hover:underline">
+                    {showSettings ? 'Hide' : 'Show'} call-again settings
+                </button>
+            </div>
+            {settings.mode === 'auto' && (
+                <p className="text-xs text-gray-600">
+                    {autoNote || 'Calls one patient at a time, in list order, then rings again whoever the settings below say. Keep this page open: calling stops if you leave it.'}
+                </p>
+            )}
+            {showSettings && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-100 text-sm">
+                    <div className="space-y-1.5">
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Call again when</p>
+                        {([
+                            ['retryNotAnswered', 'Not answered'],
+                            ['retryBusy', 'Busy'],
+                            ['retryCouldNotConnect', 'Could not connect'],
+                            ['retryNoConversation', 'Picked up, no conversation (cut the call)'],
+                        ] as const).map(([key, label]) => (
+                            <label key={key} className="flex items-center gap-2">
+                                <input type="checkbox" className="w-4 h-4 accent-violet-600"
+                                    checked={settings[key]} onChange={(e) => updateSettings({ [key]: e.target.checked } as Partial<CampaignSettings>)} />
+                                {label}
+                            </label>
+                        ))}
+                        <label className="block pt-1">
+                            <span className="text-xs text-gray-600">…or the agent's summary mentions (comma separated)</span>
+                            <input value={settings.retryKeywords} onChange={(e) => updateSettings({ retryKeywords: e.target.value })}
+                                placeholder="call ended, disconnected, call later"
+                                className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" />
+                        </label>
+                        <p className="text-[11px] text-gray-500 leading-relaxed">
+                            A call that reached a decision is never repeated: will come, will not come, don't call,
+                            in hospital, deceased, red flag or wrong number.
+                        </p>
+                    </div>
+                    <div className="space-y-3">
+                        <label className="block">
+                            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Extra calls per patient</span>
+                            <select value={settings.maxRetries} onChange={(e) => updateSettings({ maxRetries: Number(e.target.value) })}
+                                className="mt-1 block w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                <option value={0}>None: one call only</option>
+                                <option value={1}>1 more call</option>
+                                <option value={2}>2 more calls</option>
+                                <option value={3}>3 more calls</option>
+                            </select>
+                        </label>
+                        <div>
+                            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Call again</span>
+                            <label className="flex items-center gap-2 mt-1">
+                                <input type="radio" name="retryWhen" className="accent-violet-600" checked={settings.retryWhen === 'end'}
+                                    onChange={() => updateSettings({ retryWhen: 'end' })} />
+                                After the rest of the list
+                            </label>
+                            <label className="flex items-center gap-2">
+                                <input type="radio" name="retryWhen" className="accent-violet-600" checked={settings.retryWhen === 'soon'}
+                                    onChange={() => updateSettings({ retryWhen: 'soon' })} />
+                                As soon as possible (at least 2 minutes later)
+                            </label>
+                        </div>
+                        <label className="block">
+                            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Pause between automatic calls</span>
+                            <select value={settings.pauseSeconds} onChange={(e) => updateSettings({ pauseSeconds: Number(e.target.value) })}
+                                className="mt-1 block w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                {[10, 15, 30, 60].map((n) => <option key={n} value={n}>{n} seconds</option>)}
+                            </select>
+                        </label>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+    const sessionPanel = session && session.attemptRefs.length > 0 ? (
+        <div className={`rounded-2xl border p-4 ${listFinished ? 'border-emerald-300 bg-emerald-50/60' : 'border-gray-200 bg-white'}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p className="text-sm font-bold text-gray-900">
+                        {listFinished ? 'This list is finished' : 'This calling session'}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                        {sessionLabel} · {session.attemptRefs.length} call{session.attemptRefs.length === 1 ? '' : 's'} placed
+                        {sessionReport ? ` · ${sessionReport.inputs.length} patients · ${sessionReport.answered} answered` : ''}
+                        {sessionReport?.totals.timedCalls ? ` · ${formatCallDuration(sessionReport.totals.callSeconds)} total` : ''}
+                    </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={printSessionReport}
+                        className="px-3 py-2 rounded-lg text-xs font-bold text-white bg-violet-600 hover:bg-violet-700">
+                        Report for this session
+                    </button>
+                    <button type="button" onClick={downloadSessionReport}
+                        className="px-3 py-2 rounded-lg text-xs font-bold text-violet-700 bg-violet-50 border border-violet-200 hover:bg-violet-100">
+                        Download for Excel
+                    </button>
+                    <button type="button" onClick={() => setStep(1)}
+                        className="px-3 py-2 rounded-lg text-xs font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50">
+                        Add more patients
+                    </button>
+                    {listFinished && (
+                        <button type="button" onClick={startNewList}
+                            className="px-3 py-2 rounded-lg text-xs font-bold text-emerald-800 bg-white border border-emerald-300 hover:bg-emerald-50">
+                            Start a new list
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    ) : null;
 
     return (
         <div className="p-4 sm:p-6 space-y-4">
@@ -1003,6 +1394,9 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             )}
 
             {step === 3 && (
+                <div className="space-y-4">
+                {callControls}
+                {sessionPanel}
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4">
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
                         <div className="flex items-center justify-between mb-2">
@@ -1057,9 +1451,9 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
 
                                 {current.state === 'idle' && (toE164(current.phone)
                                     ? (
-                                        <button type="button" onClick={() => placeCall(current.patient.id)}
-                                            className="mt-3 w-full py-2.5 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-700">
-                                            Place call to {current.patient.name}
+                                        <button type="button" onClick={() => placeCall(current.patient.id)} disabled={autoRunning}
+                                            className="mt-3 w-full py-2.5 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300">
+                                            {autoRunning ? 'Automatic calling is on' : `Place call to ${current.patient.name}`}
                                         </button>
                                     ) : (
                                         <p className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
@@ -1086,6 +1480,29 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                                         <p className="mt-1 text-sm text-gray-700 leading-relaxed whitespace-pre-line">{withPatientName(current.summary, current.patient.name)}</p>
                                     </div>
                                 )}
+                                {(current.state === 'done' || current.state === 'failed') && (
+                                    <div className="mt-3 space-y-2">
+                                        {current.retryPending && (
+                                            <p className="text-sm text-sky-900 bg-sky-50 border border-sky-200 rounded-xl px-3 py-2">
+                                                Suggested: call again ({current.retryNote}).
+                                                {settings.mode === 'auto' && autoRunning ? ' Automatic calling will do this.' : ''}
+                                            </p>
+                                        )}
+                                        <div className="flex gap-2">
+                                            <button type="button" onClick={() => placeCall(current.patient.id)}
+                                                disabled={autoRunning || !toE164(current.phone)}
+                                                className="flex-1 py-2 rounded-xl text-sm font-bold text-sky-800 bg-sky-50 border border-sky-200 hover:bg-sky-100 disabled:opacity-40">
+                                                ↻ Call again
+                                            </button>
+                                            {(current.retryPending || !current.skipped) && (
+                                                <button type="button" onClick={() => skipRow(current.patient.id)} disabled={current.skipped}
+                                                    className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40">
+                                                    Skip
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                                 {(current.state === 'done' || current.state === 'failed') && nextIdle && (
                                     <button type="button" onClick={() => setActiveId(nextIdle.patient.id)}
                                         className="mt-3 w-full py-2.5 rounded-xl font-bold text-violet-700 bg-violet-50 border border-violet-200 hover:bg-violet-100">
@@ -1095,6 +1512,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                             </>
                         )}
                     </div>
+                </div>
                 </div>
             )}
 
@@ -1361,9 +1779,20 @@ const ResultTag: React.FC<{ label: string; seconds?: number | null }> = ({ label
     );
 };
 
-const RowTag: React.FC<{ row: Row }> = ({ row }) => row.state === 'done'
-    ? <ResultTag label={callResultLabel('completed', row.providerStatus, row.vars)} seconds={row.durationSeconds} />
-    : <StateChip state={row.state} />;
+const RowTag: React.FC<{ row: Row }> = ({ row }) => (
+    <span className="flex flex-wrap items-center justify-end gap-1">
+        {row.state === 'done'
+            ? <ResultTag label={callResultLabel('completed', row.providerStatus, row.vars)} seconds={row.durationSeconds} />
+            : <StateChip state={row.state} />}
+        {row.retryPending && (
+            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap bg-sky-100 text-sky-800" title={row.retryNote || ''}>
+                ↻ Call again
+            </span>
+        )}
+        {row.skipped && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap bg-gray-100 text-gray-500">Skipped</span>}
+        {row.attempts > 1 && <span className="text-[11px] text-gray-500 whitespace-nowrap">{row.attempts} calls</span>}
+    </span>
+);
 
 const MoveButtons: React.FC<{ onUp?: () => void; onDown?: () => void; onRemove?: () => void; name: string }> = ({ onUp, onDown, onRemove, name }) => (
     <span className="flex items-center gap-0.5 shrink-0">

@@ -80,6 +80,8 @@ export interface AiCallReportInput {
     providerStatus: string | null;
     durationSeconds?: number | null;
     vars: Record<string, unknown> | null;
+    /** Calls placed to this patient in the session; set when one row stands for several. */
+    attempts?: number;
 }
 
 export interface AiCallReportRow {
@@ -90,6 +92,7 @@ export interface AiCallReportRow {
     answered: boolean;
     callResult: string;
     duration: string;
+    attempts: string;
     spokeTo: string;
     outcome: string;
     outcomeCode: string;
@@ -186,6 +189,7 @@ export const toReportRow = (c: AiCallReportInput): AiCallReportRow => {
         answered,
         callResult,
         duration: formatCallDuration(c.durationSeconds),
+        attempts: c.attempts && c.attempts > 1 ? `${c.attempts} attempts` : '',
         spokeTo: answered && spoke && spoke.toUpperCase() !== 'UNKNOWN' ? titleCase(spoke) : '',
         outcome: answered ? dispositionLabel(disposition) : '',
         outcomeCode: (disposition || '').toUpperCase(),
@@ -200,6 +204,9 @@ export interface AiCallReportParams {
     calls: AiCallReportInput[];
     hospitalName: string;
     periodLabel: string;
+    /** When each row is one patient's latest call: every call placed, and their total time. */
+    totals?: { callsPlaced: number; callSeconds: number; timedCalls: number };
+    title?: string;
 }
 
 const count = <T,>(rows: T[], pick: (r: T) => string): [string, number][] => {
@@ -208,15 +215,16 @@ const count = <T,>(rows: T[], pick: (r: T) => string): [string, number][] => {
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
 };
 
-export function buildAiCallReportHtml({ calls, hospitalName, periodLabel }: AiCallReportParams): string {
+export function buildAiCallReportHtml({ calls, hospitalName, periodLabel, totals, title = 'AI follow-up calls' }: AiCallReportParams): string {
     const rows = calls.map(toReportRow);
     const answered = rows.filter((r) => r.answered);
     const willCome = answered.filter((r) => r.outcomeCode === 'WILL_COME').length;
     const wontCome = answered.filter((r) => r.outcomeCode.startsWith('REFUSED')).length;
     const noTalk = rows.filter((r) => r.callResult === NO_CONVERSATION_LABEL).length;
     const notAnswered = rows.length - answered.length - noTalk;
-    const talkSeconds = calls.reduce((n, c) => n + (c.durationSeconds || 0), 0);
-    const timed = calls.filter((c) => c.durationSeconds != null).length;
+    const callsPlaced = totals?.callsPlaced ?? calls.length;
+    const talkSeconds = totals?.callSeconds ?? calls.reduce((n, c) => n + (c.durationSeconds || 0), 0);
+    const timed = totals?.timedCalls ?? calls.filter((c) => c.durationSeconds != null).length;
     const reasons = count(answered.filter((r) => r.reasonLabel && r.reasonLabel !== 'Did not say'), (r) => r.reasonLabel);
     const outcomes = count(answered, (r) => r.outcome);
     const old = rows.filter((r) => r.patientType === 'Old').length;
@@ -236,6 +244,7 @@ export function buildAiCallReportHtml({ calls, hospitalName, periodLabel }: AiCa
             </td>
             <td>
                 <div class="${r.answered ? 'ok' : 'no'}">${escapeHtml(r.callResult)}${r.duration ? ` · ${escapeHtml(r.duration)}` : ''}</div>
+                ${r.attempts ? `<div class="mr">${escapeHtml(r.attempts)}, latest shown</div>` : ''}
                 ${r.spokeTo ? `<div class="mr">Spoke to: ${escapeHtml(r.spokeTo)}</div>` : ''}
                 ${r.outcome ? `<div class="out">${escapeHtml(r.outcome)}</div>` : ''}
             </td>
@@ -249,7 +258,7 @@ export function buildAiCallReportHtml({ calls, hospitalName, periodLabel }: AiCa
 
     return `<!doctype html>
 <html><head><meta charset="utf-8" />
-<title>AI follow-up calls — ${escapeHtml(periodLabel)}</title>
+<title>${escapeHtml(title)} — ${escapeHtml(periodLabel)}</title>
 <style>
   @page { size: A4 landscape; margin: 12mm 10mm; }
   :root { color-scheme: only light; }
@@ -284,15 +293,15 @@ export function buildAiCallReportHtml({ calls, hospitalName, periodLabel }: AiCa
 </style></head>
 <body>
   <header>
-    <h1>AI follow-up calls</h1>
+    <h1>${escapeHtml(title)}</h1>
     <div class="sub">${escapeHtml(hospitalName)} &middot; ${escapeHtml(periodLabel)}</div>
   </header>
   <div class="totals">
-    <div><b>${rows.length}</b> calls placed</div>
+    <div><b>${callsPlaced}</b> calls placed${callsPlaced !== rows.length ? ` to ${rows.length} patients` : ''}</div>
     <div><b>${answered.length}</b> answered</div>
     <div><b>${noTalk}</b> picked up, no conversation</div>
     <div><b>${notAnswered}</b> not answered or busy</div>
-    <div><b>${timed ? formatCallDuration(talkSeconds) : '—'}</b> total call time${timed && timed < calls.length ? ` (${timed} of ${calls.length} calls timed)` : ''}</div>
+    <div><b>${timed ? formatCallDuration(talkSeconds) : '—'}</b> total call time${timed && timed < callsPlaced ? ` (${timed} of ${callsPlaced} calls timed)` : ''}</div>
     <div><b>${willCome}</b> will come</div>
     <div><b>${wontCome}</b> will not come</div>
     <div><b>${old}</b> old · <b style="display:inline">${fresh}</b> new patients</div>
@@ -323,10 +332,10 @@ const csvCell = (v: string): string => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '
 
 /** Excel opens this directly; the BOM keeps Tamil and ₹ readable. */
 export function buildAiCallReportCsv(calls: AiCallReportInput[]): string {
-    const header = ['#', 'Patient', 'MR number', 'Old / New', 'Called at', 'Call result', 'Duration (m:ss)', 'Spoke to', 'Outcome',
+    const header = ['#', 'Patient', 'MR number', 'Old / New', 'Called at', 'Call result', 'Duration (m:ss)', 'Attempts', 'Spoke to', 'Outcome',
         'Why they missed', "Patient's reason", 'Next step', "Agent's account of the call"];
     const lines = calls.map(toReportRow).map((r, i) => [
-        String(i + 1), r.name, r.mrNumber, r.patientType, r.calledAt, r.callResult, r.duration, r.spokeTo, r.outcome,
+        String(i + 1), r.name, r.mrNumber, r.patientType, r.calledAt, r.callResult, r.duration, r.attempts, r.spokeTo, r.outcome,
         r.reasonLabel, r.reasonText, r.nextStep, r.summary,
     ].map(csvCell).join(','));
     return '﻿' + [header.join(','), ...lines].join('\r\n');
