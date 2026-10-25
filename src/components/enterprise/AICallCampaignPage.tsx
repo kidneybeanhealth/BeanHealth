@@ -31,9 +31,10 @@ import { buildMissedMonths, missedReviewDate } from './MissedFollowupMonths';
 import {
     patientTypeOf, MISSED_REASON_LABELS, NO_CONVERSATION, NO_CONVERSATION_LABEL, callResultLabel, withPatientName,
     formatCallDuration,
-    buildAiCallReportHtml, buildAiCallReportCsv, type AiCallReportInput,
+    buildAiCallReportCsv, onePerPatient,
 } from './aiCallReport';
 import { retryReason, parseKeywords, type RetryRules } from './aiCallRetry';
+import AiCallReportView from './AiCallReportView';
 
 type CohortFilter = Extract<ReceptionReviewFilter, 'all' | 'due_today' | 'due_tomorrow' | 'overdue'> | 'priority';
 
@@ -554,27 +555,21 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
     useEffect(() => { loadPlaced(); }, [loadPlaced]);
 
     // ── Report for the hospital ───────────────────────────────────────────
+    // The report opens over the page, in this tab. 'range' = Placed Calls dates; 'session' = this list.
+    const [reportView, setReportView] = useState<'range' | 'session' | null>(null);
     const [reportFrom, setReportFrom] = useState(localDay());
     const [reportTo, setReportTo] = useState(localDay());
-    const reportCalls = useMemo<AiCallReportInput[]>(() => placed
-        .filter((c) => { const d = localDay(new Date(c.createdAt)); return d >= reportFrom && d <= reportTo; })
-        .slice()
-        .reverse()
-        .map((c) => ({
-            name: c.name, mrNumber: c.mrNumber, createdAt: c.createdAt,
-            status: c.status, providerStatus: c.providerStatus, vars: c.vars, durationSeconds: c.durationSeconds,
-        })), [placed, reportFrom, reportTo]);
+    const rangeReport = useMemo(() => onePerPatient(placed
+        .filter((c) => { const d = localDay(new Date(c.createdAt)); return d >= reportFrom && d <= reportTo; })),
+    [placed, reportFrom, reportTo]);
+    const reportCalls = rangeReport.inputs;
     const reportPeriod = reportFrom === reportTo
         ? new Date(`${reportFrom}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
         : `${new Date(`${reportFrom}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${new Date(`${reportTo}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
 
     const printReport = () => {
         if (reportCalls.length === 0) { toast.error('No calls in these dates'); return; }
-        const w = window.open('', '_blank', 'width=1200,height=800');
-        if (!w) { toast.error('Pop-up blocked — allow pop-ups to print'); return; }
-        w.document.open();
-        w.document.write(buildAiCallReportHtml({ calls: reportCalls, hospitalName, periodLabel: reportPeriod }));
-        w.document.close();
+        setReportView('range');
     };
 
     const downloadReport = () => {
@@ -807,31 +802,14 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
     const listFinished = rows.length > 0 && !rows.some(isBusy) && !!session?.attemptRefs.length
         && rows.every((r) => r.skipped || !toE164(r.phone) || ((r.state === 'done' || r.state === 'failed') && !r.retryPending));
 
-    /** One row per patient: their latest call this session, with every call counted. */
+    /** One row per patient, with every call this session counted. */
     const sessionReport = useMemo(() => {
         if (!session?.attemptRefs.length) return null;
         const refs = new Set(session.attemptRefs);
-        const calls = placed.filter((c) => refs.has(c.id)); // newest first
-        const byPatient = new Map<string, { latest: PlacedCall; attempts: number }>();
-        for (const c of calls) {
-            const seen = byPatient.get(c.patientId);
-            if (seen) seen.attempts += 1;
-            else byPatient.set(c.patientId, { latest: c, attempts: 1 });
-        }
-        const inputs: AiCallReportInput[] = [...byPatient.values()]
-            .sort((a, b) => a.latest.createdAt.localeCompare(b.latest.createdAt))
-            .map(({ latest: c, attempts }) => ({
-                name: c.name, mrNumber: c.mrNumber, createdAt: c.createdAt, status: c.status,
-                providerStatus: c.providerStatus, vars: c.vars, durationSeconds: c.durationSeconds, attempts,
-            }));
-        const timed = calls.filter((c) => c.durationSeconds != null);
+        const { inputs, totals } = onePerPatient(placed.filter((c) => refs.has(c.id)));
         return {
             inputs,
-            totals: {
-                callsPlaced: session.attemptRefs.length,
-                callSeconds: timed.reduce((n, c) => n + (c.durationSeconds || 0), 0),
-                timedCalls: timed.length,
-            },
+            totals: { ...totals, callsPlaced: session.attemptRefs.length },
             answered: inputs.filter((c) => callResultLabel(c.status, c.providerStatus, c.vars) === 'Answered').length,
         };
     }, [session, placed]);
@@ -842,14 +820,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
 
     const printSessionReport = () => {
         if (!sessionReport || sessionReport.inputs.length === 0) { toast.error('No calls in this session have come back yet'); return; }
-        const w = window.open('', '_blank', 'width=1200,height=800');
-        if (!w) { toast.error('Pop-up blocked — allow pop-ups to print'); return; }
-        w.document.open();
-        w.document.write(buildAiCallReportHtml({
-            calls: sessionReport.inputs, hospitalName, periodLabel: sessionLabel,
-            totals: sessionReport.totals, title: 'AI follow-up calls · session report',
-        }));
-        w.document.close();
+        setReportView('session');
     };
 
     const downloadSessionReport = () => {
@@ -1517,6 +1488,29 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             )}
 
             </>
+            )}
+
+            {reportView === 'range' && (
+                <AiCallReportView
+                    calls={reportCalls}
+                    totals={rangeReport.totals}
+                    hospitalName={hospitalName}
+                    title="AI follow-up call report"
+                    periodLabel={reportPeriod}
+                    onDownloadCsv={downloadReport}
+                    onClose={() => setReportView(null)}
+                />
+            )}
+            {reportView === 'session' && sessionReport && (
+                <AiCallReportView
+                    calls={sessionReport.inputs}
+                    totals={sessionReport.totals}
+                    hospitalName={hospitalName}
+                    title="AI follow-up calls · session report"
+                    periodLabel={sessionLabel}
+                    onDownloadCsv={downloadSessionReport}
+                    onClose={() => setReportView(null)}
+                />
             )}
 
             <TwoStepConfirmModal

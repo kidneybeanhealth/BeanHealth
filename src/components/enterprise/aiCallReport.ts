@@ -1,16 +1,16 @@
 /**
  * aiCallReport — the AI follow-up call report sent to the hospital
  *
- * One builder for the printable sheet and one for the spreadsheet, both from the
- * same rows, so the PDF the doctor reads and the Excel file the front desk works
- * from cannot disagree. Kept in a .ts file, like the dialysis register, so the
- * report does not drag React in behind it.
+ * `summarizeReport` sorts the calls the way the doctor reads them (needs action,
+ * will come, other outcomes, not reached) for the on-screen report, and
+ * `buildAiCallReportCsv` writes the same rows in the same order, so the page the
+ * doctor reads and the Excel file the front desk works from cannot disagree.
+ * Kept in a .ts file so the logic stays testable and React-free.
  *
  * Also the single home of the outcome vocabulary the campaign page shows on
  * screen: the agent's `missed_reason` codes, its dispositions, and how a
  * carrier result reads to a person.
  */
-import { escapeHtml } from './dialysisRegisterPrint';
 
 /**
  * Old or new patient, read from the year in the MR number (KNH/25/012345 → 25).
@@ -44,6 +44,8 @@ const DISPOSITION_LABELS: Record<string, string> = {
     WILL_COME: 'Will come',
     // Said by the call result instead ("Picked up, no conversation").
     NOT_REACHABLE: '',
+    CALLBACK_REQUESTED: 'Asked for a call back',
+    NOT_INTERESTED: 'Not interested',
     WRONG_NUMBER: 'Wrong number',
     PATIENT_HOSPITALISED: 'In hospital now',
     PATIENT_DECEASED: 'Patient deceased',
@@ -84,8 +86,24 @@ export interface AiCallReportInput {
     attempts?: number;
 }
 
+/** Where a patient sits in the report, in reading order. */
+export type ReportGroup = 'action' | 'coming' | 'other' | 'unreached';
+
+export const REPORT_GROUPS: { key: ReportGroup; title: string; hint: string }[] = [
+    { key: 'action', title: 'Needs action', hint: 'Red flags, call-back requests and patients who will not come' },
+    { key: 'coming', title: 'Will come', hint: 'Agreed to come for their review' },
+    { key: 'other', title: 'Other outcomes', hint: 'In hospital, wrong number, deceased and similar' },
+    { key: 'unreached', title: 'Not reached', hint: 'No conversation took place; worth calling again' },
+];
+
 export interface AiCallReportRow {
     name: string;
+    createdAt: string;
+    group: ReportGroup;
+    redFlag: boolean;
+    callback: boolean;
+    preferredDay: string;
+    durationSeconds: number | null;
     mrNumber: string;
     patientType: string;
     calledAt: string;
@@ -179,8 +197,22 @@ export const toReportRow = (c: AiCallReportInput): AiCallReportRow => {
         preferred ? `Will come: ${preferred}` : null,
     ].filter(Boolean).join(' · ');
     const type = patientTypeOf(c.mrNumber);
+    const codeUpper = (disposition || '').toUpperCase();
+    const redFlag = codeUpper === 'RED_FLAG_REPORTED';
+    const callbackAsked = callback || codeUpper === 'CALLBACK_REQUESTED';
+    const group: ReportGroup = !answered
+        ? 'unreached'
+        : redFlag || callbackAsked || codeUpper.startsWith('REFUSED') || codeUpper === 'NOT_INTERESTED'
+            ? 'action'
+            : codeUpper === 'WILL_COME' ? 'coming' : 'other';
     return {
         name: c.name,
+        createdAt: c.createdAt,
+        group,
+        redFlag: answered && redFlag,
+        callback: answered && callbackAsked,
+        preferredDay: answered ? (preferred || '') : '',
+        durationSeconds: c.durationSeconds ?? null,
         mrNumber: c.mrNumber || '',
         patientType: type === 'new' ? 'New' : type === 'old' ? 'Old' : '',
         calledAt: new Date(c.createdAt).toLocaleString('en-IN', {
@@ -200,142 +232,133 @@ export const toReportRow = (c: AiCallReportInput): AiCallReportRow => {
     };
 };
 
-export interface AiCallReportParams {
-    calls: AiCallReportInput[];
-    hospitalName: string;
-    periodLabel: string;
-    /** When each row is one patient's latest call: every call placed, and their total time. */
-    totals?: { callsPlaced: number; callSeconds: number; timedCalls: number };
-    title?: string;
+export interface ReportTotals { callsPlaced: number; callSeconds: number; timedCalls: number }
+
+/**
+ * One row per patient, with every call to them counted. A patient rung twice is
+ * one patient in the report, not two: the row shown is their latest answered
+ * call, else their latest call, so an unanswered retry never hides a
+ * conversation that already happened. Totals still count every call.
+ */
+export function onePerPatient(
+    calls: (Omit<AiCallReportInput, 'attempts'> & { patientId: string })[],
+): { inputs: AiCallReportInput[]; totals: ReportTotals } {
+    const isAnswered = (c: Omit<AiCallReportInput, 'attempts'>) =>
+        callResultLabel(c.status, c.providerStatus, c.vars) === 'Answered';
+    const byPatient = new Map<string, { pick: (typeof calls)[number]; attempts: number }>();
+    for (const c of calls) {
+        const seen = byPatient.get(c.patientId);
+        if (!seen) { byPatient.set(c.patientId, { pick: c, attempts: 1 }); continue; }
+        seen.attempts += 1;
+        const a = isAnswered(c);
+        if (a !== isAnswered(seen.pick) ? a : c.createdAt > seen.pick.createdAt) seen.pick = c;
+    }
+    const inputs = [...byPatient.values()]
+        .sort((a, b) => a.pick.createdAt.localeCompare(b.pick.createdAt))
+        .map(({ pick: c, attempts }) => ({
+            name: c.name, mrNumber: c.mrNumber, createdAt: c.createdAt, status: c.status,
+            providerStatus: c.providerStatus, vars: c.vars, durationSeconds: c.durationSeconds, attempts,
+        }));
+    const timed = calls.filter((c) => c.durationSeconds != null);
+    return {
+        inputs,
+        totals: {
+            callsPlaced: calls.length,
+            callSeconds: timed.reduce((n, c) => n + (c.durationSeconds || 0), 0),
+            timedCalls: timed.length,
+        },
+    };
 }
 
-const count = <T,>(rows: T[], pick: (r: T) => string): [string, number][] => {
+const tally = <T,>(rows: T[], pick: (r: T) => string): [string, number][] => {
     const m = new Map<string, number>();
     rows.forEach((r) => { const k = pick(r); if (k) m.set(k, (m.get(k) || 0) + 1); });
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
 };
 
-export function buildAiCallReportHtml({ calls, hospitalName, periodLabel, totals, title = 'AI follow-up calls' }: AiCallReportParams): string {
-    const rows = calls.map(toReportRow);
+const RESULT_ORDER = [NO_CONVERSATION_LABEL, 'Not answered', 'Busy', 'Could not connect', 'Could not place', 'Waiting for result'];
+
+/** Reading order inside a group: the most urgent first, then by when they were called. */
+const byUrgency = (a: AiCallReportRow, b: AiCallReportRow): number => {
+    const rank = (r: AiCallReportRow) => r.group === 'action'
+        ? (r.redFlag ? 0 : r.callback ? 1 : 2)
+        : r.group === 'unreached'
+            ? Math.max(0, RESULT_ORDER.indexOf(r.callResult))
+            : r.group === 'other' ? 0 : 0;
+    return rank(a) - rank(b)
+        || (a.group === 'other' ? a.outcome.localeCompare(b.outcome) : 0)
+        || a.createdAt.localeCompare(b.createdAt);
+};
+
+export interface TypeTally { called: number; answered: number; coming: number; unreached: number }
+
+export interface ReportSummary {
+    rows: AiCallReportRow[];
+    groups: Record<ReportGroup, AiCallReportRow[]>;
+    patients: number;
+    callsPlaced: number;
+    answered: number;
+    coming: number;
+    wontCome: number;
+    action: number;
+    unreached: number;
+    callSeconds: number;
+    timedCalls: number;
+    reasons: [string, number][];
+    outcomes: [string, number][];
+    byType: { Old: TypeTally; New: TypeTally };
+}
+
+/**
+ * Everything the report shows, from the calls. Pass `totals` from
+ * onePerPatient() so calls and time count every attempt, not just the row shown.
+ */
+export function summarizeReport(
+    calls: AiCallReportInput[],
+    totals?: ReportTotals,
+): ReportSummary {
+    const rows = calls.map(toReportRow).sort((a, b) =>
+        REPORT_GROUPS.findIndex((g) => g.key === a.group) - REPORT_GROUPS.findIndex((g) => g.key === b.group)
+        || byUrgency(a, b));
+    const groups = { action: [], coming: [], other: [], unreached: [] } as Record<ReportGroup, AiCallReportRow[]>;
+    rows.forEach((r) => groups[r.group].push(r));
     const answered = rows.filter((r) => r.answered);
-    const willCome = answered.filter((r) => r.outcomeCode === 'WILL_COME').length;
-    const wontCome = answered.filter((r) => r.outcomeCode.startsWith('REFUSED')).length;
-    const noTalk = rows.filter((r) => r.callResult === NO_CONVERSATION_LABEL).length;
-    const notAnswered = rows.length - answered.length - noTalk;
-    const callsPlaced = totals?.callsPlaced ?? calls.length;
-    const talkSeconds = totals?.callSeconds ?? calls.reduce((n, c) => n + (c.durationSeconds || 0), 0);
-    const timed = totals?.timedCalls ?? calls.filter((c) => c.durationSeconds != null).length;
-    const reasons = count(answered.filter((r) => r.reasonLabel && r.reasonLabel !== 'Did not say'), (r) => r.reasonLabel);
-    const outcomes = count(answered, (r) => r.outcome);
-    const old = rows.filter((r) => r.patientType === 'Old').length;
-    const fresh = rows.filter((r) => r.patientType === 'New').length;
-
-    const tally = (items: [string, number][]) => items.length
-        ? items.map(([k, n]) => `<span class="pill">${escapeHtml(k)} <b>${n}</b></span>`).join('')
-        : '<span class="muted">None yet</span>';
-
-    const body = rows.map((r, i) => `
-        <tr${r.outcomeCode === 'RED_FLAG_REPORTED' ? ' class="flag"' : ''}>
-            <td class="num">${i + 1}</td>
-            <td>
-                <div class="nm">${escapeHtml(r.name)}</div>
-                <div class="mr">${escapeHtml(r.mrNumber || '—')}${r.patientType ? ` · ${r.patientType}` : ''}</div>
-                <div class="mr">${escapeHtml(r.calledAt)}</div>
-            </td>
-            <td>
-                <div class="${r.answered ? 'ok' : 'no'}">${escapeHtml(r.callResult)}${r.duration ? ` · ${escapeHtml(r.duration)}` : ''}</div>
-                ${r.attempts ? `<div class="mr">${escapeHtml(r.attempts)}, latest shown</div>` : ''}
-                ${r.spokeTo ? `<div class="mr">Spoke to: ${escapeHtml(r.spokeTo)}</div>` : ''}
-                ${r.outcome ? `<div class="out">${escapeHtml(r.outcome)}</div>` : ''}
-            </td>
-            <td>
-                ${r.reasonLabel ? `<div class="why">${escapeHtml(r.reasonLabel)}</div>` : ''}
-                ${r.reasonText ? `<div>${escapeHtml(r.reasonText)}</div>` : (r.answered ? '' : '<div class="muted">—</div>')}
-                ${r.nextStep ? `<div class="next">${escapeHtml(r.nextStep)}</div>` : ''}
-            </td>
-            <td class="sum">${r.summary ? escapeHtml(r.summary) : '<span class="muted">—</span>'}</td>
-        </tr>`).join('');
-
-    return `<!doctype html>
-<html><head><meta charset="utf-8" />
-<title>${escapeHtml(title)} — ${escapeHtml(periodLabel)}</title>
-<style>
-  @page { size: A4 landscape; margin: 12mm 10mm; }
-  :root { color-scheme: only light; }
-  html, body { background: #ffffff; color: #111827; }
-  body { font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11.5px; margin: 0; }
-  header { border-bottom: 2px solid #111827; padding-bottom: 8px; margin-bottom: 10px; }
-  h1 { font-size: 17px; margin: 0 0 2px; }
-  .sub { font-size: 12px; color: #4b5563; }
-  .totals { margin: 8px 0 8px; display: flex; flex-wrap: wrap; gap: 22px; }
-  .totals b { font-size: 16px; display: block; }
-  .tally { margin: 6px 0; }
-  .tally h2 { font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: #374151; margin: 0 0 4px; }
-  .pill { display: inline-block; border: 1px solid #d1d5db; border-radius: 10px; padding: 1px 8px; margin: 0 5px 4px 0; font-size: 11px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  thead { display: table-header-group; }
-  tr { page-break-inside: avoid; }
-  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: #374151;
-       border-bottom: 1px solid #9ca3af; padding: 6px; }
-  td { padding: 7px 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-  tr.flag td { background: #fef2f2; }
-  .num { text-align: center; }
-  .nm { font-weight: 600; }
-  .mr { font-size: 10.5px; color: #6b7280; margin-top: 1px; }
-  .ok { font-weight: 600; color: #065f46; }
-  .no { font-weight: 600; color: #6b7280; }
-  .out { font-weight: 600; margin-top: 2px; }
-  .why { font-weight: 700; color: #92400e; }
-  .next { margin-top: 3px; color: #1e40af; font-weight: 600; }
-  .sum { color: #374151; line-height: 1.4; }
-  .muted { color: #9ca3af; }
-  footer { margin-top: 12px; font-size: 10px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 6px; }
-</style></head>
-<body>
-  <header>
-    <h1>${escapeHtml(title)}</h1>
-    <div class="sub">${escapeHtml(hospitalName)} &middot; ${escapeHtml(periodLabel)}</div>
-  </header>
-  <div class="totals">
-    <div><b>${callsPlaced}</b> calls placed${callsPlaced !== rows.length ? ` to ${rows.length} patients` : ''}</div>
-    <div><b>${answered.length}</b> answered</div>
-    <div><b>${noTalk}</b> picked up, no conversation</div>
-    <div><b>${notAnswered}</b> not answered or busy</div>
-    <div><b>${timed ? formatCallDuration(talkSeconds) : '—'}</b> total call time${timed && timed < callsPlaced ? ` (${timed} of ${callsPlaced} calls timed)` : ''}</div>
-    <div><b>${willCome}</b> will come</div>
-    <div><b>${wontCome}</b> will not come</div>
-    <div><b>${old}</b> old · <b style="display:inline">${fresh}</b> new patients</div>
-  </div>
-  <div class="tally"><h2>Why they missed their review</h2>${tally(reasons)}</div>
-  <div class="tally"><h2>Outcome of answered calls</h2>${tally(outcomes)}</div>
-  <table>
-    <colgroup>
-      <col style="width:4%" /><col style="width:20%" /><col style="width:16%" />
-      <col style="width:24%" /><col style="width:36%" />
-    </colgroup>
-    <thead><tr>
-      <th>#</th><th>Patient</th><th>Call result</th><th>Why they missed / next step</th><th>Agent's account of the call</th>
-    </tr></thead>
-    <tbody>${body}</tbody>
-  </table>
-  <footer>
-    Printed ${escapeHtml(new Date().toLocaleString('en-IN'))} from BeanHealth. Calls were placed by the AI assistant;
-    the reason and the account are the assistant's summary of what was said, not a recording. Call time is as reported by
-    the calling platform; a call with no time shown had none reported. Old or new is read from the
-    year in the MR number. No appointment was changed by these calls.
-  </footer>
-  <script>window.onload = function () { window.print(); };</script>
-</body></html>`;
+    const typeTally = (type: string): TypeTally => {
+        const t = rows.filter((r) => r.patientType === type);
+        return {
+            called: t.length,
+            answered: t.filter((r) => r.answered).length,
+            coming: t.filter((r) => r.group === 'coming').length,
+            unreached: t.filter((r) => r.group === 'unreached').length,
+        };
+    };
+    return {
+        rows,
+        groups,
+        patients: rows.length,
+        callsPlaced: totals?.callsPlaced ?? calls.length,
+        answered: answered.length,
+        coming: groups.coming.length,
+        wontCome: answered.filter((r) => r.outcomeCode.startsWith('REFUSED') || r.outcomeCode === 'NOT_INTERESTED').length,
+        action: groups.action.length,
+        unreached: groups.unreached.length,
+        callSeconds: totals?.callSeconds ?? calls.reduce((n, c) => n + (c.durationSeconds || 0), 0),
+        timedCalls: totals?.timedCalls ?? calls.filter((c) => c.durationSeconds != null).length,
+        reasons: tally(answered.filter((r) => r.reasonLabel && r.reasonLabel !== 'Did not say'), (r) => r.reasonLabel),
+        outcomes: tally(answered, (r) => r.outcome),
+        byType: { Old: typeTally('Old'), New: typeTally('New') },
+    };
 }
 
 const csvCell = (v: string): string => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 
 /** Excel opens this directly; the BOM keeps Tamil and ₹ readable. */
 export function buildAiCallReportCsv(calls: AiCallReportInput[]): string {
-    const header = ['#', 'Patient', 'MR number', 'Old / New', 'Called at', 'Call result', 'Duration (m:ss)', 'Attempts', 'Spoke to', 'Outcome',
+    const header = ['#', 'Section', 'Patient', 'MR number', 'Old / New', 'Called at', 'Call result', 'Duration (m:ss)', 'Attempts', 'Spoke to', 'Outcome',
         'Why they missed', "Patient's reason", 'Next step', "Agent's account of the call"];
-    const lines = calls.map(toReportRow).map((r, i) => [
-        String(i + 1), r.name, r.mrNumber, r.patientType, r.calledAt, r.callResult, r.duration, r.attempts, r.spokeTo, r.outcome,
+    const sectionTitle = (g: ReportGroup) => REPORT_GROUPS.find((x) => x.key === g)?.title || '';
+    const lines = summarizeReport(calls).rows.map((r, i) => [
+        String(i + 1), sectionTitle(r.group), r.name, r.mrNumber, r.patientType, r.calledAt, r.callResult, r.duration, r.attempts, r.spokeTo, r.outcome,
         r.reasonLabel, r.reasonText, r.nextStep, r.summary,
     ].map(csvCell).join(','));
     return '﻿' + [header.join(','), ...lines].join('\r\n');
