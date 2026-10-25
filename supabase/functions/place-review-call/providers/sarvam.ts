@@ -9,8 +9,32 @@
  */
 import type { PlaceCallInput, PlaceCallResult, VoiceProvider } from './types.ts'
 
+/**
+ * The numbers Sarvam can ring from, each with the connection it was bought
+ * under: phone → connection id. A number only works with its own connection.
+ *
+ * SARVAM_AGENT_LINES lists them as `connection_id=+91number`, separated by
+ * commas or new lines. Without it, the original SARVAM_CONNECTION_ID +
+ * SARVAM_AGENT_PHONE_NUMBER pair is the one line, as before.
+ */
+const readLines = (): Map<string, string> => {
+    const lines = new Map<string, string>()
+    for (const entry of (Deno.env.get('SARVAM_AGENT_LINES') ?? '').split(/[,\n]/)) {
+        const [connectionId, phone] = entry.split('=').map((s) => s.trim())
+        if (connectionId && phone) lines.set(phone, connectionId)
+    }
+    if (lines.size === 0) {
+        const connectionId = Deno.env.get('SARVAM_CONNECTION_ID')
+        const phone = Deno.env.get('SARVAM_AGENT_PHONE_NUMBER')
+        if (connectionId && phone) lines.set(phone, connectionId)
+    }
+    return lines
+}
+
 export const sarvamProvider: VoiceProvider = {
     name: 'sarvam',
+
+    callerLines: () => [...readLines().keys()],
 
     async placeCall(input: PlaceCallInput): Promise<PlaceCallResult> {
         const orgId = Deno.env.get('SARVAM_ORG_ID')
@@ -19,13 +43,16 @@ export const sarvamProvider: VoiceProvider = {
         // pair is the review-reminder agent every KKC call has always used.
         const appId = input.agentOverride?.appId ?? Deno.env.get('SARVAM_APP_ID')
         const apiKey = Deno.env.get('SARVAM_API_KEY')
-        const connectionId = Deno.env.get('SARVAM_CONNECTION_ID')
-        const agentPhone = Deno.env.get('SARVAM_AGENT_PHONE_NUMBER')
+        const agentPhone = input.callerLine
+        const connectionId = readLines().get(agentPhone)
         const webhookBase = Deno.env.get('SARVAM_WEBHOOK_BASE_URL')
         const appVersionRaw = input.agentOverride ? String(input.agentOverride.appVersion) : Deno.env.get('SARVAM_APP_VERSION')
 
-        for (const [k, v] of Object.entries({ SARVAM_ORG_ID: orgId, SARVAM_WORKSPACE_ID: workspaceId, SARVAM_APP_ID: appId, SARVAM_API_KEY: apiKey, SARVAM_CONNECTION_ID: connectionId, SARVAM_AGENT_PHONE_NUMBER: agentPhone, SARVAM_WEBHOOK_BASE_URL: webhookBase })) {
+        for (const [k, v] of Object.entries({ SARVAM_ORG_ID: orgId, SARVAM_WORKSPACE_ID: workspaceId, SARVAM_APP_ID: appId, SARVAM_API_KEY: apiKey, SARVAM_WEBHOOK_BASE_URL: webhookBase })) {
             if (!v) return { ok: false, status: 503, notConfigured: true, detail: `${k} is unset.` }
+        }
+        if (!connectionId) {
+            return { ok: false, status: 503, notConfigured: true, detail: `No Sarvam connection is set for ${agentPhone}. Check SARVAM_AGENT_LINES.` }
         }
 
         // Always an explicit number. Sending null does NOT mean "use the newest

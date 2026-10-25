@@ -45,6 +45,8 @@ export interface PlaceReviewCallResult {
     attemptRef: string;
     providerCallId: string | null;
     dialedNumber: string;
+    /** The number that rang the patient; null from a server that predates several numbers. */
+    callerLine: string | null;
 }
 
 /**
@@ -95,8 +97,32 @@ export async function placeReviewCall(
         attemptRef: data?.attemptRef,
         providerCallId: data?.providerCallId ?? null,
         dialedNumber: data?.dialedNumber,
+        callerLine: data?.callerLine ?? null,
     };
 }
+
+/**
+ * The numbers calls can ring from, so a campaign knows how many patients it may
+ * call at once (one per number). Null when the server cannot say, which a
+ * campaign treats as a single number.
+ */
+export async function fetchCallerLines(): Promise<string[] | null> {
+    try {
+        const { data, error } = await withTimeout(
+            supabase.functions.invoke('place-review-call', { body: { action: 'lines' } }) as any,
+            15000,
+            'Timed out while checking the calling numbers'
+        ) as { data: any; error: any };
+        if (error || !Array.isArray(data?.lines)) return null;
+        return data.lines.filter((l: unknown): l is string => typeof l === 'string');
+    } catch {
+        return null;
+    }
+}
+
+/** +918071581310 → "+91 80715 81310" */
+export const formatCallerLine = (line: string): string =>
+    /^\+91\d{10}$/.test(line) ? `+91 ${line.slice(3, 8)} ${line.slice(8)}` : line;
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Usage metering

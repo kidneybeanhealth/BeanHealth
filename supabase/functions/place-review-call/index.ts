@@ -23,6 +23,10 @@
 //   SARVAM_APP_VERSION          "1" once the agent is committed; omit to track latest
 //   SARVAM_CONNECTION_ID        b839c927-ef-d640a95a-d734
 //   SARVAM_AGENT_PHONE_NUMBER   +918071581310   (paired with the connection above)
+//   SARVAM_AGENT_LINES          optional; several numbers, `connection_id=+91number`
+//                               separated by commas. Replaces the pair above, which
+//                               is then ignored. Calls spread across them, one at a
+//                               time per number (SARVAM_CALLS_PER_LINE to change).
 //   SARVAM_WEBHOOK_BASE_URL     https://<project>.functions.supabase.co/sarvam-call-webhook
 //   SARVAM_FRONT_DESK_NUMBER    REQUIRED. The agent reads this out digit by digit
 //                               when a patient reports a red-flag symptom. Without
@@ -35,6 +39,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { getProvider } from './providers/index.ts'
+import { pickCallerLine } from './callerLine.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -97,6 +102,16 @@ serve(async (req) => {
         if (authError || !caller) return json({ error: 'Unauthorized' }, 401)
 
         const body = await req.json().catch(() => ({}))
+
+        // The campaign asks how many numbers it can ring from, so it knows how
+        // many patients it may call at once. Nothing is dialled.
+        if (body?.action === 'lines') {
+            const admin = createClient(supabaseUrl, serviceRoleKey)
+            const { data: cfg } = await admin
+                .from('hospital_profiles').select('voice_provider').eq('id', caller.id).maybeSingle()
+            return json({ lines: getProvider(cfg?.voice_provider).callerLines() })
+        }
+
         const patientId: string | undefined = body?.patientId
         const requestedByName: string | null = body?.requestedByName ?? null
         const requestedLanguage: string | null = typeof body?.language === 'string' && body.language.trim() ? body.language.trim() : null
@@ -353,6 +368,44 @@ serve(async (req) => {
             .in('status', ['placing', 'placed'])
             .lt('created_at', new Date(Date.now() - STALE_AFTER_MIN * 60_000).toISOString())
 
+        // ── Pick the number to ring from ─────────────────────────────────────
+        // Each number carries one call at a time (SARVAM_CALLS_PER_LINE), so with
+        // three numbers three patients can be rung at once. A free number is
+        // used, and among free ones the one that has rung least in the last hour,
+        // so the day's calls spread across all of them rather than one number
+        // ringing hundreds of strangers and being marked as spam (callerLine.ts).
+        //
+        // Counted across every hospital: the numbers belong to BeanHealth's
+        // provider account, not to one clinic.
+        const lines = provider.callerLines()
+        if (lines.length === 0) {
+            return json({ error: 'Voice calling is not configured', detail: 'No caller number is set for this provider.' }, 503)
+        }
+        const perLine = Math.max(1, Number(Deno.env.get('SARVAM_CALLS_PER_LINE')) || 1)
+        const { data: lineRows, error: lineError } = await admin
+            .from('hospital_voice_call_attempts')
+            .select('caller_line, status, created_at')
+            .in('caller_line', lines)
+            .gte('created_at', new Date(Date.now() - 60 * 60_000).toISOString())
+        // No caller_line column yet (migration not applied): fall back to the
+        // first number and do not record it, which is how every call worked before.
+        const lineTracked = !lineError
+        let callerLine = lines[0]
+        if (lineTracked) {
+            const picked = pickCallerLine(lines, lineRows ?? [], perLine, Date.now())
+            if (!picked) {
+                return json({
+                    error: lines.length === 1
+                        ? 'The calling number is busy with another call. Try again in a minute.'
+                        : `All ${lines.length} calling numbers are busy. Try again in a minute.`,
+                    linesBusy: true,
+                }, 429)
+            }
+            callerLine = picked
+        } else {
+            console.warn('[place-review-call] caller_line not tracked:', lineError?.message)
+        }
+
         // ── Reserve the attempt BEFORE calling Sarvam ────────────────────────
         // Written first so a webhook that arrives before this function returns
         // still finds its row. The partial unique index on (patient_id) WHERE
@@ -371,6 +424,7 @@ serve(async (req) => {
                 webhook_token: webhookToken,
                 status: 'placing',
                 requested_by_name: requestedByName,
+                ...(lineTracked ? { caller_line: callerLine } : {}),
                 // Written only for the Connect purposes, so a review call still
                 // succeeds on a database that predates the purpose column. The
                 // app reads NULL as 'review'.
@@ -413,6 +467,7 @@ serve(async (req) => {
                 ...(purpose !== 'review' ? { purpose_detail: purposeDetail } : {}),
             },
             agentOverride,
+            callerLine,
         })
 
         if (!result.ok) {
@@ -437,6 +492,7 @@ serve(async (req) => {
             provider: provider.name,
             providerCallId: result.providerCallId,
             dialedNumber: recordedNumber,
+            callerLine,
         })
     } catch (err) {
         console.error('[place-review-call]', err)

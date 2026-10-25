@@ -22,7 +22,7 @@ import {
     type ReceptionReviewFilter,
 } from '../../services/enterpriseReviewService';
 import {
-    placeReviewCall, fetchVoiceUsage, fetchVoiceCallStatement, formatRupees, formatDuration,
+    placeReviewCall, fetchCallerLines, formatCallerLine, fetchVoiceUsage, fetchVoiceCallStatement, formatRupees, formatDuration,
     type VoiceUsageMonth, type VoiceCallStatement,
 } from '../../services/voiceCallService';
 import { formatPastDate } from './PastRecordsPatientCard';
@@ -191,6 +191,8 @@ interface Row {
     retryNote: string | null;
     /** Taken out of the run by reception without removing them from the list. */
     skipped: boolean;
+    /** The number that rang them last. */
+    callerLine?: string | null;
 }
 
 const toCallPatient = (p: ReceptionPastRecordPatient): CallPatient => {
@@ -215,8 +217,8 @@ const newRow = (patient: CallPatient, phone = patient.phone || ''): Row => ({
 
 /**
  * How a run behaves. Manual: reception presses Call for each patient.
- * Automatic: the page rings the list in order, one call at a time, and rings
- * again whoever the retry rules say should be.
+ * Automatic: the page rings the list in order, one call per calling number at a
+ * time, and rings again whoever the retry rules say should be.
  */
 interface CampaignSettings {
     mode: 'manual' | 'auto';
@@ -229,6 +231,8 @@ interface CampaignSettings {
     /** 'end': after everyone else has had a first call. 'soon': as soon as the gap allows. */
     retryWhen: 'end' | 'soon';
     pauseSeconds: number;
+    /** Calls at the same time in automatic mode. 0 = one per calling number. */
+    parallel: number;
 }
 
 const DEFAULT_SETTINGS: CampaignSettings = {
@@ -241,6 +245,7 @@ const DEFAULT_SETTINGS: CampaignSettings = {
     maxRetries: 1,
     retryWhen: 'end',
     pauseSeconds: 15,
+    parallel: 0,
 };
 
 const toRules = (s: CampaignSettings): RetryRules => ({
@@ -393,6 +398,12 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
     const [autoNote, setAutoNote] = useState<string | null>(null);
     const [tick, setTick] = useState(0);
     const failStreakRef = useRef(0);
+    // The numbers calls ring from. One call per number at a time, so this is how
+    // many patients automatic calling may ring at once.
+    const [callerLines, setCallerLines] = useState<string[] | null>(null);
+    useEffect(() => { fetchCallerLines().then(setCallerLines); }, []);
+    const lineCount = Math.max(1, callerLines?.length || 0);
+    const parallel = settings.parallel > 0 ? Math.min(settings.parallel, lineCount) : lineCount;
     const [showSettings, setShowSettings] = useState(false);
     const [showScript, setShowScript] = useState(false);
     // Three sections stacked as collapsibles meant opening Usage pushed the
@@ -709,7 +720,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
      * carry on: 'capped' is the daily limit (stop), 'refused' is the server
      * declining this patient (move on), 'error' is anything else.
      */
-    const placeCall = async (patientId: string): Promise<'placed' | 'refused' | 'capped' | 'error'> => {
+    const placeCall = async (patientId: string): Promise<'placed' | 'refused' | 'capped' | 'linesBusy' | 'error'> => {
         const row = rowsRef.current.find((r) => r.patient.id === patientId);
         if (!row) return 'error';
         if (!toE164(row.phone)) { toast.error('Add a valid mobile number for this patient first'); return 'refused'; }
@@ -723,7 +734,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                 requestedByName: 'Reception (campaign)',
                 phoneOverride: row.phone,
             });
-            setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'waiting', attemptRef: res.attemptRef } : r));
+            setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'waiting', attemptRef: res.attemptRef, callerLine: res.callerLine } : r));
             setSession((prev) => ({
                 startedAt: prev?.startedAt || new Date().toISOString(),
                 attemptRefs: [...(prev?.attemptRefs || []), res.attemptRef],
@@ -732,6 +743,13 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             return 'placed';
         } catch (err: any) {
             const message: string = err?.message || 'Call failed';
+            // Every number busy (another device calling, or an outcome still on its
+            // way): nothing was dialled, so the patient goes back exactly as they were.
+            if (/calling numbers? (are|is) busy/i.test(message)) {
+                setRows((prev) => prev.map((r) => r.patient.id === patientId ? row : r));
+                if (settingsRef.current.mode === 'manual') toast.error(message);
+                return 'linesBusy';
+            }
             setRows((prev) => prev.map((r) => r.patient.id === patientId ? { ...r, state: 'failed', error: message } : r));
             if (/daily limit/i.test(message)) return 'capped';
             // The server's own refusals: deceased, stopped, do-not-call, on hold,
@@ -744,13 +762,16 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
     const skipRow = (id: string) => setRows((prev) => prev.map((r) => r.patient.id === id ? { ...r, retryPending: false, skipped: true } : r));
 
     // ── Automatic calling ────────────────────────────────────────────────
-    // One call at a time: wait for the one in progress, pause, ring the next.
-    // First calls go in list order; retries go after them, or as soon as the
-    // two-minute gap allows, as chosen. Stops on the daily limit, after three
-    // calls in a row could not be placed, or when the list runs out.
+    // Up to `parallel` calls at once, one per calling number: while a number is
+    // free, pause, then ring the next patient. First calls go in list order;
+    // retries go after them, or as soon as the two-minute gap allows, as chosen.
+    // Stops on the daily limit, after three calls in a row could not be placed,
+    // or when the list runs out and the last call has come back.
     useEffect(() => {
         if (!autoRunning) return;
-        if (rows.some(isBusy)) { setAutoNote('Call in progress…'); return; }
+        const inProgress = rows.filter(isBusy).length;
+        const progressNote = inProgress === 1 ? '1 call in progress' : `${inProgress} calls in progress`;
+        if (inProgress >= parallel) { setAutoNote(`${progressNote}…`); return; }
         const now = Date.now();
         const callable = (r: Row) => !r.skipped && !!toE164(r.phone);
         const fresh = rows.find((r) => r.state === 'idle' && r.attempts === 0 && callable(r));
@@ -759,6 +780,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
         const next = settings.retryWhen === 'soon' ? (dueRetry || fresh) : (fresh || dueRetry);
 
         if (!next) {
+            if (inProgress > 0) { setAutoNote(`${progressNote}. Waiting for ${inProgress === 1 ? 'it' : 'them'} to finish…`); return; }
             if (retries.length > 0) {
                 const wait = Math.max(1000, Math.min(...retries.map((r) => (r.lastAttemptAt || 0) + MIN_RETRY_GAP_MS - now)));
                 setAutoNote(`Waiting ${Math.ceil(wait / 1000)} s before calling ${retries.length === 1 ? retries[0].patient.name : `${retries.length} patients`} again…`);
@@ -770,13 +792,16 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             return;
         }
 
-        setAutoNote(`Next: ${next.patient.name}${next.attempts > 0 ? ` (attempt ${next.attempts + 1})` : ''} in ${settings.pauseSeconds} s`);
+        setAutoNote(`${inProgress > 0 ? `${progressNote}. ` : ''}Next: ${next.patient.name}${next.attempts > 0 ? ` (attempt ${next.attempts + 1})` : ''} in ${settings.pauseSeconds} s`);
         const t = window.setTimeout(async () => {
             setActiveId(next.patient.id);
             const result = await placeCall(next.patient.id);
             if (result === 'capped') {
                 setAutoRunning(false);
                 setAutoNote('Stopped: the daily call limit has been reached.');
+            } else if (result === 'linesBusy') {
+                // Not a failure: the patient is back on the list and is tried again after the pause.
+                setAutoNote('Every calling number is busy. Trying again shortly…');
             } else if (result === 'error') {
                 failStreakRef.current += 1;
                 if (failStreakRef.current >= 3) {
@@ -789,7 +814,7 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
         }, settings.pauseSeconds * 1000);
         return () => window.clearTimeout(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [autoRunning, rows, settings, tick]);
+    }, [autoRunning, rows, settings, tick, parallel]);
 
     const startAuto = () => {
         if (readyCount === 0) { toast.error('No patient on the list has a valid number'); return; }
@@ -935,6 +960,18 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
                         </button>
                     )
                 )}
+                {settings.mode === 'auto' && lineCount > 1 && (
+                    <label className="flex items-center gap-1.5 text-sm text-gray-700">
+                        At once
+                        <select value={parallel} onChange={(e) => updateSettings({ parallel: Number(e.target.value) })}
+                            aria-label="Calls at the same time"
+                            className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm">
+                            {Array.from({ length: lineCount }, (_, i) => i + 1).map((n) => (
+                                <option key={n} value={n}>{n === 1 ? '1 call' : `${n} calls`}</option>
+                            ))}
+                        </select>
+                    </label>
+                )}
                 <button type="button" onClick={() => setShowSettings((v) => !v)}
                     className="ml-auto text-xs font-semibold text-violet-700 hover:underline">
                     {showSettings ? 'Hide' : 'Show'} call-again settings
@@ -942,7 +979,12 @@ const AICallCampaignPage: React.FC<Props> = ({ hospitalId, hospitalName = '', on
             </div>
             {settings.mode === 'auto' && (
                 <p className="text-xs text-gray-600">
-                    {autoNote || 'Calls one patient at a time, in list order, then rings again whoever the settings below say. Keep this page open: calling stops if you leave it.'}
+                    {autoNote || `Calls ${parallel === 1 ? 'one patient at a time' : `${parallel} patients at a time, each from a different number`}, in list order, then rings again whoever the settings below say. Keep this page open: calling stops if you leave it.`}
+                </p>
+            )}
+            {callerLines && callerLines.length > 0 && (
+                <p className="text-[11px] text-gray-500">
+                    Calling {callerLines.length === 1 ? 'number' : 'numbers'}: {callerLines.map(formatCallerLine).join(' · ')}
                 </p>
             )}
             {showSettings && (
@@ -1785,6 +1827,9 @@ const RowTag: React.FC<{ row: Row }> = ({ row }) => (
         )}
         {row.skipped && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap bg-gray-100 text-gray-500">Skipped</span>}
         {row.attempts > 1 && <span className="text-[11px] text-gray-500 whitespace-nowrap">{row.attempts} calls</span>}
+        {row.callerLine && isBusy(row) && (
+            <span className="text-[11px] text-gray-500 whitespace-nowrap" title={formatCallerLine(row.callerLine)}>from …{row.callerLine.slice(-4)}</span>
+        )}
     </span>
 );
 

@@ -198,6 +198,22 @@ turn this on.
 only works with the connection it was bought under. Don't mix them if you add more
 connections later.
 
+**Several numbers.** To ring from more than one number, list every number with
+its own connection in `SARVAM_AGENT_LINES`, the original one included:
+
+```bash
+supabase secrets set SARVAM_AGENT_LINES='b839c927-ef-d640a95a-d734=+918071581310,<connection-2>=+91XXXXXXXXXX,<connection-3>=+91XXXXXXXXXX'
+```
+
+Once it is set, the single pair above is ignored. Two numbers on the same
+connection repeat that connection id. Each number carries one call at a time
+(`SARVAM_CALLS_PER_LINE`, default 1). For each call, `place-review-call` picks a
+free number, preferring the one that has rung least in the last hour
+(`callerLine.ts`), and records it in `hospital_voice_call_attempts.caller_line`
+(`sql/20261025_voice_caller_lines.sql`). With every number busy it refuses with
+429, and nothing is dialled. The campaign asks the function for the list
+(`{ action: 'lines' }`), then lets automatic mode ring that many patients at once.
+
 `org_id` / `workspace_id` go in the **URL path**, not the body. Easy to miss: the
 docs render them as `{org_id}` / `{workspace_id}` placeholders.
 

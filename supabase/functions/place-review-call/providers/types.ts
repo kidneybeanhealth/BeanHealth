@@ -21,6 +21,8 @@ export interface PlaceCallInput {
      * lab-reminder scripts. Absent means the default review-reminder agent.
      */
     agentOverride?: { appId: string; appVersion: number }
+    /** The caller ID to ring from: one of callerLines(), chosen by the function. */
+    callerLine: string
 }
 
 export type PlaceCallResult =
@@ -29,5 +31,7 @@ export type PlaceCallResult =
 
 export interface VoiceProvider {
     name: 'sarvam' | 'livekit'
+    /** The caller IDs this provider can ring from. Empty when none is set up. */
+    callerLines(): string[]
     placeCall(input: PlaceCallInput): Promise<PlaceCallResult>
 }

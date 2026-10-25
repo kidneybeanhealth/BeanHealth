@@ -11,6 +11,7 @@ import { sarvamProvider } from './sarvam.ts'
  */
 const livekitProvider: VoiceProvider = {
     name: 'livekit',
+    callerLines: () => [],
     async placeCall() {
         return {
             ok: false, status: 503, notConfigured: true,
