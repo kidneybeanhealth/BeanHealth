@@ -134,6 +134,13 @@ interface FetchReceptionPastRecordsParams {
     searchQuery?: string;
     reviewFilter?: ReceptionReviewFilter;
     reviewDate?: string;
+    /**
+     * 'lean' skips medicines, notes and signatures, for callers that only count or
+     * group patients (the Missed Followup month strip). Its cards still render:
+     * a Past Records card reads only the visit date, doctor and visit count, and
+     * View Rx loads the prescriptions itself.
+     */
+    detail?: 'full' | 'lean';
 }
 
 interface SupabaseResult<T = any> {
@@ -517,7 +524,8 @@ const fetchFilterCandidatePatientIds = async (
             let q = (supabase.from('hospital_patient_reviews' as any) as any)
                 .select('patient_id')
                 .eq('hospital_id', hospitalId);
-            q = build(q).range(from, from + PAGE - 1);
+            // A fixed order, or pages can overlap and skip rows between requests.
+            q = build(q).order('id').range(from, from + PAGE - 1);
             const res = await withTimeout(q as any, 10000, 'Timed out while resolving filter candidates') as SupabaseResult<any[]>;
             if (res.error) {
                 const msg = String(res.error.message || '').toLowerCase();
@@ -548,6 +556,7 @@ const fetchFilterCandidatePatientIds = async (
                     .select('patient_id')
                     .eq('hospital_id', hospitalId)
                     .eq('next_review_date', targetDate)
+                    .order('id')
                     .range(from, from + PAGE - 1)) as any,
                 10000,
                 'Timed out while resolving prescription-dated candidates'
@@ -580,208 +589,136 @@ const fetchFilterCandidatePatientIds = async (
         const since = localDateKey(-2);
         await collect(q => q.eq('status', 'completed').gte('completed_at', `${since}T00:00:00`));
     } else if (reviewFilter === 'overdue' || reviewFilter === 'followup_needed') {
-        // The "Missed Followup" chip covers overdue reviews AND patients whose last
-        // call went unanswered — the latter can carry any review date, so both
-        // sets are gathered and the derivation decides the final category.
+        // Missed Followup: patients holding an OPEN review whose date has passed
+        // or was never set. That is exactly what the derivation can call
+        // 'overdue' or 'followup_needed':
+        //   · a completed or cancelled review is never either. deriveReviewCategory
+        //     returns before the date test for both (rule 1 above predates that);
+        //   · 'followup_needed' needs the patient's primary review to be active and
+        //     past due or undated, so an unanswered call adds nobody new, and
+        //     reading every not-picked call ever logged is not needed;
+        //   · an undated open review falls back to the prescription's date, so
+        //     undated rows are kept.
+        // At KKC this is 1,800 patients instead of 3,050 of 3,756, the old query
+        // having swept up every completed review in the clinic's history.
         //
         // Deliberately NOT extended with prescription-dated candidates: "every
-        // prescription dated before today" is the clinic's entire history, and
-        // pulling it would undo the bound this function exists to create. A patient
-        // who is overdue purely via the prescription fallback is reachable through
-        // the Review Date filter, which does query both sources.
-        await collect(q => q.lt('next_review_date', today));
-
-        let from = 0;
-        while (true) {
-            const res = await withTimeout(
-                ((supabase.from('hospital_patient_followups' as any) as any)
-                    .select('patient_id')
-                    .eq('hospital_id', hospitalId)
-                    .eq('call_status', 'not_picked')
-                    .range(from, from + PAGE - 1)) as any,
-                10000,
-                'Timed out while resolving follow-up candidates'
-            ) as SupabaseResult<any[]>;
-            if (res.error) {
-                const msg = String(res.error.message || '').toLowerCase();
-                if (msg.includes('hospital_patient_followups')) break;
-                throw res.error;
-            }
-            const rows = res.data || [];
-            rows.forEach(r => r.patient_id && ids.add(r.patient_id));
-            if (rows.length < PAGE) break;
-            from += PAGE;
-        }
+        // prescription dated before today" is the clinic's entire history. A
+        // patient with no review row who is overdue only through a prescription
+        // is reachable through the Review Date filter, which queries both sources.
+        await collect(q => q
+            .not('status', 'in', '(completed,cancelled)')
+            .or(`next_review_date.lt.${today},next_review_date.is.null`));
     }
 
     return ids;
 };
 
-export async function fetchReceptionPastRecords(
-    params: FetchReceptionPastRecordsParams
-): Promise<ReceptionPastRecordsResult> {
-    const {
-        hospitalId,
-        page,
-        pageSize,
-        searchQuery = '',
-        reviewFilter = 'all',
-        reviewDate = '',
-    } = params;
+/**
+ * PostgREST returns at most this many rows per request and says nothing when it
+ * stops. A query that comes back with exactly this many may have been cut short.
+ */
+const POSTGREST_ROW_CAP = 1000;
 
-    const from = page * pageSize;
-    const to = from + pageSize - 1;
-    const needsDerivedFiltering = reviewFilter !== 'all' || Boolean(reviewDate);
-
-    // Review-driven filters resolve their candidates from the reviews table first,
-    // so the patient fetch is bounded by how many reviews are due rather than by
-    // the size of the patient database (which would silently hit the 1000-row cap).
-    const candidateIds = await fetchFilterCandidatePatientIds(hospitalId, reviewFilter, reviewDate);
-    if (candidateIds && candidateIds.size === 0) {
-        return { patients: [], totalCount: 0, hasMore: false };
-    }
-    const candidateList = candidateIds ? Array.from(candidateIds) : null;
-
-    const buildPatientsQuery = (includeDeceasedFields: boolean, idChunk?: string[]): any => {
-        const selectClause = includeDeceasedFields
-            ? 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, is_deceased, deceased_at, continuity_status, followup_stopped_at, followup_stop_reason, created_at'
-            : 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at';
-
-        let query: any = (supabase
-            .from('hospital_patients') as any)
-            .select(selectClause, { count: 'exact' })
-            .eq('hospital_id', hospitalId)
-            .order('created_at', { ascending: false });
-
-        if (idChunk) {
-            query = query.in('id', idChunk);
-        } else if (!needsDerivedFiltering) {
-            query = query.range(from, to);
+/** Run `fn` over `items`, `limit` at a time, keeping the results in item order. */
+async function mapInBatches<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+    const results: R[] = new Array(items.length);
+    let next = 0;
+    const worker = async () => {
+        while (next < items.length) {
+            const i = next++;
+            results[i] = await fn(items[i]);
         }
-
-        // Stopped patients are deliberately invisible to every review bucket —
-        // latestReviewDate is forced null for them — so the only way to list them
-        // is off continuity_status directly.
-        if (reviewFilter === 'followup_stopped' && includeDeceasedFields) {
-            // Deceased patients belong here too. markPatientDeceased writes
-            // is_deceased and cancels the reviews, but never touches
-            // continuity_status — so filtering on that column alone made every
-            // patient marked deceased from Admitted Patients unlistable. They are
-            // the clearest case of "no longer being followed up", and leaving them
-            // out meant the only record of the decision was a badge on a card
-            // nobody could navigate to.
-            query = query.or('continuity_status.in.(transferred_out,inactive_lost_followup),is_deceased.is.true');
-        }
-
-        const trimmedSearch = searchQuery.trim();
-        if (trimmedSearch) {
-            const escaped = escapeForIlike(trimmedSearch);
-            query = query.or(`name.ilike.%${escaped}%,mr_number.ilike.%${escaped}%`);
-        }
-
-        return query;
     };
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+    return results;
+}
 
-    /** Fetch the candidate patients in chunks so the IN() list never oversizes the URL. */
-    const fetchCandidatePatients = async (includeDeceasedFields: boolean): Promise<SupabaseResult<any[]>> => {
-        const rows: any[] = [];
-        for (const chunk of chunkArray(candidateList as string[], 100)) {
-            const res = await withTimeout(
-                buildPatientsQuery(includeDeceasedFields, chunk),
-                10000,
-                'Timed out while loading patient records'
-            ) as SupabaseResult<any[]>;
-            if (res.error) return res;
-            rows.push(...(res.data || []));
-        }
-        return { data: rows, error: null, count: rows.length };
-    };
+/**
+ * Prescription columns. The full set is what a card shows (View Rx, visit
+ * history). The lean set is only what decides a patient's follow-up state:
+ * medicines, notes and signatures never change a bucket, and they are most of
+ * the bytes — 16 MB for KKC's Missed Followup candidates, against under 1 MB lean.
+ */
+const RX_COLUMNS_FULL = `
+    id, patient_id, token_number, status, created_at, next_review_date,
+    tests_to_review, specialists_to_review, medications, notes, metadata, dispensed_at,
+    doctor:hospital_doctors(id, name, specialty, signature_url)
+`;
+const RX_COLUMNS_LEAN = 'id, patient_id, token_number, status, created_at, next_review_date, metadata, dispensed_at, doctor:hospital_doctors(id, name, specialty)';
 
-    let patientsResult = candidateList
-        ? await fetchCandidatePatients(true)
-        : await withTimeout(
-            buildPatientsQuery(true),
+/**
+ * Past Records cards for these patients, unfiltered and unsorted.
+ *
+ * `lean` loads only what decides the bucket; its cards are for deciding, never
+ * for showing (no medicines, and a legacy discharge card's notes-only marker is
+ * missed, which changes a label and nothing else).
+ */
+async function buildPastRecords(
+    hospitalId: string,
+    basePatients: any[],
+    detail: 'full' | 'lean'
+): Promise<ReceptionPastRecordPatient[]> {
+    if (basePatients.length === 0) return [];
+    type ChunkResults = [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>, SupabaseResult<FollowupRow[]>];
+
+    const queryChunk = (idChunk: string[]) => Promise.all([
+        withTimeout(
+            (supabase
+                .from('hospital_prescriptions' as any)
+                .select(detail === 'full' ? RX_COLUMNS_FULL : RX_COLUMNS_LEAN)
+                .eq('hospital_id', hospitalId)
+                .in('patient_id', idChunk)
+                .order('created_at', { ascending: false })) as any,
+            12000,
+            'Timed out while loading prescription history'
+        ),
+        withTimeout(
+            (supabase
+                .from('hospital_patient_reviews' as any)
+                .select('id, patient_id, doctor_id, status, next_review_date, source_prescription_id, completed_at, created_at, updated_at, review_reason')
+                .eq('hospital_id', hospitalId)
+                .in('patient_id', idChunk)
+                .order('updated_at', { ascending: false })) as any,
             10000,
-            'Timed out while loading patient records'
-        ) as SupabaseResult<any[]>;
+            'Timed out while loading review status'
+        ),
+        withTimeout(
+            (supabase
+                .from('hospital_patient_followups' as any)
+                .select('id, patient_id, doctor_id, call_status, called_at, patient_response')
+                .eq('hospital_id', hospitalId)
+                .in('patient_id', idChunk)
+                .order('called_at', { ascending: false })) as any,
+            10000,
+            'Timed out while loading follow-up status'
+        ),
+    ]) as Promise<ChunkResults>;
 
-    if (patientsResult.error) {
-        const message = String(patientsResult.error.message || '').toLowerCase();
-        const missingLifecycleColumns =
-            message.includes('is_deceased') ||
-            message.includes('deceased_at') ||
-            message.includes('continuity_status') ||
-            message.includes('followup_stopped_at') ||
-            message.includes('followup_stop_reason');
-        if (missingLifecycleColumns) {
-            patientsResult = candidateList
-                ? await fetchCandidatePatients(false)
-                : await withTimeout(
-                    buildPatientsQuery(false),
-                    10000,
-                    'Timed out while loading patient records'
-                ) as SupabaseResult<any[]>;
+    /**
+     * One chunk's rows, split in two and fetched again whenever a table comes back
+     * at the row cap. Long-standing patients carry dozens of prescriptions, and a
+     * truncated chunk silently dropped the newest reviews of whoever sorted last,
+     * which moved them in or out of Missed Followup with no error.
+     */
+    const loadChunk = async (idChunk: string[]): Promise<ChunkResults[]> => {
+        const results = await queryChunk(idChunk);
+        const capped = results.some((res) => (res?.data?.length || 0) >= POSTGREST_ROW_CAP);
+        if (capped && idChunk.length > 1) {
+            const half = Math.ceil(idChunk.length / 2);
+            const [a, b] = await Promise.all([loadChunk(idChunk.slice(0, half)), loadChunk(idChunk.slice(half))]);
+            return [...a, ...b];
         }
-    }
+        return [results];
+    };
 
-    if (patientsResult.error) {
-        throw patientsResult.error;
-    }
+    const chunkResults = (await mapInBatches(chunkArray(basePatients.map((p) => p.id), 120), 3, loadChunk)).flat();
 
-    const basePatients = (patientsResult.data || []) as any[];
-    const patientIds = basePatients.map((p) => p.id);
-
-    if (patientIds.length === 0) {
-        return {
-            patients: [],
-            totalCount: patientsResult.count || 0,
-            hasMore: false,
-        };
-    }
-
-    const idChunks = chunkArray(patientIds, 120);
     const prescriptions: ReceptionVisitRecord[] = [];
     const reviews: ReviewRow[] = [];
     const followups: FollowupRow[] = [];
 
-    for (const idChunk of idChunks) {
-        const [prescriptionsChunkResult, reviewsChunkResult, followupsChunkResult] = await Promise.all([
-            withTimeout(
-                (supabase
-                    .from('hospital_prescriptions' as any)
-                    .select(`
-                        id, patient_id, token_number, status, created_at, next_review_date,
-                        tests_to_review, specialists_to_review, medications, notes, metadata, dispensed_at,
-                        doctor:hospital_doctors(id, name, specialty, signature_url)
-                    `)
-                    .eq('hospital_id', hospitalId)
-                    .in('patient_id', idChunk)
-                    .order('created_at', { ascending: false })) as any,
-                12000,
-                'Timed out while loading prescription history'
-            ),
-            withTimeout(
-                (supabase
-                    .from('hospital_patient_reviews' as any)
-                    .select('id, patient_id, doctor_id, status, next_review_date, source_prescription_id, completed_at, created_at, updated_at, review_reason')
-                    .eq('hospital_id', hospitalId)
-                    .in('patient_id', idChunk)
-                    .order('updated_at', { ascending: false })) as any,
-                10000,
-                'Timed out while loading review status'
-            ),
-            withTimeout(
-                (supabase
-                    .from('hospital_patient_followups' as any)
-                    .select('id, patient_id, doctor_id, call_status, called_at, patient_response')
-                    .eq('hospital_id', hospitalId)
-                    .in('patient_id', idChunk)
-                    .order('called_at', { ascending: false })) as any,
-                10000,
-                'Timed out while loading follow-up status'
-            ),
-        ]) as [SupabaseResult<ReceptionVisitRecord[]>, SupabaseResult<ReviewRow[]>, SupabaseResult<FollowupRow[]>];
-
+    for (const [prescriptionsChunkResult, reviewsChunkResult, followupsChunkResult] of chunkResults) {
         if (prescriptionsChunkResult.error) {
             throw prescriptionsChunkResult.error;
         }
@@ -873,7 +810,7 @@ export async function fetchReceptionPastRecords(
         }
     }
 
-    const normalized: ReceptionPastRecordPatient[] = basePatients
+    return basePatients
         .map((p) => {
             const isDeceased = Boolean(p.is_deceased);
             const continuityStatus = p.continuity_status || 'active_followup';
@@ -958,7 +895,16 @@ export async function fetchReceptionPastRecords(
                 callHistory: (followupsByPatient.get(p.id) || []).slice(0, 3),
                 doctorReviews,
             } as ReceptionPastRecordPatient;
-        })
+        });
+}
+
+/** The chip's patients, newest visit first. */
+function filterAndSortPastRecords(
+    records: ReceptionPastRecordPatient[],
+    reviewFilter: ReceptionReviewFilter,
+    reviewDate: string
+): ReceptionPastRecordPatient[] {
+    return records
         .filter((patient) => {
             // A patient treated by two doctors has a bucket PER DOCTOR — that is what
             // doctorReviews carries. `patient.reviewCategory` collapses them into one,
@@ -1008,19 +954,208 @@ export async function fetchReceptionPastRecords(
             const bTime = b.lastVisitAt ? new Date(b.lastVisitAt).getTime() : 0;
             return bTime - aTime;
         });
+}
 
-    const pagedPatients = needsDerivedFiltering
-        ? normalized.slice(from, to + 1)
-        : normalized;
+/**
+ * A chip's decided list, shared between the callers that ask for it at once.
+ *
+ * Opening Missed Followup fires two loads together, the 50-row list and the
+ * month breakdown, and the breakdown reloads again the moment the list lands.
+ * Each one used to resolve and categorise every candidate on its own, which at
+ * KKC meant 3,000 patients' histories loaded two or three times over. Now the
+ * deciding runs once: a caller reuses it while it is in flight or under 5 s
+ * old, and "Load More" (page > 0) reuses it for 5 minutes. A fresh page 0
+ * after that recomputes, so Refresh and a reload after a write see new data.
+ */
+type DecidedRows = { records: ReceptionPastRecordPatient[]; base: Map<string, any> };
+const decidedCache = new Map<string, { promise: Promise<DecidedRows>; settledAt: number | null }>();
+const DECIDED_REUSE_MS = 5000;
+const DECIDED_PAGE_REUSE_MS = 5 * 60_000;
 
-    const effectiveTotal = needsDerivedFiltering
-        ? normalized.length
-        : (patientsResult.count || 0);
+async function decidePastRecords(
+    key: string,
+    page: number,
+    compute: () => Promise<DecidedRows>
+): Promise<DecidedRows> {
+    for (const [k, e] of decidedCache) {
+        if (e.settledAt != null && Date.now() - e.settledAt > DECIDED_PAGE_REUSE_MS) decidedCache.delete(k);
+    }
+    const hit = decidedCache.get(key);
+    const age = hit?.settledAt != null ? Date.now() - hit.settledAt : null;
+    if (hit && (age === null || age < (page > 0 ? DECIDED_PAGE_REUSE_MS : DECIDED_REUSE_MS))) {
+        return hit.promise;
+    }
+    const entry: { promise: Promise<DecidedRows>; settledAt: number | null } = { promise: compute(), settledAt: null };
+    decidedCache.set(key, entry);
+    try {
+        const result = await entry.promise;
+        entry.settledAt = Date.now();
+        return result;
+    } catch (err) {
+        if (decidedCache.get(key) === entry) decidedCache.delete(key);
+        throw err;
+    }
+}
+
+export async function fetchReceptionPastRecords(
+    params: FetchReceptionPastRecordsParams
+): Promise<ReceptionPastRecordsResult> {
+    const {
+        hospitalId,
+        page,
+        pageSize,
+        searchQuery = '',
+        reviewFilter = 'all',
+        reviewDate = '',
+        detail = 'full',
+    } = params;
+
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+    const needsDerivedFiltering = reviewFilter !== 'all' || Boolean(reviewDate);
+
+    const buildPatientsQuery = (includeDeceasedFields: boolean, idChunk?: string[]): any => {
+        const selectClause = includeDeceasedFields
+            ? 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, is_deceased, deceased_at, continuity_status, followup_stopped_at, followup_stop_reason, created_at'
+            : 'id, name, age, gender, phone, mr_number, beanhealth_id, father_husband_name, app_access_enabled, created_at';
+
+        let query: any = (supabase
+            .from('hospital_patients') as any)
+            .select(selectClause, { count: 'exact' })
+            .eq('hospital_id', hospitalId)
+            .order('created_at', { ascending: false });
+
+        if (idChunk) {
+            query = query.in('id', idChunk);
+        } else if (!needsDerivedFiltering) {
+            query = query.range(from, to);
+        }
+
+        // Stopped patients are deliberately invisible to every review bucket —
+        // latestReviewDate is forced null for them — so the only way to list them
+        // is off continuity_status directly.
+        if (reviewFilter === 'followup_stopped' && includeDeceasedFields) {
+            // Deceased patients belong here too. markPatientDeceased writes
+            // is_deceased and cancels the reviews, but never touches
+            // continuity_status — so filtering on that column alone made every
+            // patient marked deceased from Admitted Patients unlistable. They are
+            // the clearest case of "no longer being followed up", and leaving them
+            // out meant the only record of the decision was a badge on a card
+            // nobody could navigate to.
+            query = query.or('continuity_status.in.(transferred_out,inactive_lost_followup),is_deceased.is.true');
+        }
+
+        const trimmedSearch = searchQuery.trim();
+        if (trimmedSearch) {
+            const escaped = escapeForIlike(trimmedSearch);
+            query = query.or(`name.ilike.%${escaped}%,mr_number.ilike.%${escaped}%`);
+        }
+
+        return query;
+    };
+
+    /** The patient rows, falling back to the base columns on a database without the lifecycle ones. */
+    const loadPatients = async (candidateList: string[] | null): Promise<SupabaseResult<any[]>> => {
+        /** Candidates in chunks so the IN() list never oversizes the URL, four at a time. */
+        const fetchCandidatePatients = async (includeDeceasedFields: boolean): Promise<SupabaseResult<any[]>> => {
+            const results = await mapInBatches(chunkArray(candidateList as string[], 100), 4, (chunk) =>
+                withTimeout(
+                    buildPatientsQuery(includeDeceasedFields, chunk),
+                    10000,
+                    'Timed out while loading patient records'
+                ) as Promise<SupabaseResult<any[]>>
+            );
+            const failed = results.find((res) => res.error);
+            if (failed) return failed;
+            const rows = results.flatMap((res) => res.data || []);
+            return { data: rows, error: null, count: rows.length };
+        };
+
+        let result = candidateList
+            ? await fetchCandidatePatients(true)
+            : await withTimeout(
+                buildPatientsQuery(true),
+                10000,
+                'Timed out while loading patient records'
+            ) as SupabaseResult<any[]>;
+
+        if (result.error) {
+            const message = String(result.error.message || '').toLowerCase();
+            const missingLifecycleColumns =
+                message.includes('is_deceased') ||
+                message.includes('deceased_at') ||
+                message.includes('continuity_status') ||
+                message.includes('followup_stopped_at') ||
+                message.includes('followup_stop_reason');
+            if (missingLifecycleColumns) {
+                result = candidateList
+                    ? await fetchCandidatePatients(false)
+                    : await withTimeout(
+                        buildPatientsQuery(false),
+                        10000,
+                        'Timed out while loading patient records'
+                    ) as SupabaseResult<any[]>;
+            }
+        }
+
+        if (result.error) {
+            throw result.error;
+        }
+        return result;
+    };
+
+    // ── "All": the page comes straight from the database ─────────────────
+    if (!needsDerivedFiltering) {
+        const patientsResult = await loadPatients(null);
+        const records = filterAndSortPastRecords(
+            await buildPastRecords(hospitalId, patientsResult.data || [], detail),
+            reviewFilter,
+            reviewDate
+        );
+        const total = patientsResult.count || 0;
+        return { patients: records, totalCount: total, hasMore: to + 1 < total };
+    }
+
+    // ── A chip: decide every candidate lean, then load in full only the page ──
+    // Review-driven filters resolve their candidates from the reviews table first,
+    // so the patient fetch is bounded by how many reviews are due rather than by
+    // the size of the patient database (which would silently hit the 1000-row cap).
+    const decided = await decidePastRecords(
+        [hospitalId, reviewFilter, reviewDate, searchQuery.trim().toLowerCase()].join('|'),
+        page,
+        async () => {
+            const candidateIds = await fetchFilterCandidatePatientIds(hospitalId, reviewFilter, reviewDate);
+            if (candidateIds && candidateIds.size === 0) return { records: [], base: new Map() };
+            const patientsResult = await loadPatients(candidateIds ? Array.from(candidateIds) : null);
+            const basePatients = patientsResult.data || [];
+            return {
+                records: filterAndSortPastRecords(
+                    await buildPastRecords(hospitalId, basePatients, 'lean'),
+                    reviewFilter,
+                    reviewDate
+                ),
+                base: new Map(basePatients.map((p) => [p.id, p])),
+            };
+        }
+    );
+
+    const total = decided.records.length;
+    if (detail === 'lean') {
+        return { patients: decided.records.slice(from, to + 1), totalCount: total, hasMore: to + 1 < total };
+    }
+
+    const pageIds = decided.records.slice(from, to + 1).map((p) => p.id);
+    const full = await buildPastRecords(
+        hospitalId,
+        pageIds.map((id) => decided.base.get(id)).filter(Boolean),
+        'full'
+    );
+    const fullById = new Map(full.map((p) => [p.id, p]));
 
     return {
-        patients: pagedPatients,
-        totalCount: effectiveTotal,
-        hasMore: to + 1 < effectiveTotal,
+        patients: pageIds.map((id) => fullById.get(id)).filter((p): p is ReceptionPastRecordPatient => Boolean(p)),
+        totalCount: total,
+        hasMore: to + 1 < total,
     };
 }
 

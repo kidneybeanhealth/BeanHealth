@@ -520,6 +520,8 @@ const ReceptionDashboard: React.FC = () => {
                     searchQuery,
                     reviewFilter: 'overdue',
                     reviewDate: reviewDateFilter || undefined,
+                    // Counting and grouping only; shares the list's decided set.
+                    detail: 'lean',
                 });
                 if (isActive) setMissedAll(full.patients);
             } catch (err) {

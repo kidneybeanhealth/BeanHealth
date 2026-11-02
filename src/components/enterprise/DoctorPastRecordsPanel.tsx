@@ -255,6 +255,8 @@ const DoctorPastRecordsPanel: React.FC<DoctorPastRecordsPanelProps> = ({ doctor,
                     searchQuery,
                     reviewFilter: 'overdue',
                     reviewDate: reviewDateFilter,
+                    // Counting and grouping only; shares the list's decided set.
+                    detail: 'lean',
                 });
                 if (isActive) {
                     setMissedAll(full.patients.filter(p => belongsToThisDoctor(p, 'overdue')));
