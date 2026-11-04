@@ -13,8 +13,8 @@
  *
  * ── Delete, not "seen" ────────────────────────────────────────────────────
  * The hospital works this list by deleting a response once it has been dealt
- * with. Delete is permanent and takes the voice note with it (see
- * deleteFeedback for why the recording goes first), so it asks once to confirm.
+ * with. Delete is permanent and takes the voice note and photo with it (see
+ * deleteFeedback for why the files go first), so it asks once to confirm.
  *
  * ── Anonymity is structural, not cosmetic ─────────────────────────────────
  * A response carries a name only when the patient typed an MR number AND ticked
@@ -27,7 +27,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
-    fetchFeedbackRegister, deleteFeedback, getFeedbackAudioUrl, fetchFeedbackLocations,
+    fetchFeedbackRegister, deleteFeedback, getFeedbackAudioUrl, getFeedbackPhotoUrl, fetchFeedbackLocations,
     type FeedbackRegister, type FeedbackResponse, type FeedbackLocation,
 } from '../../services/feedbackService';
 import { visitTypeLabel, questionLabel, questionSection, SECTIONS, NEEDS_ATTENTION_AT } from '../feedback/feedbackQuestions';
@@ -140,6 +140,116 @@ const MicBadge: React.FC<{ seconds: number | null }> = ({ seconds }) => (
     </span>
 );
 
+const PhotoBadge: React.FC = () => (
+    <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">
+        <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5A1.5 1.5 0 014.5 7h2.3l1.4-2h7.6l1.4 2h2.3A1.5 1.5 0 0121 8.5v9a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 17.5v-9z" />
+            <circle cx="12" cy="13" r="3.5" />
+        </svg>
+        Photo
+    </span>
+);
+
+/**
+ * Shows a response's photo once the row is opened. Like the voice note, the
+ * signed link is fetched only then: most rows are never opened. Tap the photo
+ * for full screen.
+ */
+const PhotoViewer: React.FC<{ path: string }> = ({ path }) => {
+    const [url, setUrl] = useState<string | null>(null);
+    const [failed, setFailed] = useState(false);
+    const [full, setFull] = useState(false);
+    const [attempt, setAttempt] = useState(0);
+
+    useEffect(() => {
+        let cancelled = false;
+        setFailed(false);
+        getFeedbackPhotoUrl(path)
+            .then(u => { if (!cancelled) setUrl(u); })
+            .catch(() => { if (!cancelled) setFailed(true); });
+        return () => { cancelled = true; };
+    }, [path, attempt]);
+
+    // Escape closes the full-size photo only. Capture phase, and stopped there,
+    // because FeedbackRegisterModal also closes on Escape from a window
+    // listener, and one key press must not throw away the whole register.
+    useEffect(() => {
+        if (!full) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            e.stopPropagation();
+            setFull(false);
+        };
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+    }, [full]);
+
+    if (failed) {
+        return (
+            <div className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                Could not load the photo.
+                <button type="button" onClick={() => setAttempt(a => a + 1)} className="font-bold underline">Retry</button>
+            </div>
+        );
+    }
+    if (!url) {
+        return <div className="h-40 w-56 animate-pulse rounded-lg bg-gray-200" aria-label="Loading photo" />;
+    }
+    return (
+        <>
+            <button
+                type="button"
+                onClick={() => setFull(true)}
+                title="View full size"
+                className="block overflow-hidden rounded-lg border border-gray-200 bg-white"
+            >
+                <img
+                    src={url}
+                    alt="Photo attached by the patient"
+                    onError={() => setFailed(true)}
+                    className="max-h-72 w-auto max-w-full object-contain"
+                />
+            </button>
+            {full && (
+                <div
+                    className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    onClick={() => setFull(false)}
+                >
+                    <img src={url} alt="Photo attached by the patient" className="max-h-full max-w-full object-contain" />
+                    <span className="absolute right-3 top-3 flex items-center gap-2">
+                        <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="rounded-lg bg-white/15 px-3 py-2 text-xs font-bold text-white hover:bg-white/25"
+                        >
+                            Open in new tab
+                        </a>
+                        <button
+                            type="button"
+                            onClick={() => setFull(false)}
+                            className="rounded-lg bg-white/15 px-3 py-2 text-xs font-bold text-white hover:bg-white/25"
+                        >
+                            Close
+                        </button>
+                    </span>
+                </div>
+            )}
+        </>
+    );
+};
+
+/** "The ratings, comment, voice note and photo are removed…" — naming what goes. */
+const deleteDescription = (r: FeedbackResponse | null): string => {
+    const parts = ['ratings', 'comment'];
+    if (r?.audioPath) parts.push('voice note');
+    if (r?.photoPath) parts.push('photo');
+    return `The ${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]} are removed permanently. This cannot be undone.`;
+};
+
 export interface FeedbackRegisterPanelProps {
     hospitalId: string;
     /** When set, the response list narrows to this doctor's own patients. */
@@ -197,7 +307,7 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
         if (!r || deleting) return;
         setDeleting(true);
         try {
-            await deleteFeedback(hospitalId, r.id, r.audioPath);
+            await deleteFeedback(hospitalId, r.id, r.audioPath, r.photoPath);
             toast.success('Response deleted');
             setPendingDelete(null);
             if (expanded === r.id) setExpanded(null);
@@ -326,6 +436,7 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                         )}
                                         <ScoreChip value={r.lowestRating} label="lowest" />
                                         {r.audioPath && <MicBadge seconds={r.audioSeconds} />}
+                                        {r.photoPath && <PhotoBadge />}
                                         {r.comment && (
                                             <span className="min-w-0 flex-1 truncate text-xs text-gray-800">“{r.comment}”</span>
                                         )}
@@ -540,6 +651,7 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                             )}
                                             {r.lowestRating !== null && <ScoreChip value={r.lowestRating} label="lowest" />}
                                             {r.audioPath && <MicBadge seconds={r.audioSeconds} />}
+                                            {r.photoPath && <PhotoBadge />}
                                             {r.source === 'desk' && (
                                                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">At desk</span>
                                             )}
@@ -563,6 +675,11 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                                                 {r.audioPath && (
                                                     <div className="mt-3">
                                                         <VoicePlayer path={r.audioPath} seconds={r.audioSeconds} />
+                                                    </div>
+                                                )}
+                                                {r.photoPath && (
+                                                    <div className="mt-3">
+                                                        <PhotoViewer path={r.photoPath} />
                                                     </div>
                                                 )}
                                                 {r.comment && (
@@ -591,9 +708,7 @@ const FeedbackRegisterPanel: React.FC<FeedbackRegisterPanelProps> = ({ hospitalI
                 isOpen={!!pendingDelete}
                 singleStep
                 title="Delete this response?"
-                description={pendingDelete?.audioPath
-                    ? 'The ratings, comment and voice note are removed permanently. This cannot be undone.'
-                    : 'The ratings and comment are removed permanently. This cannot be undone.'}
+                description={deleteDescription(pendingDelete)}
                 confirmLabel={deleting ? 'Deleting…' : 'Delete'}
                 onCancel={() => { if (!deleting) setPendingDelete(null); }}
                 onConfirm={confirmDelete}

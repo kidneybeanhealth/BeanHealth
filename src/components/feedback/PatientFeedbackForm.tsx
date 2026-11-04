@@ -11,6 +11,7 @@
  *   · 56px targets, because a fistula arm makes precise tapping hard
  *   · anonymous unless the patient says otherwise, in plain words
  *   · the answer is queued and retried, because hospital wifi drops
+ *   · say it, show it or type it: a voice note, a photo, or a comment
  *
  * It renders outside ProtectedRoute and asks nothing of AuthContext.
  */
@@ -19,9 +20,10 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { getProxiedUrl } from '../../lib/supabase';
 import {
     resolveFeedbackLocation, submitFeedback, FeedbackCodeError,
-    type ResolvedLocation, type VoiceNote,
+    type ResolvedLocation, type VoiceNote, type FeedbackPhoto,
 } from '../../services/feedbackService';
 import VoiceNoteRecorder from './VoiceNoteRecorder';
+import PhotoAttachment from './PhotoAttachment';
 import {
     VISIT_TYPES, SCALE, SECTIONS, DOCTOR_VISITS, questionsFor, optionalFor, fixedVisitTypeFor, doctorDisplayName,
     needsRoomNumber, normalizeRoomNumber, normalizeOtherDoctorName,
@@ -43,7 +45,7 @@ const T = {
         visitQ: 'What brought you in today?',
         rateQ: 'How would you rate these?',
         commentQ: 'Anything else you want to tell us?',
-        commentSub: 'Speak it or type it — whichever is easier.',
+        commentSub: 'Speak it, show it in a photo, or type it — whichever is easier.',
         orType: 'Or type it',
         commentPh: 'Optional — write in Tamil or English',
         share: 'Share this with my doctor',
@@ -63,10 +65,10 @@ const T = {
         again: 'Send another response',
         nextPatient: 'Next patient',
         desk: 'Clinic device',
-        needOne: 'Please rate something, record a voice note, or write a comment.',
+        needOne: 'Please rate something, record a voice note, add a photo, or write a comment.',
         closed: 'This feedback form is not available.',
         loading: 'Opening…',
-        privacy: 'We store your ratings, comment and any voice note, for the hospital only. We do not store your phone number, your location, or anything that identifies your device.',
+        privacy: 'We store your ratings, comment and any voice note or photo, for the hospital only. We do not store your phone number, your location, or anything that identifies your device.',
     },
     ta: {
         heading: 'உங்கள் வருகை எப்படி இருந்தது?',
@@ -81,7 +83,7 @@ const T = {
         visitQ: 'இன்று எதற்காக வந்தீர்கள்?',
         rateQ: 'இவற்றை எப்படி மதிப்பிடுவீர்கள்?',
         commentQ: 'வேறு ஏதாவது சொல்ல விரும்புகிறீர்களா?',
-        commentSub: 'பேசலாம் அல்லது தட்டச்சு செய்யலாம் — எது எளிதோ அது.',
+        commentSub: 'பேசலாம், புகைப்படமாகக் காட்டலாம், அல்லது தட்டச்சு செய்யலாம் — எது எளிதோ அது.',
         orType: 'அல்லது தட்டச்சு செய்யுங்கள்',
         commentPh: 'விருப்பம் — தமிழிலோ ஆங்கிலத்திலோ எழுதலாம்',
         share: 'இதை என் மருத்துவரிடம் பகிரவும்',
@@ -101,10 +103,10 @@ const T = {
         again: 'மற்றொரு கருத்து அனுப்பு',
         nextPatient: 'அடுத்த நோயாளர்',
         desk: 'மருத்துவமனை சாதனம்',
-        needOne: 'ஏதாவது மதிப்பிடுங்கள், குரல் பதிவு செய்யுங்கள், அல்லது கருத்து எழுதுங்கள்.',
+        needOne: 'ஏதாவது மதிப்பிடுங்கள், குரல் பதிவு செய்யுங்கள், புகைப்படம் சேர்க்கவும், அல்லது கருத்து எழுதுங்கள்.',
         closed: 'இந்த படிவம் இப்போது கிடைக்கவில்லை.',
         loading: 'திறக்கிறது…',
-        privacy: 'உங்கள் மதிப்பீடுகள், கருத்து மற்றும் குரல் பதிவு மருத்துவமனைக்கு மட்டும் சேமிக்கப்படும். உங்கள் ஃபோன் எண், இருப்பிடம் அல்லது சாதன விவரம் எதுவும் சேமிக்கப்படாது.',
+        privacy: 'உங்கள் மதிப்பீடுகள், கருத்து, குரல் பதிவு மற்றும் புகைப்படம் மருத்துவமனைக்கு மட்டும் சேமிக்கப்படும். உங்கள் ஃபோன் எண், இருப்பிடம் அல்லது சாதன விவரம் எதுவும் சேமிக்கப்படாது.',
     },
 } as const;
 
@@ -140,6 +142,7 @@ const PatientFeedbackForm: React.FC = () => {
     const [ratings, setRatings] = useState<Record<string, number>>({});
     const [comment, setComment] = useState('');
     const [voice, setVoice] = useState<VoiceNote | null>(null);
+    const [photo, setPhoto] = useState<FeedbackPhoto | null>(null);
     const [share, setShare] = useState(false);
     const [mrNumber, setMrNumber] = useState('');
     // Admitted patients: which room. Every ward room carries the same generic
@@ -210,7 +213,7 @@ const PatientFeedbackForm: React.FC = () => {
     }, [questions]);
 
     const answered = Object.keys(ratings).length;
-    const canSend = answered > 0 || comment.trim().length > 0 || !!voice;
+    const canSend = answered > 0 || comment.trim().length > 0 || !!voice || !!photo;
     const roomNeeded = needsRoomNumber(visitType);
 
     const send = async () => {
@@ -225,7 +228,7 @@ const PatientFeedbackForm: React.FC = () => {
         setError(null);
         try {
             const res = await submitFeedback({
-                code, visitType, ratings, comment, voice, desk,
+                code, visitType, ratings, comment, voice, photo, desk,
                 ratedDoctorId: seesDoctor && ratedDoctor && ratedDoctor !== 'other' ? ratedDoctor : null,
                 ratedDoctorOther: seesDoctor && ratedDoctor === 'other' ? normalizeOtherDoctorName(otherDoctorName) || null : null,
                 roomNumber: roomNeeded ? roomNumber : null,
@@ -325,7 +328,7 @@ const PatientFeedbackForm: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => {
-                        setDone(null); setRatings({}); setComment(''); setVoice(null);
+                        setDone(null); setRatings({}); setComment(''); setVoice(null); setPhoto(null);
                         setShare(false); setMrNumber(''); setRoomNumber(''); setVisitType(fixedVisit); setError(null);
                         setUsed(new Set()); setRatedDoctor(null); setOtherDoctorName('');
                         window.scrollTo({ top: 0 });
@@ -536,6 +539,9 @@ const PatientFeedbackForm: React.FC = () => {
                 <p className="mb-3 text-xs text-gray-500">{t.commentSub}</p>
                 {/* Voice first: most patients will say far more than they would type. */}
                 <VoiceNoteRecorder lang={lang} value={voice} onChange={setVoice} />
+                <div className="mt-4">
+                    <PhotoAttachment lang={lang} value={photo} onChange={setPhoto} />
+                </div>
                 <label className="mb-2 mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-400" htmlFor="fb-comment">{t.orType}</label>
                 <textarea
                     id="fb-comment"

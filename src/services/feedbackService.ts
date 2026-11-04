@@ -69,6 +69,13 @@ export interface VoiceNote {
     mimeType: string;
 }
 
+/** Already re-drawn and re-encoded on the phone; see feedbackPhoto. */
+export interface FeedbackPhoto {
+    blob: Blob;
+    width: number;
+    height: number;
+}
+
 export interface FeedbackSubmission {
     code: string;
     visitType: VisitTypeId | null;
@@ -78,6 +85,7 @@ export interface FeedbackSubmission {
     shareWithDoctor: boolean;
     language: string;
     voice?: VoiceNote | null;
+    photo?: FeedbackPhoto | null;
     /** A clinic tablet handed from patient to patient. See feedbackLinks. */
     desk?: boolean;
     /** The doctor the patient says they saw, from the picker. */
@@ -89,6 +97,20 @@ export interface FeedbackSubmission {
 }
 
 const AUDIO_BUCKET = 'feedback-audio';
+const PHOTO_BUCKET = 'feedback-photos';
+
+/**
+ * Paths of files already uploaded for a blob that has not been sent yet.
+ *
+ * Hospital wifi drops between the upload and the submit, and the patient taps
+ * Send again. Without this every retry uploads a fresh copy and strands the
+ * last one in incoming/, where nothing points at it — somebody's voice, or a
+ * photo of a ward, that nobody can reach. Keyed by the blob itself, so a new
+ * recording or a retaken photo gets a new upload.
+ */
+const uploadedFor = new WeakMap<Blob, string>();
+
+const newObjectId = () => (crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 /** The container type without codec parameters — what the bucket's audio/* check sees. */
 const baseMime = (m: string) => (m || 'audio/webm').split(';')[0].trim() || 'audio/webm';
@@ -107,8 +129,9 @@ const extFor = (m: string): string => {
  * a patient who records and then walks away leaves nothing behind.
  */
 async function uploadVoiceNote(v: VoiceNote): Promise<string> {
-    const id = (crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    const path = `incoming/${id}.${extFor(v.mimeType)}`;
+    const done = uploadedFor.get(v.blob);
+    if (done) return done;
+    const path = `incoming/${newObjectId()}.${extFor(v.mimeType)}`;
     const res = await withTimeout(
         (supabase as any).storage.from(AUDIO_BUCKET).upload(path, v.blob, {
             contentType: baseMime(v.mimeType),
@@ -118,6 +141,31 @@ async function uploadVoiceNote(v: VoiceNote): Promise<string> {
         'Timed out while uploading your voice note'
     ) as { error: any };
     if (res.error) throw new Error('Could not upload your voice note');
+    uploadedFor.set(v.blob, path);
+    return path;
+}
+
+/**
+ * Upload a photo into `incoming/` of its own bucket, under the same rules as a
+ * voice note: written at Send, never overwritten, attached by the submit RPC
+ * only if it is fresh and unclaimed.
+ */
+async function uploadPhoto(p: FeedbackPhoto): Promise<string> {
+    const done = uploadedFor.get(p.blob);
+    if (done) return done;
+    const type = (p.blob.type || 'image/jpeg').split(';')[0].trim();
+    const ext = type === 'image/png' ? 'png' : type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `incoming/${newObjectId()}.${ext}`;
+    const res = await withTimeout(
+        (supabase as any).storage.from(PHOTO_BUCKET).upload(path, p.blob, {
+            contentType: type,
+            upsert: false,
+        }) as any,
+        45000,
+        'Timed out while uploading your photo'
+    ) as { error: any };
+    if (res.error) throw new Error('Could not upload your photo. You can remove it and send without it.');
+    uploadedFor.set(p.blob, path);
     return path;
 }
 
@@ -152,7 +200,11 @@ export interface SubmitResult {
 }
 
 export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResult> {
-    const audioPath = s.voice ? await uploadVoiceNote(s.voice) : null;
+    // Both at once: on a slow line the two uploads are most of the wait.
+    const [audioPath, photoPath] = await Promise.all([
+        s.voice ? uploadVoiceNote(s.voice) : Promise.resolve(null),
+        s.photo ? uploadPhoto(s.photo) : Promise.resolve(null),
+    ]);
 
     const params: Record<string, unknown> = {
         p_code: (s.code || '').trim(),
@@ -175,6 +227,7 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
         params.p_audio_path = audioPath;
         params.p_audio_seconds = Math.round(s.voice!.seconds);
     }
+    if (photoPath) params.p_photo_path = photoPath;
     if (s.desk) params.p_source = 'desk';
     if (s.ratedDoctorId) params.p_rated_doctor_id = s.ratedDoctorId;
     const room = normalizeRoomNumber(s.roomNumber);
@@ -191,6 +244,8 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
     let res = await call(params);
     // PGRST202 = no function with these arguments: this build is live but the
     // matching SQL has not run yet. Step back rather than lose the response:
+    //   - The photo (sql/20261104_feedback_photo.sql) is dropped first. The
+    //     words and ratings still arrive; the file stays in incoming/ unclaimed.
     //   - The room and an "Others" doctor name
     //     (sql/20261015_feedback_room_and_other_doctor.sql) are not dropped:
     //     they move to the front of the comment, where the register shows them.
@@ -202,6 +257,10 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
         delete params[key];
         params.p_comment = params.p_comment ? `${note} — ${params.p_comment}` : note;
     };
+    if (res.error?.code === 'PGRST202' && 'p_photo_path' in params) {
+        delete params.p_photo_path;
+        res = await call(params);
+    }
     if (res.error?.code === 'PGRST202' && ('p_room_number' in params || 'p_rated_doctor_other' in params)) {
         if ('p_rated_doctor_other' in params) moveToComment('p_rated_doctor_other', 'Doctor:');
         if ('p_room_number' in params) moveToComment('p_room_number', 'Room');
@@ -216,7 +275,7 @@ export async function submitFeedback(s: FeedbackSubmission): Promise<SubmitResul
     const d = res.data || {};
     if (!d.ok) {
         if (d.reason === 'unknown_code') throw new FeedbackCodeError('This code does not match any hospital');
-        if (d.reason === 'empty') throw new Error('Please rate at least one thing, write a comment, or record a voice note');
+        if (d.reason === 'empty') throw new Error('Please rate at least one thing, write a comment, record a voice note, or add a photo');
         throw new Error('Could not send your feedback');
     }
     return { duplicate: !!d.duplicate, identified: !!d.identified };
@@ -248,9 +307,11 @@ export interface FeedbackResponse {
     /** Storage path of the voice note, if they recorded one. */
     audioPath: string | null;
     audioSeconds: number | null;
+    /** Storage path of the photo, if they attached one. */
+    photoPath: string | null;
     /** 'qr' from the poster, 'desk' from a clinic tablet. */
     source: string;
-    /** The lowest score given, or null if they only left a comment or voice note. */
+    /** The lowest score given, or null if they only left a comment, voice note or photo. */
     lowestRating: number | null;
 }
 
@@ -342,11 +403,17 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
 
     // Newest columns first. A column that does not exist yet (its SQL not run)
     // fails the whole read, so step back to the next variant rather than leave
-    // the register unopenable: room (20261015), rated doctor (20261008), base.
+    // the register unopenable: photo (20261104), room (20261015), rated doctor
+    // (20261008), base.
     const RATED = `,
         rated_doctor_id,
         rated_doctor:hospital_doctors!hospital_feedback_rated_doctor_id_fkey ( id, name )`;
-    const variants = [`${BASE}${RATED}, room_number, rated_doctor_other`, `${BASE}${RATED}`, BASE];
+    const variants = [
+        `${BASE}${RATED}, room_number, rated_doctor_other, photo_path`,
+        `${BASE}${RATED}, room_number, rated_doctor_other`,
+        `${BASE}${RATED}`,
+        BASE,
+    ];
     let res = await read(variants[0]);
     for (let i = 1; i < variants.length && res.error && ['42703', 'PGRST200', 'PGRST100'].includes(res.error.code); i++) {
         res = await read(variants[i]);
@@ -377,6 +444,7 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
             ratedDoctorOther: r.rated_doctor_other ?? null,
             audioPath: r.audio_path ?? null,
             audioSeconds: r.audio_seconds ?? null,
+            photoPath: r.photo_path ?? null,
             source: r.source || 'qr',
             lowestRating: scores.length ? Math.min(...scores) : null,
         };
@@ -456,13 +524,27 @@ export async function fetchFeedbackRegister(q: FeedbackQuery): Promise<FeedbackR
 /**
  * Delete a response for good — the hospital's way of saying "dealt with".
  *
- * The recording goes FIRST. The storage policy authorises deleting a file only
- * while a feedback row of this hospital still points at it, so deleting the row
- * first would leave a voice recording that nothing references and nobody can
- * reach or remove. If the file will not go, the row stays and the error says so.
+ * The recording and the photo go FIRST. The storage policies authorise deleting
+ * a file only while a feedback row of this hospital still points at it, so
+ * deleting the row first would leave a voice recording or a photo that nothing
+ * references and nobody can reach or remove. If a file will not go, the row
+ * stays and the error says so. Deleting is retry-safe: removing a file that is
+ * already gone is not an error, so a second attempt after a half-failure still
+ * gets to the row.
  */
-export async function deleteFeedback(hospitalId: string, id: string, audioPath: string | null): Promise<void> {
+export async function deleteFeedback(
+    hospitalId: string, id: string, audioPath: string | null, photoPath: string | null = null,
+): Promise<void> {
     if (!hospitalId || !id) throw new Error('Missing hospital or response identifier');
+
+    if (photoPath) {
+        const rm = await withTimeout(
+            (supabase as any).storage.from(PHOTO_BUCKET).remove([photoPath]) as any,
+            15000,
+            'Timed out while deleting the photo'
+        ) as { error: any };
+        if (rm.error) throw new Error('Could not delete the photo, so the response was kept');
+    }
 
     if (audioPath) {
         const rm = await withTimeout(
@@ -495,6 +577,17 @@ export async function getFeedbackAudioUrl(path: string): Promise<string> {
         'Timed out while loading the voice note'
     ) as { data: { signedUrl?: string } | null; error: any };
     if (res.error || !res.data?.signedUrl) throw new Error('Could not load the voice note');
+    return res.data.signedUrl;
+}
+
+/** A short-lived link to view a photo. Signed for the same reason as audio. */
+export async function getFeedbackPhotoUrl(path: string): Promise<string> {
+    const res = await withTimeout(
+        (supabase as any).storage.from(PHOTO_BUCKET).createSignedUrl(path, 60 * 60) as any,
+        10000,
+        'Timed out while loading the photo'
+    ) as { data: { signedUrl?: string } | null; error: any };
+    if (res.error || !res.data?.signedUrl) throw new Error('Could not load the photo');
     return res.data.signedUrl;
 }
 

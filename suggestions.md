@@ -135,19 +135,19 @@ Effort: XS = minutes, S = an hour or two, M = half a day, L = a day or more.
 - **Context:** on 15 Oct the register was hidden from reception and from PA/junior logins
   (commit `85952cc`). That is a screen-level rule. Because of root cause 1, anyone signed in
   as the hospital can still read `hospital_feedback`, including comments, named responses
-  and voice-note paths, straight from the API using browser developer tools.
+  and voice-note and photo paths, straight from the API using browser developer tools.
 - **Fix (follow the Team & Audit pattern):**
   1. `doctor_feedback_register(p_hospital_id, p_chief_doctor_id, p_session_token, p_from, p_to, p_limit)`:
      SECURITY DEFINER; `PERFORM _doctor_require_chief_session(...)`; returns the same
      fields the panel reads now (response, location label, named patient, rated doctor).
   2. `doctor_feedback_delete(…, p_id)`: same check. Keep the current order (delete the
-     voice note first, then the row).
+     voice note and photo first, then the row).
   3. Drop the direct `SELECT`/`DELETE` rules for `authenticated` on `hospital_feedback`.
-  4. **Voice notes:** the `feedback-audio` storage rules check ownership by reading
-     `hospital_feedback`. Once direct reads are gone, that check would always fail. Move it
-     into a SECURITY DEFINER helper (for example `feedback_audio_belongs_to(name, uid)`)
-     used by the storage rules, or serve audio through an Edge Function that checks the
-     chief session.
+  4. **Voice notes and photos:** the `feedback-audio` and `feedback-photos` storage rules
+     check ownership by reading `hospital_feedback`. Once direct reads are gone, that check would always fail. Move it
+     into a SECURITY DEFINER helper (for example `feedback_file_belongs_to(bucket, name, uid)`)
+     used by both buckets' storage rules, or serve the files through an Edge Function that
+     checks the chief session.
   5. `feedbackService.fetchFeedbackRegister` / `deleteFeedback` call the RPCs and fall back
      to the direct read on `PGRST202`, so the app keeps working if it ships before the SQL.
   6. Test with a `pg_temp` copy inside a rolled-back transaction, as was done for the
@@ -241,6 +241,7 @@ Effort: XS = minutes, S = an hour or two, M = half a day, L = a day or more.
 - Fix the Sarvam call summary that prints the literal text "patient_name".
 - Bring KKC's AI calling into v11 (v12's AI Call Campaign, usage and statement), Missed Followup only, behind `VITE_VOICE_CALLS_ENABLED`.
 - Optional: a transparent BeanHealth mark for posters; a neutral WhatsApp link preview for feedback links.
+- **Clean up abandoned feedback uploads** (found 4 Nov 2026, adding photos). A voice note or photo is uploaded to `incoming/` at Send, before the submit. If the phone loses signal in between, or the submit is a same-day duplicate, the file stays there with no row pointing at it. Nobody can reach it, but it is still somebody's voice, or a photo that may show a ward. The SQL files list them (`20260927c` for audio, `20261104` for photos), but deleting needs the Storage API. Add a daily Edge Function (service role) that removes `incoming/` objects over a day old that no `hospital_feedback` row references.
 
 ---
 
