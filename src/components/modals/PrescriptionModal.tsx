@@ -118,7 +118,7 @@ const HandoverLines: React.FC = () => {
   return (
     <div className="text-left px-1 space-y-3 py-1">
       <div className="flex gap-6">{blank('BILL PREPARED BY')}{blank('DRUGS PACKED BY')}</div>
-      <div className="flex gap-6">{blank('DRUGS DELIVERED BY (STAFF ID)')}{blank('TO (ATTENDER)')}</div>
+      <div className="flex gap-6">{blank('DRUGS DELIVERED BY')}{blank('TO')}</div>
     </div>
   );
 };
