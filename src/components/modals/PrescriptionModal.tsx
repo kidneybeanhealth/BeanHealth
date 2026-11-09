@@ -103,6 +103,26 @@ interface PrescriptionModalProps {
   forcePrint?: boolean;
 }
 
+// Printed on page 1 under the diagnosis; the footer holds the hand-over lines instead.
+const KKC_DOCTORS_LINE = 'DR. A. PRABHAKAR MD., DNB (CHIEF NEPHROLOGIST) | DR. A. DIVAKAR MS., M.CH (CHIEF UROLOGIST)';
+const KKC_CONTACT_LINE = 'EMERGENCY / APPT: 0422-2494333, 73588 41555, 73588 41666 (24/7)';
+
+/** Hand-over sign-off, filled in by hand on the printed prescription. */
+const HandoverLines: React.FC = () => {
+  const blank = (label: string) => (
+    <div className="flex-1 flex items-end gap-1.5 min-w-0">
+      <span className="shrink-0 whitespace-nowrap">{label}</span>
+      <span className="flex-1 border-b border-black min-w-0 h-8" />
+    </div>
+  );
+  return (
+    <div className="text-left px-1 space-y-3 py-1">
+      <div className="flex gap-6">{blank('BILL PREPARED BY')}{blank('DRUGS PACKED BY')}</div>
+      <div className="flex gap-6">{blank('DRUGS DELIVERED BY (STAFF ID)')}{blank('TO (ATTENDER)')}</div>
+    </div>
+  );
+};
+
 // Dose mappings for auto-populate: Morning, Noon, Evening, Night
 const DOSE_MAPPINGS: Record<string, { morning: string; noon: string; evening: string; night: string }> = {
   'OD': { morning: '1', noon: '0', evening: '0', night: '0' },
@@ -1448,7 +1468,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
             }
           `}</style>
             {(() => {
-              const FIRST_PAGE_ITEMS = 12;
+              // 11, not 12: the doctors/contact strip under the diagnosis takes ~15 mm of page 1,
+              // and 12 drugs with long names then spilled off the page. The 12th starts page 2.
+              const FIRST_PAGE_ITEMS = 11;
               const SUBSEQUENT_PAGE_ITEMS = 25; // High capacity for additional pages if needed
               const totalMeds = medications.length;
               const chunks = [];
@@ -1705,6 +1727,14 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             </div>
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Doctors and contact numbers, under the diagnosis */}
+                    {pageIndex === 0 && (
+                      <div className="border-2 border-black mb-2 px-2 py-1 text-[11px] leading-[1.6] font-bold uppercase tracking-wide text-center bg-gray-50 print:bg-white">
+                        <p>{KKC_DOCTORS_LINE}</p>
+                        <p>{KKC_CONTACT_LINE}</p>
                       </div>
                     )}
 
@@ -2512,15 +2542,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Footer Box */}
-                          <div className="w-full border-2 border-black p-2 text-[11px] leading-[1.6] flex flex-col justify-center mt-2 bg-gray-50 print:bg-white text-center font-bold uppercase tracking-wide">
-                            <p>முன்பதிவு காலதாமதத்தை குறைக்கும் / PRIOR REGISTRATION AVOIDS DELAY</p>
-                            <p>APPT: 0422-2494333, 73588 41555, 41666 | TIME: 8AM - 6PM</p>
-                            
-                            <div className="border-t border-gray-400 my-1.5 mx-2"></div>
-                            
-                            <p>DR. A. பிரபாகர் MD., DNB (NEPHROLOGY) | DR. A. திவாகர் MS., M.CH (UROLOGY)</p>
-                            <p>அவசர உதவிக்கு / EMERGENCY: 0422 - 2494333 (24 மணி நேரமும் / 24 HRS SERVICE)</p>
+                          {/* Footer Box: pharmacy hand-over lines (doctors and numbers are under the diagnosis) */}
+                          <div className="w-full border-2 border-black p-2 text-xs leading-[1.6] flex flex-col justify-center mt-2 bg-gray-50 print:bg-white font-bold uppercase tracking-wide">
+                            <HandoverLines />
                           </div>
                         </div>
                       );

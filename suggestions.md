@@ -223,6 +223,7 @@ Effort: XS = minutes, S = an hour or two, M = half a day, L = a day or more.
 | R6 | **The live queue's Past Rx carries old review dates** | Dialysis Load previous Rx clears past dates (`asRxTemplate`); the queue's Past Rx does not. |
 | R7 | **Review Assignment Map hazards** | See CLAUDE.md: the Track Patients bulk re-sync stamps the other doctor's reviews; the reception call-log lookup is not doctor-scoped; walk-in auto-complete closes the earliest review of any doctor. |
 | R8 | **Known issue: wrong patient on prescription** | From CLAUDE.md, 12 Mar: identity banner in the modal, block the queue while the picker is open, confirm-with-MR step. |
+| R9 | **Very long prescriptions spill a third page uncleanly** | Found 9 Nov 2026 while testing the prescription footer. Page 1 holds 11 drugs and page 2 takes up to 25, but page 2 also carries the review block, notes and footer, so past about 20 drugs with long names (24 with typical names) the browser cuts page 2 wherever it runs out instead of moving whole drugs on. 111 KKC prescriptions since August had 22+ drugs. Fix: size page 2 by measured row height, as page 1's fixed count of 11 does by construction, so a drug that doesn't fit starts page 3 with a PTO. Verified with headless-Chrome A4 prints of the real modal. |
 
 ## Code health
 
